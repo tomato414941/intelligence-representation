@@ -38,6 +38,47 @@ Experiments 17-22 are the current main line:
 
 Earlier semantic/state-memory experiments are historical concept sketches. They are kept for context, but they are not the current architecture.
 
+## Experiment Map
+
+Files are not physically split yet, to avoid breaking imports. Conceptually, they are grouped as follows.
+
+Current main line:
+
+```text
+experiments/observation_assisted_prediction.py
+experiments/multihop_observation_prediction.py
+experiments/ambiguous_multihop_prediction.py
+experiments/temporal_multihop_prediction.py
+experiments/temporal_conflict_prediction.py
+experiments/reliability_weighted_prediction.py
+```
+
+Supporting pieces for the current line:
+
+```text
+experiments/action_conditioned_dataset.py
+experiments/predictor_interface.py
+experiments/predictor_evaluation.py
+experiments/observation_memory.py
+```
+
+Legacy concept sketches:
+
+```text
+experiments/semantic_state.py
+experiments/contextual_claims.py
+experiments/contextual_state_update.py
+experiments/observation_belief_conflict.py
+experiments/semantic_memory.py
+experiments/observation_stream.py
+experiments/world_state_update.py
+experiments/state_hub.py
+experiments/observation_memory_log.py
+experiments/ngram_observation_memory.py
+experiments/retrieval_evaluation.py
+experiments/predictive_loop.py
+```
+
 ## Canonical Docs
 
 Read these first:
@@ -84,4 +125,3 @@ Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless
 ```sh
 python3 -m unittest
 ```
-
