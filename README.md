@@ -136,5 +136,13 @@ Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless
 ## Run Tests
 
 ```sh
-python3 -m unittest
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e .
+./.venv/bin/python -m unittest
+```
+
+## Run Demo
+
+```sh
+./.venv/bin/python -m intrep.demo
 ```
