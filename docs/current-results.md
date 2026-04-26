@@ -4,7 +4,19 @@
 
 This document records the current prototype result after retiring the old experiment tree.
 
-The project has not produced a latent world model. What exists now is a small action-conditioned prediction benchmark in `src/intrep`, including a tiny trained Transformer predictor over symbolic world-model tokens.
+The project has not produced a latent world model. The main direction has shifted from the old symbolic prediction benchmark toward a small mixed-world decoder-only GPT training foundation.
+
+The new v1 foundation trains an untrained GPT-style model on a mixed corpus:
+
+```text
+natural language
+environment episodes in symbolic form
+environment episodes in natural-language form
+code
+logs / tool-like outputs
+```
+
+This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
 
 Historical experiment code and notes live under:
 
@@ -35,6 +47,15 @@ intrep.sequence_predictor:
 intrep.torch_sequence / intrep.tiny_transformer:
   vocabulary, tensors, and a tiny trained Transformer predictor
 
+intrep.byte_tokenizer:
+  byte-level tokenizer for mixed Unicode/code/log text
+
+intrep.mixed_corpus:
+  minimal mixed-world corpus samples
+
+intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
+  decoder-only GPT, next-token training loop, and CLI entrypoint
+
 intrep.evaluation:
   evaluate_prediction_cases
 
@@ -45,9 +66,26 @@ intrep.update_loop:
   PredictionErrorUpdateLoop
 ```
 
+## Current Main Training Check
+
+The canonical new training smoke check is:
+
+```sh
+uv run python -m intrep.train_gpt --max-steps 20
+```
+
+Expected shape:
+
+```text
+intrep mixed-gpt training
+tokens=1025 steps=20 initial_loss=... final_loss=...
+```
+
+The important condition is not high capability. It is that an untrained decoder-only GPT can consume the mixed corpus and reduce next-token loss in a short run.
+
 ## Current Benchmark
 
-The canonical executable result is `intrep.benchmark.run_benchmark()`.
+The old symbolic benchmark is still executable as `intrep.benchmark.run_benchmark()`.
 
 It checks:
 
@@ -130,7 +168,7 @@ update_success=True
 training_size=6->7
 ```
 
-## What This Shows
+## What The Symbolic Benchmark Shows
 
 ```text
 small environment-generated data can beat a hand-written rule baseline
@@ -145,7 +183,7 @@ generated distribution shows the tiny Transformer still mostly memorizes seen co
 an unsupported case can become predictable after prediction-error update
 ```
 
-## What This Does Not Show
+## What The Current Project Still Does Not Show
 
 ```text
 latent state
@@ -164,16 +202,17 @@ The current milestone is not "a world model is built."
 It is:
 
 ```text
-the repository now has a small installable prediction prototype with a benchmark
+the repository now has a small mixed-world GPT training foundation
 ```
 
 ## Next Pressure
 
-Next work should not add new taxonomies or experiment files.
+Next work should not add new taxonomies or semantic state schemas.
 
 It should either:
 
 ```text
-1. add held-out action / delayed-effect cases
-2. expand generated data and targets enough for the tiny Transformer to learn reusable relations
+1. expand the mixed corpus while keeping the same decoder-only GPT training path
+2. add simple held-out evaluation for environment-text correspondences
+3. keep symbolic predictor work as regression/support only
 ```

@@ -2,30 +2,33 @@
 
 This repository explores representation for intelligence through an installable, testable prototype.
 
-The current center is not a hand-designed semantic database. It is a minimal world-model-style prediction loop:
+The current center is not a hand-designed semantic database. It is a small mixed-world GPT training foundation:
 
 ```text
-Observation
-  -> Prediction
-  -> Action / Query
-  -> New Observation
-  -> Prediction Error / Update
+natural language + environment episodes + code + logs
+  -> byte-level tokens
+  -> decoder-only GPT
+  -> next-token training
+  -> loss / simple evaluation
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
 
 ## Current Position
 
-The current implementation is a toy symbolic prototype. It does not yet contain a latent world model. It now includes a tiny trained Transformer predictor over symbolic world-model tokens.
+The repository still includes the earlier toy symbolic prediction benchmark, but that is now a support surface rather than the main direction.
 
-Its narrower purpose is:
+The main v1 direction is:
 
 ```text
-Can action-conditioned training data and prediction-error updates
-change next-state prediction outcomes in measurable ways?
+Can a small untrained decoder-only GPT learn from a mixed corpus where
+natural language, environment observations/actions, code, and logs are all
+treated as parts of the same sequence-learning world?
 ```
 
-The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, a state-aware predictor, a Transformer-ready sequence adapter, a dependency-free sequence-feature baseline, and a tiny trained Transformer. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
+This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
+
+The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
 ## Project Map
 
@@ -59,6 +62,11 @@ src/intrep/sequence.py
 src/intrep/sequence_predictor.py
 src/intrep/torch_sequence.py
 src/intrep/tiny_transformer.py
+src/intrep/byte_tokenizer.py
+src/intrep/mixed_corpus.py
+src/intrep/gpt_model.py
+src/intrep/gpt_training.py
+src/intrep/train_gpt.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
 ```
@@ -93,14 +101,13 @@ This repository should avoid turning into a handcrafted ontology project.
 Prefer:
 
 ```text
-small prediction tasks
-clear baselines
-measured prediction accuracy
-condition-level breakdowns
-predictor comparisons that expose failures
-small trained Transformer benchmarks before scaling model size
-prediction error updates
-held-out cases before new abstractions
+mixed-world sequence data
+small decoder-only GPT training runs
+byte/char-level tokenization before tokenizer optimization
+natural language as important data, not the whole world
+environment episodes in symbolic and natural-language renderings
+loss curves and simple eval before architecture expansion
+existing symbolic benchmarks as support, not the main path
 ```
 
 Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless an experiment repeatedly forces them.
@@ -116,4 +123,10 @@ uv run python -m unittest
 
 ```sh
 uv run python -m intrep.demo
+```
+
+## Train Mixed GPT
+
+```sh
+uv run python -m intrep.train_gpt --max-steps 20
 ```

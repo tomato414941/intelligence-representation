@@ -4,20 +4,29 @@
 
 The current evaluation line is the `src/intrep` prototype, not the retired experiment tree.
 
-The main question is:
+The main v1 question is:
 
 ```text
-Does action-conditioned training data improve next-state prediction,
-and can prediction-error updates make unsupported cases predictable?
+Can an untrained decoder-only GPT consume a mixed-world corpus
+and reduce next-token loss in a short training run?
 ```
 
-The benchmark should also expose when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output.
+The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output.
 
 Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.
 
 ## Metrics
 
-The current benchmark tracks:
+The current mixed-GPT smoke check tracks:
+
+```text
+token count
+training steps
+initial loss
+final loss
+```
+
+The support symbolic benchmark tracks:
 
 ```text
 prediction accuracy
@@ -50,6 +59,15 @@ tests/test_sequence_predictor.py:
 tests/test_tiny_transformer.py:
   checks vocabulary construction, a seen training example, and current held-out limits
 
+tests/test_byte_tokenizer.py:
+  checks byte-level round-trip for Japanese, English, code, and logs
+
+tests/test_mixed_corpus.py:
+  checks the minimal mixed-world corpus and lightweight rendering tags
+
+tests/test_gpt_training.py:
+  checks language-model batches, decoder-only GPT logits, and short-run loss reduction
+
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
 
@@ -68,11 +86,11 @@ tests/test_intrep_imports.py:
 A change is useful only if it improves or clarifies at least one of:
 
 ```text
-next-state prediction accuracy
-unsupported rate
-held-out generalization
-prediction-error update behavior
-benchmark clarity
+mixed corpus construction
+decoder-only GPT training behavior
+loss reduction in short runs
+future evaluation of environment-text correspondences
+support benchmark clarity
 ```
 
 Avoid adding broad schemas, ontology categories, or new experiment files unless the benchmark exposes a repeated need for them.
