@@ -49,6 +49,9 @@ rule baseline:
 frequency predictor:
   learns transition outcomes from action-conditioned examples
 
+held-out object slice:
+  exposes a case the frequency predictor cannot generalize to yet
+
 prediction error update:
   adds an unsupported case to training memory and refits
 ```
@@ -57,9 +60,12 @@ Expected current result:
 
 ```text
 train_size=6
-test_size=6
-rule_accuracy=0.17
-frequency_accuracy=1.00
+test_size=7
+rule_accuracy=0.14
+frequency_accuracy=0.86
+seen_action_patterns.frequency_accuracy=1.00
+held_out_object.frequency_accuracy=0.00
+held_out_object.unsupported_rate=1.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -69,6 +75,7 @@ training_size=6->7
 
 ```text
 small environment-generated data can beat a hand-written rule baseline
+held-out object evaluation exposes a current generalization failure
 an unsupported case can become predictable after prediction-error update
 ```
 

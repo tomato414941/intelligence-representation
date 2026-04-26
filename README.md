@@ -25,7 +25,7 @@ Can action-conditioned training data and prediction-error updates
 change next-state prediction outcomes in measurable ways?
 ```
 
-The default benchmark compares a hand-written rule baseline with a frequency-based transition predictor, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
+The default benchmark compares a hand-written rule baseline with a frequency-based transition predictor, breaks out a held-out object failure, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
 
 ## Project Map
 
@@ -91,6 +91,7 @@ Prefer:
 small prediction tasks
 clear baselines
 measured prediction accuracy
+condition-level breakdowns
 prediction error updates
 held-out cases before new abstractions
 ```

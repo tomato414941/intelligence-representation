@@ -20,6 +20,7 @@ The current benchmark tracks:
 ```text
 prediction accuracy
 unsupported rate
+condition-level accuracy
 training size before / after update
 update success
 ```
@@ -31,6 +32,7 @@ Human-readable Fact / Action structures are evaluation artifacts. They are not c
 ```text
 tests/test_benchmark.py:
   checks rule baseline vs frequency predictor,
+  held-out object failure,
   and prediction-error update success
 
 tests/test_learned_transition_predictor.py:
