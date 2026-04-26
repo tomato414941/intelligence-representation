@@ -2,7 +2,7 @@
 
 ## 現在地
 
-現在の主線は、Semantic State Memoryの美しさではなく、世界モデル的な予測評価である。
+現在の主線は、Semantic State Memoryの美しさではなく、`src/intrep/` のprototypeによる世界モデル的な予測評価である。
 
 評価の中心は次である。
 
@@ -12,7 +12,7 @@
 曖昧性・競合・時間差・信頼度を、予測結果として扱えるか
 ```
 
-Experiment 17-24を現在の主線として扱う。
+Experiment 17-24は現在のprototypeへ至る探索経路として扱う。
 それ以前のsemantic/state系実験は、historical concept sketchesである。
 
 ## 目的

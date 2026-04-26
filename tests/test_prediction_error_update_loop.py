@@ -1,7 +1,7 @@
 import unittest
 
-from experiments.learned_transition_predictor import generate_examples, split_examples
-from experiments.prediction_error_update_loop import (
+from intrep.transition_data import generate_examples, split_examples
+from intrep.update_loop import (
     PredictionErrorUpdateLoop,
     smoke_update_result,
     unseen_wallet_case,

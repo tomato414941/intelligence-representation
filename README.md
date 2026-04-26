@@ -1,6 +1,6 @@
 # intelligence-representation
 
-This repository explores representation for intelligence through small, testable experiments.
+This repository explores representation for intelligence through a small, testable prototype.
 
 The current center is not a hand-designed semantic database. It is a minimal world-model loop:
 
@@ -16,7 +16,7 @@ The project treats raw observations as the source of truth. Derived summaries, b
 
 ## Current Position
 
-The current implementation is a toy symbolic environment. It does not yet contain a learned world model, latent state, or Transformer predictor.
+The current implementation is a toy symbolic prototype. It does not yet contain a latent world model or Transformer predictor.
 
 Its purpose is narrower:
 
@@ -25,7 +25,18 @@ Can memory, retrieval, multi-hop context, time, conflict, and reliability
 change next-state prediction outcomes in measurable ways?
 ```
 
-Experiments 17-24 are the current main line:
+The prototype lives in `src/intrep/`.
+
+```text
+src/intrep/types.py
+src/intrep/dataset.py
+src/intrep/environment.py
+src/intrep/predictors.py
+src/intrep/evaluation.py
+src/intrep/update_loop.py
+```
+
+Experiments 17-24 were the path that led to the prototype:
 
 ```text
 17: Observation-assisted prediction
@@ -42,9 +53,17 @@ Earlier semantic/state-memory experiments are historical concept sketches. They 
 
 ## Experiment Map
 
-Files are not physically split yet, to avoid breaking imports. Conceptually, they are grouped as follows.
+`src/intrep/` is the current implementation surface.
+`experiments/` is now legacy exploration plus runnable compatibility demos.
 
-Current main line:
+Prototype wrappers:
+
+```text
+experiments/learned_transition_predictor.py
+experiments/prediction_error_update_loop.py
+```
+
+Earlier current-line experiments kept as exploration:
 
 ```text
 experiments/observation_assisted_prediction.py
@@ -53,17 +72,6 @@ experiments/ambiguous_multihop_prediction.py
 experiments/temporal_multihop_prediction.py
 experiments/temporal_conflict_prediction.py
 experiments/reliability_weighted_prediction.py
-experiments/learned_transition_predictor.py
-experiments/prediction_error_update_loop.py
-```
-
-Supporting pieces for the current line:
-
-```text
-experiments/action_conditioned_dataset.py
-experiments/predictor_interface.py
-experiments/predictor_evaluation.py
-experiments/observation_memory.py
 ```
 
 Legacy concept sketches:

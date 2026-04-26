@@ -1,14 +1,14 @@
 import unittest
 
-from experiments.learned_transition_predictor import (
-    FrequencyTransitionPredictor,
-    MiniTransitionEnvironment,
+from intrep.environment import MiniTransitionEnvironment
+from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor
+from intrep.transition_data import (
     compare_predictors,
     generate_examples,
     split_examples,
     smoke_comparison,
 )
-from experiments.predictor_interface import Action, Fact, RuleBasedPredictor
+from intrep.types import Action, Fact
 
 
 class LearnedTransitionPredictorTest(unittest.TestCase):

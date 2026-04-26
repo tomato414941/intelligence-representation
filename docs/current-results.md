@@ -2,10 +2,11 @@
 
 ## 位置づけ
 
-この文書は、現在の主線であるExperiment 17-24の結果を短くまとめる。
+この文書は、Experiment 17-24で得た結果と、それを畳み込んだ現在のprototypeを短くまとめる。
 
 結論を先に言うと、ここまでで確認できたのは、学習する世界モデルではない。
 確認できたのは、toy symbolic environment上で、memory、retrieval、multi-hop、time、conflict、reliabilityが予測結果に影響することだけである。
+現在の本体実装は `src/intrep/` にある。
 
 ## Results
 
@@ -19,6 +20,27 @@
 | 22 Reliability-weighted prediction | 信頼度差で競合を一部解決できるか | `resolved_with_uncertainty_rate=0.50`、`conflict_rate=0.50` |
 | 23 Learned transition predictor | 環境生成データから予測規則を学習できるか | `learned_accuracy=1.00`、`rule_accuracy=0.17` |
 | 24 Prediction error update loop | 予測誤差からtraining memoryを更新できるか | 初回 `unsupported`、更新後 `after_correct=True`、training size `6->7` |
+
+## Prototype Surface
+
+現在のprototypeは、次の最小構成に畳み込まれている。
+
+```text
+intrep.types:
+  Fact / Action / Predictor
+
+intrep.environment:
+  MiniTransitionEnvironment
+
+intrep.predictors:
+  RuleBasedPredictor / FrequencyTransitionPredictor
+
+intrep.evaluation:
+  evaluate_prediction_cases
+
+intrep.update_loop:
+  PredictionErrorUpdateLoop
+```
 
 ## What This Shows
 
