@@ -9,12 +9,74 @@ Semantic State Memoryが「良い」と言える条件を明確にする。
 このプロジェクトの初期評価では、まず次の三つを見る。
 
 ```text
-状態更新の正しさ
+検索と文脈構成
 根拠追跡性
+キャッシュの有用性
+状態更新の正しさ
 矛盾管理
 ```
 
 ## 評価軸
+
+### 検索と文脈構成
+
+Observation Storeから、現在の問いに必要なObservationを取り出せるかを見る。
+
+例:
+
+```text
+入力:
+  obs_1: Transformerは系列モデルというより関係計算器に近い
+  obs_2: Attentionはトークン間の重み付き関係を作る
+  obs_3: State Memoryは真理DBではなくキャッシュとして扱う
+
+query:
+  Transformer 関係
+
+期待:
+  retrieve: obs_1, obs_2
+  context includes obs_1, obs_2
+```
+
+この評価は、固定スキーマではなくObservation Memoryを中心にするための基本である。
+
+### キャッシュの有用性
+
+生成されたsummaryやdecisionが、後続の検索や文脈構成で役に立つかを見る。
+
+例:
+
+```text
+summary:
+  Transformerはトークン間関係を計算する機構として見られる。
+
+links:
+  obs_1
+  obs_2
+
+期待:
+  summaryがObservationとして保存される
+  summaryから元Observationへたどれる
+  後続queryでsummaryを再利用できる
+```
+
+Generated Cacheは真理ではなく、再利用可能な派生物である。
+
+### スキーマ最小性
+
+固定スキーマに依存しすぎていないかを見る。
+
+例:
+
+```text
+良い:
+  observation, source, timestamp, tags, links, update_log で処理できる
+
+慎重:
+  fixed ontology, handcrafted belief rules, hard-coded conflict taxonomy がないと動かない
+```
+
+薄いObservation Memoryでできることは、厚いState Schemaに入れる前にそちらで試す。
 
 ### 状態更新の正しさ
 
@@ -85,9 +147,74 @@ tests/test_observation_belief_conflict.py:
 
 tests/test_semantic_memory.py:
   Observation, Claim, Belief, Conflict, UpdateLogを分離し、ClaimをBeliefへ統合できるか
+
+tests/test_observation_stream.py:
+  Observationのmodalityに応じてClaim / Event / StateTransitionを作れるか
+
+tests/test_world_state_update.py:
+  StateTransitionをWorldStateへ反映できるか
+
+tests/test_state_hub.py:
+  Observationを起点にBeliefState / WorldState / ConflictState / Provenanceを更新できるか
+
+tests/test_observation_memory.py:
+  薄いObservation Storeで検索とWorking Context構築ができるか
+
+tests/test_observation_memory_log.py:
+  retrieve / build_context / generated_summary の履歴をUpdateLogとして追跡できるか
 ```
 
 ## 最小評価ケース
+
+### Observation Retrieval
+
+```text
+入力:
+  obs_1: Transformerは系列モデルというより関係計算器に近い
+  obs_2: Attentionはトークン間の重み付き関係を作る
+  obs_3: State Memoryは真理DBではなくキャッシュとして扱う
+
+query:
+  Transformer 関係
+
+期待:
+  retrieve: obs_1, obs_2
+  context:
+    [obs_1] ...
+    [obs_2] ...
+```
+
+### Generated Cache
+
+```text
+入力:
+  obs_1
+  obs_2
+
+生成:
+  summary: Transformerはトークン間関係を計算する機構として見られる。
+
+期待:
+  summary is Observation
+  summary.type: summary
+  summary.source: generated
+  summary.links: [obs_1, obs_2]
+```
+
+### Update Log
+
+```text
+操作:
+  retrieve
+  build_context
+  store_generated_summary
+
+期待:
+  update_log includes retrieve
+  update_log includes build_context
+  update_log includes generated_summary
+  generated_summary log has query, input_observations, output_observation
+```
 
 ### 重複統合
 
@@ -155,6 +282,9 @@ tests/test_semantic_memory.py:
 
 スキーマ進化:
   新しい種類の意味単位を追加しても、過去データを壊さず扱えるか。
+
+スキーマ最小性:
+  厚い手設計スキーマを追加せず、Observation + Retrieval + Contextで処理できる範囲を広げられるか。
 ```
 
 ## 方針
@@ -165,3 +295,6 @@ tests/test_semantic_memory.py:
 
 ただし、自然言語はObservationの一種でしかない。
 画像、センサー、行動結果、ツール出力を扱う場合は、Claimだけでなく、Entity、Event、StateTransition、Hypothesis、Evidenceが期待通りに作られるかも評価対象にする。
+
+Bitter Lesson寄りの方針では、まずObservation Memory、Retrieval、Working Context、Generated Cache、Update Logを評価する。
+Claim、Belief、Conflictなどの厚い構造は、有用性が確認できた場合にキャッシュとして導入する。
