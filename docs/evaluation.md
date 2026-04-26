@@ -12,7 +12,7 @@
 曖昧性・競合・時間差・信頼度を、予測結果として扱えるか
 ```
 
-Experiment 17-23を現在の主線として扱う。
+Experiment 17-24を現在の主線として扱う。
 それ以前のsemantic/state系実験は、historical concept sketchesである。
 
 ## 目的
@@ -193,6 +193,10 @@ tests/test_reliability_weighted_prediction.py:
 tests/test_learned_transition_predictor.py:
   小さな状態遷移環境からaction-conditioned dataを生成し、
   学習可能baselineをRuleBasedPredictorと比較する
+
+tests/test_prediction_error_update_loop.py:
+  未知ケースの予測誤差をtraining memoryへ追加し、
+  再fit後に同じケースの予測が改善するかを見る
 ```
 
 この系統で見る指標は次である。

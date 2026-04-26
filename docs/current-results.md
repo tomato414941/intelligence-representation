@@ -2,7 +2,7 @@
 
 ## 位置づけ
 
-この文書は、現在の主線であるExperiment 17-23の結果を短くまとめる。
+この文書は、現在の主線であるExperiment 17-24の結果を短くまとめる。
 
 結論を先に言うと、ここまでで確認できたのは、学習する世界モデルではない。
 確認できたのは、toy symbolic environment上で、memory、retrieval、multi-hop、time、conflict、reliabilityが予測結果に影響することだけである。
@@ -18,6 +18,7 @@
 | 21 Temporal conflict prediction | 同時刻の競合をrecencyで誤解決しないか | `conflict_rate=1.00`、候補集合として保持 |
 | 22 Reliability-weighted prediction | 信頼度差で競合を一部解決できるか | `resolved_with_uncertainty_rate=0.50`、`conflict_rate=0.50` |
 | 23 Learned transition predictor | 環境生成データから予測規則を学習できるか | `learned_accuracy=1.00`、`rule_accuracy=0.17` |
+| 24 Prediction error update loop | 予測誤差からtraining memoryを更新できるか | 初回 `unsupported`、更新後 `after_correct=True`、training size `6->7` |
 
 ## What This Shows
 
@@ -31,6 +32,7 @@ retrievalは、直近memoryより有効な場合がある
 同時刻の競合はrecencyでは解けない
 信頼度差が十分大きい場合だけ、競合をresolved_with_uncertaintyにできる
 小さな環境生成データでは、学習baselineが手書きruleを上回る
+未知ケースの予測誤差をtraining memoryへ追加すると、同じケースの再予測が改善する
 ```
 
 ## What This Does Not Show
@@ -44,6 +46,7 @@ Transformer predictorを使っていない
 大量データ、ノイズ、部分観測、分布外汎化を扱っていない
 行動選択やplanningを改善していない
 実験はまだ手書きFact/Actionと小さな環境に依存している
+更新しているのはtraining memoryであり、モデル重みやlatent stateではない
 ```
 
 したがって、現在の到達点は「世界モデルができた」ではない。
