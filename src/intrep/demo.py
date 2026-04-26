@@ -31,6 +31,17 @@ def main() -> None:
             f" sequence_feature_accuracy={benchmark_slice.sequence_feature_summary.accuracy:.2f}"
             f" tiny_transformer_accuracy={benchmark_slice.tiny_transformer_summary.accuracy:.2f}"
         )
+    print(f"generated: train={result.generated_train_size}")
+    for benchmark_slice in result.generated_slices:
+        print(
+            "generated_slice:"
+            f" name={benchmark_slice.name}"
+            f" cases={benchmark_slice.case_count}"
+            f" frequency_accuracy={benchmark_slice.frequency_summary.accuracy:.2f}"
+            f" sequence_feature_accuracy={benchmark_slice.sequence_feature_summary.accuracy:.2f}"
+            f" tiny_transformer_accuracy={benchmark_slice.tiny_transformer_summary.accuracy:.2f}"
+            f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
+        )
     print(
         "prediction_error_update:"
         f" case={result.update_result.case_name}"

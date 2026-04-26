@@ -75,6 +75,9 @@ tiny Transformer:
 condition slices:
   expose seen patterns, held-out objects, longer chains, missing links, and noisy distractors
 
+generated distribution:
+  evaluates repeated find patterns across generated object/container/location combinations
+
 prediction error update:
   adds an unsupported case to training memory and refits
 ```
@@ -117,6 +120,11 @@ noisy_distractor.state_aware_accuracy=1.00
 noisy_distractor.transformer_ready_accuracy=0.00
 noisy_distractor.sequence_feature_accuracy=0.00
 noisy_distractor.tiny_transformer_accuracy=0.00
+generated_train_size=12
+generated_seen.tiny_transformer_accuracy=1.00
+generated_held_out_object.tiny_transformer_accuracy=0.00
+generated_held_out_container.tiny_transformer_accuracy=0.50
+generated_held_out_location.tiny_transformer_accuracy=0.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -133,6 +141,7 @@ using current state relations can fix these specific held-out failures
 the project now has a Transformer-ready token sequence interface
 the dependency-free sequence-feature baseline fails outside seen sequences
 a tiny trained Transformer is now on the same benchmark
+generated distribution shows the tiny Transformer still mostly memorizes seen combinations
 an unsupported case can become predictable after prediction-error update
 ```
 
@@ -166,5 +175,5 @@ It should either:
 
 ```text
 1. add held-out action / delayed-effect cases
-2. expand data enough that the tiny Transformer can be evaluated beyond memorizing seen sequences
+2. expand generated data and targets enough for the tiny Transformer to learn reusable relations
 ```

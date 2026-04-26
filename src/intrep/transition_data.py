@@ -168,6 +168,94 @@ def noisy_distractor_examples() -> list[ActionConditionedExample]:
     return examples
 
 
+def generated_find_examples() -> list[ActionConditionedExample]:
+    objects = ["鍵", "本", "財布", "時計", "指輪", "カード"]
+    containers = ["箱", "袋", "ケース", "ポーチ"]
+    locations = ["棚", "机", "引き出し"]
+    examples = []
+    for object_name in objects:
+        for container in containers:
+            for location in locations:
+                examples.append(_find_example("generated", object_name, container, location))
+    return examples
+
+
+def split_generated_examples(
+    examples: list[ActionConditionedExample],
+) -> tuple[list[ActionConditionedExample], dict[str, list[ActionConditionedExample]]]:
+    train = [
+        example
+        for example in examples
+        if (
+            example.action.object in {"鍵", "本", "財布"}
+            and _container_from_example(example) in {"箱", "袋"}
+            and example.expected_observation is not None
+            and example.expected_observation.object in {"棚", "机"}
+        )
+    ]
+    slices = {
+        "generated_seen": [
+            example
+            for example in examples
+            if (
+                example.action.object in {"鍵", "本", "財布"}
+                and _container_from_example(example) in {"箱", "袋"}
+                and example.expected_observation is not None
+                and example.expected_observation.object in {"棚", "机"}
+            )
+        ],
+        "generated_held_out_object": [
+            example
+            for example in examples
+            if example.action.object in {"時計", "指輪", "カード"}
+            and _container_from_example(example) in {"箱", "袋"}
+            and example.expected_observation is not None
+            and example.expected_observation.object in {"棚", "机"}
+        ],
+        "generated_held_out_container": [
+            example
+            for example in examples
+            if example.action.object in {"鍵", "本", "財布"}
+            and _container_from_example(example) in {"ケース", "ポーチ"}
+            and example.expected_observation is not None
+            and example.expected_observation.object in {"棚", "机"}
+        ],
+        "generated_held_out_location": [
+            example
+            for example in examples
+            if example.action.object in {"鍵", "本", "財布"}
+            and _container_from_example(example) in {"箱", "袋"}
+            and example.expected_observation is not None
+            and example.expected_observation.object == "引き出し"
+        ],
+    }
+    return train, slices
+
+
+def _find_example(prefix: str, object_name: str, container: str, location: str) -> ActionConditionedExample:
+    return ActionConditionedExample(
+        id=f"{prefix}_{object_name}_{container}_{location}",
+        state_before=[
+            Fact(subject=container, predicate="located_at", object=location),
+            Fact(subject=object_name, predicate="located_at", object=container),
+        ],
+        action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+        expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+        expected_state_after=[
+            Fact(subject=container, predicate="located_at", object=location),
+            Fact(subject=object_name, predicate="located_at", object=container),
+        ],
+        source=prefix,
+    )
+
+
+def _container_from_example(example: ActionConditionedExample) -> str:
+    for fact in example.state_before:
+        if fact.subject == example.action.object and fact.predicate == "located_at":
+            return fact.object
+    raise ValueError(f"No container fact for {example.id}.")
+
+
 def compare_predictors(
     train_examples: list[ActionConditionedExample],
     test_examples: list[ActionConditionedExample],

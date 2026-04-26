@@ -35,7 +35,11 @@ Human-readable Fact / Action structures are evaluation artifacts. They are not c
 tests/test_benchmark.py:
   checks rule baseline vs frequency predictor vs state-aware predictor vs Transformer-ready adapter vs tiny Transformer,
   condition-level failures,
+  generated distribution slices,
   and prediction-error update success
+
+tests/test_generated_distribution.py:
+  checks fixed generated train/test slices and non-overlap
 
 tests/test_tokens.py / tests/test_sequence.py:
   check the world-model token sequence interface

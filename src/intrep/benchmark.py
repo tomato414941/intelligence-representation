@@ -13,10 +13,12 @@ from intrep.sequence_predictor import SequenceFeaturePredictor
 from intrep.tiny_transformer import TinyTransformerPredictor
 from intrep.transition_data import (
     generate_examples,
+    generated_find_examples,
     held_out_object_examples,
     longer_chain_examples,
     missing_link_examples,
     noisy_distractor_examples,
+    split_generated_examples,
     split_examples,
 )
 from intrep.update_loop import PredictionErrorUpdateResult, PredictionErrorUpdateLoop, unseen_wallet_case
@@ -45,6 +47,8 @@ class BenchmarkResult:
     sequence_feature_summary: PredictionEvaluationSummary
     tiny_transformer_summary: PredictionEvaluationSummary
     slices: list[BenchmarkSliceResult]
+    generated_train_size: int
+    generated_slices: list[BenchmarkSliceResult]
     update_result: PredictionErrorUpdateResult
 
     @property
@@ -81,6 +85,12 @@ class BenchmarkResult:
                 return result
         raise KeyError(name)
 
+    def generated_slice(self, name: str) -> BenchmarkSliceResult:
+        for result in self.generated_slices:
+            if result.name == name:
+                return result
+        raise KeyError(name)
+
 
 def run_benchmark() -> BenchmarkResult:
     train, test = split_examples(generate_examples())
@@ -111,6 +121,8 @@ def run_benchmark() -> BenchmarkResult:
 
     update_loop = PredictionErrorUpdateLoop(train)
     update_result = update_loop.update_from_error(unseen_wallet_case())
+    generated_train, generated_slice_examples = split_generated_examples(generated_find_examples())
+    generated_predictors = _fit_predictors(generated_train)
 
     return BenchmarkResult(
         train_size=len(train),
@@ -173,8 +185,40 @@ def run_benchmark() -> BenchmarkResult:
                 tiny_transformer,
             ),
         ],
+        generated_train_size=len(generated_train),
+        generated_slices=[
+            _evaluate_slice(
+                name,
+                [example.to_prediction_case() for example in examples],
+                *generated_predictors,
+            )
+            for name, examples in generated_slice_examples.items()
+        ],
         update_result=update_result,
     )
+
+
+def _fit_predictors(
+    train,
+) -> tuple[
+    RuleBasedPredictor,
+    FrequencyTransitionPredictor,
+    StateAwarePredictor,
+    TransformerReadyPredictor,
+    SequenceFeaturePredictor,
+    TinyTransformerPredictor,
+]:
+    frequency = FrequencyTransitionPredictor()
+    frequency.fit(train)
+    state_aware = StateAwarePredictor()
+    state_aware.fit(train)
+    transformer_ready = TransformerReadyPredictor()
+    transformer_ready.fit(train)
+    sequence_feature = SequenceFeaturePredictor()
+    sequence_feature.fit(train)
+    tiny_transformer = TinyTransformerPredictor()
+    tiny_transformer.fit(train)
+    return RuleBasedPredictor(), frequency, state_aware, transformer_ready, sequence_feature, tiny_transformer
 
 
 def _evaluate_slice(

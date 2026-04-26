@@ -4,8 +4,12 @@ from intrep.benchmark import run_benchmark
 
 
 class BenchmarkTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.result = run_benchmark()
+
     def test_benchmark_compares_rule_and_frequency_predictors(self) -> None:
-        result = run_benchmark()
+        result = self.result
 
         self.assertEqual(result.train_size, 6)
         self.assertEqual(result.test_size, 6)
@@ -19,7 +23,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertGreater(result.state_aware_accuracy, 0.8)
 
     def test_benchmark_includes_prediction_error_update(self) -> None:
-        result = run_benchmark()
+        result = self.result
 
         self.assertEqual(result.update_result.prediction_error_type, "unsupported")
         self.assertTrue(result.update_success)
@@ -27,7 +31,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(result.update_result.training_size_after, 7)
 
     def test_benchmark_breaks_out_held_out_object_failure_and_improvement(self) -> None:
-        result = run_benchmark()
+        result = self.result
 
         seen = result.slice("seen_action_patterns")
         held_out = result.slice("held_out_object")
@@ -44,7 +48,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(held_out.sequence_feature_summary.accuracy, 0.0)
 
     def test_benchmark_exposes_more_failure_conditions(self) -> None:
-        result = run_benchmark()
+        result = self.result
 
         longer_chain = result.slice("longer_chain")
         missing_link = result.slice("missing_link")
@@ -67,6 +71,20 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(noisy_distractor.state_aware_summary.unsupported_rate, 0.0)
         self.assertEqual(noisy_distractor.transformer_ready_summary.accuracy, 0.0)
         self.assertEqual(noisy_distractor.sequence_feature_summary.accuracy, 0.0)
+
+    def test_benchmark_includes_generated_distribution(self) -> None:
+        result = self.result
+
+        seen = result.generated_slice("generated_seen")
+        held_out_object = result.generated_slice("generated_held_out_object")
+        held_out_container = result.generated_slice("generated_held_out_container")
+        held_out_location = result.generated_slice("generated_held_out_location")
+
+        self.assertEqual(result.generated_train_size, 12)
+        self.assertEqual(seen.tiny_transformer_summary.accuracy, 1.0)
+        self.assertEqual(held_out_object.tiny_transformer_summary.accuracy, 0.0)
+        self.assertEqual(held_out_container.tiny_transformer_summary.accuracy, 0.5)
+        self.assertEqual(held_out_location.tiny_transformer_summary.accuracy, 0.0)
 
 
 if __name__ == "__main__":
