@@ -25,7 +25,7 @@ Can memory, retrieval, multi-hop context, time, conflict, and reliability
 change next-state prediction outcomes in measurable ways?
 ```
 
-Experiments 17-22 are the current main line:
+Experiments 17-23 are the current main line:
 
 ```text
 17: Observation-assisted prediction
@@ -34,6 +34,7 @@ Experiments 17-22 are the current main line:
 20: Temporal multi-hop prediction
 21: Temporal conflict prediction
 22: Reliability-weighted prediction
+23: Learned transition predictor
 ```
 
 Earlier semantic/state-memory experiments are historical concept sketches. They are kept for context, but they are not the current architecture.
@@ -51,6 +52,7 @@ experiments/ambiguous_multihop_prediction.py
 experiments/temporal_multihop_prediction.py
 experiments/temporal_conflict_prediction.py
 experiments/reliability_weighted_prediction.py
+experiments/learned_transition_predictor.py
 ```
 
 Supporting pieces for the current line:
