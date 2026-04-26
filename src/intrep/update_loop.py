@@ -5,7 +5,7 @@ from typing import Literal
 
 from intrep.dataset import ActionConditionedExample
 from intrep.predictors import FrequencyTransitionPredictor
-from intrep.transition_data import generate_examples, split_examples
+from intrep.transition_data import generate_examples, held_out_object_examples, split_examples
 from intrep.types import Action, Fact
 
 
@@ -58,20 +58,7 @@ class PredictionErrorUpdateLoop:
 
 
 def unseen_wallet_case() -> ActionConditionedExample:
-    return ActionConditionedExample(
-        id="unseen_wallet_find",
-        state_before=[
-            Fact(subject="ケース", predicate="located_at", object="引き出し"),
-            Fact(subject="財布", predicate="located_at", object="ケース"),
-        ],
-        action=Action(type="find", actor="太郎", object="財布", target="unknown"),
-        expected_observation=Fact(subject="財布", predicate="located_at", object="引き出し"),
-        expected_state_after=[
-            Fact(subject="ケース", predicate="located_at", object="引き出し"),
-            Fact(subject="財布", predicate="located_at", object="ケース"),
-        ],
-        source="manual_error_case",
-    )
+    return held_out_object_examples()[0]
 
 
 def smoke_update_result() -> PredictionErrorUpdateResult:
@@ -90,4 +77,3 @@ def _prediction_error_type(predicted: Fact | None, observed: Fact) -> Prediction
 
 def _same_fact(left: Fact | None, right: Fact) -> bool:
     return left is not None and left.key() == right.key()
-

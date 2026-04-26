@@ -6,7 +6,7 @@ from intrep.dataset import ActionConditionedExample
 from intrep.environment import MiniTransitionEnvironment
 from intrep.evaluation import PredictionEvaluationSummary, evaluate_prediction_cases
 from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor
-from intrep.types import Action
+from intrep.types import Action, Fact
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,34 @@ def split_examples(
     return train, test
 
 
+def held_out_object_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("unseen_wallet_find", "財布", "ケース", "引き出し"),
+        ("unseen_watch_find", "時計", "ポーチ", "机"),
+        ("unseen_ring_find", "指輪", "小箱", "棚"),
+    ]
+
+    examples = []
+    for case_id, object_name, container, location in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=case_id,
+                state_before=[
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+                expected_state_after=[
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                source="held_out_object",
+            )
+        )
+    return examples
+
+
 def compare_predictors(
     train_examples: list[ActionConditionedExample],
     test_examples: list[ActionConditionedExample],
@@ -76,4 +104,3 @@ def compare_predictors(
 def smoke_comparison() -> LearnedTransitionComparison:
     train, test = split_examples(generate_examples())
     return compare_predictors(train, test)
-

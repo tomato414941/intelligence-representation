@@ -11,6 +11,8 @@ Does action-conditioned training data improve next-state prediction,
 and can prediction-error updates make unsupported cases predictable?
 ```
 
+The benchmark should also expose when a predictor succeeds by memorizing seen patterns and fails when it must use current state relations.
+
 Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.
 
 ## Metrics
@@ -31,7 +33,7 @@ Human-readable Fact / Action structures are evaluation artifacts. They are not c
 
 ```text
 tests/test_benchmark.py:
-  checks rule baseline vs frequency predictor,
+  checks rule baseline vs frequency predictor vs state-aware predictor,
   held-out object failure,
   and prediction-error update success
 

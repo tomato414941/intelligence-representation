@@ -13,6 +13,7 @@ def main() -> None:
         f" test={len(result.frequency_summary.results)}"
         f" rule_accuracy={result.rule_accuracy:.2f}"
         f" frequency_accuracy={result.frequency_accuracy:.2f}"
+        f" state_aware_accuracy={result.state_aware_accuracy:.2f}"
     )
     for benchmark_slice in result.slices:
         print(
@@ -21,6 +22,7 @@ def main() -> None:
             f" cases={benchmark_slice.case_count}"
             f" frequency_accuracy={benchmark_slice.frequency_summary.accuracy:.2f}"
             f" frequency_unsupported={benchmark_slice.frequency_summary.unsupported_rate:.2f}"
+            f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
         )
     print(
         "prediction_error_update:"

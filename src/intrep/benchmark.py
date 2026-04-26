@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from intrep.evaluation import PredictionEvaluationSummary, evaluate_prediction_cases
-from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor
-from intrep.transition_data import generate_examples, split_examples
+from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor, StateAwarePredictor
+from intrep.transition_data import generate_examples, held_out_object_examples, split_examples
 from intrep.update_loop import PredictionErrorUpdateResult, PredictionErrorUpdateLoop, unseen_wallet_case
 
 
@@ -14,6 +14,7 @@ class BenchmarkSliceResult:
     case_count: int
     rule_summary: PredictionEvaluationSummary
     frequency_summary: PredictionEvaluationSummary
+    state_aware_summary: PredictionEvaluationSummary
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class BenchmarkResult:
     test_size: int
     rule_summary: PredictionEvaluationSummary
     frequency_summary: PredictionEvaluationSummary
+    state_aware_summary: PredictionEvaluationSummary
     slices: list[BenchmarkSliceResult]
     update_result: PredictionErrorUpdateResult
 
@@ -32,6 +34,10 @@ class BenchmarkResult:
     @property
     def frequency_accuracy(self) -> float:
         return self.frequency_summary.accuracy
+
+    @property
+    def state_aware_accuracy(self) -> float:
+        return self.state_aware_summary.accuracy
 
     @property
     def update_success(self) -> bool:
@@ -47,11 +53,13 @@ class BenchmarkResult:
 def run_benchmark() -> BenchmarkResult:
     train, test = split_examples(generate_examples())
     seen_cases = [example.to_prediction_case() for example in test]
-    held_out_object_cases = [unseen_wallet_case().to_prediction_case()]
+    held_out_object_cases = [example.to_prediction_case() for example in held_out_object_examples()]
     test_cases = seen_cases + held_out_object_cases
 
     frequency = FrequencyTransitionPredictor()
     frequency.fit(train)
+    state_aware = StateAwarePredictor()
+    state_aware.fit(train)
     rule = RuleBasedPredictor()
 
     update_loop = PredictionErrorUpdateLoop(train)
@@ -62,9 +70,10 @@ def run_benchmark() -> BenchmarkResult:
         test_size=len(test),
         rule_summary=evaluate_prediction_cases(test_cases, rule),
         frequency_summary=evaluate_prediction_cases(test_cases, frequency),
+        state_aware_summary=evaluate_prediction_cases(test_cases, state_aware),
         slices=[
-            _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency),
-            _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency),
+            _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency, state_aware),
+            _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency, state_aware),
         ],
         update_result=update_result,
     )
@@ -75,10 +84,12 @@ def _evaluate_slice(
     cases,
     rule: RuleBasedPredictor,
     frequency: FrequencyTransitionPredictor,
+    state_aware: StateAwarePredictor,
 ) -> BenchmarkSliceResult:
     return BenchmarkSliceResult(
         name=name,
         case_count=len(cases),
         rule_summary=evaluate_prediction_cases(cases, rule),
         frequency_summary=evaluate_prediction_cases(cases, frequency),
+        state_aware_summary=evaluate_prediction_cases(cases, state_aware),
     )

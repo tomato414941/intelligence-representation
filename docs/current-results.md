@@ -24,7 +24,7 @@ intrep.environment:
   MiniTransitionEnvironment
 
 intrep.predictors:
-  RuleBasedPredictor / FrequencyTransitionPredictor
+  RuleBasedPredictor / FrequencyTransitionPredictor / StateAwarePredictor
 
 intrep.evaluation:
   evaluate_prediction_cases
@@ -49,8 +49,11 @@ rule baseline:
 frequency predictor:
   learns transition outcomes from action-conditioned examples
 
+state-aware predictor:
+  uses current located_at relations as a fallback when frequency lookup fails
+
 held-out object slice:
-  exposes a case the frequency predictor cannot generalize to yet
+  exposes cases the frequency predictor cannot generalize to yet
 
 prediction error update:
   adds an unsupported case to training memory and refits
@@ -60,12 +63,15 @@ Expected current result:
 
 ```text
 train_size=6
-test_size=7
-rule_accuracy=0.14
-frequency_accuracy=0.86
+test_size=9
+rule_accuracy=0.11
+frequency_accuracy=0.67
+state_aware_accuracy=1.00
 seen_action_patterns.frequency_accuracy=1.00
+seen_action_patterns.state_aware_accuracy=1.00
 held_out_object.frequency_accuracy=0.00
 held_out_object.unsupported_rate=1.00
+held_out_object.state_aware_accuracy=1.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -75,7 +81,8 @@ training_size=6->7
 
 ```text
 small environment-generated data can beat a hand-written rule baseline
-held-out object evaluation exposes a current generalization failure
+held-out object evaluation exposes a current frequency lookup failure
+using current state relations can fix this specific held-out failure
 an unsupported case can become predictable after prediction-error update
 ```
 
@@ -90,6 +97,7 @@ noise
 partial observation
 out-of-distribution generalization
 planning or control
+learned state abstraction
 ```
 
 The current milestone is not "a world model is built."

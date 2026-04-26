@@ -49,6 +49,29 @@ class FrequencyTransitionPredictor:
         )
 
 
+class StateAwarePredictor:
+    def __init__(self) -> None:
+        self.frequency = FrequencyTransitionPredictor()
+
+    def fit(self, examples: list[ActionConditionedExample]) -> None:
+        self.frequency.fit(examples)
+
+    def predict(self, state: list[Fact], action: Action) -> Fact | None:
+        predicted = self.frequency.predict(state, action)
+        if predicted is not None:
+            return predicted
+
+        if action.type in {"place", "move_container"}:
+            return Fact(subject=action.object, predicate="located_at", object=action.target)
+
+        if action.type == "find":
+            location = _resolve_location(state, action.object)
+            if location is not None:
+                return Fact(subject=action.object, predicate="located_at", object=location)
+
+        return None
+
+
 def _action_key(action: Action) -> tuple[str, str, str]:
     return (action.type, action.object, action.target)
 
@@ -65,3 +88,20 @@ def _fact_from_count(counts: Counter[tuple[str, str, str]]) -> Fact:
     key, _ = counts.most_common(1)[0]
     return Fact(subject=key[0], predicate=key[1], object=key[2])
 
+
+def _resolve_location(state: list[Fact], object_name: str) -> str | None:
+    locations = {
+        fact.subject: fact.object
+        for fact in state
+        if fact.predicate == "located_at"
+    }
+    current = object_name
+    seen = {current}
+    destination = locations.get(current)
+
+    while destination in locations and destination not in seen:
+        seen.add(destination)
+        current = destination
+        destination = locations.get(current)
+
+    return destination
