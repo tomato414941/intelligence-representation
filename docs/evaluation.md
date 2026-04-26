@@ -1,0 +1,164 @@
+# Evaluation
+
+## 目的
+
+Semantic State Memoryが「良い」と言える条件を明確にする。
+
+意味状態を保持し、関係を明示し、矛盾を管理しても、それが何に対して有効なのかを決めなければ設計判断ができない。
+
+このプロジェクトの初期評価では、まず次の三つを見る。
+
+```text
+状態更新の正しさ
+根拠追跡性
+矛盾管理
+```
+
+## 評価軸
+
+### 状態更新の正しさ
+
+入力後に、期待されるClaim、Belief、Conflict、UpdateLogが作られるかを見る。
+
+例:
+
+```text
+入力:
+  田中が本を持っている
+  田中が佐藤に本を渡した
+  佐藤が本を図書館に置いた
+
+期待:
+  has(田中, 本): inactive
+  has(佐藤, 本): inactive
+  located_at(本, 図書館): active
+```
+
+### 根拠追跡性
+
+BeliefやClaimから、元になったObservationへたどれるかを見る。
+
+例:
+
+```text
+Belief:
+  has(田中, 本)
+
+Evidence:
+  obs_1
+  obs_2
+```
+
+根拠が追えないBeliefは、再解釈、検証、rollbackが難しい。
+
+### 矛盾管理
+
+矛盾した入力を削除や上書きで処理せず、Conflictとして保持できるかを見る。
+
+例:
+
+```text
+入力:
+  田中が本を持っている
+  佐藤が本を持っている
+
+期待:
+  belief_1: active
+  belief_2: uncertain
+  conflict_1: unresolved
+```
+
+## 現在のテスト対応
+
+```text
+tests/test_semantic_state.py:
+  構造化イベントから現在状態を更新できるか
+
+tests/test_contextual_claims.py:
+  time / context / owner_of_belief によって矛盾候補を区別できるか
+
+tests/test_contextual_state_update.py:
+  文脈付きイベントで状態更新と矛盾候補保持を同時に扱えるか
+
+tests/test_observation_belief_conflict.py:
+  Observation, Belief, Conflict, UpdateLogを分けられるか
+
+tests/test_semantic_memory.py:
+  Observation, Claim, Belief, Conflict, UpdateLogを分離し、ClaimをBeliefへ統合できるか
+```
+
+## 最小評価ケース
+
+### 重複統合
+
+```text
+入力:
+  田中が本を持っている
+  田中が本を持っている
+
+期待:
+  Observation: 2
+  Claim: 2
+  Belief: 1
+  Belief.supporting_claims: 2
+  UpdateLog: add_claim, merge_belief
+```
+
+### 矛盾保持
+
+```text
+入力:
+  田中が本を持っている
+  佐藤が本を持っている
+
+期待:
+  Observation: 2
+  Claim: 2
+  Belief: 2
+  Conflict: 1
+  UpdateLog: add_claim, create_conflict
+```
+
+### 信念主体の分離
+
+```text
+入力:
+  世界状態として、田中が本を持っている
+  田中の信念として、佐藤が本を持っている
+
+期待:
+  Conflict: 0
+```
+
+同じ対象について違う主張でも、信念主体が違うなら矛盾とは限らない。
+
+## 将来の評価軸
+
+```text
+長期一貫性:
+  長い入力列のあとでも、重要なBeliefが壊れないか。
+
+再解釈可能性:
+  抽出や解釈が誤っていたとき、Raw Observationから再構成できるか。
+
+検索効率:
+  必要なBelief / Claim / Evidenceを少ないコストで取り出せるか。
+
+圧縮品質:
+  多数の観測を、根拠を失わずに少数のBeliefへまとめられるか。
+
+誤書き込み耐性:
+  低信頼・誤抽出・敵対的入力が長期状態を汚染しにくいか。
+
+行動・検証への有用性:
+  Beliefが検索、ツール実行、実験、外部観測によって検証・更新できるか。
+
+スキーマ進化:
+  新しい種類の意味単位を追加しても、過去データを壊さず扱えるか。
+```
+
+## 方針
+
+次の実験からは、実装前に評価ケースを書く。
+
+特に自然言語入力へ進む場合も、評価対象は自然文そのものではなく、最終的に得られるObservation、Claim、Belief、Conflict、UpdateLogが期待通りかで見る。
