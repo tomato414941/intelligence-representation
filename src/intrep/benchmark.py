@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from intrep.evaluation import PredictionEvaluationSummary, evaluate_prediction_cases
-from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor, StateAwarePredictor
+from intrep.predictors import (
+    FrequencyTransitionPredictor,
+    RuleBasedPredictor,
+    StateAwarePredictor,
+    TransformerReadyPredictor,
+)
 from intrep.transition_data import (
     generate_examples,
     held_out_object_examples,
@@ -22,6 +27,7 @@ class BenchmarkSliceResult:
     rule_summary: PredictionEvaluationSummary
     frequency_summary: PredictionEvaluationSummary
     state_aware_summary: PredictionEvaluationSummary
+    transformer_ready_summary: PredictionEvaluationSummary
 
 
 @dataclass(frozen=True)
@@ -31,6 +37,7 @@ class BenchmarkResult:
     rule_summary: PredictionEvaluationSummary
     frequency_summary: PredictionEvaluationSummary
     state_aware_summary: PredictionEvaluationSummary
+    transformer_ready_summary: PredictionEvaluationSummary
     slices: list[BenchmarkSliceResult]
     update_result: PredictionErrorUpdateResult
 
@@ -45,6 +52,10 @@ class BenchmarkResult:
     @property
     def state_aware_accuracy(self) -> float:
         return self.state_aware_summary.accuracy
+
+    @property
+    def transformer_ready_accuracy(self) -> float:
+        return self.transformer_ready_summary.accuracy
 
     @property
     def update_success(self) -> bool:
@@ -76,6 +87,8 @@ def run_benchmark() -> BenchmarkResult:
     frequency.fit(train)
     state_aware = StateAwarePredictor()
     state_aware.fit(train)
+    transformer_ready = TransformerReadyPredictor()
+    transformer_ready.fit(train)
     rule = RuleBasedPredictor()
 
     update_loop = PredictionErrorUpdateLoop(train)
@@ -87,12 +100,13 @@ def run_benchmark() -> BenchmarkResult:
         rule_summary=evaluate_prediction_cases(test_cases, rule),
         frequency_summary=evaluate_prediction_cases(test_cases, frequency),
         state_aware_summary=evaluate_prediction_cases(test_cases, state_aware),
+        transformer_ready_summary=evaluate_prediction_cases(test_cases, transformer_ready),
         slices=[
-            _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency, state_aware),
-            _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency, state_aware),
-            _evaluate_slice("longer_chain", longer_chain_cases, rule, frequency, state_aware),
-            _evaluate_slice("missing_link", missing_link_cases, rule, frequency, state_aware),
-            _evaluate_slice("noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware),
+            _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency, state_aware, transformer_ready),
+            _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency, state_aware, transformer_ready),
+            _evaluate_slice("longer_chain", longer_chain_cases, rule, frequency, state_aware, transformer_ready),
+            _evaluate_slice("missing_link", missing_link_cases, rule, frequency, state_aware, transformer_ready),
+            _evaluate_slice("noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware, transformer_ready),
         ],
         update_result=update_result,
     )
@@ -104,6 +118,7 @@ def _evaluate_slice(
     rule: RuleBasedPredictor,
     frequency: FrequencyTransitionPredictor,
     state_aware: StateAwarePredictor,
+    transformer_ready: TransformerReadyPredictor,
 ) -> BenchmarkSliceResult:
     return BenchmarkSliceResult(
         name=name,
@@ -111,4 +126,5 @@ def _evaluate_slice(
         rule_summary=evaluate_prediction_cases(cases, rule),
         frequency_summary=evaluate_prediction_cases(cases, frequency),
         state_aware_summary=evaluate_prediction_cases(cases, state_aware),
+        transformer_ready_summary=evaluate_prediction_cases(cases, transformer_ready),
     )

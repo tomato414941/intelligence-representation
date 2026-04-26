@@ -24,7 +24,10 @@ intrep.environment:
   MiniTransitionEnvironment
 
 intrep.predictors:
-  RuleBasedPredictor / FrequencyTransitionPredictor / StateAwarePredictor
+  RuleBasedPredictor / FrequencyTransitionPredictor / StateAwarePredictor / TransformerReadyPredictor
+
+intrep.tokens / intrep.sequence:
+  world-model tokenization and sequence examples
 
 intrep.evaluation:
   evaluate_prediction_cases
@@ -52,6 +55,10 @@ frequency predictor:
 state-aware predictor:
   uses current located_at relations as a fallback when frequency lookup fails
 
+transformer-ready adapter:
+  uses the same token sequence shape a trained Transformer predictor would consume,
+  but it is not a trained Transformer yet
+
 condition slices:
   expose seen patterns, held-out objects, longer chains, missing links, and noisy distractors
 
@@ -67,18 +74,24 @@ test_size=15
 rule_accuracy=0.20
 frequency_accuracy=0.53
 state_aware_accuracy=1.00
+transformer_ready_accuracy=0.53
 seen_action_patterns.frequency_accuracy=1.00
 seen_action_patterns.state_aware_accuracy=1.00
+seen_action_patterns.transformer_ready_accuracy=1.00
 held_out_object.frequency_accuracy=0.00
 held_out_object.unsupported_rate=1.00
 held_out_object.state_aware_accuracy=1.00
+held_out_object.transformer_ready_accuracy=0.00
 longer_chain.frequency_accuracy=0.00
 longer_chain.state_aware_accuracy=1.00
+longer_chain.transformer_ready_accuracy=0.00
 missing_link.frequency_accuracy=1.00
 missing_link.state_aware_accuracy=1.00
 missing_link.state_aware_unsupported_rate=1.00
+missing_link.transformer_ready_accuracy=1.00
 noisy_distractor.frequency_accuracy=0.00
 noisy_distractor.state_aware_accuracy=1.00
+noisy_distractor.transformer_ready_accuracy=0.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -92,6 +105,7 @@ held-out object evaluation exposes a current frequency lookup failure
 longer chain and noisy distractor slices expose more frequency lookup failures
 missing link shows that unsupported can be the correct prediction
 using current state relations can fix these specific held-out failures
+the project now has a Transformer-ready token sequence interface
 an unsupported case can become predictable after prediction-error update
 ```
 
@@ -99,7 +113,7 @@ an unsupported case can become predictable after prediction-error update
 
 ```text
 latent state
-Transformer-based prediction
+trained Transformer-based prediction
 learned representation updates
 large data
 noise
@@ -125,5 +139,5 @@ It should either:
 
 ```text
 1. add held-out action / delayed-effect cases
-2. replace the frequency baseline with a sequence or vector predictor
+2. replace the Transformer-ready adapter with a trained sequence model
 ```

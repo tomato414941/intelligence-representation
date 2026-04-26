@@ -25,7 +25,7 @@ Can action-conditioned training data and prediction-error updates
 change next-state prediction outcomes in measurable ways?
 ```
 
-The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, and a state-aware predictor. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
+The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, a state-aware predictor, and a Transformer-ready sequence adapter. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
 
 ## Project Map
 
@@ -54,6 +54,8 @@ src/intrep/dataset.py
 src/intrep/environment.py
 src/intrep/predictors.py
 src/intrep/evaluation.py
+src/intrep/tokens.py
+src/intrep/sequence.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
 ```
@@ -93,6 +95,7 @@ clear baselines
 measured prediction accuracy
 condition-level breakdowns
 predictor comparisons that expose failures
+Transformer-ready token sequences before adding a trained Transformer
 prediction error updates
 held-out cases before new abstractions
 ```

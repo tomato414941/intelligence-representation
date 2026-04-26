@@ -11,6 +11,8 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(result.test_size, 6)
         self.assertEqual(len(result.frequency_summary.results), 15)
         self.assertLess(result.rule_accuracy, result.frequency_accuracy)
+        self.assertLess(result.transformer_ready_accuracy, result.state_aware_accuracy)
+        self.assertEqual(result.transformer_ready_accuracy, result.frequency_accuracy)
         self.assertLess(result.frequency_accuracy, result.state_aware_accuracy)
         self.assertGreater(result.state_aware_accuracy, 0.8)
 
@@ -36,6 +38,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(held_out.frequency_summary.unsupported_rate, 1.0)
         self.assertEqual(held_out.state_aware_summary.accuracy, 1.0)
         self.assertEqual(held_out.state_aware_summary.unsupported_rate, 0.0)
+        self.assertEqual(held_out.transformer_ready_summary.accuracy, 0.0)
 
     def test_benchmark_exposes_more_failure_conditions(self) -> None:
         result = run_benchmark()
@@ -58,6 +61,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(noisy_distractor.frequency_summary.unsupported_rate, 1.0)
         self.assertEqual(noisy_distractor.state_aware_summary.accuracy, 1.0)
         self.assertEqual(noisy_distractor.state_aware_summary.unsupported_rate, 0.0)
+        self.assertEqual(noisy_distractor.transformer_ready_summary.accuracy, 0.0)
 
 
 if __name__ == "__main__":
