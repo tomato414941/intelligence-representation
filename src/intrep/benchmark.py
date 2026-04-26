@@ -9,6 +9,7 @@ from intrep.predictors import (
     StateAwarePredictor,
     TransformerReadyPredictor,
 )
+from intrep.sequence_predictor import SequenceFeaturePredictor
 from intrep.transition_data import (
     generate_examples,
     held_out_object_examples,
@@ -28,6 +29,7 @@ class BenchmarkSliceResult:
     frequency_summary: PredictionEvaluationSummary
     state_aware_summary: PredictionEvaluationSummary
     transformer_ready_summary: PredictionEvaluationSummary
+    sequence_feature_summary: PredictionEvaluationSummary
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class BenchmarkResult:
     frequency_summary: PredictionEvaluationSummary
     state_aware_summary: PredictionEvaluationSummary
     transformer_ready_summary: PredictionEvaluationSummary
+    sequence_feature_summary: PredictionEvaluationSummary
     slices: list[BenchmarkSliceResult]
     update_result: PredictionErrorUpdateResult
 
@@ -56,6 +59,10 @@ class BenchmarkResult:
     @property
     def transformer_ready_accuracy(self) -> float:
         return self.transformer_ready_summary.accuracy
+
+    @property
+    def sequence_feature_accuracy(self) -> float:
+        return self.sequence_feature_summary.accuracy
 
     @property
     def update_success(self) -> bool:
@@ -89,6 +96,8 @@ def run_benchmark() -> BenchmarkResult:
     state_aware.fit(train)
     transformer_ready = TransformerReadyPredictor()
     transformer_ready.fit(train)
+    sequence_feature = SequenceFeaturePredictor()
+    sequence_feature.fit(train)
     rule = RuleBasedPredictor()
 
     update_loop = PredictionErrorUpdateLoop(train)
@@ -101,12 +110,23 @@ def run_benchmark() -> BenchmarkResult:
         frequency_summary=evaluate_prediction_cases(test_cases, frequency),
         state_aware_summary=evaluate_prediction_cases(test_cases, state_aware),
         transformer_ready_summary=evaluate_prediction_cases(test_cases, transformer_ready),
+        sequence_feature_summary=evaluate_prediction_cases(test_cases, sequence_feature),
         slices=[
-            _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency, state_aware, transformer_ready),
-            _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency, state_aware, transformer_ready),
-            _evaluate_slice("longer_chain", longer_chain_cases, rule, frequency, state_aware, transformer_ready),
-            _evaluate_slice("missing_link", missing_link_cases, rule, frequency, state_aware, transformer_ready),
-            _evaluate_slice("noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware, transformer_ready),
+            _evaluate_slice(
+                "seen_action_patterns", seen_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+            ),
+            _evaluate_slice(
+                "held_out_object", held_out_object_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+            ),
+            _evaluate_slice(
+                "longer_chain", longer_chain_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+            ),
+            _evaluate_slice(
+                "missing_link", missing_link_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+            ),
+            _evaluate_slice(
+                "noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+            ),
         ],
         update_result=update_result,
     )
@@ -119,6 +139,7 @@ def _evaluate_slice(
     frequency: FrequencyTransitionPredictor,
     state_aware: StateAwarePredictor,
     transformer_ready: TransformerReadyPredictor,
+    sequence_feature: SequenceFeaturePredictor,
 ) -> BenchmarkSliceResult:
     return BenchmarkSliceResult(
         name=name,
@@ -127,4 +148,5 @@ def _evaluate_slice(
         frequency_summary=evaluate_prediction_cases(cases, frequency),
         state_aware_summary=evaluate_prediction_cases(cases, state_aware),
         transformer_ready_summary=evaluate_prediction_cases(cases, transformer_ready),
+        sequence_feature_summary=evaluate_prediction_cases(cases, sequence_feature),
     )

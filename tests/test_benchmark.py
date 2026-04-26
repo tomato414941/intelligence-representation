@@ -13,6 +13,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertLess(result.rule_accuracy, result.frequency_accuracy)
         self.assertLess(result.transformer_ready_accuracy, result.state_aware_accuracy)
         self.assertEqual(result.transformer_ready_accuracy, result.frequency_accuracy)
+        self.assertLess(result.sequence_feature_accuracy, result.frequency_accuracy)
         self.assertLess(result.frequency_accuracy, result.state_aware_accuracy)
         self.assertGreater(result.state_aware_accuracy, 0.8)
 
@@ -39,6 +40,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(held_out.state_aware_summary.accuracy, 1.0)
         self.assertEqual(held_out.state_aware_summary.unsupported_rate, 0.0)
         self.assertEqual(held_out.transformer_ready_summary.accuracy, 0.0)
+        self.assertEqual(held_out.sequence_feature_summary.accuracy, 0.0)
 
     def test_benchmark_exposes_more_failure_conditions(self) -> None:
         result = run_benchmark()
@@ -56,12 +58,14 @@ class BenchmarkTest(unittest.TestCase):
         self.assertEqual(missing_link.frequency_summary.unsupported_rate, 1.0)
         self.assertEqual(missing_link.state_aware_summary.accuracy, 1.0)
         self.assertEqual(missing_link.state_aware_summary.unsupported_rate, 1.0)
+        self.assertEqual(missing_link.sequence_feature_summary.accuracy, 0.0)
 
         self.assertEqual(noisy_distractor.case_count, 2)
         self.assertEqual(noisy_distractor.frequency_summary.unsupported_rate, 1.0)
         self.assertEqual(noisy_distractor.state_aware_summary.accuracy, 1.0)
         self.assertEqual(noisy_distractor.state_aware_summary.unsupported_rate, 0.0)
         self.assertEqual(noisy_distractor.transformer_ready_summary.accuracy, 0.0)
+        self.assertEqual(noisy_distractor.sequence_feature_summary.accuracy, 0.0)
 
 
 if __name__ == "__main__":

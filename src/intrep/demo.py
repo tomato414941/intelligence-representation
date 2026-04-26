@@ -15,6 +15,7 @@ def main() -> None:
         f" frequency_accuracy={result.frequency_accuracy:.2f}"
         f" state_aware_accuracy={result.state_aware_accuracy:.2f}"
         f" transformer_ready_accuracy={result.transformer_ready_accuracy:.2f}"
+        f" sequence_feature_accuracy={result.sequence_feature_accuracy:.2f}"
     )
     for benchmark_slice in result.slices:
         print(
@@ -26,6 +27,7 @@ def main() -> None:
             f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
             f" state_aware_unsupported={benchmark_slice.state_aware_summary.unsupported_rate:.2f}"
             f" transformer_ready_accuracy={benchmark_slice.transformer_ready_summary.accuracy:.2f}"
+            f" sequence_feature_accuracy={benchmark_slice.sequence_feature_summary.accuracy:.2f}"
         )
     print(
         "prediction_error_update:"

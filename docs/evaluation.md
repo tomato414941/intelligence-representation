@@ -40,6 +40,9 @@ tests/test_benchmark.py:
 tests/test_tokens.py / tests/test_sequence.py:
   check the world-model token sequence interface
 
+tests/test_sequence_predictor.py:
+  checks the dependency-free sequence-feature baseline and its limits
+
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
 
