@@ -678,3 +678,33 @@ Store again
 
 つまり、このプロジェクトの核は、細かい意味DBを作ることではない。
 LLMが大量の観測履歴から必要な文脈を取り出し、その場で適切な抽象状態を構成できるようにすることである。
+
+## 世界モデルへの位置づけ直し
+
+Observation Memoryや外部メモリは主役ではなく、世界モデルを支える補助機構である。
+
+中心に置くべきなのは、観測と行動から予測に役立つ内部状態を作り、未来や行動結果を予測し、誤差によって状態を更新するループである。
+
+```text
+Observation
+  ↓
+Latent / Predictive State
+  ↓
+Prediction
+  ↓
+Action / Query / Tool Use
+  ↓
+New Observation
+  ↓
+Prediction Error
+  ↓
+State Update
+```
+
+この観点では、`Semantic State` よりも `Predictive State` が中心に近い。
+人間可読なClaimやBeliefは説明・監査・デバッグには便利だが、世界モデル本体の表現は潜在状態でよい可能性がある。
+
+外部メモリの役割は、過去観測、キャッシュ、検索基盤として、世界モデルに渡す情報を選ぶことである。
+主題は外部メモリではなく、限られたattention、context、computeの中で、どの情報とどの関係に計算を使うべきかである。
+
+世界モデルの詳細は [world-model.md](world-model.md) に分ける。
