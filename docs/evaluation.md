@@ -162,3 +162,6 @@ tests/test_semantic_memory.py:
 次の実験からは、実装前に評価ケースを書く。
 
 特に自然言語入力へ進む場合も、評価対象は自然文そのものではなく、最終的に得られるObservation、Claim、Belief、Conflict、UpdateLogが期待通りかで見る。
+
+ただし、自然言語はObservationの一種でしかない。
+画像、センサー、行動結果、ツール出力を扱う場合は、Claimだけでなく、Entity、Event、StateTransition、Hypothesis、Evidenceが期待通りに作られるかも評価対象にする。
