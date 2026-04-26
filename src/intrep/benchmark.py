@@ -4,7 +4,14 @@ from dataclasses import dataclass
 
 from intrep.evaluation import PredictionEvaluationSummary, evaluate_prediction_cases
 from intrep.predictors import FrequencyTransitionPredictor, RuleBasedPredictor, StateAwarePredictor
-from intrep.transition_data import generate_examples, held_out_object_examples, split_examples
+from intrep.transition_data import (
+    generate_examples,
+    held_out_object_examples,
+    longer_chain_examples,
+    missing_link_examples,
+    noisy_distractor_examples,
+    split_examples,
+)
 from intrep.update_loop import PredictionErrorUpdateResult, PredictionErrorUpdateLoop, unseen_wallet_case
 
 
@@ -54,7 +61,16 @@ def run_benchmark() -> BenchmarkResult:
     train, test = split_examples(generate_examples())
     seen_cases = [example.to_prediction_case() for example in test]
     held_out_object_cases = [example.to_prediction_case() for example in held_out_object_examples()]
-    test_cases = seen_cases + held_out_object_cases
+    longer_chain_cases = [example.to_prediction_case() for example in longer_chain_examples()]
+    missing_link_cases = [example.to_prediction_case() for example in missing_link_examples()]
+    noisy_distractor_cases = [example.to_prediction_case() for example in noisy_distractor_examples()]
+    test_cases = (
+        seen_cases
+        + held_out_object_cases
+        + longer_chain_cases
+        + missing_link_cases
+        + noisy_distractor_cases
+    )
 
     frequency = FrequencyTransitionPredictor()
     frequency.fit(train)
@@ -74,6 +90,9 @@ def run_benchmark() -> BenchmarkResult:
         slices=[
             _evaluate_slice("seen_action_patterns", seen_cases, rule, frequency, state_aware),
             _evaluate_slice("held_out_object", held_out_object_cases, rule, frequency, state_aware),
+            _evaluate_slice("longer_chain", longer_chain_cases, rule, frequency, state_aware),
+            _evaluate_slice("missing_link", missing_link_cases, rule, frequency, state_aware),
+            _evaluate_slice("noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware),
         ],
         update_result=update_result,
     )

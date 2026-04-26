@@ -85,6 +85,89 @@ def held_out_object_examples() -> list[ActionConditionedExample]:
     return examples
 
 
+def longer_chain_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("long_chain_badge_find", "社員証", "封筒", "バッグ", "ロッカー"),
+        ("long_chain_ticket_find", "切符", "財布", "上着", "玄関"),
+    ]
+    examples = []
+    for case_id, object_name, container, outer_container, location in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=case_id,
+                state_before=[
+                    Fact(subject=outer_container, predicate="located_at", object=location),
+                    Fact(subject=container, predicate="located_at", object=outer_container),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+                expected_state_after=[
+                    Fact(subject=outer_container, predicate="located_at", object=location),
+                    Fact(subject=container, predicate="located_at", object=outer_container),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                source="longer_chain",
+            )
+        )
+    return examples
+
+
+def missing_link_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("missing_link_card_find", "カード", "箱"),
+        ("missing_link_keycard_find", "キー カード", "ケース"),
+    ]
+    examples = []
+    for case_id, object_name, container in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=case_id,
+                state_before=[
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=None,
+                expected_state_after=[],
+                source="missing_link",
+            )
+        )
+    return examples
+
+
+def noisy_distractor_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("noisy_usb_find", "USB", "袋", "引き出し"),
+        ("noisy_note_find", "メモ", "手帳", "鞄"),
+    ]
+    distractors = [
+        Fact(subject="眼鏡", predicate="located_at", object="棚"),
+        Fact(subject="充電器", predicate="located_at", object="机"),
+        Fact(subject="鍵", predicate="located_at", object="箱"),
+    ]
+    examples = []
+    for case_id, object_name, container, location in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=case_id,
+                state_before=[
+                    *distractors,
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+                expected_state_after=[
+                    *distractors,
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                source="noisy_distractor",
+            )
+        )
+    return examples
+
+
 def compare_predictors(
     train_examples: list[ActionConditionedExample],
     test_examples: list[ActionConditionedExample],

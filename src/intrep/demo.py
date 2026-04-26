@@ -23,6 +23,7 @@ def main() -> None:
             f" frequency_accuracy={benchmark_slice.frequency_summary.accuracy:.2f}"
             f" frequency_unsupported={benchmark_slice.frequency_summary.unsupported_rate:.2f}"
             f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
+            f" state_aware_unsupported={benchmark_slice.state_aware_summary.unsupported_rate:.2f}"
         )
     print(
         "prediction_error_update:"

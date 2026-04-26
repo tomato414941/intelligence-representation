@@ -98,10 +98,14 @@ def _resolve_location(state: list[Fact], object_name: str) -> str | None:
     current = object_name
     seen = {current}
     destination = locations.get(current)
+    traversed_edges = 0
 
     while destination in locations and destination not in seen:
         seen.add(destination)
         current = destination
         destination = locations.get(current)
+        traversed_edges += 1
 
+    if traversed_edges == 0:
+        return None
     return destination

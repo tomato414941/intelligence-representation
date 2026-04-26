@@ -52,8 +52,8 @@ frequency predictor:
 state-aware predictor:
   uses current located_at relations as a fallback when frequency lookup fails
 
-held-out object slice:
-  exposes cases the frequency predictor cannot generalize to yet
+condition slices:
+  expose seen patterns, held-out objects, longer chains, missing links, and noisy distractors
 
 prediction error update:
   adds an unsupported case to training memory and refits
@@ -63,15 +63,22 @@ Expected current result:
 
 ```text
 train_size=6
-test_size=9
-rule_accuracy=0.11
-frequency_accuracy=0.67
+test_size=15
+rule_accuracy=0.20
+frequency_accuracy=0.53
 state_aware_accuracy=1.00
 seen_action_patterns.frequency_accuracy=1.00
 seen_action_patterns.state_aware_accuracy=1.00
 held_out_object.frequency_accuracy=0.00
 held_out_object.unsupported_rate=1.00
 held_out_object.state_aware_accuracy=1.00
+longer_chain.frequency_accuracy=0.00
+longer_chain.state_aware_accuracy=1.00
+missing_link.frequency_accuracy=1.00
+missing_link.state_aware_accuracy=1.00
+missing_link.state_aware_unsupported_rate=1.00
+noisy_distractor.frequency_accuracy=0.00
+noisy_distractor.state_aware_accuracy=1.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -82,7 +89,9 @@ training_size=6->7
 ```text
 small environment-generated data can beat a hand-written rule baseline
 held-out object evaluation exposes a current frequency lookup failure
-using current state relations can fix this specific held-out failure
+longer chain and noisy distractor slices expose more frequency lookup failures
+missing link shows that unsupported can be the correct prediction
+using current state relations can fix these specific held-out failures
 an unsupported case can become predictable after prediction-error update
 ```
 
@@ -115,6 +124,6 @@ Next work should not add new taxonomies or experiment files.
 It should either:
 
 ```text
-1. expand generated data with held-out action / held-out object evaluation
+1. add held-out action / delayed-effect cases
 2. replace the frequency baseline with a sequence or vector predictor
 ```

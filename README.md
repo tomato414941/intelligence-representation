@@ -25,7 +25,7 @@ Can action-conditioned training data and prediction-error updates
 change next-state prediction outcomes in measurable ways?
 ```
 
-The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, and a state-aware predictor. It breaks out held-out object failures, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
+The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, and a state-aware predictor. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
 
 ## Project Map
 
