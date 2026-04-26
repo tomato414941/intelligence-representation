@@ -1,29 +1,20 @@
 # Current Results
 
-## 位置づけ
+## Position
 
-この文書は、Experiment 17-24で得た結果と、それを畳み込んだ現在のprototypeを短くまとめる。
+This document records the current prototype result after retiring the old experiment tree.
 
-結論を先に言うと、ここまでで確認できたのは、学習する世界モデルではない。
-確認できたのは、toy symbolic environment上で、memory、retrieval、multi-hop、time、conflict、reliabilityが予測結果に影響することだけである。
-現在の本体実装は `src/intrep/` にある。
+The project has not produced a latent world model or Transformer predictor. What exists now is a small action-conditioned prediction benchmark in `src/intrep`.
 
-## Results
+Historical experiment code and notes live under:
 
-| Experiment | Question | Result |
-| --- | --- | --- |
-| 17 Observation-assisted prediction | retrieveされた観測は予測を改善するか | `retrieved_memory` が `accuracy=1.00`、`no_memory` と `recent_memory` は `0.50` |
-| 18 Multi-hop observation prediction | 直接検索だけで足りるか | `direct_memory=0.00`、`multi_hop_memory=1.00` |
-| 19 Ambiguous multi-hop prediction | 一意に解けないmulti-hopを潰さず扱えるか | `ambiguous_rate=1.00`、候補集合として正解 |
-| 20 Temporal multi-hop prediction | 時間差で現在状態を更新できるか | 最新観測を使い `accuracy=1.00`、古い観測は `superseded` として保持 |
-| 21 Temporal conflict prediction | 同時刻の競合をrecencyで誤解決しないか | `conflict_rate=1.00`、候補集合として保持 |
-| 22 Reliability-weighted prediction | 信頼度差で競合を一部解決できるか | `resolved_with_uncertainty_rate=0.50`、`conflict_rate=0.50` |
-| 23 Learned transition predictor | 環境生成データから予測規則を学習できるか | `learned_accuracy=1.00`、`rule_accuracy=0.17` |
-| 24 Prediction error update loop | 予測誤差からtraining memoryを更新できるか | 初回 `unsupported`、更新後 `after_correct=True`、training size `6->7` |
+```text
+legacy/experiments/
+legacy/tests/
+docs/legacy/
+```
 
 ## Prototype Surface
-
-現在のprototypeは、次の最小構成に畳み込まれている。
 
 ```text
 intrep.types:
@@ -38,65 +29,77 @@ intrep.predictors:
 intrep.evaluation:
   evaluate_prediction_cases
 
+intrep.benchmark:
+  run_benchmark
+
 intrep.update_loop:
   PredictionErrorUpdateLoop
 ```
 
-## What This Shows
+## Current Benchmark
 
-ここまでで示したこと:
+The canonical executable result is `intrep.benchmark.run_benchmark()`.
+
+It checks:
 
 ```text
-retrievalは、直近memoryより有効な場合がある
-直接検索だけではmulti-hop予測に足りない
-一意に解けない状態は候補集合として保持できる
-時間差がある更新はrecencyで扱える
-同時刻の競合はrecencyでは解けない
-信頼度差が十分大きい場合だけ、競合をresolved_with_uncertaintyにできる
-小さな環境生成データでは、学習baselineが手書きruleを上回る
-未知ケースの予測誤差をtraining memoryへ追加すると、同じケースの再予測が改善する
+rule baseline:
+  predicts only hand-coded place actions
+
+frequency predictor:
+  learns transition outcomes from action-conditioned examples
+
+prediction error update:
+  adds an unsupported case to training memory and refits
+```
+
+Expected current result:
+
+```text
+train_size=6
+test_size=6
+rule_accuracy=0.17
+frequency_accuracy=1.00
+prediction_error=unsupported
+update_success=True
+training_size=6->7
+```
+
+## What This Shows
+
+```text
+small environment-generated data can beat a hand-written rule baseline
+an unsupported case can become predictable after prediction-error update
 ```
 
 ## What This Does Not Show
 
-未対応の批判はまだ残っている。
-
 ```text
-latent stateを持っていない
-Transformer predictorを使っていない
-予測誤差による表現更新を学習していない
-大量データ、ノイズ、部分観測、分布外汎化を扱っていない
-行動選択やplanningを改善していない
-実験はまだ手書きFact/Actionと小さな環境に依存している
-更新しているのはtraining memoryであり、モデル重みやlatent stateではない
+latent state
+Transformer-based prediction
+learned representation updates
+large data
+noise
+partial observation
+out-of-distribution generalization
+planning or control
 ```
 
-したがって、現在の到達点は「世界モデルができた」ではない。
+The current milestone is not "a world model is built."
 
-より正確には、
+It is:
 
 ```text
-世界モデル評価へ向かうための、
-小さな予測タスクと評価軸を作った段階
+the repository now has a small installable prediction prototype with a benchmark
 ```
-
-である。
 
 ## Next Pressure
 
-次に増やすべきものは、新しいState分類ではない。
+Next work should not add new taxonomies or experiment files.
 
-次に必要なのは、次のどちらかである。
-
-```text
-1. 生成データを増やし、train/testだけでなくheld-out actionやheld-out objectで評価する
-2. Frequency baselineを、より一般化できるsequence / vector predictorに置き換える
-```
-
-どちらの場合も、成功条件は次である。
+It should either:
 
 ```text
-memory / retrieval / context building が prediction error を下げるか
-context size と accuracy のトレードオフが見えるか
-未知ケースに汎化するか
+1. expand generated data with held-out action / held-out object evaluation
+2. replace the frequency baseline with a sequence or vector predictor
 ```

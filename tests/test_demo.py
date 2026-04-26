@@ -14,7 +14,7 @@ class DemoTest(unittest.TestCase):
 
         text = output.getvalue()
         self.assertIn("intrep prototype demo", text)
-        self.assertIn("learned_accuracy=1.00", text)
+        self.assertIn("frequency_accuracy=1.00", text)
         self.assertIn("after_correct=True", text)
 
 

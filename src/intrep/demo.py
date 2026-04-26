@@ -1,28 +1,26 @@
 from __future__ import annotations
 
-from intrep.transition_data import smoke_comparison
-from intrep.update_loop import smoke_update_result
+from intrep.benchmark import run_benchmark
 
 
 def main() -> None:
-    comparison = smoke_comparison()
-    update = smoke_update_result()
+    result = run_benchmark()
 
     print("intrep prototype demo")
     print(
-        "learned_transition:"
-        f" train={comparison.train_size}"
-        f" test={comparison.test_size}"
-        f" rule_accuracy={comparison.rule_summary.accuracy:.2f}"
-        f" learned_accuracy={comparison.learned_summary.accuracy:.2f}"
+        "benchmark:"
+        f" train={result.train_size}"
+        f" test={result.test_size}"
+        f" rule_accuracy={result.rule_accuracy:.2f}"
+        f" frequency_accuracy={result.frequency_accuracy:.2f}"
     )
     print(
         "prediction_error_update:"
-        f" case={update.case_name}"
-        f" error={update.prediction_error_type}"
-        f" before_correct={update.before_correct}"
-        f" after_correct={update.after_correct}"
-        f" training={update.training_size_before}->{update.training_size_after}"
+        f" case={result.update_result.case_name}"
+        f" error={result.update_result.prediction_error_type}"
+        f" before_correct={result.update_result.before_correct}"
+        f" after_correct={result.update_result.after_correct}"
+        f" training={result.update_result.training_size_before}->{result.update_result.training_size_after}"
     )
 
 
