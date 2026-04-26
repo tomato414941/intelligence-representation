@@ -87,6 +87,7 @@ Read these first:
 docs/world-model.md
 docs/bitter-lesson.md
 docs/evaluation.md
+docs/current-results.md
 ```
 
 Broad background:
