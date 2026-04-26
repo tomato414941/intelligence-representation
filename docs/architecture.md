@@ -1,5 +1,20 @@
 # Semantic Memory Architecture
 
+## 現在の扱い
+
+この文書は初期探索メモであり、現在の正本アーキテクチャではない。
+
+現在の方針では、固定的なSemantic State DBを作ることを避ける。
+Raw Observationを正本とし、Claim、Belief、Conflict、StateTransitionなどは必要に応じて作る派生キャッシュとして扱う。
+
+実装判断では、次を優先する。
+
+```text
+docs/world-model.md
+docs/bitter-lesson.md
+docs/evaluation.md
+```
+
 ## 目的
 
 Semantic Memoryは、生の観測、抽出された主張、採用中の信念、矛盾、更新履歴を分けて扱う。

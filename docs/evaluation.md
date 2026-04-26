@@ -1,5 +1,20 @@
 # Evaluation
 
+## 現在地
+
+現在の主線は、Semantic State Memoryの美しさではなく、世界モデル的な予測評価である。
+
+評価の中心は次である。
+
+```text
+観測履歴やretrievalが、次状態予測を改善するか
+必要な文脈だけを使えているか
+曖昧性・競合・時間差・信頼度を、予測結果として扱えるか
+```
+
+Experiment 17-22を現在の主線として扱う。
+それ以前のsemantic/state系実験は、historical concept sketchesである。
+
 ## 目的
 
 Semantic State Memoryが「良い」と言える条件を明確にする。
@@ -151,6 +166,44 @@ Evidence:
 ```
 
 ## 現在のテスト対応
+
+### Current Main Line
+
+```text
+tests/test_observation_assisted_prediction.py:
+  memoryなし / recent memory / retrieved memory を比較し、
+  retrieved contextが予測を改善するかを見る
+
+tests/test_multihop_observation_prediction.py:
+  直接検索だけでは不足するmulti-hop予測を扱う
+
+tests/test_ambiguous_multihop_prediction.py:
+  一意に解けないmulti-hopをambiguous候補集合として扱う
+
+tests/test_temporal_multihop_prediction.py:
+  時間差のある観測で、最新観測を現在状態として使い、
+  古い観測をsupersededとして残す
+
+tests/test_temporal_conflict_prediction.py:
+  同時刻の競合をrecencyで解かず、conflict候補として保持する
+
+tests/test_reliability_weighted_prediction.py:
+  source reliabilityで同時刻競合を解ける場合と解けない場合を分ける
+```
+
+この系統で見る指標は次である。
+
+```text
+prediction accuracy
+context size
+retrieved observation ids
+ambiguous / conflict rate
+provenance observation ids
+counterevidence observation ids
+superseded observation ids
+```
+
+### Historical Concept Sketches
 
 ```text
 tests/test_semantic_state.py:

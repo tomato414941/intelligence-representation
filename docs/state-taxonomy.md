@@ -1,5 +1,18 @@
 # State Taxonomy
 
+## 現在の扱い
+
+この文書は初期探索メモであり、現在の実装正本ではない。
+
+ここに並ぶState分類は、固定ontologyとして採用しない。
+新しいState型を増やす前に、予測実験で本当に必要かを確認する。
+
+現在の主線は、世界モデル的な予測評価である。
+
+```text
+Observation -> Prediction -> New Observation -> Prediction Error / Update
+```
+
 ## 目的
 
 AIが更新すべきStateを分類する。
