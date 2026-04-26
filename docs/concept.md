@@ -173,6 +173,11 @@ Conflict:
 ```
 
 設計の基底には、自然言語ではなく、観測と状態更新を置くべきである。
+つまり中心は、`Observation -> StateUpdate -> State` である。
+
+ここでのStateは単一のSemantic Stateではない。
+World State、Belief State、Task State、Semantic State、Memory Stateなど、複数種類の状態の束として考える必要がある。
+詳細な分類は [state-taxonomy.md](state-taxonomy.md) に分ける。
 
 ## 系列と関係
 
