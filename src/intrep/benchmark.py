@@ -10,6 +10,7 @@ from intrep.predictors import (
     TransformerReadyPredictor,
 )
 from intrep.sequence_predictor import SequenceFeaturePredictor
+from intrep.tiny_transformer import TinyTransformerPredictor
 from intrep.transition_data import (
     generate_examples,
     held_out_object_examples,
@@ -30,6 +31,7 @@ class BenchmarkSliceResult:
     state_aware_summary: PredictionEvaluationSummary
     transformer_ready_summary: PredictionEvaluationSummary
     sequence_feature_summary: PredictionEvaluationSummary
+    tiny_transformer_summary: PredictionEvaluationSummary
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,7 @@ class BenchmarkResult:
     state_aware_summary: PredictionEvaluationSummary
     transformer_ready_summary: PredictionEvaluationSummary
     sequence_feature_summary: PredictionEvaluationSummary
+    tiny_transformer_summary: PredictionEvaluationSummary
     slices: list[BenchmarkSliceResult]
     update_result: PredictionErrorUpdateResult
 
@@ -63,6 +66,10 @@ class BenchmarkResult:
     @property
     def sequence_feature_accuracy(self) -> float:
         return self.sequence_feature_summary.accuracy
+
+    @property
+    def tiny_transformer_accuracy(self) -> float:
+        return self.tiny_transformer_summary.accuracy
 
     @property
     def update_success(self) -> bool:
@@ -98,6 +105,8 @@ def run_benchmark() -> BenchmarkResult:
     transformer_ready.fit(train)
     sequence_feature = SequenceFeaturePredictor()
     sequence_feature.fit(train)
+    tiny_transformer = TinyTransformerPredictor()
+    tiny_transformer.fit(train)
     rule = RuleBasedPredictor()
 
     update_loop = PredictionErrorUpdateLoop(train)
@@ -111,21 +120,57 @@ def run_benchmark() -> BenchmarkResult:
         state_aware_summary=evaluate_prediction_cases(test_cases, state_aware),
         transformer_ready_summary=evaluate_prediction_cases(test_cases, transformer_ready),
         sequence_feature_summary=evaluate_prediction_cases(test_cases, sequence_feature),
+        tiny_transformer_summary=evaluate_prediction_cases(test_cases, tiny_transformer),
         slices=[
             _evaluate_slice(
-                "seen_action_patterns", seen_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+                "seen_action_patterns",
+                seen_cases,
+                rule,
+                frequency,
+                state_aware,
+                transformer_ready,
+                sequence_feature,
+                tiny_transformer,
             ),
             _evaluate_slice(
-                "held_out_object", held_out_object_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+                "held_out_object",
+                held_out_object_cases,
+                rule,
+                frequency,
+                state_aware,
+                transformer_ready,
+                sequence_feature,
+                tiny_transformer,
             ),
             _evaluate_slice(
-                "longer_chain", longer_chain_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+                "longer_chain",
+                longer_chain_cases,
+                rule,
+                frequency,
+                state_aware,
+                transformer_ready,
+                sequence_feature,
+                tiny_transformer,
             ),
             _evaluate_slice(
-                "missing_link", missing_link_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+                "missing_link",
+                missing_link_cases,
+                rule,
+                frequency,
+                state_aware,
+                transformer_ready,
+                sequence_feature,
+                tiny_transformer,
             ),
             _evaluate_slice(
-                "noisy_distractor", noisy_distractor_cases, rule, frequency, state_aware, transformer_ready, sequence_feature
+                "noisy_distractor",
+                noisy_distractor_cases,
+                rule,
+                frequency,
+                state_aware,
+                transformer_ready,
+                sequence_feature,
+                tiny_transformer,
             ),
         ],
         update_result=update_result,
@@ -140,6 +185,7 @@ def _evaluate_slice(
     state_aware: StateAwarePredictor,
     transformer_ready: TransformerReadyPredictor,
     sequence_feature: SequenceFeaturePredictor,
+    tiny_transformer: TinyTransformerPredictor,
 ) -> BenchmarkSliceResult:
     return BenchmarkSliceResult(
         name=name,
@@ -149,4 +195,5 @@ def _evaluate_slice(
         state_aware_summary=evaluate_prediction_cases(cases, state_aware),
         transformer_ready_summary=evaluate_prediction_cases(cases, transformer_ready),
         sequence_feature_summary=evaluate_prediction_cases(cases, sequence_feature),
+        tiny_transformer_summary=evaluate_prediction_cases(cases, tiny_transformer),
     )

@@ -18,6 +18,7 @@ class DemoTest(unittest.TestCase):
         self.assertIn("state_aware_accuracy=1.00", text)
         self.assertIn("transformer_ready_accuracy=", text)
         self.assertIn("sequence_feature_accuracy=0.40", text)
+        self.assertIn("tiny_transformer_accuracy=0.40", text)
         self.assertIn("name=missing_link", text)
         self.assertIn("state_aware_unsupported=1.00", text)
         self.assertIn("after_correct=True", text)

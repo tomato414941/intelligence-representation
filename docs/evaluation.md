@@ -33,7 +33,7 @@ Human-readable Fact / Action structures are evaluation artifacts. They are not c
 
 ```text
 tests/test_benchmark.py:
-  checks rule baseline vs frequency predictor vs state-aware predictor vs Transformer-ready adapter,
+  checks rule baseline vs frequency predictor vs state-aware predictor vs Transformer-ready adapter vs tiny Transformer,
   condition-level failures,
   and prediction-error update success
 
@@ -42,6 +42,9 @@ tests/test_tokens.py / tests/test_sequence.py:
 
 tests/test_sequence_predictor.py:
   checks the dependency-free sequence-feature baseline and its limits
+
+tests/test_tiny_transformer.py:
+  checks vocabulary construction, a seen training example, and current held-out limits
 
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior

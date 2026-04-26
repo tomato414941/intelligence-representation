@@ -16,7 +16,7 @@ The active implementation is `src/intrep`. Historical experiments are kept under
 
 ## Current Position
 
-The current implementation is a toy symbolic prototype. It does not yet contain a latent world model or Transformer predictor.
+The current implementation is a toy symbolic prototype. It does not yet contain a latent world model. It now includes a tiny trained Transformer predictor over symbolic world-model tokens.
 
 Its narrower purpose is:
 
@@ -25,7 +25,7 @@ Can action-conditioned training data and prediction-error updates
 change next-state prediction outcomes in measurable ways?
 ```
 
-The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, a state-aware predictor, a Transformer-ready sequence adapter, and a dependency-free sequence-feature baseline. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
+The default benchmark compares a hand-written rule baseline, a frequency-based transition predictor, a state-aware predictor, a Transformer-ready sequence adapter, a dependency-free sequence-feature baseline, and a tiny trained Transformer. It breaks out seen patterns, held-out objects, longer chains, missing links, and noisy distractors, then checks whether an unsupported case can be corrected by adding the prediction error to training memory.
 
 ## Project Map
 
@@ -57,6 +57,8 @@ src/intrep/evaluation.py
 src/intrep/tokens.py
 src/intrep/sequence.py
 src/intrep/sequence_predictor.py
+src/intrep/torch_sequence.py
+src/intrep/tiny_transformer.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
 ```
@@ -96,7 +98,7 @@ clear baselines
 measured prediction accuracy
 condition-level breakdowns
 predictor comparisons that expose failures
-Transformer-ready token sequences before adding a trained Transformer
+small trained Transformer benchmarks before scaling model size
 prediction error updates
 held-out cases before new abstractions
 ```
@@ -106,13 +108,12 @@ Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless
 ## Run Tests
 
 ```sh
-python3 -m venv .venv
-./.venv/bin/python -m pip install -e .
-./.venv/bin/python -m unittest
+uv sync
+uv run python -m unittest
 ```
 
 ## Run Demo
 
 ```sh
-./.venv/bin/python -m intrep.demo
+uv run python -m intrep.demo
 ```

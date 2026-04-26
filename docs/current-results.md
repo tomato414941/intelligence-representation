@@ -4,7 +4,7 @@
 
 This document records the current prototype result after retiring the old experiment tree.
 
-The project has not produced a latent world model or Transformer predictor. What exists now is a small action-conditioned prediction benchmark in `src/intrep`.
+The project has not produced a latent world model. What exists now is a small action-conditioned prediction benchmark in `src/intrep`, including a tiny trained Transformer predictor over symbolic world-model tokens.
 
 Historical experiment code and notes live under:
 
@@ -31,6 +31,9 @@ intrep.tokens / intrep.sequence:
 
 intrep.sequence_predictor:
   dependency-free sequence feature baseline
+
+intrep.torch_sequence / intrep.tiny_transformer:
+  vocabulary, tensors, and a tiny trained Transformer predictor
 
 intrep.evaluation:
   evaluate_prediction_cases
@@ -66,6 +69,9 @@ sequence-feature baseline:
   learns from token features without external ML dependencies,
   and exposes why a real sequence model is still needed
 
+tiny Transformer:
+  trains a small TransformerEncoder on the same token sequences
+
 condition slices:
   expose seen patterns, held-out objects, longer chains, missing links, and noisy distractors
 
@@ -83,28 +89,34 @@ frequency_accuracy=0.53
 state_aware_accuracy=1.00
 transformer_ready_accuracy=0.53
 sequence_feature_accuracy=0.40
+tiny_transformer_accuracy=0.40
 seen_action_patterns.frequency_accuracy=1.00
 seen_action_patterns.state_aware_accuracy=1.00
 seen_action_patterns.transformer_ready_accuracy=1.00
 seen_action_patterns.sequence_feature_accuracy=1.00
+seen_action_patterns.tiny_transformer_accuracy=1.00
 held_out_object.frequency_accuracy=0.00
 held_out_object.unsupported_rate=1.00
 held_out_object.state_aware_accuracy=1.00
 held_out_object.transformer_ready_accuracy=0.00
 held_out_object.sequence_feature_accuracy=0.00
+held_out_object.tiny_transformer_accuracy=0.00
 longer_chain.frequency_accuracy=0.00
 longer_chain.state_aware_accuracy=1.00
 longer_chain.transformer_ready_accuracy=0.00
 longer_chain.sequence_feature_accuracy=0.00
+longer_chain.tiny_transformer_accuracy=0.00
 missing_link.frequency_accuracy=1.00
 missing_link.state_aware_accuracy=1.00
 missing_link.state_aware_unsupported_rate=1.00
 missing_link.transformer_ready_accuracy=1.00
 missing_link.sequence_feature_accuracy=0.00
+missing_link.tiny_transformer_accuracy=0.00
 noisy_distractor.frequency_accuracy=0.00
 noisy_distractor.state_aware_accuracy=1.00
 noisy_distractor.transformer_ready_accuracy=0.00
 noisy_distractor.sequence_feature_accuracy=0.00
+noisy_distractor.tiny_transformer_accuracy=0.00
 prediction_error=unsupported
 update_success=True
 training_size=6->7
@@ -120,6 +132,7 @@ missing link shows that unsupported can be the correct prediction
 using current state relations can fix these specific held-out failures
 the project now has a Transformer-ready token sequence interface
 the dependency-free sequence-feature baseline fails outside seen sequences
+a tiny trained Transformer is now on the same benchmark
 an unsupported case can become predictable after prediction-error update
 ```
 
@@ -127,7 +140,7 @@ an unsupported case can become predictable after prediction-error update
 
 ```text
 latent state
-trained Transformer-based prediction
+large or strong Transformer-based prediction
 learned representation updates
 large data
 noise
@@ -153,5 +166,5 @@ It should either:
 
 ```text
 1. add held-out action / delayed-effect cases
-2. replace the Transformer-ready adapter and sequence-feature baseline with a trained sequence model
+2. expand data enough that the tiny Transformer can be evaluated beyond memorizing seen sequences
 ```
