@@ -16,7 +16,10 @@ from intrep.source_manifest import (
     convert_jsonl_to_mixed_documents,
     convert_text_jsonl_to_mixed_documents,
     curated_source_candidates,
+    curated_public_text_seeds,
+    fetch_public_text_seed_documents,
     main,
+    write_public_text_seed_jsonl,
 )
 
 
@@ -61,6 +64,82 @@ class SourceManifestTest(unittest.TestCase):
         self.assertEqual(rows[0]["id"], "project_gutenberg")
         self.assertEqual(rows[0]["adapter"], TEXT_JSONL_ADAPTER)
         self.assertIn("license_hint", rows[0])
+
+    def test_curated_public_text_seeds_are_broad_shallow_seed_manifest(self) -> None:
+        seeds = curated_public_text_seeds()
+
+        self.assertGreaterEqual(len(seeds), 5)
+        self.assertIn("project_gutenberg", {seed.source_id for seed in seeds})
+        self.assertIn("rfc_editor", {seed.source_id for seed in seeds})
+        self.assertIn("python_peps", {seed.source_id for seed in seeds})
+        self.assertGreaterEqual(len({seed.modality for seed in seeds}), 3)
+        for seed in seeds:
+            self.assertTrue(seed.id)
+            self.assertTrue(seed.title)
+            self.assertTrue(seed.url.startswith("https://"))
+            self.assertTrue(seed.license_hint)
+
+    def test_list_public_text_seeds_command_prints_seed_manifest(self) -> None:
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            main(["list-public-text-seeds"])
+
+        stdout = output.getvalue()
+        self.assertIn("gutenberg_pride_and_prejudice\tPride and Prejudice", stdout)
+        self.assertIn("rfc_9110\tHTTP Semantics", stdout)
+
+    def test_list_public_text_seeds_command_can_print_jsonl(self) -> None:
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            main(["list-public-text-seeds", "--format", "jsonl"])
+
+        rows = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertEqual(rows[0]["id"], "gutenberg_pride_and_prejudice")
+        self.assertIn("url", rows[0])
+        self.assertIn("license_hint", rows[0])
+
+    def test_fetch_public_text_seed_documents_uses_injected_downloader(self) -> None:
+        calls: list[str] = []
+
+        def downloader(url: str) -> str:
+            calls.append(url)
+            return f"Downloaded text for {url}"
+
+        documents = fetch_public_text_seed_documents(
+            ["gutenberg_alice", "python_pep_0008"],
+            downloader=downloader,
+        )
+
+        self.assertEqual(
+            [document.id for document in documents],
+            ["gutenberg_alice", "python_pep_0008"],
+        )
+        self.assertEqual(
+            [document.modality for document in documents],
+            ["external_book_fiction", "external_technical_text"],
+        )
+        self.assertEqual(len(calls), 2)
+        self.assertIn("gutenberg.org", calls[0])
+        self.assertIn("raw.githubusercontent.com", calls[1])
+
+    def test_write_public_text_seed_jsonl_round_trips_documents(self) -> None:
+        def downloader(url: str) -> str:
+            return f"Seed body from {url}"
+
+        with TemporaryDirectory() as directory:
+            output_path = Path(directory) / "seeds.jsonl"
+            documents = write_public_text_seed_jsonl(
+                output_path,
+                ["rfc_9110"],
+                downloader=downloader,
+            )
+            loaded = load_mixed_documents_jsonl(output_path)
+
+        self.assertEqual(documents, loaded)
+        self.assertEqual(loaded[0].id, "rfc_9110")
+        self.assertEqual(loaded[0].modality, "external_technical_text")
 
     def test_convert_jsonl_supports_question_answer_records(self) -> None:
         with TemporaryDirectory() as directory:

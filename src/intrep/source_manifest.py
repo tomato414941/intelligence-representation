@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from intrep.mixed_corpus import MixedDocument, write_mixed_documents_jsonl
+from intrep.public_text_fetch import fetch_public_text_document
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,17 @@ class SourceCandidate:
     homepage_url: str
     license_hint: str
     adapter: str
+    notes: str
+
+
+@dataclass(frozen=True)
+class PublicTextSeed:
+    id: str
+    title: str
+    url: str
+    source_id: str
+    modality: str
+    license_hint: str
     notes: str
 
 
@@ -66,6 +78,108 @@ def curated_source_candidates() -> list[SourceCandidate]:
             notes="Locally prepared web text records. This command does not download data.",
         ),
     ]
+
+
+def curated_public_text_seeds() -> list[PublicTextSeed]:
+    return [
+        PublicTextSeed(
+            id="gutenberg_pride_and_prejudice",
+            title="Pride and Prejudice",
+            url="https://www.gutenberg.org/cache/epub/1342/pg1342.txt",
+            source_id="project_gutenberg",
+            modality="external_book_fiction",
+            license_hint="Project Gutenberg public-domain text in the United States; verify per item.",
+            notes="Fiction baseline.",
+        ),
+        PublicTextSeed(
+            id="gutenberg_frankenstein",
+            title="Frankenstein",
+            url="https://www.gutenberg.org/cache/epub/84/pg84.txt",
+            source_id="project_gutenberg",
+            modality="external_book_fiction",
+            license_hint="Project Gutenberg public-domain text in the United States; verify per item.",
+            notes="Fiction with different style and vocabulary.",
+        ),
+        PublicTextSeed(
+            id="gutenberg_alice",
+            title="Alice's Adventures in Wonderland",
+            url="https://www.gutenberg.org/cache/epub/11/pg11.txt",
+            source_id="project_gutenberg",
+            modality="external_book_fiction",
+            license_hint="Project Gutenberg public-domain text in the United States; verify per item.",
+            notes="Children's fiction.",
+        ),
+        PublicTextSeed(
+            id="gutenberg_douglass",
+            title="Narrative of the Life of Frederick Douglass",
+            url="https://www.gutenberg.org/cache/epub/23/pg23.txt",
+            source_id="project_gutenberg",
+            modality="external_book_memoir",
+            license_hint="Project Gutenberg public-domain text in the United States; verify per item.",
+            notes="Memoir/autobiography.",
+        ),
+        PublicTextSeed(
+            id="rfc_9110",
+            title="HTTP Semantics",
+            url="https://www.rfc-editor.org/rfc/rfc9110.txt",
+            source_id="rfc_editor",
+            modality="external_technical_text",
+            license_hint="RFC text; verify IETF Trust terms before redistribution.",
+            notes="Technical prose and protocol specification text.",
+        ),
+        PublicTextSeed(
+            id="python_pep_0008",
+            title="PEP 8",
+            url="https://raw.githubusercontent.com/python/peps/main/peps/pep-0008.rst",
+            source_id="python_peps",
+            modality="external_technical_text",
+            license_hint="Python PEP text; verify PSF license terms before redistribution.",
+            notes="Programming style guidance as technical natural language.",
+        ),
+    ]
+
+
+def public_text_seed_by_id(seed_id: str) -> PublicTextSeed:
+    for seed in curated_public_text_seeds():
+        if seed.id == seed_id:
+            return seed
+    raise ValueError(f"unknown public text seed: {seed_id}")
+
+
+def fetch_public_text_seed_documents(
+    seed_ids: list[str] | None = None,
+    *,
+    downloader=None,
+) -> list[MixedDocument]:
+    seeds = (
+        curated_public_text_seeds()
+        if seed_ids is None
+        else [public_text_seed_by_id(seed_id) for seed_id in seed_ids]
+    )
+    documents: list[MixedDocument] = []
+    for index, seed in enumerate(seeds, start=1):
+        documents.append(
+            fetch_public_text_document(
+                seed.url,
+                downloader=downloader,
+                source_id=seed.source_id,
+                modality=seed.modality,
+                document_id=seed.id,
+                index=index,
+            )
+        )
+    return documents
+
+
+def write_public_text_seed_jsonl(
+    output_path: str | Path,
+    seed_ids: list[str] | None = None,
+    *,
+    downloader=None,
+) -> list[MixedDocument]:
+    documents = fetch_public_text_seed_documents(seed_ids, downloader=downloader)
+    write_mixed_documents_jsonl(output_path, documents)
+    return documents
 
 
 def convert_text_jsonl_to_mixed_documents(
@@ -183,6 +297,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output candidate manifest as compact text or JSONL.",
     )
 
+    seed_parser = subparsers.add_parser(
+        "list-public-text-seeds",
+        help="List shallow public text seed URLs.",
+    )
+    seed_parser.add_argument(
+        "--format",
+        choices=("text", "jsonl"),
+        default="text",
+        help="Output seed manifest as compact text or JSONL.",
+    )
+
+    fetch_seed_parser = subparsers.add_parser(
+        "fetch-public-text-seeds",
+        help="Fetch selected shallow public text seeds into MixedDocument JSONL.",
+    )
+    fetch_seed_parser.add_argument("--output", type=Path, required=True)
+    fetch_seed_parser.add_argument(
+        "--seed-id",
+        action="append",
+        help="Seed id to fetch. Repeat to fetch a subset. Defaults to all curated seeds.",
+    )
+
     convert_parser = subparsers.add_parser(
         "convert-jsonl",
         help="Convert a local JSONL text export into MixedDocument JSONL.",
@@ -205,6 +341,18 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "list":
         _print_candidates(args.format)
+        return
+
+    if args.command == "list-public-text-seeds":
+        _print_public_text_seeds(args.format)
+        return
+
+    if args.command == "fetch-public-text-seeds":
+        try:
+            documents = write_public_text_seed_jsonl(args.output, args.seed_id)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+        print(f"wrote {len(documents)} mixed documents to {args.output}")
         return
 
     if args.command == "convert-jsonl":
@@ -251,6 +399,29 @@ def _print_candidates(output_format: str) -> None:
             f"{candidate.id}\t{candidate.name}\tadapter={candidate.adapter}"
             f"\tlicense={candidate.license_hint}"
         )
+
+
+def _print_public_text_seeds(output_format: str) -> None:
+    seeds = curated_public_text_seeds()
+    if output_format == "jsonl":
+        for seed in seeds:
+            print(
+                json.dumps(
+                    {
+                        "id": seed.id,
+                        "title": seed.title,
+                        "url": seed.url,
+                        "source_id": seed.source_id,
+                        "modality": seed.modality,
+                        "license_hint": seed.license_hint,
+                        "notes": seed.notes,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        return
+    for seed in seeds:
+        print(f"{seed.id}\t{seed.title}\t{seed.modality}\t{seed.url}")
 
 
 def _load_jsonl_object(line: str, line_number: int) -> dict[str, object]:
