@@ -20,6 +20,15 @@ class SourceCandidate:
 
 
 TEXT_JSONL_ADAPTER = "text-jsonl"
+QA_JSONL_ADAPTER = "qa-jsonl"
+DIALOGUE_JSONL_ADAPTER = "dialogue-jsonl"
+INSTRUCTION_JSONL_ADAPTER = "instruction-jsonl"
+JSONL_ADAPTERS = (
+    TEXT_JSONL_ADAPTER,
+    QA_JSONL_ADAPTER,
+    DIALOGUE_JSONL_ADAPTER,
+    INSTRUCTION_JSONL_ADAPTER,
+)
 
 
 def curated_source_candidates() -> list[SourceCandidate]:
@@ -45,7 +54,7 @@ def curated_source_candidates() -> list[SourceCandidate]:
             name="Stack Exchange Data Dump",
             homepage_url="https://archive.org/details/stackexchange",
             license_hint="CC BY-SA; verify version-specific attribution requirements.",
-            adapter=TEXT_JSONL_ADAPTER,
+            adapter=QA_JSONL_ADAPTER,
             notes="Question and answer text after local XML extraction to JSONL.",
         ),
         SourceCandidate(
@@ -68,6 +77,29 @@ def convert_text_jsonl_to_mixed_documents(
     modality: str = "external_text",
     limit: int | None = None,
 ) -> list[MixedDocument]:
+    return convert_jsonl_to_mixed_documents(
+        input_path,
+        source_id=source_id,
+        adapter=TEXT_JSONL_ADAPTER,
+        text_field=text_field,
+        id_field=id_field,
+        modality=modality,
+        limit=limit,
+    )
+
+
+def convert_jsonl_to_mixed_documents(
+    input_path: str | Path,
+    *,
+    source_id: str,
+    adapter: str = TEXT_JSONL_ADAPTER,
+    text_field: str = "text",
+    id_field: str | None = "id",
+    modality: str = "external_text",
+    limit: int | None = None,
+) -> list[MixedDocument]:
+    if adapter not in JSONL_ADAPTERS:
+        raise ValueError(f"unsupported JSONL adapter: {adapter}")
     if limit is not None and limit < 0:
         raise ValueError("limit must be non-negative")
     source_component = _safe_identifier_component(source_id)
@@ -79,11 +111,7 @@ def convert_text_jsonl_to_mixed_documents(
         if not line.strip():
             continue
         record = _load_jsonl_object(line, line_number)
-        if text_field not in record:
-            raise ValueError(f"Invalid JSONL record at line {line_number}: missing text field {text_field}")
-        text = record[text_field]
-        if not isinstance(text, str):
-            raise ValueError(f"Invalid JSONL record at line {line_number}: field {text_field} must be a string")
+        text = _record_content(record, adapter=adapter, text_field=text_field, line_number=line_number)
         document_id = _mixed_document_id(
             source_component,
             record,
@@ -104,9 +132,34 @@ def write_converted_text_jsonl(
     modality: str = "external_text",
     limit: int | None = None,
 ) -> list[MixedDocument]:
-    documents = convert_text_jsonl_to_mixed_documents(
+    documents = write_converted_jsonl(
+        input_path,
+        output_path,
+        source_id=source_id,
+        adapter=TEXT_JSONL_ADAPTER,
+        text_field=text_field,
+        id_field=id_field,
+        modality=modality,
+        limit=limit,
+    )
+    return documents
+
+
+def write_converted_jsonl(
+    input_path: str | Path,
+    output_path: str | Path,
+    *,
+    source_id: str,
+    adapter: str = TEXT_JSONL_ADAPTER,
+    text_field: str = "text",
+    id_field: str | None = "id",
+    modality: str = "external_text",
+    limit: int | None = None,
+) -> list[MixedDocument]:
+    documents = convert_jsonl_to_mixed_documents(
         input_path,
         source_id=source_id,
+        adapter=adapter,
         text_field=text_field,
         id_field=id_field,
         modality=modality,
@@ -137,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     convert_parser.add_argument("--input", type=Path, required=True)
     convert_parser.add_argument("--output", type=Path, required=True)
     convert_parser.add_argument("--source-id", required=True)
-    convert_parser.add_argument("--adapter", choices=(TEXT_JSONL_ADAPTER,), default=TEXT_JSONL_ADAPTER)
+    convert_parser.add_argument("--adapter", choices=JSONL_ADAPTERS, default=TEXT_JSONL_ADAPTER)
     convert_parser.add_argument("--text-field", default="text")
     convert_parser.add_argument("--id-field", default="id")
     convert_parser.add_argument("--no-id-field", action="store_true")
@@ -157,10 +210,11 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "convert-jsonl":
         id_field = None if args.no_id_field else args.id_field
         try:
-            documents = write_converted_text_jsonl(
+            documents = write_converted_jsonl(
                 args.input,
                 args.output,
                 source_id=args.source_id,
+                adapter=args.adapter,
                 text_field=args.text_field,
                 id_field=id_field,
                 modality=args.modality,
@@ -207,6 +261,131 @@ def _load_jsonl_object(line: str, line_number: int) -> dict[str, object]:
     if not isinstance(record, dict):
         raise ValueError(f"Invalid JSONL record at line {line_number}: expected object")
     return record
+
+
+def _record_content(
+    record: dict[str, object],
+    *,
+    adapter: str,
+    text_field: str,
+    line_number: int,
+) -> str:
+    if adapter == TEXT_JSONL_ADAPTER:
+        return _required_string_field(record, (text_field,), line_number, f"text field {text_field}")
+    if adapter == QA_JSONL_ADAPTER:
+        return _render_qa_record(record, line_number)
+    if adapter == DIALOGUE_JSONL_ADAPTER:
+        return _render_dialogue_record(record, line_number)
+    if adapter == INSTRUCTION_JSONL_ADAPTER:
+        return _render_instruction_record(record, line_number)
+    raise ValueError(f"unsupported JSONL adapter: {adapter}")
+
+
+def _render_qa_record(record: dict[str, object], line_number: int) -> str:
+    question = _required_string_field(record, ("question", "query", "prompt"), line_number, "question")
+    answer = _answer_text(record, line_number)
+    return f"Question: {question}\nAnswer: {answer}"
+
+
+def _render_dialogue_record(record: dict[str, object], line_number: int) -> str:
+    field_name = "messages" if "messages" in record else "turns" if "turns" in record else None
+    if field_name is None:
+        raise ValueError(f"Invalid JSONL record at line {line_number}: missing messages or turns field")
+    entries = record[field_name]
+    if not isinstance(entries, list):
+        raise ValueError(f"Invalid JSONL record at line {line_number}: field {field_name} must be a list")
+    if not entries:
+        raise ValueError(f"Invalid JSONL record at line {line_number}: field {field_name} must not be empty")
+    lines = [_dialogue_line(entry, index, line_number) for index, entry in enumerate(entries, start=1)]
+    return "\n".join(lines)
+
+
+def _render_instruction_record(record: dict[str, object], line_number: int) -> str:
+    instruction = _required_string_field(record, ("instruction", "prompt"), line_number, "instruction")
+    output = _required_string_field(record, ("output", "response", "answer", "completion"), line_number, "output")
+    input_text = _optional_string_field(record, ("input", "context"), line_number)
+    lines = [f"Instruction: {instruction}"]
+    if input_text is not None and input_text:
+        lines.append(f"Input: {input_text}")
+    lines.append(f"Output: {output}")
+    return "\n".join(lines)
+
+
+def _answer_text(record: dict[str, object], line_number: int) -> str:
+    for field_name in ("answer", "response", "accepted_answer", "completion"):
+        if field_name in record:
+            return _string_value(record[field_name], line_number, field_name)
+    if "answers" not in record:
+        raise ValueError(f"Invalid JSONL record at line {line_number}: missing answer")
+    answers = record["answers"]
+    if not isinstance(answers, list):
+        raise ValueError(f"Invalid JSONL record at line {line_number}: field answers must be a list")
+    rendered_answers = [
+        _text_from_string_or_mapping(answer, line_number, f"answers[{index}]")
+        for index, answer in enumerate(answers)
+    ]
+    rendered_answers = [answer for answer in rendered_answers if answer]
+    if not rendered_answers:
+        raise ValueError(f"Invalid JSONL record at line {line_number}: field answers must contain text")
+    return "\n\n".join(rendered_answers)
+
+
+def _dialogue_line(entry: object, index: int, line_number: int) -> str:
+    if isinstance(entry, str):
+        return f"Turn {index}: {entry}"
+    if not isinstance(entry, dict):
+        raise ValueError(
+            f"Invalid JSONL record at line {line_number}: dialogue entry {index} must be a string or object"
+        )
+    role = _optional_string_field(entry, ("role", "speaker", "from"), line_number) or f"Turn {index}"
+    content = _required_string_field(entry, ("content", "text", "value"), line_number, f"dialogue entry {index} content")
+    return f"{_role_label(role)}: {content}"
+
+
+def _required_string_field(
+    record: dict[str, object],
+    field_names: tuple[str, ...],
+    line_number: int,
+    label: str,
+) -> str:
+    for field_name in field_names:
+        if field_name in record:
+            return _string_value(record[field_name], line_number, field_name)
+    if len(field_names) == 1:
+        raise ValueError(f"Invalid JSONL record at line {line_number}: missing {label}")
+    fields = ", ".join(field_names)
+    raise ValueError(f"Invalid JSONL record at line {line_number}: missing {label} field ({fields})")
+
+
+def _optional_string_field(
+    record: dict[str, object],
+    field_names: tuple[str, ...],
+    line_number: int,
+) -> str | None:
+    for field_name in field_names:
+        if field_name in record:
+            return _string_value(record[field_name], line_number, field_name)
+    return None
+
+
+def _text_from_string_or_mapping(value: object, line_number: int, label: str) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return _required_string_field(value, ("text", "content", "body", "answer"), line_number, label)
+    raise ValueError(f"Invalid JSONL record at line {line_number}: {label} must be a string or object")
+
+
+def _string_value(value: object, line_number: int, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"Invalid JSONL record at line {line_number}: field {field_name} must be a string")
+    return value
+
+
+def _role_label(role: str) -> str:
+    normalized = re.sub(r"[_-]+", " ", role.strip())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized.title() if normalized else "Turn"
 
 
 def _mixed_document_id(

@@ -28,7 +28,7 @@ def _extract_marker_next_observation_cases(
 ) -> list[NextObservationCase]:
     cases: list[NextObservationCase] = []
     for document in documents:
-        if document.modality not in ("environment_symbolic", "external_action"):
+        if document.modality not in ("environment_symbolic", "external_action", "tool_log"):
             continue
         parsed = _split_symbolic_next_observation(document.content)
         if parsed is None:
