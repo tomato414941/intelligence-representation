@@ -31,11 +31,11 @@ class GeneratedDistributionTest(unittest.TestCase):
         train, slices = split_strict_generated_examples(strict_generated_examples())
 
         self.assertEqual(len(train), 4)
-        self.assertEqual(len(slices["generated_strict_held_out_combination"]), 1)
-        self.assertEqual(len(slices["generated_strict_action_sequence"]), 1)
-        self.assertEqual(len(slices["generated_strict_partial"]), 1)
-        self.assertEqual(len(slices["generated_strict_noisy"]), 1)
-        self.assertEqual(len(slices["generated_strict_same_entity_negative"]), 1)
+        self.assertEqual(len(slices["generated_strict_held_out_combination"]), 4)
+        self.assertEqual(len(slices["generated_strict_action_sequence"]), 4)
+        self.assertEqual(len(slices["generated_strict_partial"]), 4)
+        self.assertEqual(len(slices["generated_strict_noisy"]), 4)
+        self.assertEqual(len(slices["generated_strict_same_entity_negative"]), 4)
 
     def test_strict_generated_slices_are_deterministic_and_disjoint(self) -> None:
         first_train, first_slices = split_strict_generated_examples(strict_generated_examples())
@@ -54,15 +54,20 @@ class GeneratedDistributionTest(unittest.TestCase):
             for example in examples
         }
         self.assertTrue(train_ids.isdisjoint(slice_ids))
+        self.assertEqual(
+            sum(len(examples) for examples in first_slices.values()),
+            len(slice_ids),
+        )
 
     def test_strict_generated_partial_and_same_entity_negative_are_negative(self) -> None:
         _, slices = split_strict_generated_examples(strict_generated_examples())
-        partial = slices["generated_strict_partial"][0]
-        same_entity = slices["generated_strict_same_entity_negative"][0]
 
-        self.assertIsNone(partial.expected_observation)
-        self.assertIsNone(same_entity.expected_observation)
-        self.assertEqual(same_entity.state_before[0].subject, same_entity.state_before[0].object)
+        for partial in slices["generated_strict_partial"]:
+            self.assertIsNone(partial.expected_observation)
+
+        for same_entity in slices["generated_strict_same_entity_negative"]:
+            self.assertIsNone(same_entity.expected_observation)
+            self.assertEqual(same_entity.state_before[0].subject, same_entity.state_before[0].object)
 
 
 if __name__ == "__main__":

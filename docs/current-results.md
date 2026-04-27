@@ -4,11 +4,13 @@
 
 This document records the current prototype result after retiring the old experiment tree.
 
-The project has not produced a latent world model. The main direction has shifted from the old symbolic prediction benchmark toward a typed token stream prediction scaffold:
+The project has not produced a predictive token machine or a latent world model. The main direction has shifted from the old symbolic prediction benchmark toward a typed token stream prediction scaffold:
 
 ```text
-World modeling as prediction over typed multimodal token streams.
+A predictive token machine for language, perception, action, memory, and belief.
 ```
+
+World modeling remains a core evaluation surface inside that broader frame: it asks whether observation/action history can predict future observations or consequences.
 
 The new v1 foundation trains an untrained GPT-style model on a mixed corpus:
 
@@ -23,17 +25,15 @@ small grid observations and action-conditioned next observations
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
 
-The current training objective is next-token prediction, but the project should not treat next-token loss reduction as evidence of a learned world model. World-model-oriented evidence must come from action-conditioned future prediction, especially held-out next-observation ranking after actions.
+The current training objective is next-token prediction, but the project should not treat next-token loss reduction as evidence of a learned predictive token machine or world model. World-model-oriented evidence must come from action-conditioned future prediction, especially held-out next-observation ranking after actions.
 
 The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned and public/internet-sourced mixed data can be added without expanding code-level schemas or taxonomies.
 
 Historical experiment code and notes live under:
 
-```text
-legacy/experiments/
-legacy/tests/
-docs/legacy/
-```
+- [legacy/experiments/](../legacy/experiments/)
+- [legacy/tests/](../legacy/tests/)
+- [docs/legacy/](legacy/)
 
 ## Prototype Surface
 
@@ -207,7 +207,7 @@ generated_held_out_location:
 
 This supports only the narrow statement that the small byte-level GPT learned to reduce continuation loss on the generated text streams. It does not show improved action-conditioned next-observation prediction.
 
-The `generated_strict_*` slices were not yet usable as ranking metrics in this run because each slice had only one eval case. Candidate ranking needs at least one positive and one compatible distractor. The next data-generation fix is to expand each strict slice to multiple eval cases before treating strict ranking results as meaningful.
+In this historical RunPod run, the `generated_strict_*` slices were not yet usable as ranking metrics because each slice had only one eval case. The current code expands each strict slice to four symbolic eval cases, so the next step is to rerun the generated-environment sweep and inspect strict ranking metrics instead of treating them as skipped.
 
 ## Support Benchmark
 
@@ -312,6 +312,7 @@ an unsupported case can become predictable after prediction-error update
 ## What The Current Project Still Does Not Show
 
 ```text
+general predictive token machine behavior
 latent state
 large or strong Transformer-based prediction
 learned representation updates
@@ -324,12 +325,12 @@ learned state abstraction
 improved action-conditioned next-observation ranking
 ```
 
-The current milestone is not "a world model is built."
+The current milestone is not "a predictive token machine is built" or "a world model is built."
 
 It is:
 
 ```text
-the repository now has a small mixed-world GPT training foundation
+the repository now has a small typed token stream GPT scaffold
 ```
 
 ## Next Pressure
@@ -339,7 +340,7 @@ Next work should not add new taxonomies or semantic state schemas.
 It should either:
 
 ```text
-1. expand strict generated eval slices so ranking metrics actually run
+1. rerun generated-environment strict slices now that ranking metrics run
 2. expand the mixed corpus while keeping the same decoder-only GPT training path
 3. add simple held-out evaluation for environment-text correspondences
 4. keep symbolic predictor work as regression/support only

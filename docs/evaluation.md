@@ -7,8 +7,10 @@ The current evaluation line is the `src/intrep` prototype, not the retired exper
 The conceptual project line is:
 
 ```text
-World modeling as prediction over typed multimodal token streams.
+A predictive token machine for language, perception, action, memory, and belief.
 ```
+
+In that broader frame, world modeling is a core evaluation surface, not the whole project. It measures whether the predictive token machine can use observation/action history to predict future observations or consequences.
 
 The main v1 engineering question is:
 
@@ -17,7 +19,7 @@ Can an untrained decoder-only GPT consume a mixed-world corpus
 and reduce next-token loss in a short training run?
 ```
 
-That is a smoke question, not a world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
+That is a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
 
 Use this distinction:
 

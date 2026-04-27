@@ -109,7 +109,15 @@ def _score_next_observation_cases(
 
     for index, case in enumerate(cases):
         positive_loss = scorer(model, tokenizer, case.prefix, case.positive_next)
-        distractors, fallback_key = _select_distractors(cases, index, distractor_policy)
+        selected_distractors, fallback_key = _select_distractors(
+            cases,
+            index,
+            distractor_policy,
+        )
+        distractors = _dedupe_usable_distractors(
+            selected_distractors,
+            positive_next=case.positive_next,
+        )
         distractor_losses = [
             scorer(model, tokenizer, case.prefix, distractor)
             for distractor in distractors
@@ -167,6 +175,21 @@ def _select_distractors(
         return hard_distractors, fallback_key or "same_entity_to_hard"
 
     return _select_hard_distractors(case, all_other, all_other_nexts)
+
+
+def _dedupe_usable_distractors(
+    distractors: Sequence[str],
+    *,
+    positive_next: str,
+) -> list[str]:
+    usable_distractors: list[str] = []
+    seen: set[str] = set()
+    for distractor in distractors:
+        if distractor == positive_next or distractor in seen:
+            continue
+        usable_distractors.append(distractor)
+        seen.add(distractor)
+    return usable_distractors
 
 
 def _select_hard_distractors(

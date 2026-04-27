@@ -15,6 +15,7 @@ from intrep.generated_environment_corpus import (
     write_generated_environment_pair_jsonl,
 )
 from intrep.mixed_corpus import load_mixed_documents_jsonl
+from intrep.next_observation_cases import extract_next_observation_cases
 from intrep.transition_data import generated_find_examples, split_generated_examples
 
 
@@ -54,23 +55,39 @@ class GeneratedEnvironmentCorpusTest(unittest.TestCase):
         )
 
         self.assertEqual(len(train_documents), 8)
-        self.assertEqual(len(eval_documents), 2)
+        self.assertEqual(len(eval_documents), 8)
         self.assertIn('group_id="generated_strict_train"', train_documents[0].content)
         self.assertIn(
             'group_id="generated_strict_same_entity_negative"',
             eval_documents[0].content,
         )
         self.assertIn("<next_obs> none", eval_documents[0].content)
-        self.assertIn('hard_negative_nexts="箱 at 棚"', eval_documents[0].content)
+        self.assertIn('hard_negative_nexts="箱 at 棚 | 鍵 at 鍵"', eval_documents[0].content)
 
     def test_strict_noisy_documents_render_stable_hard_negative_markers(self) -> None:
         _, eval_documents = generated_environment_train_eval_documents("generated_strict_noisy")
 
-        self.assertEqual(len(eval_documents), 2)
+        self.assertEqual(len(eval_documents), 8)
         self.assertIn(
             'hard_negative_nexts="ポーチ at 机 | 時計 at ポーチ | 箱 at 棚 | 鍵 at 箱"',
             eval_documents[0].content,
         )
+
+    def test_strict_eval_documents_produce_multiple_ranking_cases(self) -> None:
+        for eval_slice in (
+            "generated_strict_held_out_combination",
+            "generated_strict_action_sequence",
+            "generated_strict_partial",
+            "generated_strict_noisy",
+            "generated_strict_same_entity_negative",
+        ):
+            with self.subTest(eval_slice=eval_slice):
+                _, eval_documents = generated_environment_train_eval_documents(eval_slice)
+                cases = extract_next_observation_cases(eval_documents)
+
+                self.assertEqual(len(cases), 4)
+                if eval_slice != "generated_strict_held_out_combination":
+                    self.assertTrue(all(case.hard_negative_nexts for case in cases))
 
     def test_generated_environment_corpus_selection_names_eval_slice(self) -> None:
         selection = generated_environment_corpus_selection("generated_held_out_container")
@@ -152,7 +169,7 @@ class GeneratedEnvironmentCorpusTest(unittest.TestCase):
             eval_documents = load_mixed_documents_jsonl(eval_path)
 
         self.assertEqual(len(train_documents), 8)
-        self.assertEqual(len(eval_documents), 2)
+        self.assertEqual(len(eval_documents), 8)
         self.assertIn("eval_slice=generated_strict_partial", output.getvalue())
 
     def test_cli_requires_complete_output_arguments(self) -> None:

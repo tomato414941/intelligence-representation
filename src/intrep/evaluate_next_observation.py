@@ -52,7 +52,10 @@ def build_parser() -> argparse.ArgumentParser:
     from intrep.generated_environment_corpus import EVAL_SLICES
 
     parser = argparse.ArgumentParser(
-        description="Evaluate next-observation ranking before and after tiny GPT training."
+        description=(
+            "Evaluate next-observation ranking as a world-modeling target "
+            "inside the predictive token machine scaffold."
+        )
     )
     parser.add_argument(
         "--corpus",

@@ -7,11 +7,10 @@
 
 現在の実装判断では、次を優先する。
 
-```text
-docs/world-model.md
-docs/bitter-lesson.md
-docs/evaluation.md
-```
+- [Predictive Token Machine](predictive-token-machine.md)
+- [World Model Centering](world-model.md)
+- [Bitter Lesson Correction](bitter-lesson.md)
+- [Evaluation](evaluation.md)
 
 特に、固定的な意味分類やSemantic State DBを先に作り込むのではなく、観測と行動から予測が改善するかを小さな実験で見る。
 
@@ -390,8 +389,8 @@ Memory / Retrieval:
 Update Engine:
   新しい観測によって状態を更新し、矛盾や信念の変化を扱う
 
-World Model / Tool Layer:
-  状態変化の予測、行動、外部環境との接続を担う
+Predictive Token Machine / Tool Layer:
+  状態変化の予測、行動、外部環境との接続をtyped token stream上で扱う
 ```
 
 この方向では、局所関係と長距離関係を分けることが重要になる。
@@ -694,11 +693,14 @@ Store again
 つまり、このプロジェクトの核は、細かい意味DBを作ることではない。
 LLMが大量の観測履歴から必要な文脈を取り出し、その場で適切な抽象状態を構成できるようにすることである。
 
-## 世界モデルへの位置づけ直し
+## Predictive Token Machineへの位置づけ直し
 
-Observation Memoryや外部メモリは主役ではなく、世界モデルを支える補助機構である。
+この節は古い「世界モデル中心」整理を引き継ぐが、現在の上位概念は [Predictive Token Machine](predictive-token-machine.md) である。
+World-modelingはその中核能力の一つとして扱う。
 
-中心に置くべきなのは、観測と行動から予測に役立つ内部状態を作り、未来や行動結果を予測し、誤差によって状態を更新するループである。
+Observation Memoryや外部メモリは主役ではなく、Predictive Token Machineのworld-modeling面を支える補助機構である。
+
+world-modeling面で中心に置くべきなのは、観測と行動から予測に役立つ内部状態を作り、未来や行動結果を予測し、誤差によって状態を更新するループである。
 
 ```text
 Observation
@@ -717,9 +719,9 @@ State Update
 ```
 
 この観点では、`Semantic State` よりも `Predictive State` が中心に近い。
-人間可読なClaimやBeliefは説明・監査・デバッグには便利だが、世界モデル本体の表現は潜在状態でよい可能性がある。
+人間可読なClaimやBeliefは説明・監査・デバッグには便利だが、world-modeling能力を担う表現は潜在状態でよい可能性がある。
 
-外部メモリの役割は、過去観測、キャッシュ、検索基盤として、世界モデルに渡す情報を選ぶことである。
+外部メモリの役割は、過去観測、キャッシュ、検索基盤として、Predictive Token Machineに渡す情報を選ぶことである。
 主題は外部メモリではなく、限られたattention、context、computeの中で、どの情報とどの関係に計算を使うべきかである。
 
-世界モデルの詳細は [world-model.md](world-model.md) に分ける。
+上位概念は [predictive-token-machine.md](predictive-token-machine.md)、world-modeling面の詳細は [world-model.md](world-model.md) に分ける。

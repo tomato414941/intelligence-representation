@@ -156,6 +156,87 @@ class NextObservationRankingTest(unittest.TestCase):
 
         self.assertIn(("episode a\n", "hard a"), scored)
 
+    def test_duplicate_hard_negatives_are_scored_once_in_stable_order(self) -> None:
+        cases = [
+            _case(
+                "a",
+                "episode a\n",
+                "next a",
+                hard_negative_nexts=("hard b", "hard b", "hard c"),
+            ),
+            _case("b", "episode b\n", "next b"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1 if continuation.startswith("next") else 0.2
+
+        evaluate_next_observation_ranking(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            score_continuation_loss=score,
+        )
+
+        self.assertEqual(
+            scored[:4],
+            [
+                ("episode a\n", "next a"),
+                ("episode a\n", "hard b"),
+                ("episode a\n", "hard c"),
+                ("episode a\n", "next b"),
+            ],
+        )
+
+    def test_positive_equal_distractors_are_not_scored(self) -> None:
+        cases = [
+            _case("a", "episode a\n", "shared next", hard_negative_nexts=("shared next",)),
+            _case("b", "episode b\n", "shared next"),
+            _case("c", "episode c\n", "other next"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1 if continuation == "shared next" else 0.2
+
+        evaluate_next_observation_ranking(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            distractor_policy="all_other",
+            score_continuation_loss=score,
+        )
+
+        self.assertEqual(scored.count(("episode a\n", "shared next")), 1)
+        self.assertIn(("episode a\n", "other next"), scored)
+
+    def test_no_usable_distractor_raises_value_error(self) -> None:
+        cases = [
+            _case("a", "episode a\n", "same next", hard_negative_nexts=("same next",)),
+            _case("b", "episode b\n", "same next"),
+        ]
+
+        with self.assertRaisesRegex(ValueError, "at least one distractor"):
+            evaluate_next_observation_ranking(
+                cases,
+                model=object(),
+                tokenizer=ByteTokenizer(),
+                distractor_policy="all_other",
+                score_continuation_loss=lambda *_args: 0.1,
+            )
+
     def test_same_entity_distractor_policy_scores_same_group_only(self) -> None:
         cases = [
             _case("box_a", "box a\n", "next box a", group_id="box"),

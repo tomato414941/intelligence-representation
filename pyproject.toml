@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intelligence-representation"
 version = "0.1.0"
-description = "A small world-model prediction prototype for intelligence representation."
+description = "A small predictive token machine scaffold for intelligence representation."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

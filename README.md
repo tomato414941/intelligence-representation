@@ -2,14 +2,14 @@
 
 This repository explores representation for intelligence through an installable, testable prototype.
 
-The current center is not a hand-designed semantic database. It is a typed token stream prediction scaffold:
+The current center is not a hand-designed semantic database. It is a predictive token machine scaffold:
 
 ```text
 natural language + observations + actions + state/log/tool-like traces
   -> typed token streams
   -> decoder-only GPT-style prediction
   -> next-token / future-token training
-  -> action-conditioned future evaluation
+  -> language / world / tool / memory / belief evaluation targets
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -21,8 +21,10 @@ The repository still includes the earlier toy symbolic prediction benchmark, but
 The conceptual center is:
 
 ```text
-World modeling as prediction over typed multimodal token streams.
+A predictive token machine for language, perception, action, memory, and belief.
 ```
+
+The broader hypothesis is that typed multimodal token streams can support a learned general-purpose predictive computation substrate. In that framing, a world model is not the whole project. It is the part of a predictive token machine that predicts observations, actions, and environment transitions.
 
 The main v1 direction is:
 
@@ -32,11 +34,11 @@ natural language, environment observations/actions, code, and logs are all
 treated as parts of the same sequence-learning world?
 ```
 
-Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model extends the same prediction frame to typed observation/action/consequence streams.
+Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over typed observation/action/consequence streams.
 
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
 
-Next-token loss reduction is a training smoke signal, not evidence that a world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
+Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
 The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned and public/internet-sourced mixed data can expand without turning the codebase into a broad taxonomy.
 
@@ -95,25 +97,20 @@ src/intrep/update_loop.py
 
 Read these first:
 
-```text
-docs/world-model.md
-docs/bitter-lesson.md
-docs/evaluation.md
-docs/current-results.md
-docs/runpod.md
-```
+- [Predictive Token Machine](docs/predictive-token-machine.md)
+- [World Model Centering](docs/world-model.md)
+- [Bitter Lesson Correction](docs/bitter-lesson.md)
+- [Evaluation](docs/evaluation.md)
+- [Current Results](docs/current-results.md)
+- [RunPod Training Notes](docs/runpod.md)
 
 Broad background:
 
-```text
-docs/concept.md
-```
+- [Concept Background](docs/concept.md)
 
 Legacy / exploratory notes:
 
-```text
-docs/legacy/
-```
+- [Legacy Notes](docs/legacy/)
 
 ## Design Constraints
 
@@ -131,6 +128,7 @@ generated environment train/eval slices selected through the evaluation CLI
 same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion
+tool / memory / belief streams as future evaluation targets, not hand-built schemas
 existing symbolic benchmarks as support, not the main path
 ```
 

@@ -1,2 +1,1 @@
-"""Prototype package for intelligence representation experiments."""
-
+"""Predictive token machine scaffold for intelligence representation experiments."""

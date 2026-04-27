@@ -56,6 +56,10 @@ machines.
 Run the seed x generated-eval-slice sweep and write one normalized run summary
 per cell:
 
+This is a world-modeling evaluation surface for the broader predictive token
+machine scaffold. It checks generated observation/action future prediction; it
+does not by itself demonstrate a general predictive token machine.
+
 ```sh
 uv run python -m intrep.experiment_pipeline \
   --output-dir /workspace/runs/generated-environment \

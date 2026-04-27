@@ -1,15 +1,41 @@
 # World Model Centering
 
+## 上位概念との関係
+
+この文書は、[Predictive Token Machine](predictive-token-machine.md) のうち、world-modeling側面を扱う。
+
+このプロジェクト全体の上位概念は、`world model` より広い。
+
+```text
+Predictive Token Machine:
+  typed multimodal token stream上で、
+  予測・生成・変換・行動選択・観測統合・信念更新・記憶操作を行う
+  学習可能な汎用token計算機
+
+World Model:
+  その中で、観測・行動・環境遷移を予測する能力
+```
+
+つまり、関係は次である。
+
+```text
+world model ⊂ predictive token machine
+```
+
+この文書で `world model` と呼ぶものは、Predictive Token Machineの全体ではなく、観測・行動・環境遷移の予測に焦点を当てた中核能力である。
+
 ## 中心文
 
 ```text
 World modeling as prediction over typed multimodal token streams.
 ```
 
+これはプロジェクト全体の上位中心文ではなく、world-modeling側面の中心文である。
+
 このプロジェクトは、AIの内部表現を人間が先に設計することを中心にしない。
 また、自然言語モデルとworld modelを別物として対立させることもしない。
 
-中心仮説は次である。
+world-modeling側面の仮説は次である。
 
 ```text
 自然言語・観測・行動・映像・音声・状態・信念・記憶・報酬・誤差・tool useを
@@ -142,14 +168,14 @@ reward / error tokenizer:
 既存token空間との対応、新modalityのembedding、自然言語概念とのalignment、行動や観測との因果関係を学習する必要がある。
 
 現在の実装は、byte-level text、symbolic environment episode、grid observation、log-like textを扱う足場である。
-まだvision/audio/reward/error/tool-useを統合したmultimodal world modelではない。
+まだvision/audio/reward/error/tool-useを統合したPredictive Token Machineではなく、world-modeling評価面も小さな足場にとどまる。
 
-## 目的
+## World-Modelingの目的
 
-プロジェクトの中心を、外部メモリやSemantic State Memoryではなく、世界モデルに置き直す。
+Predictive Token Machineの中核的な評価面として、外部メモリやSemantic State Memoryではなく、world-modeling能力を見る。
 
 外部メモリは重要だが主役ではない。
-主役は、観測と行動から内部状態を作り、未来や行動結果を予測し、誤差によって状態を更新するモデルである。
+ここでの主役は、観測と行動から内部状態を作り、未来や行動結果を予測し、誤差によって状態を更新する能力である。
 
 ## 中心ループ
 
@@ -169,7 +195,7 @@ Prediction Error
 State Update
 ```
 
-世界モデルの本質は、状態を保存することではなく、未来と行動結果を予測し、誤差によって表現を更新することである。
+world-modeling能力の本質は、状態を保存することではなく、未来と行動結果を予測し、誤差によって表現を更新することである。
 
 ## 形式
 
@@ -187,7 +213,7 @@ AIが観測から作る潜在的な推定状態である。
 ## Predictive State
 
 `Semantic State` は自然言語寄りである。
-世界モデル寄りには、中心は `Predictive State` である。
+world-modeling寄りには、中心は `Predictive State` である。
 
 ```text
 Semantic State:
@@ -206,7 +232,7 @@ Predictive State:
 ## 人間可読構造と潜在状態
 
 `Entity`、`Relation`、`Belief`、`Claim` は人間にはわかりやすい。
-しかし、世界モデルにとって最適な内部表現とは限らない。
+しかし、world-modeling能力にとって最適な内部表現とは限らない。
 
 ```text
 人間可読な状態:
@@ -221,7 +247,7 @@ Predictive State:
 
 ## 外部メモリの位置づけ
 
-外部メモリは世界モデルの本体ではない。
+外部メモリはPredictive Token Machine本体ではなく、world-modeling評価面でも補助装置である。
 
 役割は次である。
 
@@ -236,8 +262,8 @@ Predictive State:
 外部メモリ:
   観測履歴・キャッシュ・検索基盤
 
-世界モデル:
-  状態を作り、未来や行動結果を予測する本体
+World-modeling ability:
+  状態を作り、未来や行動結果を予測する能力
 ```
 
 したがって、外部メモリの詳細よりも、モデルに何を見せるべきか、どの情報と関係に計算を使うべきかが本質である。
@@ -257,11 +283,11 @@ goal tokens
 ただし、すべての関係を毎回見ると `N^2` で重い。
 そのため、トークン粒度、関係選択、圧縮、検索が重要になる。
 
-外部メモリやContext Builderは、世界モデルに渡す情報を選ぶための補助装置である。
+外部メモリやContext Builderは、Predictive Token Machineに渡す情報を選ぶための補助装置である。
 
 ## 自然言語の位置づけ
 
-自然言語は世界モデルの入力の一種である。
+自然言語はPredictive Token Machineの入力の一種であり、world-modelingにも接続できる。
 ただし非常に特殊で強力な入力である。
 
 ```text
@@ -270,17 +296,17 @@ goal tokens
 ```
 
 自然言語を捨てる必要はない。
-むしろ、自然言語資産、世界モデル、非言語観測・行動・環境を接続することが重要である。
+むしろ、自然言語資産、world-modeling能力、非言語観測・行動・環境を接続することが重要である。
 
 ```text
 自然言語資産
   ↔
-世界モデル
+world-modeling能力
   ↔
 非言語観測・行動・環境
 ```
 
-## 世界モデルの最小構成
+## World-Modelingの最小構成
 
 ```text
 Observation Encoder:
@@ -455,7 +481,7 @@ action-conditioned dataが重要になる。
 
 ## まとめ
 
-このプロジェクトの中心は、外部メモリを作ることではない。
+このworld-modeling面の中心は、外部メモリを作ることではない。
 
 ```text
 観測と行動から、予測に役立つ内部状態を作る。
@@ -463,4 +489,4 @@ action-conditioned dataが重要になる。
 Transformerは、その関係計算のための汎用エンジンとして使う。
 ```
 
-短く言えば、世界モデルを中心にし、外部メモリや自然言語はその入力、補助、インターフェースとして扱う。
+短く言えば、Predictive Token Machineの中でworld-modelingを中核評価面として扱い、外部メモリや自然言語はその入力、補助、インターフェースとして接続する。

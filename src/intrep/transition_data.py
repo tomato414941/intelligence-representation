@@ -239,10 +239,13 @@ def strict_generated_examples() -> list[ActionConditionedExample]:
         _find_example("generated_strict_train", "財布", "ケース", "引き出し"),
         _find_example("generated_strict_train", "時計", "ポーチ", "棚"),
         _find_example("generated_strict_held_out_combination", "鍵", "袋", "引き出し"),
-        _action_sequence_example(),
-        _partial_example(),
-        _noisy_example(),
-        _same_entity_negative_example(),
+        _find_example("generated_strict_held_out_combination", "本", "箱", "引き出し"),
+        _find_example("generated_strict_held_out_combination", "財布", "ポーチ", "机"),
+        _find_example("generated_strict_held_out_combination", "時計", "ケース", "棚"),
+        *_action_sequence_examples(),
+        *_partial_examples(),
+        *_noisy_examples(),
+        *_same_entity_negative_examples(),
     ]
     return examples
 
@@ -292,80 +295,131 @@ def _find_example(prefix: str, object_name: str, container: str, location: str) 
     )
 
 
-def _action_sequence_example() -> ActionConditionedExample:
-    return ActionConditionedExample(
-        id="generated_strict_action_sequence_鍵_箱_机_after_move",
-        state_before=[
-            Fact(subject="箱", predicate="located_at", object="机"),
-            Fact(subject="鍵", predicate="located_at", object="箱"),
-            Fact(subject="箱", predicate="previously_at", object="棚"),
-        ],
-        action=Action(type="find", actor="太郎", object="鍵", target="unknown"),
-        expected_observation=Fact(subject="鍵", predicate="located_at", object="机"),
-        expected_state_after=[
-            Fact(subject="箱", predicate="located_at", object="机"),
-            Fact(subject="鍵", predicate="located_at", object="箱"),
-            Fact(subject="箱", predicate="previously_at", object="棚"),
-        ],
-        source="generated_strict_action_sequence",
-    )
+def _action_sequence_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("鍵", "箱", "机", "棚"),
+        ("本", "袋", "棚", "机"),
+        ("財布", "ケース", "引き出し", "ロッカー"),
+        ("時計", "ポーチ", "机", "引き出し"),
+    ]
+    examples = []
+    for object_name, container, location, previous_location in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=(
+                    "generated_strict_action_sequence_"
+                    f"{object_name}_{container}_{location}_after_move"
+                ),
+                state_before=[
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                    Fact(subject=container, predicate="previously_at", object=previous_location),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+                expected_state_after=[
+                    Fact(subject=container, predicate="located_at", object=location),
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                    Fact(subject=container, predicate="previously_at", object=previous_location),
+                ],
+                source="generated_strict_action_sequence",
+            )
+        )
+    return examples
 
 
-def _partial_example() -> ActionConditionedExample:
-    return ActionConditionedExample(
-        id="generated_strict_partial_本_袋_unknown_location",
-        state_before=[
-            Fact(subject="本", predicate="located_at", object="袋"),
-        ],
-        action=Action(type="find", actor="太郎", object="本", target="unknown"),
-        expected_observation=None,
-        expected_state_after=[
-            Fact(subject="本", predicate="located_at", object="袋"),
-        ],
-        source="generated_strict_partial",
-    )
+def _partial_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("本", "袋"),
+        ("鍵", "箱"),
+        ("財布", "ケース"),
+        ("時計", "ポーチ"),
+    ]
+    examples = []
+    for object_name, container in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=f"generated_strict_partial_{object_name}_{container}_unknown_location",
+                state_before=[
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=None,
+                expected_state_after=[
+                    Fact(subject=object_name, predicate="located_at", object=container),
+                ],
+                source="generated_strict_partial",
+            )
+        )
+    return examples
 
 
-def _noisy_example() -> ActionConditionedExample:
-    return ActionConditionedExample(
-        id="generated_strict_noisy_財布_ケース_引き出し",
-        state_before=[
-            Fact(subject="鍵", predicate="located_at", object="箱"),
-            Fact(subject="箱", predicate="located_at", object="棚"),
-            Fact(subject="時計", predicate="located_at", object="ポーチ"),
-            Fact(subject="ポーチ", predicate="located_at", object="机"),
-            Fact(subject="ケース", predicate="located_at", object="引き出し"),
-            Fact(subject="財布", predicate="located_at", object="ケース"),
-        ],
-        action=Action(type="find", actor="太郎", object="財布", target="unknown"),
-        expected_observation=Fact(subject="財布", predicate="located_at", object="引き出し"),
-        expected_state_after=[
-            Fact(subject="鍵", predicate="located_at", object="箱"),
-            Fact(subject="箱", predicate="located_at", object="棚"),
-            Fact(subject="時計", predicate="located_at", object="ポーチ"),
-            Fact(subject="ポーチ", predicate="located_at", object="机"),
-            Fact(subject="ケース", predicate="located_at", object="引き出し"),
-            Fact(subject="財布", predicate="located_at", object="ケース"),
-        ],
-        source="generated_strict_noisy",
-    )
+def _noisy_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("財布", "ケース", "引き出し", "鍵", "箱", "棚", "時計", "ポーチ", "机"),
+        ("鍵", "箱", "棚", "本", "袋", "机", "財布", "ケース", "引き出し"),
+        ("本", "袋", "机", "時計", "ポーチ", "棚", "鍵", "箱", "引き出し"),
+        ("時計", "ポーチ", "棚", "財布", "ケース", "机", "本", "袋", "引き出し"),
+    ]
+    examples = []
+    for (
+        object_name,
+        container,
+        location,
+        distractor_object_a,
+        distractor_container_a,
+        distractor_location_a,
+        distractor_object_b,
+        distractor_container_b,
+        distractor_location_b,
+    ) in cases:
+        state = [
+            Fact(subject=distractor_object_a, predicate="located_at", object=distractor_container_a),
+            Fact(subject=distractor_container_a, predicate="located_at", object=distractor_location_a),
+            Fact(subject=distractor_object_b, predicate="located_at", object=distractor_container_b),
+            Fact(subject=distractor_container_b, predicate="located_at", object=distractor_location_b),
+            Fact(subject=container, predicate="located_at", object=location),
+            Fact(subject=object_name, predicate="located_at", object=container),
+        ]
+        examples.append(
+            ActionConditionedExample(
+                id=f"generated_strict_noisy_{object_name}_{container}_{location}",
+                state_before=state,
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=Fact(subject=object_name, predicate="located_at", object=location),
+                expected_state_after=state,
+                source="generated_strict_noisy",
+            )
+        )
+    return examples
 
 
-def _same_entity_negative_example() -> ActionConditionedExample:
-    return ActionConditionedExample(
-        id="generated_strict_same_entity_negative_鍵_鍵",
-        state_before=[
-            Fact(subject="鍵", predicate="located_at", object="鍵"),
-            Fact(subject="箱", predicate="located_at", object="棚"),
-        ],
-        action=Action(type="find", actor="太郎", object="鍵", target="unknown"),
-        expected_observation=None,
-        expected_state_after=[
-            Fact(subject="鍵", predicate="located_at", object="鍵"),
-            Fact(subject="箱", predicate="located_at", object="棚"),
-        ],
-        source="generated_strict_same_entity_negative",
-    )
+def _same_entity_negative_examples() -> list[ActionConditionedExample]:
+    cases = [
+        ("鍵", "箱", "棚"),
+        ("本", "袋", "机"),
+        ("財布", "ケース", "引き出し"),
+        ("時計", "ポーチ", "棚"),
+    ]
+    examples = []
+    for object_name, distractor_container, distractor_location in cases:
+        examples.append(
+            ActionConditionedExample(
+                id=f"generated_strict_same_entity_negative_{object_name}_{object_name}",
+                state_before=[
+                    Fact(subject=object_name, predicate="located_at", object=object_name),
+                    Fact(subject=distractor_container, predicate="located_at", object=distractor_location),
+                ],
+                action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
+                expected_observation=None,
+                expected_state_after=[
+                    Fact(subject=object_name, predicate="located_at", object=object_name),
+                    Fact(subject=distractor_container, predicate="located_at", object=distractor_location),
+                ],
+                source="generated_strict_same_entity_negative",
+            )
+        )
+    return examples
 
 
 def _container_from_example(example: ActionConditionedExample) -> str:

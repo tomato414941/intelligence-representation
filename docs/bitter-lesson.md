@@ -20,13 +20,15 @@ Entity, Relation, Belief, Goal, Conflict, StateUpdateを大量に作る
 
 細かい意味構造を最初から固定するのではなく、モデルが学習・生成・再構成できる一般的な枠を用意する。
 
-現在の中心文は次である。
+現在の上位中心文は次である。
 
 ```text
-World modeling as prediction over typed multimodal token streams.
+A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-つまり、人間が先に内部の意味構造を設計し切るのではなく、自然言語・観測・行動・状態・ログ・tool resultなどを薄く型付けされたtoken streamとして与え、予測学習と評価圧によって必要な構造を獲得させる。
+つまり、人間が先に内部の意味構造を設計し切るのではなく、自然言語・観測・行動・状態・ログ・tool result・記憶・信念・誤差などを薄く型付けされたtoken streamとして与え、予測学習と評価圧によって必要な構造を獲得させる。
+
+`world model` はこの上位概念の全体ではなく、観測・行動・環境遷移を予測する側面である。
 
 最小構造は次でよい。
 

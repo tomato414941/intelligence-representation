@@ -169,13 +169,24 @@ def _hard_negative_ids(example: ActionConditionedExample) -> list[str]:
     object_container = _container_for_object(example)
     ids = []
     for fact in example.state_before:
+        if fact.predicate == "previously_at":
+            ids.append(
+                _render_fact_text(
+                    Fact(
+                        subject=example.action.object,
+                        predicate="located_at",
+                        object=fact.object,
+                    )
+                )
+            )
+            continue
         if fact.predicate != "located_at":
             continue
         if expected is not None and fact == expected:
             continue
-        if fact.subject == example.action.object:
+        if expected is not None and fact.subject == example.action.object:
             continue
-        if fact.subject == object_container:
+        if expected is not None and fact.subject == object_container:
             continue
         ids.append(_render_fact_text(fact))
     return sorted(ids)

@@ -101,7 +101,9 @@ def _add_model_config_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train a tiny decoder-only GPT on mixed-world data.")
+    parser = argparse.ArgumentParser(
+        description="Train a tiny decoder-only GPT on typed mixed token-stream data."
+    )
     parser.add_argument(
         "--corpus",
         choices=("builtin", "builtin-grid", "file"),
