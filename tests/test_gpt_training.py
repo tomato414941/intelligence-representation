@@ -19,6 +19,23 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(inputs[0, 0].tolist(), [0, 1, 2, 3])
         self.assertEqual(targets[0, 0].tolist(), [1, 2, 3, 4])
 
+    def test_language_model_batches_stride_creates_overlapping_windows(self) -> None:
+        token_ids = list(range(12))
+
+        default_inputs, _ = language_model_batches(token_ids, context_length=4, batch_size=2)
+        strided_inputs, strided_targets = language_model_batches(
+            token_ids,
+            context_length=4,
+            batch_size=2,
+            batch_stride=2,
+        )
+
+        self.assertEqual(default_inputs.shape, torch.Size([1, 2, 4]))
+        self.assertEqual(strided_inputs.shape, torch.Size([2, 2, 4]))
+        self.assertEqual(strided_inputs[0, 0].tolist(), [0, 1, 2, 3])
+        self.assertEqual(strided_inputs[0, 1].tolist(), [2, 3, 4, 5])
+        self.assertEqual(strided_targets[0, 1].tolist(), [3, 4, 5, 6])
+
     def test_decoder_only_gpt_forward_returns_token_logits(self) -> None:
         model = DecoderOnlyGPT(
             GPTConfig(
@@ -117,6 +134,8 @@ class GPTTrainingTest(unittest.TestCase):
     def test_rejects_invalid_training_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
             train_mixed_gpt(training_config=GPTTrainingConfig(batch_size=0))
+        with self.assertRaisesRegex(ValueError, "batch_stride must be positive"):
+            train_mixed_gpt(training_config=GPTTrainingConfig(batch_stride=0))
 
     def test_rejects_model_config_mismatch(self) -> None:
         with self.assertRaisesRegex(ValueError, "context_length must match"):

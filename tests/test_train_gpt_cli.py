@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from intrep import train_gpt
-from intrep.mixed_corpus import MixedDocument
+from intrep.mixed_corpus import MixedDocument, write_mixed_documents_jsonl
 
 
 @dataclass(frozen=True)
@@ -162,6 +162,72 @@ class TrainGPTCLITest(unittest.TestCase):
                 "final_eval_loss": 3.5,
             },
         )
+
+    def test_file_corpus_eval_corpus_and_loss_history_use_real_jsonl_loader(self) -> None:
+        train_documents = [
+            MixedDocument(id="train_text_001", modality="text", content="train observation"),
+            MixedDocument(
+                id="train_env_001",
+                modality="environment_symbolic",
+                content="<obs> box closed <action> open box <next_obs> key visible",
+            ),
+        ]
+        eval_documents = [
+            MixedDocument(id="eval_text_001", modality="text", content="eval observation"),
+        ]
+        captured_documents: list[MixedDocument] | None = None
+        captured_eval_documents: list[MixedDocument] | None = None
+
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+            nonlocal captured_documents, captured_eval_documents
+            captured_documents = documents
+            captured_eval_documents = eval_documents
+            self.assertEqual(training_config.max_steps, 2)
+            return FakeTrainingResult(
+                steps=2,
+                token_count=456,
+                initial_eval_loss=5.5,
+                final_eval_loss=4.25,
+            )
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            corpus_path = temp_path / "train.jsonl"
+            eval_corpus_path = temp_path / "eval.jsonl"
+            loss_history_path = temp_path / "loss-history.json"
+            write_mixed_documents_jsonl(corpus_path, train_documents)
+            write_mixed_documents_jsonl(eval_corpus_path, eval_documents)
+
+            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+                with redirect_stdout(output):
+                    train_gpt.main(
+                        [
+                            "--corpus",
+                            "file",
+                            "--corpus-path",
+                            str(corpus_path),
+                            "--eval-corpus-path",
+                            str(eval_corpus_path),
+                            "--max-steps",
+                            "2",
+                            "--loss-summary",
+                            "--loss-history-path",
+                            str(loss_history_path),
+                        ]
+                    )
+
+            payload = json.loads(loss_history_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(captured_documents, train_documents)
+        self.assertEqual(captured_eval_documents, eval_documents)
+        stdout = output.getvalue()
+        self.assertIn(f"corpus={corpus_path}", stdout)
+        self.assertIn(f"eval_corpus={eval_corpus_path}", stdout)
+        self.assertIn("tokens=456 steps=2 initial_loss=4.0000 final_loss=2.5000", stdout)
+        self.assertIn("eval_initial=5.5000 eval_final=4.2500", stdout)
+        self.assertEqual(payload["initial_eval_loss"], 5.5)
+        self.assertEqual(payload["final_eval_loss"], 4.25)
 
 
 if __name__ == "__main__":

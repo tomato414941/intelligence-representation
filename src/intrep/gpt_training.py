@@ -13,6 +13,7 @@ from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_c
 @dataclass(frozen=True)
 class GPTTrainingConfig:
     context_length: int = 64
+    batch_stride: int | None = None
     batch_size: int = 8
     max_steps: int = 20
     learning_rate: float = 0.003
@@ -65,6 +66,7 @@ def train_mixed_gpt(
         token_ids=token_ids,
         context_length=config.context_length,
         batch_size=config.batch_size,
+        batch_stride=config.batch_stride,
     )
     eval_inputs: torch.Tensor | None = None
     eval_targets: torch.Tensor | None = None
@@ -76,6 +78,7 @@ def train_mixed_gpt(
             token_ids=eval_token_ids,
             context_length=config.context_length,
             batch_size=config.batch_size,
+            batch_stride=config.batch_stride,
         )
     gpt_config = model_config or GPTConfig(
         vocab_size=tokenizer.vocab_size,
@@ -146,6 +149,8 @@ def _evaluate_loss(
 def _validate_training_config(config: GPTTrainingConfig) -> None:
     if config.context_length <= 0:
         raise ValueError("context_length must be positive")
+    if config.batch_stride is not None and config.batch_stride <= 0:
+        raise ValueError("batch_stride must be positive")
     if config.batch_size <= 0:
         raise ValueError("batch_size must be positive")
     if config.max_steps <= 0:
@@ -158,13 +163,17 @@ def language_model_batches(
     token_ids: list[int],
     context_length: int,
     batch_size: int,
+    batch_stride: int | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if len(token_ids) <= context_length:
         raise ValueError("token_ids must be longer than context_length")
+    stride = batch_stride if batch_stride is not None else context_length
+    if stride <= 0:
+        raise ValueError("batch_stride must be positive")
 
     input_rows = []
     target_rows = []
-    for start in range(0, len(token_ids) - context_length, context_length):
+    for start in range(0, len(token_ids) - context_length, stride):
         window = token_ids[start : start + context_length + 1]
         if len(window) != context_length + 1:
             continue
