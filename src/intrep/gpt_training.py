@@ -49,12 +49,33 @@ class GPTTrainingResult:
         return self.loss_reduction / self.initial_loss
 
 
+@dataclass(frozen=True)
+class GPTTrainingArtifacts:
+    result: GPTTrainingResult
+    model: DecoderOnlyGPT
+    tokenizer: ByteTokenizer
+
+
 def train_mixed_gpt(
     documents: list[MixedDocument] | None = None,
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
     eval_documents: list[MixedDocument] | None = None,
 ) -> GPTTrainingResult:
+    return train_mixed_gpt_with_artifacts(
+        documents=documents,
+        training_config=training_config,
+        model_config=model_config,
+        eval_documents=eval_documents,
+    ).result
+
+
+def train_mixed_gpt_with_artifacts(
+    documents: list[MixedDocument] | None = None,
+    training_config: GPTTrainingConfig | None = None,
+    model_config: GPTConfig | None = None,
+    eval_documents: list[MixedDocument] | None = None,
+) -> GPTTrainingArtifacts:
     config = training_config or GPTTrainingConfig()
     _validate_training_config(config)
     torch.manual_seed(config.seed)
@@ -117,7 +138,7 @@ def train_mixed_gpt(
     final_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
     final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
 
-    return GPTTrainingResult(
+    result = GPTTrainingResult(
         initial_loss=initial_loss if initial_loss is not None else 0.0,
         final_loss=final_loss,
         steps=config.max_steps,
@@ -128,6 +149,7 @@ def train_mixed_gpt(
         initial_eval_loss=initial_eval_loss,
         final_eval_loss=final_eval_loss,
     )
+    return GPTTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
 
 
 def _evaluate_loss(

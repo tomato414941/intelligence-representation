@@ -27,6 +27,9 @@ training steps
 initial loss
 final loss
 loss history / best loss
+train corpus average loss
+held-out eval corpus loss
+symbolic-to-natural pair ranking accuracy and margin
 ```
 
 The support symbolic benchmark tracks:
@@ -69,7 +72,11 @@ tests/test_mixed_corpus.py:
   checks the built-in smoke corpus and lightweight rendering tags
 
 tests/test_gpt_training.py:
-  checks language-model batches, decoder-only GPT logits, and short-run loss reduction
+  checks language-model batches, decoder-only GPT logits, short-run loss reduction,
+  and reusable training artifacts
+
+tests/test_pair_ranking.py:
+  checks symbolic-to-natural continuation ranking metrics
 
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
@@ -93,7 +100,7 @@ mixed corpus construction
 JSONL file corpus loading and growth
 decoder-only GPT training behavior
 loss reduction in short runs
-future evaluation of environment-text correspondences
+symbolic-to-natural environment-text correspondence evaluation
 support benchmark clarity
 ```
 

@@ -4,7 +4,13 @@ import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig
-from intrep.gpt_training import GPTTrainingConfig, language_model_batches, train_mixed_gpt
+from intrep.gpt_training import (
+    GPTTrainingArtifacts,
+    GPTTrainingConfig,
+    language_model_batches,
+    train_mixed_gpt,
+    train_mixed_gpt_with_artifacts,
+)
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
 
 
@@ -126,6 +132,47 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertGreater(result.initial_eval_loss, 0.0)
         self.assertGreater(result.final_eval_loss, 0.0)
         self.assertNotEqual(result.initial_eval_loss, result.final_eval_loss)
+
+    def test_training_with_artifacts_returns_model_tokenizer_and_result(self) -> None:
+        artifacts = train_mixed_gpt_with_artifacts(
+            documents=[
+                MixedDocument(
+                    id="artifact_tiny_001",
+                    modality="text",
+                    content="red green blue red green blue red green blue",
+                )
+            ],
+            training_config=GPTTrainingConfig(
+                context_length=8,
+                batch_size=2,
+                max_steps=2,
+                learning_rate=0.005,
+                seed=17,
+            ),
+            model_config=GPTConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=8,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            ),
+        )
+
+        self.assertIsInstance(artifacts, GPTTrainingArtifacts)
+        self.assertIsInstance(artifacts.result.steps, int)
+        self.assertEqual(artifacts.result.steps, 2)
+        self.assertIsInstance(artifacts.model, DecoderOnlyGPT)
+        self.assertIsInstance(artifacts.tokenizer, ByteTokenizer)
+
+        token_ids = artifacts.tokenizer.encode("red blue")[:8]
+        token_ids.extend([0] * (8 - len(token_ids)))
+        inputs = torch.tensor([token_ids], dtype=torch.long)
+
+        artifacts.model.eval()
+        with torch.no_grad():
+            logits = artifacts.model(inputs)
+
+        self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
 
     def test_rejects_empty_documents(self) -> None:
         with self.assertRaisesRegex(ValueError, "documents must not be empty"):

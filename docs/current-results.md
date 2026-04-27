@@ -58,6 +58,9 @@ intrep.mixed_corpus:
 intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
   decoder-only GPT, next-token training loop, and CLI entrypoint
 
+intrep.pair_ranking:
+  symbolic-to-natural environment pair ranking by continuation loss
+
 intrep.evaluation:
   evaluate_prediction_cases
 
@@ -92,6 +95,16 @@ uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jso
 ```
 
 JSONL file corpora are the intended place for the main corpus to grow.
+
+The first correspondence metric is available as a library-level evaluator:
+
+```text
+symbolic environment text as prefix
+candidate natural-language episode descriptions as continuations
+rank by continuation loss
+```
+
+This is a diagnostic for whether the model assigns lower loss to the paired natural-language description. It is not a capability claim.
 
 ## Support Benchmark
 
