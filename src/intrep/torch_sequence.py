@@ -17,7 +17,8 @@ class SequenceVocabulary:
 
     def encode_tokens(self, tokens: list[str], max_length: int) -> list[int]:
         ids = [self.token_to_id.get(token, self.token_to_id[UNK_TOKEN]) for token in tokens]
-        return ids[:max_length] + [self.token_to_id[PAD_TOKEN]] * max(0, max_length - len(ids))
+        suffix = ids[-max_length:]
+        return [self.token_to_id[PAD_TOKEN]] * max(0, max_length - len(suffix)) + suffix
 
     def encode_target(self, target: str) -> int:
         return self.target_to_id[target]

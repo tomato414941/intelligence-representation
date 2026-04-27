@@ -12,9 +12,11 @@ from intrep.external_corpus import (
     list_public_data_sources,
     load_external_action_jsonl,
     main,
+    write_external_action_jsonl,
 )
 from intrep.mixed_corpus import load_mixed_documents_jsonl
 from intrep.next_observation_cases import extract_next_observation_cases
+from intrep.source_manifest import load_source_manifest_jsonl
 
 
 class ExternalCorpusTests(unittest.TestCase):
@@ -82,6 +84,31 @@ class ExternalCorpusTests(unittest.TestCase):
 
         self.assertEqual(len(documents), 1)
         self.assertIn("<next_obs> help page", documents[0].content)
+
+    def test_writes_external_action_manifest_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "source.jsonl"
+            output_path = Path(directory) / "mixed.jsonl"
+            manifest_path = Path(directory) / "manifest.jsonl"
+            input_path.write_text(
+                '{"id":"a","task":"Find help","dom":"<a>Help</a>",'
+                '"operation":{"op":"CLICK","value":"Help"},"result":"help page"}\n',
+                encoding="utf-8",
+            )
+
+            documents = write_external_action_jsonl(
+                input_path,
+                output_path,
+                source_name="web",
+                manifest_path=manifest_path,
+            )
+            manifest = load_source_manifest_jsonl(manifest_path)
+
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(manifest[0].document_id, "web_a")
+        self.assertEqual(manifest[0].source_id, "web")
+        self.assertEqual(manifest[0].adapter, "generic_web_navigation")
+        self.assertEqual(manifest[0].input_path, str(input_path))
 
     def test_cli_lists_sources_and_converts_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

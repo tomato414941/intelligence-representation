@@ -8,6 +8,7 @@ from pathlib import Path
 
 from intrep.generated_environment_corpus import (
     environment_pair_documents_from_examples,
+    generated_environment_corpus_selection,
     generated_environment_pair_documents,
     generated_environment_train_eval_documents,
     main,
@@ -46,6 +47,16 @@ class GeneratedEnvironmentCorpusTest(unittest.TestCase):
             slices["generated_held_out_location"]
         )
         self.assertEqual(len(held_out_location_documents), 12)
+
+    def test_generated_environment_corpus_selection_names_eval_slice(self) -> None:
+        selection = generated_environment_corpus_selection("generated_held_out_container")
+
+        self.assertEqual(selection.eval_label, "generated_held_out_container")
+        self.assertEqual(len(selection.train_documents), 24)
+        self.assertEqual(len(selection.eval_documents), 24)
+        self.assertTrue(
+            all(document.modality.startswith("environment_") for document in selection.eval_documents)
+        )
 
     def test_write_generated_environment_pair_jsonl_round_trips(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

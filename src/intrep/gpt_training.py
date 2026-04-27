@@ -37,7 +37,18 @@ class GPTTrainingResult:
     final_train_loss: float | None = None
     initial_eval_loss: float | None = None
     final_eval_loss: float | None = None
+    eval_split: str = "train"
+    generalization_eval: bool = False
+    warnings: tuple[str, ...] = ()
     device: str = "cpu"
+
+    @property
+    def initial_step_loss(self) -> float:
+        return self.initial_loss
+
+    @property
+    def final_step_loss(self) -> float:
+        return self.final_loss
 
     @property
     def best_loss(self) -> float:
@@ -46,14 +57,26 @@ class GPTTrainingResult:
         return min(self.loss_history)
 
     @property
+    def best_step_loss(self) -> float:
+        return self.best_loss
+
+    @property
     def loss_reduction(self) -> float:
         return self.initial_loss - self.final_loss
+
+    @property
+    def step_loss_reduction(self) -> float:
+        return self.loss_reduction
 
     @property
     def loss_reduction_ratio(self) -> float:
         if self.initial_loss == 0.0:
             return 0.0
         return self.loss_reduction / self.initial_loss
+
+    @property
+    def step_loss_reduction_ratio(self) -> float:
+        return self.loss_reduction_ratio
 
 
 @dataclass(frozen=True)
@@ -149,6 +172,12 @@ def train_mixed_gpt_with_artifacts(
 
     final_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
     final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
+    generalization_eval = eval_documents is not None
+    warnings = ()
+    if not generalization_eval:
+        warnings = (
+            "No held-out eval corpus was provided; reported evaluation is train-split only and is not a generalization estimate.",
+        )
 
     result = GPTTrainingResult(
         initial_loss=initial_loss if initial_loss is not None else 0.0,
@@ -160,6 +189,9 @@ def train_mixed_gpt_with_artifacts(
         final_train_loss=final_train_loss,
         initial_eval_loss=initial_eval_loss,
         final_eval_loss=final_eval_loss,
+        eval_split="held_out" if generalization_eval else "train",
+        generalization_eval=generalization_eval,
+        warnings=warnings,
         device=str(device),
     )
     if config.checkpoint_path is not None:

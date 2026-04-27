@@ -118,10 +118,17 @@ class CurrentExperimentTest(unittest.TestCase):
 
                 self.assertEqual(summary["corpus"]["label"], corpus_name)
                 self.assertEqual(summary["corpus"]["eval_label"], "train")
+                self.assertEqual(summary["corpus"]["eval_split"], "train")
                 self.assertEqual(summary["training_loss"]["steps"], 3)
+                self.assertEqual(summary["training_loss"]["initial_step_loss"], 4.0)
+                self.assertEqual(summary["training_loss"]["final_step_loss"], 2.5)
+                self.assertEqual(summary["training_loss"]["eval_split"], None)
                 self.assertIn("initial_train_perplexity", summary["language_modeling"])
                 self.assertIn("final_train_perplexity", summary["language_modeling"])
                 self.assertEqual(summary["next_observation"]["status"], "evaluated")
+                self.assertEqual(summary["next_observation"]["eval_split"], "train")
+                self.assertFalse(summary["next_observation"]["generalization_eval"])
+                self.assertTrue(summary["next_observation"]["warnings"])
                 self.assertGreaterEqual(summary["next_observation"]["eval_case_count"], 2)
                 self.assertEqual(
                     summary["coverage"]["train"]["document_count"],
@@ -168,7 +175,11 @@ class CurrentExperimentTest(unittest.TestCase):
 
         self.assertEqual(summary["corpus"]["label"], str(train_path))
         self.assertEqual(summary["corpus"]["eval_label"], str(eval_path))
+        self.assertEqual(summary["corpus"]["eval_split"], "held_out")
         self.assertEqual(summary["next_observation"]["status"], "evaluated")
+        self.assertEqual(summary["next_observation"]["eval_split"], "held_out")
+        self.assertTrue(summary["next_observation"]["generalization_eval"])
+        self.assertEqual(summary["next_observation"]["warnings"], [])
         self.assertEqual(summary["next_observation"]["eval_case_count"], 2)
         self.assertEqual(summary["coverage"]["eval"]["document_count"], 2)
         self.assertIsNotNone(summary["training_loss"]["initial_eval_loss"])

@@ -18,7 +18,7 @@ class BenchmarkTest(unittest.TestCase):
         self.assertLess(result.transformer_ready_accuracy, result.state_aware_accuracy)
         self.assertEqual(result.transformer_ready_accuracy, result.frequency_accuracy)
         self.assertLess(result.sequence_feature_accuracy, result.frequency_accuracy)
-        self.assertEqual(result.tiny_transformer_accuracy, result.sequence_feature_accuracy)
+        self.assertLess(result.tiny_transformer_accuracy, result.frequency_accuracy)
         self.assertLess(result.frequency_accuracy, result.state_aware_accuracy)
         self.assertGreater(result.state_aware_accuracy, 0.8)
 

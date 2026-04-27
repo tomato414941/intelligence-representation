@@ -31,7 +31,7 @@ class RunSummaryTest(unittest.TestCase):
                 vocab_size=256,
                 context_length=64,
             ),
-            training_loss={"final_loss": 2.0},
+            training_loss={"final_loss": 2.0, "best_loss": 1.75},
             language_modeling={"final_eval_perplexity": 12.0},
             symbolic_to_natural={"status": "evaluated"},
             elapsed_seconds=1.25,
@@ -44,6 +44,8 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["config"]["training"]["device"], "cpu")
         self.assertEqual(payload["config"]["model"]["embedding_dim"], 8)
         self.assertEqual(payload["metrics"]["language_modeling"]["final_eval_perplexity"], 12.0)
+        self.assertEqual(payload["metrics"]["training_loss"]["final_step_loss"], 2.0)
+        self.assertEqual(payload["metrics"]["training_loss"]["best_step_loss"], 1.75)
         self.assertEqual(payload["metrics"]["symbolic_to_natural"]["status"], "evaluated")
 
     def test_normalizes_current_experiment_json(self) -> None:

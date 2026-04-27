@@ -13,17 +13,41 @@ from intrep.source_manifest import (
     INSTRUCTION_JSONL_ADAPTER,
     QA_JSONL_ADAPTER,
     TEXT_JSONL_ADAPTER,
+    SourceManifestRecord,
     convert_jsonl_to_mixed_documents,
     convert_text_jsonl_to_mixed_documents,
     curated_source_candidates,
     curated_public_text_seeds,
     fetch_public_text_seed_documents,
+    load_source_manifest_jsonl,
     main,
+    write_source_manifest_jsonl,
     write_public_text_seed_jsonl,
 )
 
 
 class SourceManifestTest(unittest.TestCase):
+    def test_source_manifest_jsonl_round_trips_records(self) -> None:
+        records = [
+            SourceManifestRecord(
+                document_id="doc_1",
+                source_id="source",
+                source_url="https://example.org/a.txt",
+                license_hint="public domain",
+                adapter=TEXT_JSONL_ADAPTER,
+                modality="external_text",
+                title="Example",
+                line_number=7,
+            )
+        ]
+
+        with TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "manifest.jsonl"
+            write_source_manifest_jsonl(manifest_path, records)
+            loaded = load_source_manifest_jsonl(manifest_path)
+
+        self.assertEqual(loaded, records)
+
     def test_curated_candidates_are_thin_public_source_manifest(self) -> None:
         candidates = curated_source_candidates()
 
@@ -140,6 +164,27 @@ class SourceManifestTest(unittest.TestCase):
         self.assertEqual(documents, loaded)
         self.assertEqual(loaded[0].id, "rfc_9110")
         self.assertEqual(loaded[0].modality, "external_technical_text")
+
+    def test_write_public_text_seed_jsonl_writes_manifest_sidecar(self) -> None:
+        def downloader(url: str) -> str:
+            return f"Seed body from {url}"
+
+        with TemporaryDirectory() as directory:
+            output_path = Path(directory) / "seeds.jsonl"
+            manifest_path = Path(directory) / "manifest.jsonl"
+            write_public_text_seed_jsonl(
+                output_path,
+                ["rfc_9110"],
+                downloader=downloader,
+                manifest_path=manifest_path,
+            )
+            manifest = load_source_manifest_jsonl(manifest_path)
+
+        self.assertEqual(len(manifest), 1)
+        self.assertEqual(manifest[0].document_id, "rfc_9110")
+        self.assertEqual(manifest[0].source_id, "rfc_editor")
+        self.assertEqual(manifest[0].source_url, "https://www.rfc-editor.org/rfc/rfc9110.txt")
+        self.assertEqual(manifest[0].adapter, "public-text-url")
 
     def test_convert_jsonl_supports_question_answer_records(self) -> None:
         with TemporaryDirectory() as directory:
@@ -300,6 +345,36 @@ class SourceManifestTest(unittest.TestCase):
         self.assertEqual(documents[0].modality, "external_text")
         self.assertEqual(documents[1].id, "local_000002")
         self.assertIn("wrote 2 mixed documents", output.getvalue())
+
+    def test_convert_command_can_write_manifest_sidecar(self) -> None:
+        with TemporaryDirectory() as directory:
+            temp_path = Path(directory)
+            input_path = temp_path / "input.jsonl"
+            output_path = temp_path / "mixed.jsonl"
+            manifest_path = temp_path / "manifest.jsonl"
+            input_path.write_text('{"id":"a","text":"Alpha"}\n', encoding="utf-8")
+
+            with redirect_stdout(io.StringIO()):
+                main(
+                    [
+                        "convert-jsonl",
+                        "--input",
+                        str(input_path),
+                        "--output",
+                        str(output_path),
+                        "--manifest-output",
+                        str(manifest_path),
+                        "--source-id",
+                        "local",
+                    ]
+                )
+
+            manifest = load_source_manifest_jsonl(manifest_path)
+
+        self.assertEqual(manifest[0].document_id, "local_a")
+        self.assertEqual(manifest[0].source_id, "local")
+        self.assertEqual(manifest[0].input_path, str(input_path))
+        self.assertEqual(manifest[0].line_number, 1)
 
     def test_convert_command_writes_instruction_jsonl(self) -> None:
         output = io.StringIO()

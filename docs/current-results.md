@@ -66,7 +66,8 @@ intrep.pair_ranking:
   symbolic-to-natural environment pair ranking by continuation loss
 
 intrep.next_observation_cases / intrep.next_observation_ranking / intrep.next_observation_evaluation:
-  mixed observation-plus-action to next-observation ranking before and after GPT training
+  mixed observation-plus-action to next-observation ranking before and after GPT training,
+  with same-modality hard distractors by default
 
 intrep.evaluation:
   evaluate_prediction_cases
@@ -136,11 +137,11 @@ A second diagnostic extracts mixed next-observation cases:
 ```text
 prefix = observation + action
 positive continuation = correct next observation
-distractors = next observations from other cases
+distractors = same-modality next observations from other cases by default
 rank by continuation loss
 ```
 
-This covers symbolic environment text and grid observations through the same evaluation shape, so grid does not become the only target.
+This covers symbolic environment text and grid observations through the same evaluation shape, so grid does not become the only target. Use `--distractor-policy all_other` to reproduce the earlier cross-modality distractor pool.
 
 The independent evaluation runner compares untrained and trained ranking scores:
 
@@ -154,6 +155,14 @@ For held-out ranking, pass a separate eval JSONL corpus:
 uv run python -m intrep.evaluate_next_observation \
   --corpus file --corpus-path train.jsonl \
   --eval-corpus-path eval.jsonl
+```
+
+The generated environment split can be selected directly without first writing JSONL:
+
+```sh
+uv run python -m intrep.evaluate_next_observation \
+  --corpus generated-environment \
+  --generated-eval-slice generated_held_out_object
 ```
 
 If no eval corpus is provided, the runner reports training-set ranking only. That is a smoke check, not a generalization claim.

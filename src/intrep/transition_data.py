@@ -124,7 +124,7 @@ def missing_link_examples() -> list[ActionConditionedExample]:
             ActionConditionedExample(
                 id=case_id,
                 state_before=[
-                    Fact(subject=object_name, predicate="located_at", object=container),
+                    Fact(subject=container, predicate="contains", object=object_name),
                 ],
                 action=Action(type="find", actor="太郎", object=object_name, target="unknown"),
                 expected_observation=None,

@@ -59,17 +59,17 @@ class StateAwarePredictor:
         self.frequency.fit(examples)
 
     def predict(self, state: list[Fact], action: Action) -> Fact | None:
+        if action.type == "find":
+            location = _resolve_location(state, action.object)
+            if location is not None:
+                return Fact(subject=action.object, predicate="located_at", object=location)
+
         predicted = self.frequency.predict(state, action)
         if predicted is not None:
             return predicted
 
         if action.type in {"place", "move_container"}:
             return Fact(subject=action.object, predicate="located_at", object=action.target)
-
-        if action.type == "find":
-            location = _resolve_location(state, action.object)
-            if location is not None:
-                return Fact(subject=action.object, predicate="located_at", object=location)
 
         return None
 
@@ -125,6 +125,4 @@ def _resolve_location(state: list[Fact], object_name: str) -> str | None:
         destination = locations.get(current)
         traversed_edges += 1
 
-    if traversed_edges == 0:
-        return None
     return destination

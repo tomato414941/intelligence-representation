@@ -281,6 +281,9 @@ def _summary_from_evaluation(
         "language_modeling": language_modeling_metrics_from_training_result(training_result),
         "next_observation": {
             "status": "evaluated",
+            "eval_split": "held_out" if eval_documents is not None else "train",
+            "generalization_eval": eval_documents is not None,
+            "warnings": _evaluation_warnings(eval_documents),
             "train_case_count": len(getattr(evaluation, "train_cases")),
             "eval_case_count": len(getattr(evaluation, "eval_cases")),
             "before": _ranking_metrics_to_dict(before_metrics),
@@ -318,6 +321,9 @@ def _summary_from_training_only(
         "next_observation": {
             "status": "skipped",
             "reason": "at least two next-observation cases are required",
+            "eval_split": "held_out" if eval_documents is not None else "train",
+            "generalization_eval": eval_documents is not None,
+            "warnings": _evaluation_warnings(eval_documents),
             "train_case_count": train_case_count,
             "eval_case_count": eval_case_count,
         },
@@ -325,8 +331,12 @@ def _summary_from_training_only(
     }
 
 
-def _corpus_dict(label: str, eval_label: str) -> dict[str, str]:
-    return {"label": label, "eval_label": eval_label}
+def _corpus_dict(label: str, eval_label: str) -> dict[str, object]:
+    return {
+        "label": label,
+        "eval_label": eval_label,
+        "eval_split": "train" if eval_label == "train" else "held_out",
+    }
 
 
 def _coverage_dict(
@@ -358,17 +368,37 @@ def _training_result_to_dict(result: object) -> dict[str, object]:
     return {
         "initial_loss": getattr(result, "initial_loss", None),
         "final_loss": getattr(result, "final_loss", None),
+        "initial_step_loss": getattr(result, "initial_step_loss", getattr(result, "initial_loss", None)),
+        "final_step_loss": getattr(result, "final_step_loss", getattr(result, "final_loss", None)),
         "steps": getattr(result, "steps"),
         "token_count": getattr(result, "token_count"),
         "best_loss": getattr(result, "best_loss", None),
+        "best_step_loss": getattr(result, "best_step_loss", getattr(result, "best_loss", None)),
         "loss_reduction": getattr(result, "loss_reduction", None),
         "loss_reduction_ratio": getattr(result, "loss_reduction_ratio", None),
+        "step_loss_reduction": getattr(result, "step_loss_reduction", getattr(result, "loss_reduction", None)),
+        "step_loss_reduction_ratio": getattr(
+            result,
+            "step_loss_reduction_ratio",
+            getattr(result, "loss_reduction_ratio", None),
+        ),
         "loss_history": list(getattr(result, "loss_history", ())),
         "initial_train_loss": getattr(result, "initial_train_loss", None),
         "final_train_loss": getattr(result, "final_train_loss", None),
         "initial_eval_loss": getattr(result, "initial_eval_loss", None),
         "final_eval_loss": getattr(result, "final_eval_loss", None),
+        "eval_split": getattr(result, "eval_split", None),
+        "generalization_eval": getattr(result, "generalization_eval", None),
+        "warnings": list(getattr(result, "warnings", ())),
     }
+
+
+def _evaluation_warnings(eval_documents: Sequence[MixedDocument] | None) -> list[str]:
+    if eval_documents is not None:
+        return []
+    return [
+        "No held-out eval corpus was provided; evaluation uses train data and is not a generalization estimate."
+    ]
 
 
 def _ranking_metrics_to_dict(metrics: object) -> dict[str, float]:

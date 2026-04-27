@@ -31,6 +31,21 @@ class PublicTextSeed:
     notes: str
 
 
+@dataclass(frozen=True)
+class SourceManifestRecord:
+    document_id: str
+    source_id: str
+    source_url: str
+    license_hint: str
+    adapter: str
+    modality: str
+    title: str = ""
+    source_record_id: str = ""
+    input_path: str = ""
+    line_number: int | None = None
+    notes: str = ""
+
+
 TEXT_JSONL_ADAPTER = "text-jsonl"
 QA_JSONL_ADAPTER = "qa-jsonl"
 DIALOGUE_JSONL_ADAPTER = "dialogue-jsonl"
@@ -176,9 +191,33 @@ def write_public_text_seed_jsonl(
     seed_ids: list[str] | None = None,
     *,
     downloader=None,
+    manifest_path: str | Path | None = None,
 ) -> list[MixedDocument]:
-    documents = fetch_public_text_seed_documents(seed_ids, downloader=downloader)
+    seeds = (
+        curated_public_text_seeds()
+        if seed_ids is None
+        else [public_text_seed_by_id(seed_id) for seed_id in seed_ids]
+    )
+    documents = fetch_public_text_seed_documents([seed.id for seed in seeds], downloader=downloader)
     write_mixed_documents_jsonl(output_path, documents)
+    if manifest_path is not None:
+        write_source_manifest_jsonl(
+            manifest_path,
+            [
+                SourceManifestRecord(
+                    document_id=document.id,
+                    source_id=seed.source_id,
+                    source_url=seed.url,
+                    license_hint=seed.license_hint,
+                    adapter="public-text-url",
+                    modality=document.modality,
+                    title=seed.title,
+                    source_record_id=seed.id,
+                    notes=seed.notes,
+                )
+                for seed, document in zip(seeds, documents, strict=True)
+            ],
+        )
     return documents
 
 
@@ -245,6 +284,7 @@ def write_converted_text_jsonl(
     id_field: str | None = "id",
     modality: str = "external_text",
     limit: int | None = None,
+    manifest_path: str | Path | None = None,
 ) -> list[MixedDocument]:
     documents = write_converted_jsonl(
         input_path,
@@ -255,6 +295,7 @@ def write_converted_text_jsonl(
         id_field=id_field,
         modality=modality,
         limit=limit,
+        manifest_path=manifest_path,
     )
     return documents
 
@@ -269,6 +310,7 @@ def write_converted_jsonl(
     id_field: str | None = "id",
     modality: str = "external_text",
     limit: int | None = None,
+    manifest_path: str | Path | None = None,
 ) -> list[MixedDocument]:
     documents = convert_jsonl_to_mixed_documents(
         input_path,
@@ -280,7 +322,73 @@ def write_converted_jsonl(
         limit=limit,
     )
     write_mixed_documents_jsonl(output_path, documents)
+    if manifest_path is not None:
+        records = build_jsonl_source_manifest_records(
+            input_path,
+            documents,
+            source_id=source_id,
+            adapter=adapter,
+            modality=modality,
+        )
+        write_source_manifest_jsonl(manifest_path, records)
     return documents
+
+
+def write_source_manifest_jsonl(
+    path: str | Path,
+    records: list[SourceManifestRecord],
+) -> None:
+    lines = [
+        json.dumps(_source_manifest_record_to_json(record), ensure_ascii=False)
+        for record in records
+    ]
+    Path(path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def load_source_manifest_jsonl(path: str | Path) -> list[SourceManifestRecord]:
+    records: list[SourceManifestRecord] = []
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        raw = _load_jsonl_object(line, line_number)
+        records.append(_source_manifest_record_from_json(raw, line_number))
+    return records
+
+
+def build_jsonl_source_manifest_records(
+    input_path: str | Path,
+    documents: list[MixedDocument],
+    *,
+    source_id: str,
+    adapter: str,
+    modality: str,
+) -> list[SourceManifestRecord]:
+    source_line_numbers = [
+        line_number
+        for line_number, line in enumerate(
+            Path(input_path).read_text(encoding="utf-8").splitlines(),
+            start=1,
+        )
+        if line.strip()
+    ]
+    return [
+        SourceManifestRecord(
+            document_id=document.id,
+            source_id=source_id,
+            source_url="",
+            license_hint="",
+            adapter=adapter,
+            modality=modality,
+            input_path=str(input_path),
+            line_number=(
+                source_line_numbers[index - 1]
+                if index <= len(source_line_numbers)
+                else index
+            ),
+        )
+        for index, document in enumerate(documents, start=1)
+    ]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -313,6 +421,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fetch selected shallow public text seeds into MixedDocument JSONL.",
     )
     fetch_seed_parser.add_argument("--output", type=Path, required=True)
+    fetch_seed_parser.add_argument("--manifest-output", type=Path)
     fetch_seed_parser.add_argument(
         "--seed-id",
         action="append",
@@ -325,6 +434,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     convert_parser.add_argument("--input", type=Path, required=True)
     convert_parser.add_argument("--output", type=Path, required=True)
+    convert_parser.add_argument("--manifest-output", type=Path)
     convert_parser.add_argument("--source-id", required=True)
     convert_parser.add_argument("--adapter", choices=JSONL_ADAPTERS, default=TEXT_JSONL_ADAPTER)
     convert_parser.add_argument("--text-field", default="text")
@@ -349,7 +459,11 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "fetch-public-text-seeds":
         try:
-            documents = write_public_text_seed_jsonl(args.output, args.seed_id)
+            documents = write_public_text_seed_jsonl(
+                args.output,
+                args.seed_id,
+                manifest_path=args.manifest_output,
+            )
         except (OSError, ValueError) as error:
             parser.error(str(error))
         print(f"wrote {len(documents)} mixed documents to {args.output}")
@@ -367,6 +481,7 @@ def main(argv: list[str] | None = None) -> None:
                 id_field=id_field,
                 modality=args.modality,
                 limit=args.limit,
+                manifest_path=args.manifest_output,
             )
         except (OSError, ValueError) as error:
             parser.error(str(error))
@@ -422,6 +537,77 @@ def _print_public_text_seeds(output_format: str) -> None:
         return
     for seed in seeds:
         print(f"{seed.id}\t{seed.title}\t{seed.modality}\t{seed.url}")
+
+
+def _source_manifest_record_to_json(record: SourceManifestRecord) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "document_id": record.document_id,
+        "source_id": record.source_id,
+        "source_url": record.source_url,
+        "license_hint": record.license_hint,
+        "adapter": record.adapter,
+        "modality": record.modality,
+    }
+    optional_fields = {
+        "title": record.title,
+        "source_record_id": record.source_record_id,
+        "input_path": record.input_path,
+        "line_number": record.line_number,
+        "notes": record.notes,
+    }
+    for key, value in optional_fields.items():
+        if value not in ("", None):
+            payload[key] = value
+    return payload
+
+
+def _source_manifest_record_from_json(
+    record: dict[str, object],
+    line_number: int,
+) -> SourceManifestRecord:
+    required_fields = (
+        "document_id",
+        "source_id",
+        "source_url",
+        "license_hint",
+        "adapter",
+        "modality",
+    )
+    missing = [field for field in required_fields if field not in record]
+    if missing:
+        fields = ", ".join(missing)
+        raise ValueError(
+            f"Invalid source manifest record at line {line_number}: "
+            f"missing required fields: {fields}"
+        )
+    values: dict[str, str] = {}
+    for field in required_fields + ("title", "source_record_id", "input_path", "notes"):
+        value = record.get(field, "")
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Invalid source manifest record at line {line_number}: "
+                f"field {field} must be a string"
+            )
+        values[field] = value
+    raw_line_number = record.get("line_number")
+    if raw_line_number is not None and not isinstance(raw_line_number, int):
+        raise ValueError(
+            f"Invalid source manifest record at line {line_number}: "
+            "field line_number must be an int"
+        )
+    return SourceManifestRecord(
+        document_id=values["document_id"],
+        source_id=values["source_id"],
+        source_url=values["source_url"],
+        license_hint=values["license_hint"],
+        adapter=values["adapter"],
+        modality=values["modality"],
+        title=values["title"],
+        source_record_id=values["source_record_id"],
+        input_path=values["input_path"],
+        line_number=raw_line_number,
+        notes=values["notes"],
+    )
 
 
 def _load_jsonl_object(line: str, line_number: int) -> dict[str, object]:

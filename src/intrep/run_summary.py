@@ -22,7 +22,9 @@ DEFAULT_COMPARISON_METRICS = (
     "metrics.language_modeling.final_eval_perplexity",
     "metrics.language_modeling.final_train_loss",
     "metrics.training_loss.final_loss",
+    "metrics.training_loss.final_step_loss",
     "metrics.training_loss.best_loss",
+    "metrics.training_loss.best_step_loss",
     "metrics.training_loss.loss_reduction",
     "metrics.training_loss.loss_reduction_ratio",
     "metrics.next_observation.after.top1_accuracy",
@@ -88,7 +90,7 @@ def build_run_summary(
             "model": model_config_to_dict(model_config),
         },
         "metrics": {
-            "training_loss": training_loss or {},
+            "training_loss": _training_loss_with_aliases(training_loss),
             "language_modeling": language_modeling or {},
             "next_observation": next_observation or {},
             "symbolic_to_natural": symbolic_to_natural or {},
@@ -250,6 +252,23 @@ def _dict_value(value: object) -> dict[str, object] | None:
     if is_dataclass(value):
         return asdict(value)
     raise ValueError("expected object value")
+
+
+def _training_loss_with_aliases(value: dict[str, object] | None) -> dict[str, object]:
+    if value is None:
+        return {}
+    payload = dict(value)
+    _set_alias(payload, "initial_step_loss", "initial_loss")
+    _set_alias(payload, "final_step_loss", "final_loss")
+    _set_alias(payload, "best_step_loss", "best_loss")
+    _set_alias(payload, "step_loss_reduction", "loss_reduction")
+    _set_alias(payload, "step_loss_reduction_ratio", "loss_reduction_ratio")
+    return payload
+
+
+def _set_alias(payload: dict[str, object], alias: str, source: str) -> None:
+    if alias not in payload and source in payload:
+        payload[alias] = payload[source]
 
 
 def _load_normalized_run(path: str | Path) -> dict[str, object]:

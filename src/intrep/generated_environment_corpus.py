@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from intrep.dataset import ActionConditionedExample
@@ -18,8 +19,26 @@ EVAL_SLICES = (
 )
 
 
+@dataclass(frozen=True)
+class GeneratedEnvironmentCorpusSelection:
+    train_documents: list[MixedDocument]
+    eval_documents: list[MixedDocument]
+    eval_label: str
+
+
 def generated_environment_pair_documents() -> list[MixedDocument]:
     return environment_pair_documents_from_examples(generated_find_examples())
+
+
+def generated_environment_corpus_selection(
+    eval_slice: str = "generated_held_out_object",
+) -> GeneratedEnvironmentCorpusSelection:
+    train_documents, eval_documents = generated_environment_train_eval_documents(eval_slice)
+    return GeneratedEnvironmentCorpusSelection(
+        train_documents=train_documents,
+        eval_documents=eval_documents,
+        eval_label=eval_slice,
+    )
 
 
 def generated_environment_train_eval_documents(

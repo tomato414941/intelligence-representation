@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+import ipaddress
 from pathlib import Path
 import re
 from urllib.parse import urlparse
@@ -13,6 +15,18 @@ from intrep.mixed_corpus import MixedDocument, write_mixed_documents_jsonl
 Downloader = Callable[[str], str | bytes]
 
 
+@dataclass(frozen=True)
+class PublicTextFetchPolicy:
+    allowed_schemes: tuple[str, ...] = ("http", "https")
+    allowed_hosts: tuple[str, ...] | None = None
+    allowed_content_types: tuple[str, ...] = ("text/*",)
+    max_download_bytes: int = 10_000_000
+    allow_private_hosts: bool = False
+
+
+DEFAULT_PUBLIC_TEXT_FETCH_POLICY = PublicTextFetchPolicy()
+
+
 def fetch_public_text_document(
     url: str,
     *,
@@ -21,9 +35,10 @@ def fetch_public_text_document(
     modality: str = "external_text",
     document_id: str | None = None,
     index: int = 1,
+    policy: PublicTextFetchPolicy = DEFAULT_PUBLIC_TEXT_FETCH_POLICY,
 ) -> MixedDocument:
-    _validate_http_url(url)
-    read = downloader or download_text_url
+    _validate_http_url(url, policy=policy)
+    read = downloader or (lambda target_url: download_text_url(target_url, policy=policy))
     text = strip_gutenberg_boilerplate(_decode_text(read(url)))
     if not text:
         raise ValueError(f"downloaded text is empty after cleanup: {url}")
@@ -40,10 +55,11 @@ def fetch_public_text_documents(
     downloader: Downloader | None = None,
     source_id: str = "project_gutenberg",
     modality: str = "external_text",
+    policy: PublicTextFetchPolicy = DEFAULT_PUBLIC_TEXT_FETCH_POLICY,
 ) -> list[MixedDocument]:
     url_list = list(urls)
     for url in url_list:
-        _validate_http_url(url)
+        _validate_http_url(url, policy=policy)
 
     documents: list[MixedDocument] = []
     seen_ids: set[str] = set()
@@ -54,6 +70,7 @@ def fetch_public_text_documents(
             source_id=source_id,
             modality=modality,
             index=index,
+            policy=policy,
         )
         if document.id in seen_ids:
             document = MixedDocument(
@@ -73,22 +90,51 @@ def write_fetched_public_text_jsonl(
     downloader: Downloader | None = None,
     source_id: str = "project_gutenberg",
     modality: str = "external_text",
+    policy: PublicTextFetchPolicy = DEFAULT_PUBLIC_TEXT_FETCH_POLICY,
+    manifest_path: str | Path | None = None,
 ) -> list[MixedDocument]:
+    url_list = list(urls)
     documents = fetch_public_text_documents(
-        urls,
+        url_list,
         downloader=downloader,
         source_id=source_id,
         modality=modality,
+        policy=policy,
     )
     write_mixed_documents_jsonl(output_path, documents)
+    if manifest_path is not None:
+        from intrep.source_manifest import SourceManifestRecord, write_source_manifest_jsonl
+
+        write_source_manifest_jsonl(
+            manifest_path,
+            [
+                SourceManifestRecord(
+                    document_id=document.id,
+                    source_id=source_id,
+                    source_url=url,
+                    license_hint="",
+                    adapter="public-text-url",
+                    modality=document.modality,
+                )
+                for document, url in zip(documents, url_list, strict=True)
+            ],
+        )
     return documents
 
 
-def download_text_url(url: str) -> str:
-    _validate_http_url(url)
+def download_text_url(
+    url: str,
+    *,
+    policy: PublicTextFetchPolicy = DEFAULT_PUBLIC_TEXT_FETCH_POLICY,
+) -> str:
+    _validate_http_url(url, policy=policy)
     with urlopen(url, timeout=30) as response:
-        payload = response.read()
+        content_type = response.headers.get_content_type()
+        _validate_content_type(content_type, policy=policy)
+        payload = response.read(policy.max_download_bytes + 1)
         charset = response.headers.get_content_charset() or "utf-8"
+    if len(payload) > policy.max_download_bytes:
+        raise ValueError(f"downloaded text exceeds maximum size: {url}")
     return payload.decode(charset, errors="replace")
 
 
@@ -123,6 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="HTTP(S) plain text URL. Repeat to fetch multiple texts.",
     )
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--manifest-output", type=Path)
     parser.add_argument("--source-id", default="project_gutenberg")
     parser.add_argument("--modality", default="external_text")
     return parser
@@ -137,22 +184,75 @@ def main(argv: list[str] | None = None) -> None:
             args.output,
             source_id=args.source_id,
             modality=args.modality,
+            manifest_path=args.manifest_output,
         )
     except (OSError, ValueError) as error:
         parser.error(str(error))
     print(f"wrote {len(documents)} mixed documents to {args.output}")
 
 
-def _validate_http_url(url: str) -> None:
+def _validate_http_url(
+    url: str,
+    *,
+    policy: PublicTextFetchPolicy = DEFAULT_PUBLIC_TEXT_FETCH_POLICY,
+) -> None:
     parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if parsed.scheme not in policy.allowed_schemes or not parsed.netloc:
         raise ValueError(f"only http(s) URLs are supported: {url}")
+    if parsed.username or parsed.password:
+        raise ValueError(f"URL credentials are not supported: {url}")
+    host = parsed.hostname
+    if host is None:
+        raise ValueError(f"URL host is required: {url}")
+    normalized_host = host.lower().rstrip(".")
+    if policy.allowed_hosts is not None and normalized_host not in {
+        allowed.lower().rstrip(".") for allowed in policy.allowed_hosts
+    }:
+        raise ValueError(f"URL host is not allowed by fetch policy: {normalized_host}")
+    if not policy.allow_private_hosts and _is_private_or_local_host(normalized_host):
+        raise ValueError(f"private or local URL hosts are not supported: {url}")
+    if policy.max_download_bytes < 1:
+        raise ValueError("max_download_bytes must be positive")
+    if not policy.allowed_content_types:
+        raise ValueError("allowed_content_types must not be empty")
+
+
+def _validate_content_type(content_type: str, *, policy: PublicTextFetchPolicy) -> None:
+    normalized = content_type.lower()
+    for allowed in policy.allowed_content_types:
+        allowed_normalized = allowed.lower()
+        if allowed_normalized.endswith("/*"):
+            if normalized.startswith(allowed_normalized[:-1]):
+                return
+        elif normalized == allowed_normalized:
+            return
+    allowed_values = ", ".join(policy.allowed_content_types)
+    raise ValueError(f"unsupported content type {content_type!r}; allowed: {allowed_values}")
 
 
 def _decode_text(payload: str | bytes) -> str:
     if isinstance(payload, str):
         return payload
     return payload.decode("utf-8", errors="replace")
+
+
+def _is_private_or_local_host(host: str) -> bool:
+    if host in {"localhost", "localhost.localdomain"}:
+        return True
+    if host.endswith(".localhost") or host.endswith(".local"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+    )
 
 
 def _is_gutenberg_start_marker(line: str) -> bool:

@@ -8,6 +8,8 @@ from intrep.byte_tokenizer import ByteTokenizer
 from intrep.next_observation_cases import NextObservationCase
 from intrep.pair_ranking import ContinuationScorer
 
+DISTRACTOR_POLICIES = ("all_other", "hard")
+
 
 @dataclass(frozen=True)
 class NextObservationRankingMetrics:
@@ -38,12 +40,14 @@ def evaluate_next_observation_ranking(
     model: Any,
     tokenizer: ByteTokenizer,
     *,
+    distractor_policy: str = "hard",
     score_continuation_loss: ContinuationScorer | None = None,
 ) -> NextObservationRankingMetrics:
     scored_cases = _score_next_observation_cases(
         cases,
         model,
         tokenizer,
+        distractor_policy=distractor_policy,
         score_continuation_loss=score_continuation_loss,
     )
     return _summarize_scored_cases(scored_cases)
@@ -54,12 +58,14 @@ def evaluate_next_observation_ranking_summary(
     model: Any,
     tokenizer: ByteTokenizer,
     *,
+    distractor_policy: str = "hard",
     score_continuation_loss: ContinuationScorer | None = None,
 ) -> NextObservationRankingSummary:
     scored_cases = _score_next_observation_cases(
         cases,
         model,
         tokenizer,
+        distractor_policy=distractor_policy,
         score_continuation_loss=score_continuation_loss,
     )
 
@@ -85,22 +91,25 @@ def _score_next_observation_cases(
     model: Any,
     tokenizer: ByteTokenizer,
     *,
+    distractor_policy: str = "hard",
     score_continuation_loss: ContinuationScorer | None = None,
 ) -> list[_ScoredNextObservationCase]:
     if not cases:
         raise ValueError("cases must not be empty")
     if len(cases) < 2:
         raise ValueError("at least two cases are required to build distractors")
+    if distractor_policy not in DISTRACTOR_POLICIES:
+        raise ValueError(f"distractor_policy must be one of: {', '.join(DISTRACTOR_POLICIES)}")
 
     scorer = score_continuation_loss or torch_context_limited_continuation_loss
     scored_cases: list[_ScoredNextObservationCase] = []
 
     for index, case in enumerate(cases):
         positive_loss = scorer(model, tokenizer, case.prefix, case.positive_next)
+        distractors = _select_distractors(cases, index, distractor_policy)
         distractor_losses = [
             scorer(model, tokenizer, case.prefix, distractor.positive_next)
-            for distractor_index, distractor in enumerate(cases)
-            if distractor_index != index
+            for distractor in distractors
         ]
         if not distractor_losses:
             raise ValueError("each case requires at least one distractor")
@@ -119,6 +128,26 @@ def _score_next_observation_cases(
         )
 
     return scored_cases
+
+
+def _select_distractors(
+    cases: Sequence[NextObservationCase],
+    case_index: int,
+    distractor_policy: str,
+) -> list[NextObservationCase]:
+    case = cases[case_index]
+    all_other = [
+        distractor
+        for distractor_index, distractor in enumerate(cases)
+        if distractor_index != case_index
+    ]
+    if distractor_policy == "all_other":
+        return all_other
+
+    hard_distractors = [
+        distractor for distractor in all_other if distractor.modality == case.modality
+    ]
+    return hard_distractors or all_other
 
 
 def _summarize_scored_cases(

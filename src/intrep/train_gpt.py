@@ -67,12 +67,26 @@ def _write_loss_history(path: Path, result: object, training_config: GPTTraining
         "batch_stride": getattr(result, "batch_stride", training_config.batch_stride),
         "initial_loss": getattr(result, "initial_loss"),
         "final_loss": getattr(result, "final_loss"),
+        "initial_step_loss": getattr(result, "initial_step_loss", getattr(result, "initial_loss")),
+        "final_step_loss": getattr(result, "final_step_loss", getattr(result, "final_loss")),
         "best_loss": getattr(result, "best_loss"),
+        "best_step_loss": getattr(result, "best_step_loss", getattr(result, "best_loss")),
+        "loss_reduction": getattr(result, "loss_reduction", None),
+        "loss_reduction_ratio": getattr(result, "loss_reduction_ratio", None),
+        "step_loss_reduction": getattr(result, "step_loss_reduction", getattr(result, "loss_reduction", None)),
+        "step_loss_reduction_ratio": getattr(
+            result,
+            "step_loss_reduction_ratio",
+            getattr(result, "loss_reduction_ratio", None),
+        ),
         "loss_history": list(getattr(result, "loss_history")),
         "initial_train_loss": getattr(result, "initial_train_loss", None),
         "final_train_loss": getattr(result, "final_train_loss", None),
         "initial_eval_loss": getattr(result, "initial_eval_loss", None),
         "final_eval_loss": getattr(result, "final_eval_loss", None),
+        "eval_split": getattr(result, "eval_split", None),
+        "generalization_eval": getattr(result, "generalization_eval", None),
+        "warnings": list(getattr(result, "warnings", ())),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -172,6 +186,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         except (OSError, ValueError) as error:
             parser.error(f"could not load eval corpus from {args.eval_corpus_path}: {error}")
         eval_label = str(args.eval_corpus_path)
+    generalization_eval = eval_documents is not None
+    eval_split = "held_out" if generalization_eval else "train"
 
     training_config = GPTTrainingConfig(
         max_steps=args.max_steps,
@@ -213,6 +229,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         f" steps={result.steps}"
         f" initial_loss={result.initial_loss:.4f}"
         f" final_loss={result.final_loss:.4f}"
+        f" eval_split={eval_split}"
+        f" generalization_eval={str(generalization_eval).lower()}"
         f" train_avg_initial={result.initial_train_loss:.4f}"
         f" train_avg_final={result.final_train_loss:.4f}"
         f" device={getattr(result, 'device', training_config.device)}"
@@ -237,16 +255,28 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
                 training_loss={
                     "initial_loss": result.initial_loss,
                     "final_loss": result.final_loss,
+                    "initial_step_loss": getattr(result, "initial_step_loss", result.initial_loss),
+                    "final_step_loss": getattr(result, "final_step_loss", result.final_loss),
                     "steps": result.steps,
                     "token_count": result.token_count,
                     "best_loss": result.best_loss,
+                    "best_step_loss": getattr(result, "best_step_loss", result.best_loss),
                     "loss_reduction": result.loss_reduction,
                     "loss_reduction_ratio": result.loss_reduction_ratio,
+                    "step_loss_reduction": getattr(result, "step_loss_reduction", result.loss_reduction),
+                    "step_loss_reduction_ratio": getattr(
+                        result,
+                        "step_loss_reduction_ratio",
+                        result.loss_reduction_ratio,
+                    ),
                     "loss_history": list(result.loss_history),
                     "initial_train_loss": result.initial_train_loss,
                     "final_train_loss": result.final_train_loss,
                     "initial_eval_loss": result.initial_eval_loss,
                     "final_eval_loss": result.final_eval_loss,
+                    "eval_split": getattr(result, "eval_split", None),
+                    "generalization_eval": getattr(result, "generalization_eval", None),
+                    "warnings": list(getattr(result, "warnings", ())),
                 },
                 language_modeling=language_modeling_metrics_from_training_result(result),
                 elapsed_seconds=elapsed_seconds,

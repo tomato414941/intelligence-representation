@@ -46,6 +46,7 @@ def evaluate_next_observation_learning(
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
     *,
+    distractor_policy: str = "hard",
     score_continuation_loss: ContinuationScorer | None = None,
 ) -> NextObservationEvaluationResult:
     config = training_config or GPTTrainingConfig()
@@ -63,6 +64,7 @@ def evaluate_next_observation_learning(
         eval_cases,
         model=before_model,
         tokenizer=tokenizer,
+        distractor_policy=distractor_policy,
         score_continuation_loss=score_continuation_loss,
     )
     artifacts = train_mixed_gpt_with_artifacts(
@@ -75,6 +77,7 @@ def evaluate_next_observation_learning(
         eval_cases,
         model=artifacts.model,
         tokenizer=artifacts.tokenizer,
+        distractor_policy=distractor_policy,
         score_continuation_loss=score_continuation_loss,
     )
 

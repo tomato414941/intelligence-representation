@@ -300,22 +300,22 @@ class TrainGPTCLITest(unittest.TestCase):
             payload = json.loads(loss_history_path.read_text(encoding="utf-8"))
 
         self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
-        self.assertEqual(
-            payload,
-            {
-                "steps": 3,
-                "token_count": 123,
-                "batch_stride": None,
-                "initial_loss": 4.0,
-                "final_loss": 2.5,
-                "best_loss": 2.25,
-                "loss_history": [4.0, 3.0, 2.5],
-                "initial_train_loss": 4.25,
-                "final_train_loss": 2.75,
-                "initial_eval_loss": 4.5,
-                "final_eval_loss": 3.5,
-            },
-        )
+        self.assertEqual(payload["steps"], 3)
+        self.assertEqual(payload["token_count"], 123)
+        self.assertIsNone(payload["batch_stride"])
+        self.assertEqual(payload["initial_loss"], 4.0)
+        self.assertEqual(payload["final_loss"], 2.5)
+        self.assertEqual(payload["initial_step_loss"], 4.0)
+        self.assertEqual(payload["final_step_loss"], 2.5)
+        self.assertEqual(payload["best_loss"], 2.25)
+        self.assertEqual(payload["best_step_loss"], 2.25)
+        self.assertEqual(payload["loss_history"], [4.0, 3.0, 2.5])
+        self.assertEqual(payload["initial_train_loss"], 4.25)
+        self.assertEqual(payload["final_train_loss"], 2.75)
+        self.assertEqual(payload["initial_eval_loss"], 4.5)
+        self.assertEqual(payload["final_eval_loss"], 3.5)
+        self.assertIsNone(payload["eval_split"])
+        self.assertIsNone(payload["generalization_eval"])
 
     def test_run_summary_path_writes_normalized_summary(self) -> None:
         def fake_train_mixed_gpt(
@@ -413,6 +413,7 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertIn(f"corpus={corpus_path}", stdout)
         self.assertIn(f"eval_corpus={eval_corpus_path}", stdout)
         self.assertIn("tokens=456 steps=2 initial_loss=4.0000 final_loss=2.5000", stdout)
+        self.assertIn("eval_split=held_out generalization_eval=true", stdout)
         self.assertIn("train_avg_initial=4.2500 train_avg_final=2.7500", stdout)
         self.assertIn("eval_initial=5.5000 eval_final=4.2500", stdout)
         self.assertEqual(payload["batch_stride"], 7)

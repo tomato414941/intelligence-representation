@@ -71,12 +71,14 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             *,
             eval_documents=None,
             training_config,
+            distractor_policy="hard",
         ):
             nonlocal captured_documents
             captured_documents = documents
             self.assertIsNone(eval_documents)
             self.assertEqual(training_config.max_steps, 3)
             self.assertIsNone(training_config.batch_stride)
+            self.assertEqual(distractor_policy, "hard")
             return FakeEvaluationResult()
 
         output = io.StringIO()
@@ -93,7 +95,11 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         self.assertTrue(captured_documents)
         stdout = output.getvalue()
         self.assertIn("intrep next-observation evaluation", stdout)
-        self.assertIn("corpus=builtin eval_corpus=train train_cases=5 eval_cases=5", stdout)
+        self.assertIn(
+            "corpus=builtin eval_corpus=train train_cases=5 eval_cases=5 tokens=123 steps=3 "
+            "eval_split=train generalization_eval=false distractor_policy=hard",
+            stdout,
+        )
         self.assertIn("tokens=123 steps=3", stdout)
         self.assertIn(
             "before_top1_accuracy=0.2500 after_top1_accuracy=0.7500"
@@ -128,6 +134,7 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             *,
             eval_documents=None,
             training_config,
+            distractor_policy="hard",
         ):
             nonlocal captured_documents
             captured_documents = documents_arg
@@ -136,6 +143,7 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             self.assertEqual(training_config.context_length, 16)
             self.assertEqual(training_config.batch_size, 2)
             self.assertEqual(training_config.batch_stride, 4)
+            self.assertEqual(distractor_policy, "all_other")
             return FakeEvaluationResult(
                 train_case_count=2,
                 eval_case_count=2,
@@ -164,6 +172,8 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
                         "2",
                         "--batch-stride",
                         "4",
+                        "--distractor-policy",
+                        "all_other",
                     ],
                     document_loader=fake_loader,
                 )
@@ -171,7 +181,8 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         self.assertEqual(captured_path, Path("corpus.jsonl"))
         self.assertEqual(captured_documents, documents)
         self.assertIn(
-            "corpus=corpus.jsonl eval_corpus=train train_cases=2 eval_cases=2 tokens=45 steps=9",
+            "corpus=corpus.jsonl eval_corpus=train train_cases=2 eval_cases=2 tokens=45 steps=9 "
+            "eval_split=train generalization_eval=false distractor_policy=all_other",
             output.getvalue(),
         )
         self.assertIn("after_top1_accuracy=1.0000", output.getvalue())
@@ -197,10 +208,12 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             *,
             eval_documents=None,
             training_config,
+            distractor_policy="hard",
         ):
             nonlocal captured_eval_documents
             self.assertEqual(documents_arg, train_documents)
             captured_eval_documents = eval_documents
+            self.assertEqual(distractor_policy, "hard")
             return FakeEvaluationResult(train_case_count=1, eval_case_count=1)
 
         output = io.StringIO()
@@ -252,8 +265,10 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             *,
             eval_documents=None,
             training_config,
+            distractor_policy="hard",
         ):
             self.assertEqual(training_config.max_steps, 3)
+            self.assertEqual(distractor_policy, "hard")
             return FakeEvaluationResult(
                 before_metrics=before_summary.overall,
                 after_metrics=after_summary.overall,
@@ -279,6 +294,10 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         self.assertIn("top1_delta=0.5000", output.getvalue())
         self.assertEqual(payload["corpus"], "builtin")
         self.assertEqual(payload["eval_corpus"], "train")
+        self.assertEqual(payload["eval_split"], "train")
+        self.assertFalse(payload["generalization_eval"])
+        self.assertTrue(payload["warnings"])
+        self.assertEqual(payload["distractor_policy"], "hard")
         self.assertEqual(payload["train_case_count"], 5)
         self.assertEqual(payload["eval_case_count"], 5)
         self.assertEqual(payload["training"]["steps"], 3)
@@ -302,10 +321,12 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             *,
             eval_documents=None,
             training_config,
+            distractor_policy="hard",
         ):
             nonlocal captured_documents
             captured_documents = documents
             self.assertIsNone(eval_documents)
+            self.assertEqual(distractor_policy, "hard")
             return FakeEvaluationResult(train_case_count=7, eval_case_count=7)
 
         output = io.StringIO()
@@ -323,7 +344,54 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         assert captured_documents is not None
         self.assertIn("grid", {document.modality for document in captured_documents})
         self.assertIn(
-            "corpus=builtin-grid eval_corpus=train train_cases=7 eval_cases=7",
+            "corpus=builtin-grid eval_corpus=train train_cases=7 eval_cases=7 tokens=123 steps=3 "
+            "eval_split=train generalization_eval=false distractor_policy=hard",
+            output.getvalue(),
+        )
+
+    def test_generated_environment_corpus_uses_generated_train_eval_split(self) -> None:
+        captured_train_documents: list[MixedDocument] | None = None
+        captured_eval_documents: list[MixedDocument] | None = None
+
+        def fake_evaluate_next_observation_learning(
+            documents,
+            *,
+            eval_documents=None,
+            training_config,
+            distractor_policy="hard",
+        ):
+            nonlocal captured_train_documents, captured_eval_documents
+            captured_train_documents = documents
+            captured_eval_documents = eval_documents
+            self.assertEqual(distractor_policy, "hard")
+            return FakeEvaluationResult(train_case_count=12, eval_case_count=12)
+
+        output = io.StringIO()
+        with patch.object(
+            evaluate_next_observation,
+            "evaluate_next_observation_learning",
+            fake_evaluate_next_observation_learning,
+        ):
+            with redirect_stdout(output):
+                evaluate_next_observation.main(
+                    [
+                        "--corpus",
+                        "generated-environment",
+                        "--generated-eval-slice",
+                        "generated_held_out_container",
+                    ],
+                )
+
+        self.assertIsNotNone(captured_train_documents)
+        self.assertIsNotNone(captured_eval_documents)
+        assert captured_train_documents is not None
+        assert captured_eval_documents is not None
+        self.assertEqual(len(captured_train_documents), 24)
+        self.assertEqual(len(captured_eval_documents), 24)
+        self.assertIn(
+            "corpus=generated-environment eval_corpus=generated_held_out_container "
+            "train_cases=12 eval_cases=12 tokens=123 steps=3 "
+            "eval_split=held_out generalization_eval=true distractor_policy=hard",
             output.getvalue(),
         )
 

@@ -30,6 +30,7 @@ class NextObservationEvaluationTest(unittest.TestCase):
 
         result = evaluate_next_observation_learning(
             documents,
+            distractor_policy="all_other",
             training_config=GPTTrainingConfig(
                 context_length=16,
                 batch_size=2,
@@ -58,6 +59,56 @@ class NextObservationEvaluationTest(unittest.TestCase):
         self.assertEqual(result.after_summary.modality_counts, {"environment_symbolic": 2})
         self.assertEqual(len(scored), 8)
         self.assertEqual({model_name for model_name, _, _ in scored}, {"DecoderOnlyGPT"})
+
+    def test_passes_distractor_policy_to_before_and_after_ranking(self) -> None:
+        documents = [
+            MixedDocument(
+                id="case_key",
+                modality="environment_symbolic",
+                content="<obs> key in box <action> find key <next_obs> key at shelf",
+            ),
+            MixedDocument(
+                id="case_grid",
+                modality="grid",
+                content="ignored grid case",
+            ),
+            MixedDocument(
+                id="case_cup",
+                modality="environment_symbolic",
+                content="<obs> cup on desk <action> find cup <next_obs> cup at shelf",
+            ),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: DecoderOnlyGPT,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1 if continuation in prefix else 0.9
+
+        evaluate_next_observation_learning(
+            documents,
+            training_config=GPTTrainingConfig(
+                context_length=24,
+                batch_size=2,
+                max_steps=1,
+                seed=41,
+            ),
+            model_config=GPTConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=24,
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+            ),
+            distractor_policy="hard",
+            score_continuation_loss=score,
+        )
+
+        self.assertEqual(len(scored), 8)
 
     def test_can_evaluate_held_out_documents_separately_from_training_documents(self) -> None:
         scored: list[str] = []

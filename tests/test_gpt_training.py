@@ -85,15 +85,23 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertGreater(result.token_count, len(render_corpus(default_mixed_documents())))
         self.assertEqual(result.initial_loss, result.loss_history[0])
         self.assertEqual(result.final_loss, result.loss_history[-1])
+        self.assertEqual(result.initial_step_loss, result.initial_loss)
+        self.assertEqual(result.final_step_loss, result.final_loss)
         self.assertEqual(result.best_loss, min(result.loss_history))
+        self.assertEqual(result.best_step_loss, result.best_loss)
         self.assertLess(result.best_loss, result.initial_loss)
         self.assertEqual(result.loss_reduction, result.initial_loss - result.final_loss)
+        self.assertEqual(result.step_loss_reduction, result.loss_reduction)
+        self.assertEqual(result.step_loss_reduction_ratio, result.loss_reduction_ratio)
         self.assertIsNotNone(result.initial_train_loss)
         self.assertIsNotNone(result.final_train_loss)
         self.assertGreater(result.initial_train_loss, 0.0)
         self.assertGreater(result.final_train_loss, 0.0)
         self.assertIsNone(result.initial_eval_loss)
         self.assertIsNone(result.final_eval_loss)
+        self.assertEqual(result.eval_split, "train")
+        self.assertFalse(result.generalization_eval)
+        self.assertTrue(result.warnings)
         self.assertEqual(result.device, "cpu")
 
     def test_resolve_training_device_auto_prefers_cuda_when_available(self) -> None:
@@ -185,6 +193,9 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertGreater(result.initial_eval_loss, 0.0)
         self.assertGreater(result.final_eval_loss, 0.0)
         self.assertNotEqual(result.initial_eval_loss, result.final_eval_loss)
+        self.assertEqual(result.eval_split, "held_out")
+        self.assertTrue(result.generalization_eval)
+        self.assertEqual(result.warnings, ())
 
     def test_training_with_artifacts_returns_model_tokenizer_and_result(self) -> None:
         artifacts = train_mixed_gpt_with_artifacts(

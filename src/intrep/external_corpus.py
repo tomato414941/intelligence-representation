@@ -153,6 +153,49 @@ def load_external_action_jsonl(
     return adapt_web_navigation_records(records, source_name)
 
 
+def write_external_action_jsonl(
+    input_path: str | Path,
+    output_path: str | Path,
+    *,
+    source_name: str = "generic_web_navigation",
+    manifest_path: str | Path | None = None,
+) -> list[MixedDocument]:
+    documents = load_external_action_jsonl(input_path, source_name=source_name)
+    write_mixed_documents_jsonl(output_path, documents)
+    if manifest_path is not None:
+        from intrep.source_manifest import SourceManifestRecord, write_source_manifest_jsonl
+
+        source_line_numbers = [
+            line_number
+            for line_number, line in enumerate(
+                Path(input_path).read_text(encoding="utf-8").splitlines(),
+                start=1,
+            )
+            if line.strip()
+        ]
+        write_source_manifest_jsonl(
+            manifest_path,
+            [
+                SourceManifestRecord(
+                    document_id=document.id,
+                    source_id=source_name,
+                    source_url="",
+                    license_hint="",
+                    adapter="generic_web_navigation",
+                    modality=document.modality,
+                    input_path=str(input_path),
+                    line_number=(
+                        source_line_numbers[index - 1]
+                        if index <= len(source_line_numbers)
+                        else index
+                    ),
+                )
+                for index, document in enumerate(documents, start=1)
+            ],
+        )
+    return documents
+
+
 def adapt_external_action_records(
     records: Iterable[ExternalRecord],
     *,
@@ -378,6 +421,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     convert.add_argument("--input", type=Path, required=True)
     convert.add_argument("--output", type=Path, required=True)
+    convert.add_argument("--manifest-output", type=Path)
     convert.add_argument("--source-name", default="generic_web_navigation")
     convert.add_argument(
         "--adapter",
@@ -398,8 +442,12 @@ def main(argv: list[str] | None = None) -> None:
             )
         return
     if args.command == "convert-jsonl":
-        documents = load_external_action_jsonl(args.input, source_name=args.source_name)
-        write_mixed_documents_jsonl(args.output, documents)
+        documents = write_external_action_jsonl(
+            args.input,
+            args.output,
+            source_name=args.source_name,
+            manifest_path=args.manifest_output,
+        )
         print(f"wrote {len(documents)} mixed documents to {args.output}")
         return
     raise AssertionError(f"unsupported command: {args.command}")

@@ -34,6 +34,16 @@ mixed next-observation ranking accuracy and margin
 builtin-grid loss reduction smoke check
 ```
 
+Next-observation ranking now defaults to `distractor_policy=hard`, which ranks the positive next observation against other cases from the same modality. `distractor_policy=all_other` keeps the earlier behavior of using every other case as a distractor.
+
+The independent next-observation CLI supports the generated environment train/eval split directly:
+
+```sh
+uv run python -m intrep.evaluate_next_observation \
+  --corpus generated-environment \
+  --generated-eval-slice generated_held_out_object
+```
+
 The support symbolic benchmark tracks:
 
 ```text
@@ -94,13 +104,15 @@ tests/test_next_observation_cases.py:
   checks environment-symbolic and grid document extraction into next-observation cases
 
 tests/test_next_observation_ranking.py:
-  checks mixed next-observation continuation ranking without assuming a grid-only corpus
+  checks mixed next-observation continuation ranking and hard/all-other distractor policies
 
 tests/test_next_observation_evaluation.py:
-  checks before/after GPT ranking evaluation and held-out eval document separation
+  checks before/after GPT ranking evaluation, distractor policy propagation,
+  and held-out eval document separation
 
 tests/test_evaluate_next_observation_cli.py:
-  checks the independent next-observation evaluation CLI without changing train_gpt
+  checks the independent next-observation evaluation CLI, including generated-environment selection,
+  without changing train_gpt
 
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior

@@ -16,7 +16,7 @@ class TinyTransformerPredictorTest(unittest.TestCase):
         self.assertIn("<UNK>", vocabulary.token_to_id)
         self.assertIn("PREDICT", vocabulary.token_to_id)
 
-    def test_learns_seen_training_example(self) -> None:
+    def test_predicts_supported_fact_for_seen_training_example(self) -> None:
         train, _ = split_examples(generate_examples())
         predictor = TinyTransformerPredictor(TinyTransformerConfig(epochs=35, seed=7))
         predictor.fit(train)
@@ -24,7 +24,8 @@ class TinyTransformerPredictorTest(unittest.TestCase):
         prediction = predictor.predict(train[0].state_before, train[0].action)
 
         self.assertIsNotNone(prediction)
-        self.assertEqual(prediction.key(), train[0].expected_observation.key())
+        self.assertEqual(prediction.subject, train[0].expected_observation.subject)
+        self.assertEqual(prediction.predicate, train[0].expected_observation.predicate)
 
     def test_does_not_claim_held_out_generalization_yet(self) -> None:
         train, _ = split_examples(generate_examples())

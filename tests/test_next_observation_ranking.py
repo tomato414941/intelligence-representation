@@ -55,6 +55,82 @@ class NextObservationRankingTest(unittest.TestCase):
         self.assertAlmostEqual(metrics.mean_margin, (0.1 - 0.3 + 0.1) / 3)
         self.assertEqual(set(scored), set(losses))
 
+    def test_hard_distractor_policy_scores_same_modality_distractors_only(self) -> None:
+        cases = [
+            _case("symbolic_a", "symbolic a\n", "next a", modality="symbolic"),
+            _case("symbolic_b", "symbolic b\n", "next b", modality="symbolic"),
+            _case("grid_a", "grid a\n", "next grid", modality="grid"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            if prefix == "symbolic a\n" and continuation == "next a":
+                return 0.1
+            if prefix == "symbolic a\n" and continuation == "next b":
+                return 0.9
+            if prefix == "symbolic b\n" and continuation == "next b":
+                return 0.2
+            if prefix == "symbolic b\n" and continuation == "next a":
+                return 0.8
+            if prefix == "grid a\n" and continuation == "next grid":
+                return 0.3
+            return 0.7
+
+        metrics = evaluate_next_observation_ranking(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            score_continuation_loss=score,
+        )
+
+        self.assertEqual(
+            scored,
+            [
+                ("symbolic a\n", "next a"),
+                ("symbolic a\n", "next b"),
+                ("symbolic b\n", "next b"),
+                ("symbolic b\n", "next a"),
+                ("grid a\n", "next grid"),
+                ("grid a\n", "next a"),
+                ("grid a\n", "next b"),
+            ],
+        )
+        self.assertAlmostEqual(metrics.top1_accuracy, 1.0)
+
+    def test_all_other_distractor_policy_keeps_previous_cross_modality_behavior(self) -> None:
+        cases = [
+            _case("symbolic_a", "symbolic a\n", "next a", modality="symbolic"),
+            _case("symbolic_b", "symbolic b\n", "next b", modality="symbolic"),
+            _case("grid_a", "grid a\n", "next grid", modality="grid"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1
+
+        evaluate_next_observation_ranking(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            distractor_policy="all_other",
+            score_continuation_loss=score,
+        )
+
+        self.assertEqual(len(scored), 9)
+        self.assertIn(("symbolic a\n", "next grid"), scored)
+
     def test_evaluate_next_observation_ranking_summary_groups_by_modality(
         self,
     ) -> None:
@@ -129,6 +205,13 @@ class NextObservationRankingTest(unittest.TestCase):
                 [_case("only", "only\n", "next")],
                 model=object(),
                 tokenizer=ByteTokenizer(),
+            )
+        with self.assertRaisesRegex(ValueError, "distractor_policy"):
+            evaluate_next_observation_ranking(
+                [_case("a", "a\n", "next a"), _case("b", "b\n", "next b")],
+                model=object(),
+                tokenizer=ByteTokenizer(),
+                distractor_policy="unknown",
             )
 
     def test_evaluate_next_observation_ranking_uses_torch_continuation_loss(self) -> None:

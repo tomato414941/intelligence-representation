@@ -8,6 +8,7 @@ from pathlib import Path
 
 from intrep.gpt_training import GPTTrainingConfig
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents
+from intrep.next_observation_ranking import DISTRACTOR_POLICIES
 
 
 DocumentLoader = Callable[[str | Path], list[MixedDocument]]
@@ -17,6 +18,8 @@ DocumentLoader = Callable[[str | Path], list[MixedDocument]]
 class CorpusSelection:
     label: str
     documents: list[MixedDocument]
+    eval_label: str | None = None
+    eval_documents: list[MixedDocument] | None = None
 
 
 def _load_file_documents(path: str | Path) -> list[MixedDocument]:
@@ -33,13 +36,24 @@ def _load_builtin_grid_documents() -> list[MixedDocument]:
     return grid_corpus.default_grid_documents()
 
 
+def _load_generated_environment_documents(
+    eval_slice: str,
+) -> tuple[list[MixedDocument], list[MixedDocument]]:
+    from intrep.generated_environment_corpus import (
+        generated_environment_corpus_selection,
+    )
+
+    selection = generated_environment_corpus_selection(eval_slice)
+    return selection.train_documents, selection.eval_documents
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Evaluate next-observation ranking before and after tiny GPT training."
     )
     parser.add_argument(
         "--corpus",
-        choices=("builtin", "builtin-grid", "file"),
+        choices=("builtin", "builtin-grid", "generated-environment", "file"),
         default="builtin",
         help="Use a built-in corpus or load documents from a JSONL file.",
     )
@@ -52,6 +66,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--eval-corpus-path",
         type=Path,
         help="Optional mixed-document JSONL corpus for held-out ranking evaluation.",
+    )
+    parser.add_argument(
+        "--generated-eval-slice",
+        choices=(
+            "generated_seen",
+            "generated_held_out_object",
+            "generated_held_out_container",
+            "generated_held_out_location",
+        ),
+        default="generated_held_out_object",
+        help="Generated-environment eval slice when --corpus=generated-environment.",
+    )
+    parser.add_argument(
+        "--distractor-policy",
+        choices=DISTRACTOR_POLICIES,
+        default="hard",
+        help="Use all other continuations or only same-modality hard distractors.",
     )
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--context-length", type=int, default=64)
@@ -79,11 +110,18 @@ def main(
     corpus = _select_corpus(
         args.corpus,
         args.corpus_path,
+        args.generated_eval_slice,
         parser=parser,
         document_loader=loader,
     )
-    eval_corpus = None
+    eval_corpus = (
+        CorpusSelection(label=corpus.eval_label, documents=corpus.eval_documents)
+        if corpus.eval_label is not None and corpus.eval_documents is not None
+        else None
+    )
     if args.eval_corpus_path is not None:
+        if eval_corpus is not None:
+            parser.error("--eval-corpus-path cannot be used with --corpus=generated-environment")
         try:
             eval_documents = loader(args.eval_corpus_path)
         except RuntimeError as error:
@@ -104,9 +142,12 @@ def main(
         corpus.documents,
         eval_documents=eval_corpus.documents if eval_corpus is not None else None,
         training_config=training_config,
+        distractor_policy=args.distractor_policy,
     )
 
-    eval_label = eval_corpus.label if eval_corpus is not None else "train"
+    generalization_eval = eval_corpus is not None
+    eval_label = eval_corpus.label if generalization_eval else "train"
+    eval_split = "held_out" if generalization_eval else "train"
     print("intrep next-observation evaluation")
     top1_delta = result.after_metrics.top1_accuracy - result.before_metrics.top1_accuracy
     margin_delta = result.after_metrics.mean_margin - result.before_metrics.mean_margin
@@ -117,6 +158,9 @@ def main(
         f" eval_cases={len(result.eval_cases)}"
         f" tokens={result.training_result.token_count}"
         f" steps={result.training_result.steps}"
+        f" eval_split={eval_split}"
+        f" generalization_eval={str(generalization_eval).lower()}"
+        f" distractor_policy={args.distractor_policy}"
         f" before_top1_accuracy={result.before_metrics.top1_accuracy:.4f}"
         f" after_top1_accuracy={result.after_metrics.top1_accuracy:.4f}"
         f" top1_delta={top1_delta:.4f}"
@@ -125,12 +169,20 @@ def main(
         f" margin_delta={margin_delta:.4f}"
     )
     if args.metrics_path is not None:
-        _write_metrics(args.metrics_path, result, corpus.label, eval_label, training_config)
+        _write_metrics(
+            args.metrics_path,
+            result,
+            corpus.label,
+            eval_label,
+            args.distractor_policy,
+            training_config,
+        )
 
 
 def _select_corpus(
     corpus: str,
     corpus_path: Path | None,
+    generated_eval_slice: str,
     *,
     parser: argparse.ArgumentParser,
     document_loader: DocumentLoader,
@@ -144,6 +196,22 @@ def _select_corpus(
         if corpus_path is not None:
             parser.error("--corpus-path can only be used with --corpus=file")
         return CorpusSelection(label="builtin-grid", documents=_load_builtin_grid_documents())
+
+    if corpus == "generated-environment":
+        if corpus_path is not None:
+            parser.error("--corpus-path can only be used with --corpus=file")
+        try:
+            train_documents, eval_documents = _load_generated_environment_documents(
+                generated_eval_slice
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        return CorpusSelection(
+            label="generated-environment",
+            documents=train_documents,
+            eval_label=generated_eval_slice,
+            eval_documents=eval_documents,
+        )
 
     if corpus == "file":
         if corpus_path is None:
@@ -164,12 +232,18 @@ def evaluate_next_observation_learning(
     *,
     eval_documents: list[MixedDocument] | None = None,
     training_config: GPTTrainingConfig,
+    distractor_policy: str = "hard",
 ) -> object:
     from intrep.next_observation_evaluation import (
         evaluate_next_observation_learning as evaluate,
     )
 
-    return evaluate(documents, eval_documents=eval_documents, training_config=training_config)
+    return evaluate(
+        documents,
+        eval_documents=eval_documents,
+        training_config=training_config,
+        distractor_policy=distractor_policy,
+    )
 
 
 def _write_metrics(
@@ -177,13 +251,24 @@ def _write_metrics(
     result: object,
     corpus_label: str,
     eval_label: str,
+    distractor_policy: str,
     training_config: GPTTrainingConfig,
 ) -> None:
     before_metrics = getattr(result, "before_metrics")
     after_metrics = getattr(result, "after_metrics")
+    generalization_eval = eval_label != "train"
+    warnings = []
+    if not generalization_eval:
+        warnings.append(
+            "No held-out eval corpus was provided; ranking evaluation uses train cases and is not a generalization estimate."
+        )
     payload = {
         "corpus": corpus_label,
         "eval_corpus": eval_label,
+        "distractor_policy": distractor_policy,
+        "eval_split": "held_out" if generalization_eval else "train",
+        "generalization_eval": generalization_eval,
+        "warnings": warnings,
         "train_case_count": len(getattr(result, "train_cases")),
         "eval_case_count": len(getattr(result, "eval_cases")),
         "training": _training_result_to_dict(
@@ -216,13 +301,25 @@ def _training_result_to_dict(
         "seed": training_config.seed,
         "initial_loss": getattr(result, "initial_loss", None),
         "final_loss": getattr(result, "final_loss", None),
+        "initial_step_loss": getattr(result, "initial_step_loss", getattr(result, "initial_loss", None)),
+        "final_step_loss": getattr(result, "final_step_loss", getattr(result, "final_loss", None)),
         "best_loss": getattr(result, "best_loss", None),
+        "best_step_loss": getattr(result, "best_step_loss", getattr(result, "best_loss", None)),
         "loss_reduction": getattr(result, "loss_reduction", None),
         "loss_reduction_ratio": getattr(result, "loss_reduction_ratio", None),
+        "step_loss_reduction": getattr(result, "step_loss_reduction", getattr(result, "loss_reduction", None)),
+        "step_loss_reduction_ratio": getattr(
+            result,
+            "step_loss_reduction_ratio",
+            getattr(result, "loss_reduction_ratio", None),
+        ),
         "initial_train_loss": getattr(result, "initial_train_loss", None),
         "final_train_loss": getattr(result, "final_train_loss", None),
         "initial_eval_loss": getattr(result, "initial_eval_loss", None),
         "final_eval_loss": getattr(result, "final_eval_loss", None),
+        "eval_split": getattr(result, "eval_split", None),
+        "generalization_eval": getattr(result, "generalization_eval", None),
+        "warnings": list(getattr(result, "warnings", ())),
     }
 
 

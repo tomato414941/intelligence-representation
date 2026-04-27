@@ -72,6 +72,10 @@ src/intrep/gpt_model.py
 src/intrep/gpt_training.py
 src/intrep/train_gpt.py
 src/intrep/symbolic_to_natural_evaluation.py
+src/intrep/next_observation_cases.py
+src/intrep/next_observation_ranking.py
+src/intrep/next_observation_evaluation.py
+src/intrep/evaluate_next_observation.py
 src/intrep/run_summary.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
@@ -113,6 +117,8 @@ small decoder-only GPT training runs
 byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world
 environment episodes in symbolic and natural-language renderings
+generated environment train/eval slices selected through the evaluation CLI
+same-modality hard distractors for next-observation ranking by default
 loss curves and simple eval before architecture expansion
 existing symbolic benchmarks as support, not the main path
 ```
