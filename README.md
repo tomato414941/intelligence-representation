@@ -109,6 +109,7 @@ Read these first:
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
+- [Experiment 001](docs/experiment-001.md)
 - [Current Results](docs/current-results.md)
 - [RunPod Training Notes](docs/runpod.md)
 
