@@ -1,54 +1,33 @@
 from __future__ import annotations
 
-from intrep.benchmark import run_benchmark
+from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt
+from intrep.mixed_corpus import default_mixed_documents
+from intrep.mixed_corpus_evaluation import evaluate_mixed_corpus_pairing
 
 
 def main() -> None:
-    result = run_benchmark()
-
-    print("intrep prototype demo")
-    print(
-        "benchmark:"
-        f" train={result.train_size}"
-        f" test={len(result.frequency_summary.results)}"
-        f" rule_accuracy={result.rule_accuracy:.2f}"
-        f" frequency_accuracy={result.frequency_accuracy:.2f}"
-        f" state_aware_accuracy={result.state_aware_accuracy:.2f}"
-        f" transformer_ready_accuracy={result.transformer_ready_accuracy:.2f}"
-        f" sequence_feature_accuracy={result.sequence_feature_accuracy:.2f}"
-        f" tiny_transformer_accuracy={result.tiny_transformer_accuracy:.2f}"
+    documents = default_mixed_documents()
+    coverage = evaluate_mixed_corpus_pairing(documents)
+    result = train_mixed_gpt(
+        documents=documents,
+        training_config=GPTTrainingConfig(max_steps=5),
     )
-    for benchmark_slice in result.slices:
-        print(
-            "slice:"
-            f" name={benchmark_slice.name}"
-            f" cases={benchmark_slice.case_count}"
-            f" frequency_accuracy={benchmark_slice.frequency_summary.accuracy:.2f}"
-            f" frequency_unsupported={benchmark_slice.frequency_summary.unsupported_rate:.2f}"
-            f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
-            f" state_aware_unsupported={benchmark_slice.state_aware_summary.unsupported_rate:.2f}"
-            f" transformer_ready_accuracy={benchmark_slice.transformer_ready_summary.accuracy:.2f}"
-            f" sequence_feature_accuracy={benchmark_slice.sequence_feature_summary.accuracy:.2f}"
-            f" tiny_transformer_accuracy={benchmark_slice.tiny_transformer_summary.accuracy:.2f}"
-        )
-    print(f"generated: train={result.generated_train_size}")
-    for benchmark_slice in result.generated_slices:
-        print(
-            "generated_slice:"
-            f" name={benchmark_slice.name}"
-            f" cases={benchmark_slice.case_count}"
-            f" frequency_accuracy={benchmark_slice.frequency_summary.accuracy:.2f}"
-            f" sequence_feature_accuracy={benchmark_slice.sequence_feature_summary.accuracy:.2f}"
-            f" tiny_transformer_accuracy={benchmark_slice.tiny_transformer_summary.accuracy:.2f}"
-            f" state_aware_accuracy={benchmark_slice.state_aware_summary.accuracy:.2f}"
-        )
+
+    print("intrep mixed-gpt demo")
     print(
-        "prediction_error_update:"
-        f" case={result.update_result.case_name}"
-        f" error={result.update_result.prediction_error_type}"
-        f" before_correct={result.update_result.before_correct}"
-        f" after_correct={result.update_result.after_correct}"
-        f" training={result.update_result.training_size_before}->{result.update_result.training_size_after}"
+        "corpus:"
+        f" documents={len(documents)}"
+        f" environment_symbolic={coverage.environment_symbolic_count}"
+        f" environment_natural={coverage.environment_natural_count}"
+        f" paired_episodes={len(coverage.paired_episode_ids)}"
+    )
+    print(
+        "training:"
+        f" tokens={result.token_count}"
+        f" steps={result.steps}"
+        f" initial_loss={result.initial_loss:.4f}"
+        f" final_loss={result.final_loss:.4f}"
+        f" best_loss={result.best_loss:.4f}"
     )
 
 

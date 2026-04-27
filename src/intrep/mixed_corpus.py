@@ -12,6 +12,39 @@ class MixedDocument:
     content: str
 
 
+def generate_environment_document_pairs() -> list[MixedDocument]:
+    combinations = [
+        ("coin", "drawer", "table"),
+        ("map", "box", "desk"),
+        ("token", "case", "shelf"),
+    ]
+    documents: list[MixedDocument] = []
+    for index, (obj, container, location) in enumerate(combinations, start=1):
+        suffix = f"{index:03d}"
+        documents.extend(
+            [
+                MixedDocument(
+                    id=f"env_pair_symbolic_{suffix}",
+                    modality="environment_symbolic",
+                    content=(
+                        f"<obs> {obj} in {container} ; {container} at {location} ; "
+                        f"{container} closed <action> open {container} "
+                        f"<next_obs> {obj} visible at {location}"
+                    ),
+                ),
+                MixedDocument(
+                    id=f"env_pair_natural_{suffix}",
+                    modality="environment_natural",
+                    content=(
+                        f"The {obj} is in the {container} at the {location}. "
+                        f"Opening the {container} makes the {obj} visible at the {location}."
+                    ),
+                ),
+            ]
+        )
+    return documents
+
+
 def render_document(document: MixedDocument) -> str:
     _validate_renderable_document(document)
     return f"<doc type={document.modality} id={document.id}>\n{document.content}\n</doc>\n"
@@ -78,7 +111,7 @@ def _validate_renderable_document(document: MixedDocument) -> None:
 
 
 def default_mixed_documents() -> list[MixedDocument]:
-    return [
+    documents = [
         MixedDocument(
             id="ja_explain_001",
             modality="text",
@@ -120,3 +153,4 @@ def default_mixed_documents() -> list[MixedDocument]:
             content="[tool] action=open_box status=ok observation=key_visible",
         ),
     ]
+    return documents + generate_environment_document_pairs()

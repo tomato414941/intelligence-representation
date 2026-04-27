@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -38,6 +39,18 @@ def _loss_summary(result: object) -> str:
     )
 
 
+def _write_loss_history(path: Path, result: object) -> None:
+    payload = {
+        "steps": getattr(result, "steps"),
+        "token_count": getattr(result, "token_count"),
+        "initial_loss": getattr(result, "initial_loss"),
+        "final_loss": getattr(result, "final_loss"),
+        "best_loss": getattr(result, "best_loss"),
+        "loss_history": list(getattr(result, "loss_history")),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a tiny decoder-only GPT on mixed-world data.")
     parser.add_argument(
@@ -58,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--loss-summary",
         action="store_true",
         help="Print a compact one-line loss summary.",
+    )
+    parser.add_argument(
+        "--loss-history-path",
+        type=Path,
+        help="Write training loss history and summary metrics to a JSON file.",
     )
     return parser
 
@@ -100,6 +118,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     )
     if args.loss_summary:
         print(_loss_summary(result))
+    if args.loss_history_path is not None:
+        _write_loss_history(args.loss_history_path, result)
 
 
 if __name__ == "__main__":

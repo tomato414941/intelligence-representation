@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import json
+import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ class FakeTrainingResult:
     best_loss: float = 2.25
     loss_reduction: float = 1.5
     loss_reduction_ratio: float = 0.375
+    loss_history: tuple[float, ...] = (4.0, 3.0, 2.5)
 
 
 class TrainGPTCLITest(unittest.TestCase):
@@ -89,6 +92,32 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertIn(
             "loss initial=4.0000 final=2.5000 best=2.2500 delta=1.5000 ratio=37.50%",
             output.getvalue(),
+        )
+
+    def test_loss_history_path_writes_json(self) -> None:
+        def fake_train_mixed_gpt(*, documents=None, training_config):
+            return FakeTrainingResult()
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            loss_history_path = Path(temp_dir) / "loss-history.json"
+            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+                with redirect_stdout(output):
+                    train_gpt.main(["--loss-history-path", str(loss_history_path)])
+
+            payload = json.loads(loss_history_path.read_text(encoding="utf-8"))
+
+        self.assertIn("corpus=builtin tokens=123 steps=3", output.getvalue())
+        self.assertEqual(
+            payload,
+            {
+                "steps": 3,
+                "token_count": 123,
+                "initial_loss": 4.0,
+                "final_loss": 2.5,
+                "best_loss": 2.25,
+                "loss_history": [4.0, 3.0, 2.5],
+            },
         )
 
 

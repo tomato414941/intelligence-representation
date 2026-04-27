@@ -125,6 +125,8 @@ uv run python -m unittest
 uv run python -m intrep.demo
 ```
 
+The demo now runs the mixed-world GPT smoke path. The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast.
+
 ## Train Mixed GPT
 
 ```sh

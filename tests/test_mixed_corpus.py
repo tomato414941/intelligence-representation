@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from intrep.mixed_corpus import (
     MixedDocument,
     default_mixed_documents,
+    generate_environment_document_pairs,
     load_mixed_documents_jsonl,
     render_corpus,
     write_mixed_documents_jsonl,
@@ -22,6 +23,36 @@ class MixedCorpusTest(unittest.TestCase):
         self.assertIn("environment_natural", modalities)
         self.assertIn("code", modalities)
         self.assertIn("log", modalities)
+
+    def test_generated_environment_pairs_have_stable_ids_and_modalities(self) -> None:
+        documents = generate_environment_document_pairs()
+
+        self.assertEqual(
+            [(document.id, document.modality) for document in documents],
+            [
+                ("env_pair_symbolic_001", "environment_symbolic"),
+                ("env_pair_natural_001", "environment_natural"),
+                ("env_pair_symbolic_002", "environment_symbolic"),
+                ("env_pair_natural_002", "environment_natural"),
+                ("env_pair_symbolic_003", "environment_symbolic"),
+                ("env_pair_natural_003", "environment_natural"),
+            ],
+        )
+
+    def test_generated_environment_pairs_cover_object_container_location(self) -> None:
+        documents = generate_environment_document_pairs()
+
+        for symbolic, natural in zip(documents[::2], documents[1::2]):
+            self.assertEqual(symbolic.modality, "environment_symbolic")
+            self.assertEqual(natural.modality, "environment_natural")
+            self.assertEqual(
+                symbolic.id.replace("env_pair_symbolic_", ""),
+                natural.id.replace("env_pair_natural_", ""),
+            )
+            self.assertIn("<obs>", symbolic.content)
+            self.assertIn("<action>", symbolic.content)
+            self.assertIn("<next_obs>", symbolic.content)
+            self.assertIn("Opening the", natural.content)
 
     def test_render_corpus_uses_lightweight_tags(self) -> None:
         rendered = render_corpus(default_mixed_documents())

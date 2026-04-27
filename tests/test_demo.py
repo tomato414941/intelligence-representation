@@ -6,24 +6,21 @@ from intrep.demo import main
 
 
 class DemoTest(unittest.TestCase):
-    def test_demo_prints_core_prototype_results(self) -> None:
+    def test_demo_prints_mixed_gpt_results(self) -> None:
         output = io.StringIO()
 
         with redirect_stdout(output):
             main()
 
         text = output.getvalue()
-        self.assertIn("intrep prototype demo", text)
-        self.assertIn("frequency_accuracy=0.53", text)
-        self.assertIn("state_aware_accuracy=1.00", text)
-        self.assertIn("transformer_ready_accuracy=", text)
-        self.assertIn("sequence_feature_accuracy=0.40", text)
-        self.assertIn("tiny_transformer_accuracy=0.40", text)
-        self.assertIn("name=missing_link", text)
-        self.assertIn("generated: train=12", text)
-        self.assertIn("generated_held_out_object", text)
-        self.assertIn("state_aware_unsupported=1.00", text)
-        self.assertIn("after_correct=True", text)
+        self.assertIn("intrep mixed-gpt demo", text)
+        self.assertIn("corpus: documents=", text)
+        self.assertIn("environment_symbolic=", text)
+        self.assertIn("environment_natural=", text)
+        self.assertIn("paired_episodes=", text)
+        self.assertIn("training: tokens=", text)
+        self.assertIn("initial_loss=", text)
+        self.assertIn("final_loss=", text)
 
 
 if __name__ == "__main__":
