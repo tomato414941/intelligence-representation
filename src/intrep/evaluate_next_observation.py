@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-stride", type=int)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--metrics-path",
+        type=Path,
+        help="Write learning and ranking evaluation metrics to a JSON file.",
+    )
     return parser
 
 
@@ -102,6 +108,8 @@ def main(
 
     eval_label = eval_corpus.label if eval_corpus is not None else "train"
     print("intrep next-observation evaluation")
+    top1_delta = result.after_metrics.top1_accuracy - result.before_metrics.top1_accuracy
+    margin_delta = result.after_metrics.mean_margin - result.before_metrics.mean_margin
     print(
         f"corpus={corpus.label}"
         f" eval_corpus={eval_label}"
@@ -111,9 +119,13 @@ def main(
         f" steps={result.training_result.steps}"
         f" before_top1_accuracy={result.before_metrics.top1_accuracy:.4f}"
         f" after_top1_accuracy={result.after_metrics.top1_accuracy:.4f}"
+        f" top1_delta={top1_delta:.4f}"
         f" before_margin={result.before_metrics.mean_margin:.4f}"
         f" after_margin={result.after_metrics.mean_margin:.4f}"
+        f" margin_delta={margin_delta:.4f}"
     )
+    if args.metrics_path is not None:
+        _write_metrics(args.metrics_path, result, corpus.label, eval_label, training_config)
 
 
 def _select_corpus(
@@ -158,6 +170,87 @@ def evaluate_next_observation_learning(
     )
 
     return evaluate(documents, eval_documents=eval_documents, training_config=training_config)
+
+
+def _write_metrics(
+    path: Path,
+    result: object,
+    corpus_label: str,
+    eval_label: str,
+    training_config: GPTTrainingConfig,
+) -> None:
+    before_metrics = getattr(result, "before_metrics")
+    after_metrics = getattr(result, "after_metrics")
+    payload = {
+        "corpus": corpus_label,
+        "eval_corpus": eval_label,
+        "train_case_count": len(getattr(result, "train_cases")),
+        "eval_case_count": len(getattr(result, "eval_cases")),
+        "training": _training_result_to_dict(
+            getattr(result, "training_result"),
+            training_config,
+        ),
+        "ranking": {
+            "before": _ranking_summary_to_dict(result, "before", before_metrics),
+            "after": _ranking_summary_to_dict(result, "after", after_metrics),
+        },
+        "deltas": {
+            "top1_accuracy": after_metrics.top1_accuracy - before_metrics.top1_accuracy,
+            "mean_margin": after_metrics.mean_margin - before_metrics.mean_margin,
+        },
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _training_result_to_dict(
+    result: object,
+    training_config: GPTTrainingConfig,
+) -> dict[str, object]:
+    return {
+        "steps": getattr(result, "steps"),
+        "token_count": getattr(result, "token_count"),
+        "context_length": training_config.context_length,
+        "batch_size": training_config.batch_size,
+        "batch_stride": training_config.batch_stride,
+        "learning_rate": training_config.learning_rate,
+        "seed": training_config.seed,
+        "initial_loss": getattr(result, "initial_loss", None),
+        "final_loss": getattr(result, "final_loss", None),
+        "best_loss": getattr(result, "best_loss", None),
+        "loss_reduction": getattr(result, "loss_reduction", None),
+        "loss_reduction_ratio": getattr(result, "loss_reduction_ratio", None),
+        "initial_train_loss": getattr(result, "initial_train_loss", None),
+        "final_train_loss": getattr(result, "final_train_loss", None),
+        "initial_eval_loss": getattr(result, "initial_eval_loss", None),
+        "final_eval_loss": getattr(result, "final_eval_loss", None),
+    }
+
+
+def _ranking_summary_to_dict(
+    result: object,
+    prefix: str,
+    fallback_metrics: object,
+) -> dict[str, object]:
+    summary = getattr(result, f"{prefix}_summary", None)
+    if summary is None:
+        return {"overall": _ranking_metrics_to_dict(fallback_metrics)}
+    return {
+        "overall": _ranking_metrics_to_dict(getattr(summary, "overall")),
+        "per_modality": {
+            modality: _ranking_metrics_to_dict(metrics)
+            for modality, metrics in getattr(summary, "per_modality").items()
+        },
+        "modality_counts": dict(getattr(summary, "modality_counts")),
+    }
+
+
+def _ranking_metrics_to_dict(metrics: object) -> dict[str, float]:
+    return {
+        "top1_accuracy": getattr(metrics, "top1_accuracy"),
+        "mean_positive_loss": getattr(metrics, "mean_positive_loss"),
+        "mean_best_distractor_loss": getattr(metrics, "mean_best_distractor_loss"),
+        "mean_margin": getattr(metrics, "mean_margin"),
+    }
 
 
 if __name__ == "__main__":
