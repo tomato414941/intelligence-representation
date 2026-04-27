@@ -69,6 +69,7 @@ src/intrep/mixed_corpus.py
 src/intrep/gpt_model.py
 src/intrep/gpt_training.py
 src/intrep/train_gpt.py
+src/intrep/symbolic_to_natural_evaluation.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
 ```

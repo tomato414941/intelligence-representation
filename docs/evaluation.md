@@ -86,6 +86,10 @@ tests/test_gpt_training.py:
 tests/test_pair_ranking.py:
   checks symbolic-to-natural continuation ranking metrics
 
+tests/test_symbolic_to_natural_evaluation.py:
+  checks before/after GPT symbolic-to-natural ranking evaluation,
+  including held-out environment pair documents
+
 tests/test_next_observation_cases.py:
   checks environment-symbolic and grid document extraction into next-observation cases
 

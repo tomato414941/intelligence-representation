@@ -90,21 +90,19 @@ def torch_next_token_continuation_loss(
 
     parameter = next(iter(model.parameters()), None) if hasattr(model, "parameters") else None
     device = parameter.device if parameter is not None else torch.device("cpu")
-    input_ids = torch.tensor([token_ids[:-1]], dtype=torch.long, device=device)
-    targets = torch.tensor(token_ids[1:], dtype=torch.long, device=device)
+    context_length = int(getattr(getattr(model, "config", None), "context_length", len(token_ids)))
 
     try:
         with torch.no_grad():
-            logits = model(input_ids)[0]
-            continuation_start = len(prefix_ids) - 1
-            continuation_logits = logits[continuation_start:]
-            continuation_targets = targets[continuation_start:]
-            losses = F.cross_entropy(
-                continuation_logits,
-                continuation_targets,
-                reduction="none",
-            )
-            return float(losses.mean().item())
+            losses = []
+            for target_index in range(len(prefix_ids), len(token_ids)):
+                window_start = max(0, target_index - context_length)
+                window = token_ids[window_start:target_index]
+                input_ids = torch.tensor([window], dtype=torch.long, device=device)
+                target = torch.tensor([token_ids[target_index]], dtype=torch.long, device=device)
+                logits = model(input_ids)[0, -1:]
+                losses.append(F.cross_entropy(logits, target, reduction="none"))
+            return float(torch.cat(losses).mean().item())
     finally:
         if was_training and hasattr(model, "train"):
             model.train()

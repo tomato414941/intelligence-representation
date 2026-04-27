@@ -123,6 +123,14 @@ rank by continuation loss
 
 This is a diagnostic for whether the model assigns lower loss to the paired natural-language description. It is not a capability claim.
 
+The corresponding before/after training evaluator supports held-out environment pairs:
+
+```text
+train documents = mixed corpus without selected environment pairs
+eval documents = held-out symbolic/natural environment pairs
+report untrained vs trained symbolic-to-natural ranking metrics
+```
+
 A second diagnostic extracts mixed next-observation cases:
 
 ```text
