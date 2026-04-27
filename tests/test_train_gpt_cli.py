@@ -23,15 +23,18 @@ class FakeTrainingResult:
     loss_reduction: float = 1.5
     loss_reduction_ratio: float = 0.375
     loss_history: tuple[float, ...] = (4.0, 3.0, 2.5)
+    initial_eval_loss: float | None = 4.5
+    final_eval_loss: float | None = 3.5
 
 
 class TrainGPTCLITest(unittest.TestCase):
     def test_default_uses_builtin_corpus(self) -> None:
         captured_documents = object()
 
-        def fake_train_mixed_gpt(*, documents=None, training_config):
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
             nonlocal captured_documents
             captured_documents = documents
+            self.assertIsNone(eval_documents)
             self.assertEqual(training_config.max_steps, 3)
             return FakeTrainingResult()
 
@@ -41,7 +44,7 @@ class TrainGPTCLITest(unittest.TestCase):
                 train_gpt.main(["--max-steps", "3"])
 
         self.assertIsNone(captured_documents)
-        self.assertIn("corpus=builtin tokens=123 steps=3", output.getvalue())
+        self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
 
     def test_file_corpus_uses_document_loader(self) -> None:
         loaded_documents = [MixedDocument(id="custom", modality="text", content="hello")]
@@ -53,9 +56,10 @@ class TrainGPTCLITest(unittest.TestCase):
             captured_path = Path(path)
             return loaded_documents
 
-        def fake_train_mixed_gpt(*, documents=None, training_config):
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
             nonlocal captured_documents
             captured_documents = documents
+            self.assertIsNone(eval_documents)
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -80,8 +84,44 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertNotEqual(raised.exception.code, 0)
         self.assertIn("--corpus-path is required", error_output.getvalue())
 
+    def test_eval_corpus_uses_document_loader(self) -> None:
+        train_documents = [MixedDocument(id="train", modality="text", content="train")]
+        eval_documents = [MixedDocument(id="eval", modality="text", content="eval")]
+        captured_eval_documents: list[MixedDocument] | None = None
+
+        def fake_loader(path: str | Path) -> list[MixedDocument]:
+            if Path(path) == Path("train.jsonl"):
+                return train_documents
+            if Path(path) == Path("eval.jsonl"):
+                return eval_documents
+            raise AssertionError(path)
+
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+            nonlocal captured_eval_documents
+            self.assertEqual(documents, train_documents)
+            captured_eval_documents = eval_documents
+            return FakeTrainingResult()
+
+        output = io.StringIO()
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stdout(output):
+                train_gpt.main(
+                    [
+                        "--corpus",
+                        "file",
+                        "--corpus-path",
+                        "train.jsonl",
+                        "--eval-corpus-path",
+                        "eval.jsonl",
+                    ],
+                    document_loader=fake_loader,
+                )
+
+        self.assertEqual(captured_eval_documents, eval_documents)
+        self.assertIn("eval_corpus=eval.jsonl", output.getvalue())
+
     def test_loss_summary_prints_compact_line(self) -> None:
-        def fake_train_mixed_gpt(*, documents=None, training_config):
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -90,12 +130,13 @@ class TrainGPTCLITest(unittest.TestCase):
                 train_gpt.main(["--loss-summary"])
 
         self.assertIn(
-            "loss initial=4.0000 final=2.5000 best=2.2500 delta=1.5000 ratio=37.50%",
+            "loss initial=4.0000 final=2.5000 best=2.2500 delta=1.5000 ratio=37.50%"
+            " eval_initial=4.5000 eval_final=3.5000",
             output.getvalue(),
         )
 
     def test_loss_history_path_writes_json(self) -> None:
-        def fake_train_mixed_gpt(*, documents=None, training_config):
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -107,7 +148,7 @@ class TrainGPTCLITest(unittest.TestCase):
 
             payload = json.loads(loss_history_path.read_text(encoding="utf-8"))
 
-        self.assertIn("corpus=builtin tokens=123 steps=3", output.getvalue())
+        self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
         self.assertEqual(
             payload,
             {
@@ -117,6 +158,8 @@ class TrainGPTCLITest(unittest.TestCase):
                 "final_loss": 2.5,
                 "best_loss": 2.25,
                 "loss_history": [4.0, 3.0, 2.5],
+                "initial_eval_loss": 4.5,
+                "final_eval_loss": 3.5,
             },
         )
 

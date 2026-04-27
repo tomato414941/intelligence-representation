@@ -30,13 +30,18 @@ def _loss_summary(result: object) -> str:
         "loss_reduction_ratio",
         0.0 if initial_loss == 0.0 else loss_reduction / initial_loss,
     )
-    return (
+    summary = (
         f"loss initial={initial_loss:.4f}"
         f" final={final_loss:.4f}"
         f" best={best_loss:.4f}"
         f" delta={loss_reduction:.4f}"
         f" ratio={loss_reduction_ratio:.2%}"
     )
+    initial_eval_loss = getattr(result, "initial_eval_loss", None)
+    final_eval_loss = getattr(result, "final_eval_loss", None)
+    if initial_eval_loss is not None and final_eval_loss is not None:
+        summary += f" eval_initial={initial_eval_loss:.4f} eval_final={final_eval_loss:.4f}"
+    return summary
 
 
 def _write_loss_history(path: Path, result: object) -> None:
@@ -47,6 +52,8 @@ def _write_loss_history(path: Path, result: object) -> None:
         "final_loss": getattr(result, "final_loss"),
         "best_loss": getattr(result, "best_loss"),
         "loss_history": list(getattr(result, "loss_history")),
+        "initial_eval_loss": getattr(result, "initial_eval_loss", None),
+        "final_eval_loss": getattr(result, "final_eval_loss", None),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -63,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--corpus-path",
         type=Path,
         help="Path to a mixed-document JSONL corpus when --corpus=file.",
+    )
+    parser.add_argument(
+        "--eval-corpus-path",
+        type=Path,
+        help="Optional mixed-document JSONL corpus for held-out loss evaluation.",
     )
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--context-length", type=int, default=64)
@@ -85,11 +97,13 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     args = parser.parse_args(argv)
 
     documents = None
+    eval_documents = None
     corpus_label = "builtin"
+    eval_label = "none"
+    loader = document_loader or _load_file_documents
     if args.corpus == "file":
         if args.corpus_path is None:
             parser.error("--corpus-path is required when --corpus=file")
-        loader = document_loader or _load_file_documents
         try:
             documents = loader(args.corpus_path)
         except RuntimeError as error:
@@ -100,8 +114,18 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     elif args.corpus_path is not None:
         parser.error("--corpus-path can only be used with --corpus=file")
 
+    if args.eval_corpus_path is not None:
+        try:
+            eval_documents = loader(args.eval_corpus_path)
+        except RuntimeError as error:
+            parser.error(str(error))
+        except (OSError, ValueError) as error:
+            parser.error(f"could not load eval corpus from {args.eval_corpus_path}: {error}")
+        eval_label = str(args.eval_corpus_path)
+
     result = train_mixed_gpt(
         documents=documents,
+        eval_documents=eval_documents,
         training_config=GPTTrainingConfig(
             max_steps=args.max_steps,
             context_length=args.context_length,
@@ -111,6 +135,7 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     print("intrep mixed-gpt training")
     print(
         f"corpus={corpus_label}"
+        f" eval_corpus={eval_label}"
         f" tokens={result.token_count}"
         f" steps={result.steps}"
         f" initial_loss={result.initial_loss:.4f}"

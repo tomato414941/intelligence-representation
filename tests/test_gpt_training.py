@@ -5,7 +5,7 @@ import torch
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig
 from intrep.gpt_training import GPTTrainingConfig, language_model_batches, train_mixed_gpt
-from intrep.mixed_corpus import default_mixed_documents, render_corpus
+from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
 
 
 class GPTTrainingTest(unittest.TestCase):
@@ -62,10 +62,57 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.best_loss, min(result.loss_history))
         self.assertLess(result.best_loss, result.initial_loss)
         self.assertEqual(result.loss_reduction, result.initial_loss - result.final_loss)
+        self.assertIsNone(result.initial_eval_loss)
+        self.assertIsNone(result.final_eval_loss)
+
+    def test_training_reports_held_out_eval_loss(self) -> None:
+        train_documents = [
+            MixedDocument(
+                id="train_tiny_001",
+                modality="text",
+                content="alpha beta gamma alpha beta gamma alpha beta gamma",
+            )
+        ]
+        eval_documents = [
+            MixedDocument(
+                id="eval_tiny_001",
+                modality="text",
+                content="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
+            )
+        ]
+
+        result = train_mixed_gpt(
+            documents=train_documents,
+            eval_documents=eval_documents,
+            training_config=GPTTrainingConfig(
+                context_length=8,
+                batch_size=2,
+                max_steps=3,
+                learning_rate=0.005,
+                seed=13,
+            ),
+            model_config=GPTConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=8,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            ),
+        )
+
+        self.assertIsNotNone(result.initial_eval_loss)
+        self.assertIsNotNone(result.final_eval_loss)
+        self.assertGreater(result.initial_eval_loss, 0.0)
+        self.assertGreater(result.final_eval_loss, 0.0)
+        self.assertNotEqual(result.initial_eval_loss, result.final_eval_loss)
 
     def test_rejects_empty_documents(self) -> None:
         with self.assertRaisesRegex(ValueError, "documents must not be empty"):
             train_mixed_gpt(documents=[])
+
+    def test_rejects_empty_eval_documents(self) -> None:
+        with self.assertRaisesRegex(ValueError, "eval_documents must not be empty"):
+            train_mixed_gpt(documents=default_mixed_documents(), eval_documents=[])
 
     def test_rejects_invalid_training_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "batch_size must be positive"):

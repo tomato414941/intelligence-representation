@@ -28,6 +28,8 @@ treated as parts of the same sequence-learning world?
 
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
 
+The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned mixed data can expand without turning the codebase into a broad taxonomy.
+
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
 ## Project Map
@@ -125,7 +127,7 @@ uv run python -m unittest
 uv run python -m intrep.demo
 ```
 
-The demo now runs the mixed-world GPT smoke path. The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast.
+The demo now runs the mixed-GPT mainline on the built-in smoke corpus. The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
 
 ## Train Mixed GPT
 
@@ -133,8 +135,12 @@ The demo now runs the mixed-world GPT smoke path. The older symbolic benchmark r
 uv run python -m intrep.train_gpt --max-steps 20
 ```
 
+With no corpus flags, this uses the built-in smoke corpus only.
+
 To train from a JSONL corpus with records containing `id`, `modality`, and `content`:
 
 ```sh
 uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jsonl --loss-summary
 ```
+
+JSONL file corpora are the intended path for real corpus growth.

@@ -26,6 +26,8 @@ class GPTTrainingResult:
     steps: int
     token_count: int
     loss_history: tuple[float, ...] = ()
+    initial_eval_loss: float | None = None
+    final_eval_loss: float | None = None
 
     @property
     def best_loss(self) -> float:
@@ -48,6 +50,7 @@ def train_mixed_gpt(
     documents: list[MixedDocument] | None = None,
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
+    eval_documents: list[MixedDocument] | None = None,
 ) -> GPTTrainingResult:
     config = training_config or GPTTrainingConfig()
     _validate_training_config(config)
@@ -63,6 +66,17 @@ def train_mixed_gpt(
         context_length=config.context_length,
         batch_size=config.batch_size,
     )
+    eval_inputs: torch.Tensor | None = None
+    eval_targets: torch.Tensor | None = None
+    if eval_documents is not None:
+        if not eval_documents:
+            raise ValueError("eval_documents must not be empty")
+        eval_token_ids = tokenizer.encode(render_corpus(eval_documents))
+        eval_inputs, eval_targets = language_model_batches(
+            token_ids=eval_token_ids,
+            context_length=config.context_length,
+            batch_size=config.batch_size,
+        )
     gpt_config = model_config or GPTConfig(
         vocab_size=tokenizer.vocab_size,
         context_length=config.context_length,
@@ -77,6 +91,7 @@ def train_mixed_gpt(
     initial_loss: float | None = None
     final_loss = 0.0
     loss_history: list[float] = []
+    initial_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
 
     model.train()
     for step in range(config.max_steps):
@@ -93,13 +108,39 @@ def train_mixed_gpt(
         loss.backward()
         optimizer.step()
 
+    final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
+
     return GPTTrainingResult(
         initial_loss=initial_loss if initial_loss is not None else 0.0,
         final_loss=final_loss,
         steps=config.max_steps,
         token_count=len(token_ids),
         loss_history=tuple(loss_history),
+        initial_eval_loss=initial_eval_loss,
+        final_eval_loss=final_eval_loss,
     )
+
+
+def _evaluate_loss(
+    model: DecoderOnlyGPT,
+    loss_fn: nn.CrossEntropyLoss,
+    inputs: torch.Tensor | None,
+    targets: torch.Tensor | None,
+) -> float | None:
+    if inputs is None or targets is None:
+        return None
+
+    was_training = model.training
+    model.eval()
+    total_loss = 0.0
+    with torch.no_grad():
+        for batch_inputs, batch_targets in zip(inputs, targets, strict=True):
+            logits = model(batch_inputs)
+            loss = loss_fn(logits.reshape(-1, logits.size(-1)), batch_targets.reshape(-1))
+            total_loss += float(loss.item())
+    if was_training:
+        model.train()
+    return total_loss / inputs.size(0)
 
 
 def _validate_training_config(config: GPTTrainingConfig) -> None:

@@ -18,6 +18,8 @@ logs / tool-like outputs
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
 
+The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned mixed data can be added without expanding code-level schemas or taxonomies.
+
 Historical experiment code and notes live under:
 
 ```text
@@ -81,9 +83,17 @@ intrep mixed-gpt training
 corpus=builtin tokens=1990 steps=20 initial_loss=... final_loss=...
 ```
 
-The important condition is not high capability. It is that an untrained decoder-only GPT can consume the mixed corpus and reduce next-token loss in a short run.
+The important condition is not high capability. It is that an untrained decoder-only GPT can consume the built-in smoke corpus and reduce next-token loss in a short run.
 
-## Current Benchmark
+The corresponding real-data path is:
+
+```sh
+uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jsonl --loss-summary
+```
+
+JSONL file corpora are the intended place for the main corpus to grow.
+
+## Support Benchmark
 
 The old symbolic benchmark is still executable as `intrep.benchmark.run_benchmark()`.
 
