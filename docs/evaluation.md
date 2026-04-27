@@ -30,6 +30,7 @@ loss history / best loss
 train corpus average loss
 held-out eval corpus loss
 symbolic-to-natural pair ranking accuracy and margin
+mixed next-observation ranking accuracy and margin
 builtin-grid loss reduction smoke check
 ```
 
@@ -85,6 +86,12 @@ tests/test_gpt_training.py:
 tests/test_pair_ranking.py:
   checks symbolic-to-natural continuation ranking metrics
 
+tests/test_next_observation_cases.py:
+  checks environment-symbolic and grid document extraction into next-observation cases
+
+tests/test_next_observation_ranking.py:
+  checks mixed next-observation continuation ranking without assuming a grid-only corpus
+
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
 
@@ -109,6 +116,7 @@ JSONL file corpus loading and growth
 decoder-only GPT training behavior
 loss reduction in short runs
 symbolic-to-natural environment-text correspondence evaluation
+mixed next-observation ranking evaluation
 support benchmark clarity
 ```
 
