@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import ipaddress
 from pathlib import Path
 import re
@@ -105,6 +106,7 @@ def write_fetched_public_text_jsonl(
     if manifest_path is not None:
         from intrep.source_manifest import SourceManifestRecord, write_source_manifest_jsonl
 
+        retrieved_at = datetime.now(UTC).isoformat()
         write_source_manifest_jsonl(
             manifest_path,
             [
@@ -115,6 +117,7 @@ def write_fetched_public_text_jsonl(
                     license_hint="",
                     adapter="public-text-url",
                     modality=document.modality,
+                    retrieved_at=retrieved_at,
                 )
                 for document, url in zip(documents, url_list, strict=True)
             ],

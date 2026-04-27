@@ -25,8 +25,13 @@ EVENT_ROLES = frozenset(role.value for role in EventRole)
 
 @dataclass(frozen=True, init=False)
 class TypedEvent:
+    id: str
     role: EventRole
+    modality: str
     content: str
+    episode_id: str | None = None
+    time_index: int | None = None
+    source_id: str | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
 
     def __init__(
@@ -34,56 +39,60 @@ class TypedEvent:
         *,
         role: EventRole | str,
         content: str,
-        metadata: Mapping[str, object] | None = None,
-        id: str | None = None,
-        modality: str | None = None,
-        time_index: int | None = None,
+        id: str = "",
+        modality: str = "",
         episode_id: str | None = None,
+        time_index: int | None = None,
         source_id: str | None = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> None:
         if metadata is not None and not isinstance(metadata, Mapping):
             raise ValueError("metadata must be a mapping")
-        merged_metadata = dict(metadata or {})
-        for key, value in (
-            ("id", id),
-            ("modality", modality),
-            ("time_index", time_index),
-            ("episode_id", episode_id),
-            ("source_id", source_id),
-        ):
-            if value is not None:
-                merged_metadata.setdefault(key, value)
+        auxiliary_metadata = dict(metadata or {})
+        metadata_id = auxiliary_metadata.pop("id", "")
+        metadata_modality = auxiliary_metadata.pop("modality", "")
+        metadata_type = auxiliary_metadata.pop("type", "")
+        metadata_episode_id = auxiliary_metadata.pop("episode_id", None)
+        metadata_time_index = auxiliary_metadata.pop("time_index", None)
+        metadata_source_id = auxiliary_metadata.pop("source_id", None)
+
+        resolved_id = id or str(metadata_id)
+        resolved_modality = modality or str(metadata_modality or metadata_type)
+        resolved_episode_id = (
+            episode_id if episode_id is not None else _optional_string(metadata_episode_id)
+        )
+        resolved_time_index = time_index
+        if resolved_time_index is None and isinstance(metadata_time_index, int):
+            resolved_time_index = metadata_time_index
+        resolved_source_id = (
+            source_id if source_id is not None else _optional_string(metadata_source_id)
+        )
+
+        if not isinstance(resolved_id, str) or not resolved_id:
+            raise ValueError("event id must be a non-empty string")
+        if not isinstance(resolved_modality, str) or not resolved_modality:
+            raise ValueError("event modality must be a non-empty string")
+        if not isinstance(content, str):
+            raise ValueError("event content must be a string")
         try:
             rendered_role = EventRole(role)
         except ValueError as error:
             roles = ", ".join(sorted(EVENT_ROLES))
             raise ValueError(f"event role must be one of: {roles}") from error
+        if resolved_episode_id is not None and not isinstance(resolved_episode_id, str):
+            raise ValueError("event episode_id must be a string or None")
+        if resolved_time_index is not None and not isinstance(resolved_time_index, int):
+            raise ValueError("event time_index must be an int or None")
+        if resolved_source_id is not None and not isinstance(resolved_source_id, str):
+            raise ValueError("event source_id must be a string or None")
+        object.__setattr__(self, "id", resolved_id)
         object.__setattr__(self, "role", rendered_role)
+        object.__setattr__(self, "modality", resolved_modality)
         object.__setattr__(self, "content", content)
-        object.__setattr__(self, "metadata", merged_metadata)
-
-    @property
-    def id(self) -> str:
-        return str(self.metadata.get("id", ""))
-
-    @property
-    def modality(self) -> str:
-        return str(self.metadata.get("modality", self.metadata.get("type", "")))
-
-    @property
-    def time_index(self) -> int | None:
-        value = self.metadata.get("time_index")
-        return value if isinstance(value, int) else None
-
-    @property
-    def episode_id(self) -> str | None:
-        value = self.metadata.get("episode_id")
-        return str(value) if value is not None else None
-
-    @property
-    def source_id(self) -> str | None:
-        value = self.metadata.get("source_id")
-        return str(value) if value is not None else None
+        object.__setattr__(self, "episode_id", resolved_episode_id)
+        object.__setattr__(self, "time_index", resolved_time_index)
+        object.__setattr__(self, "source_id", resolved_source_id)
+        object.__setattr__(self, "metadata", auxiliary_metadata)
 
 
 def render_typed_event(event: TypedEvent) -> str:
@@ -98,15 +107,16 @@ def render_typed_event(event: TypedEvent) -> str:
         attributes.append(("t", str(event.time_index)))
     if event.source_id is not None:
         attributes.append(("source", event.source_id))
-    rendered_names = {name for name, _ in attributes}
     for key, value in sorted(event.metadata.items()):
-        if key in {"id", "modality", "episode_id", "time_index", "source_id", "type"}:
-            continue
         attributes.append((_render_attribute_name(key), str(value)))
     rendered_attributes = " ".join(
-        f'{name}="{_escape_tag_attribute(value)}"' for name, value in attributes if name not in rendered_names or name in {"id", "role", "modality", "episode", "t", "source"}
+        f'{name}="{_escape_tag_attribute(value)}"' for name, value in attributes
     )
     return f"<EVENT {rendered_attributes}>\n{_validate_content(event.content)}</EVENT>\n"
+
+
+def _optional_string(value: object) -> str | None:
+    return str(value) if value is not None else None
 
 
 def _render_attribute_name(name: str) -> str:

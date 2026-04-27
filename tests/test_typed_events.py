@@ -17,8 +17,33 @@ class TypedEventTest(unittest.TestCase):
         )
 
         self.assertEqual(event.role, "observation")
+        self.assertEqual(event.id, "ep1_obs0")
         self.assertEqual(event.modality, "grid")
+        self.assertEqual(event.episode_id, "ep1")
+        self.assertEqual(event.time_index, 0)
+        self.assertEqual(event.source_id, "fixture")
         self.assertEqual(event.metadata["split"], "train")
+
+    def test_typed_event_accepts_legacy_metadata_envelope(self) -> None:
+        event = TypedEvent(
+            role="text",
+            content="hello",
+            metadata={
+                "id": "doc1",
+                "type": "markdown",
+                "episode_id": "ep1",
+                "time_index": 3,
+                "source_id": "fixture",
+                "split": "train",
+            },
+        )
+
+        self.assertEqual(event.id, "doc1")
+        self.assertEqual(event.modality, "markdown")
+        self.assertEqual(event.episode_id, "ep1")
+        self.assertEqual(event.time_index, 3)
+        self.assertEqual(event.source_id, "fixture")
+        self.assertEqual(event.metadata, {"split": "train"})
 
     def test_typed_event_rejects_unknown_role(self) -> None:
         with self.assertRaisesRegex(ValueError, "event role must be one of"):

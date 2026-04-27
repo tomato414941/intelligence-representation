@@ -36,6 +36,29 @@ world-model-oriented metric:
 
 In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI. The legacy schema keeps `id`, `modality`, and `content`; the typed-event schema adds `role`, `episode_id`, `time_index`, and `metadata`, then renders events as typed tags before byte-level training.
 
+The active typed evaluation unit is `FuturePredictionCase`:
+
+```text
+prefix_events:
+  typed events such as OBSERVATION + ACTION or TOOL_CALL
+
+positive_event:
+  the correct CONSEQUENCE / TOOL_RESULT / PREDICTION_ERROR
+
+negative_events:
+  same-role, same-modality hard negatives
+```
+
+The general CLI for this path is:
+
+```sh
+uv run python -m intrep.evaluate_future_prediction \
+  --train-path train.typed.jsonl \
+  --eval-path eval.typed.jsonl \
+  --target-role consequence \
+  --condition same_modality_negative
+```
+
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
 
 Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.

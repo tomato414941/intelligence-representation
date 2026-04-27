@@ -60,7 +60,7 @@ def typed_event_to_mixed_document(event: TypedEvent, *, render_format: str = "ty
         raise ValueError("render_format must be plain or typed-tags")
     return MixedDocument(
         id=event.id,
-        modality=f"{event.role}:{event.modality}",
+        modality=f"{event.role.value}:{event.modality}",
         content=render_typed_event(event),
     )
 
@@ -122,7 +122,7 @@ def write_typed_events_jsonl_v2(path: str | Path, events: list[TypedEvent]) -> N
         json.dumps(
             {
                 "id": event.id,
-                "role": event.role,
+                "role": event.role.value,
                 "modality": event.modality,
                 "content": event.content,
                 "episode_id": event.episode_id,

@@ -210,6 +210,8 @@ small decoder-only GPT
 mixed text / environment / grid / log-like corpus
 TypedEvent envelope and typed-tag stream rendering
 typed-event JSONL input path with legacy MixedDocument compatibility
+FuturePredictionCase evaluation directly over TypedEvent streams
+train_ptm / evaluate_future_prediction CLI entry points
 symbolic-to-natural ranking
 action-conditioned next-observation ranking
 generated train/eval slices
@@ -225,7 +227,7 @@ learned latent predictive state
 robust action-conditioned future prediction
 belief update
 memory read/write learning
-tool-use outcome prediction
+large-scale tool-use outcome prediction
 reward / error based adaptation
 planning or control
 ```

@@ -199,6 +199,7 @@ class PublicTextFetchTests(unittest.TestCase):
         self.assertEqual(manifest[0].document_id, "public_text_plain")
         self.assertEqual(manifest[0].source_url, "https://example.org/books/plain.txt")
         self.assertEqual(manifest[0].adapter, "public-text-url")
+        self.assertTrue(manifest[0].retrieved_at)
 
     def test_cli_reports_non_http_url_without_fetching_data(self) -> None:
         error_output = io.StringIO()

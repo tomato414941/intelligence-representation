@@ -12,20 +12,23 @@ A predictive token machine for language, perception, action, memory, and belief.
 
 World modeling remains a core evaluation surface inside that broader frame: it asks whether observation/action history can predict future observations or consequences.
 
-The new v1 foundation trains an untrained GPT-style model on a mixed corpus:
+The new v1 foundation now separates the legacy smoke corpus from the active typed stream path. Legacy `MixedDocument` remains for compatibility, while new PTM-oriented experiments should use `TypedEvent` JSONL and `FuturePredictionCase` ranking.
+
+The typed stream path can represent:
 
 ```text
-natural language
-environment episodes in symbolic form
-environment episodes in natural-language form
-code
-logs / tool-like outputs
-small grid observations and action-conditioned next observations
+text
+observations
+actions
+consequences
+tool calls and tool results
+prediction and prediction_error events
+state / belief / memory / reward roles as typed event envelopes
 ```
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
 
-The current training objective is next-token prediction, but the project should not treat next-token loss reduction as evidence of a learned predictive token machine or world model. World-model-oriented evidence must come from action-conditioned future prediction, especially held-out next-observation ranking after actions.
+The current training objective is next-token prediction, but the project should not treat next-token loss reduction as evidence of a learned predictive token machine or world model. World-model-oriented evidence must come from target-position-aware future prediction, especially held-out consequence ranking after observation/action prefixes.
 
 The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned and public/internet-sourced mixed data can be added without expanding code-level schemas or taxonomies.
 

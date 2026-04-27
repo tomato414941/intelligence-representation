@@ -43,6 +43,7 @@ class SourceManifestRecord:
     source_record_id: str = ""
     input_path: str = ""
     line_number: int | None = None
+    retrieved_at: str = ""
     notes: str = ""
 
 
@@ -553,6 +554,7 @@ def _source_manifest_record_to_json(record: SourceManifestRecord) -> dict[str, o
         "source_record_id": record.source_record_id,
         "input_path": record.input_path,
         "line_number": record.line_number,
+        "retrieved_at": record.retrieved_at,
         "notes": record.notes,
     }
     for key, value in optional_fields.items():
@@ -581,7 +583,7 @@ def _source_manifest_record_from_json(
             f"missing required fields: {fields}"
         )
     values: dict[str, str] = {}
-    for field in required_fields + ("title", "source_record_id", "input_path", "notes"):
+    for field in required_fields + ("title", "source_record_id", "input_path", "retrieved_at", "notes"):
         value = record.get(field, "")
         if not isinstance(value, str):
             raise ValueError(
@@ -606,6 +608,7 @@ def _source_manifest_record_from_json(
         source_record_id=values["source_record_id"],
         input_path=values["input_path"],
         line_number=raw_line_number,
+        retrieved_at=values["retrieved_at"],
         notes=values["notes"],
     )
 

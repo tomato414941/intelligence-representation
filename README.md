@@ -5,11 +5,11 @@ This repository explores representation for intelligence through an installable,
 The current center is not a hand-designed semantic database. It is a predictive token machine scaffold:
 
 ```text
-natural language + observations + actions + state/log/tool-like traces
-  -> typed token streams
+TypedEvent streams
+  -> typed-tag rendering
   -> decoder-only GPT-style prediction
   -> next-token / future-token training
-  -> language / world / tool / memory / belief evaluation targets
+  -> FuturePredictionCase ranking for language / world / tool / memory / belief targets
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -29,9 +29,9 @@ The broader hypothesis is that typed multimodal token streams can support a lear
 The main v1 direction is:
 
 ```text
-Can a small untrained decoder-only GPT learn from a mixed corpus where
-natural language, environment observations/actions, code, and logs are all
-treated as parts of the same sequence-learning world?
+Can a small untrained decoder-only GPT learn useful future prediction behavior
+from typed event streams where text, observations, actions, consequences, tool
+results, errors, and belief-like records share one sequence-learning substrate?
 ```
 
 Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over typed observation/action/consequence streams.
@@ -40,7 +40,7 @@ This does not use OpenAI API or a pretrained chat model. It uses the successful 
 
 Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
-The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned and public/internet-sourced mixed data can expand without turning the codebase into a broad taxonomy.
+`MixedDocument` remains as a legacy smoke/bridge format so existing demos and tests keep working. The active abstraction for new experiments is `TypedEvent` / typed streams, with `FuturePredictionCase` used for target-position-aware evaluation.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 

@@ -12,9 +12,10 @@ def render_typed_stream(events: Sequence[TypedEvent]) -> str:
 
 def mixed_document_to_typed_event(document: MixedDocument) -> TypedEvent:
     return TypedEvent(
+        id=document.id,
         role=EventRole.TEXT,
+        modality=document.modality,
         content=document.content,
-        metadata={"id": document.id, "type": document.modality},
     )
 
 
