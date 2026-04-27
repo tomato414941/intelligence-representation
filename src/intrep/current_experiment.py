@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import time
 from collections.abc import Callable, Sequence
@@ -34,12 +35,15 @@ SymbolicToNaturalRunner = Callable[..., Any]
 class ExperimentCorpus:
     label: str
     documents: list[MixedDocument]
+    eval_label: str | None = None
+    eval_documents: list[MixedDocument] | None = None
 
 
 def select_corpus(
     corpus: str,
     corpus_path: Path | None = None,
     *,
+    generated_eval_slice: str = "generated_held_out_object",
     document_loader: DocumentLoader = load_mixed_documents_jsonl,
 ) -> ExperimentCorpus:
     if corpus == "builtin":
@@ -53,6 +57,19 @@ def select_corpus(
         from intrep.grid_corpus import default_grid_documents
 
         return ExperimentCorpus(label="builtin-grid", documents=default_grid_documents())
+
+    if corpus == "generated-environment":
+        if corpus_path is not None:
+            raise ValueError("--corpus-path can only be used with --corpus=file")
+        from intrep.generated_environment_corpus import generated_environment_corpus_selection
+
+        selection = generated_environment_corpus_selection(generated_eval_slice)
+        return ExperimentCorpus(
+            label="generated-environment",
+            documents=selection.train_documents,
+            eval_label=selection.eval_label,
+            eval_documents=selection.eval_documents,
+        )
 
     if corpus == "file":
         if corpus_path is None:
@@ -70,6 +87,7 @@ def run_current_experiment(
     eval_corpus_label: str | None = None,
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
+    distractor_policy: str = "hard",
     evaluation_runner: EvaluationRunner = evaluate_next_observation_learning,
     symbolic_to_natural_runner: SymbolicToNaturalRunner = evaluate_symbolic_to_natural_learning,
 ) -> dict[str, object]:
@@ -101,11 +119,13 @@ def run_current_experiment(
         )
 
     if len(eval_cases) >= 2:
-        evaluation = evaluation_runner(
+        evaluation = _run_evaluation(
+            evaluation_runner,
             train_documents,
             eval_documents=held_out_documents,
             training_config=config,
             model_config=model_config,
+            distractor_policy=distractor_policy,
         )
         return _summary_from_evaluation(
             evaluation,
@@ -139,22 +159,40 @@ def run_current_experiment(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from intrep.generated_environment_corpus import EVAL_SLICES
+
     parser = argparse.ArgumentParser(
         description="Run the current corpus learning and next-observation evaluation path."
     )
     parser.add_argument(
         "--corpus",
-        choices=("builtin", "builtin-grid", "file"),
+        choices=("builtin", "builtin-grid", "generated-environment", "file"),
         default="builtin",
     )
     parser.add_argument("--corpus-path", type=Path)
     parser.add_argument("--eval-corpus-path", type=Path)
+    parser.add_argument(
+        "--generated-eval-slice",
+        choices=EVAL_SLICES,
+        default="generated_held_out_object",
+    )
+    parser.add_argument(
+        "--distractor-policy",
+        choices=("all_other", "hard", "same_entity"),
+        default="hard",
+    )
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--context-length", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--batch-stride", type=int)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--device",
+        choices=("auto", "cpu", "cuda"),
+        default="cpu",
+        help="Training device. The default stays CPU-compatible; use auto or cuda on GPU hosts.",
+    )
     parser.add_argument("--model-preset", choices=sorted(GPT_MODEL_PRESETS), default="small")
     parser.add_argument("--embedding-dim", type=int)
     parser.add_argument("--num-heads", type=int)
@@ -181,15 +219,25 @@ def main(
         corpus = select_corpus(
             args.corpus,
             args.corpus_path,
+            generated_eval_slice=args.generated_eval_slice,
             document_loader=document_loader,
         )
+        if args.eval_corpus_path is not None and corpus.eval_documents is not None:
+            raise ValueError("--eval-corpus-path cannot be used with --corpus=generated-environment")
         eval_corpus = (
             ExperimentCorpus(
                 label=str(args.eval_corpus_path),
                 documents=document_loader(args.eval_corpus_path),
             )
             if args.eval_corpus_path is not None
-            else None
+            else (
+                ExperimentCorpus(
+                    label=corpus.eval_label or "eval",
+                    documents=corpus.eval_documents,
+                )
+                if corpus.eval_documents is not None
+                else None
+            )
         )
     except (OSError, ValueError) as error:
         parser.error(str(error))
@@ -221,8 +269,10 @@ def main(
             max_steps=args.max_steps,
             learning_rate=args.learning_rate,
             seed=args.seed,
+            device=args.device,
         ),
         model_config=model_config,
+        distractor_policy=args.distractor_policy,
         evaluation_runner=evaluation_runner,
         symbolic_to_natural_runner=symbolic_to_natural_runner,
     )
@@ -272,18 +322,26 @@ def _summary_from_evaluation(
     after_metrics = getattr(evaluation, "after_metrics")
     before_summary = getattr(evaluation, "before_summary", None)
     after_summary = getattr(evaluation, "after_summary", None)
+    eval_split, generalization_eval = _eval_reporting(eval_label, eval_documents)
+    training_loss = _training_result_to_dict(training_result)
+    language_modeling = language_modeling_metrics_from_training_result(training_result)
+    if eval_label == "generated_seen":
+        training_loss["eval_split"] = eval_split
+        training_loss["generalization_eval"] = generalization_eval
+        language_modeling["eval_split"] = eval_split
+        language_modeling["generalization_eval"] = generalization_eval
     return {
-        "corpus": _corpus_dict(corpus_label, eval_label),
+        "corpus": _corpus_dict(corpus_label, eval_label, eval_split),
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
         "model_config": _model_config_to_dict(model_config),
-        "training_loss": _training_result_to_dict(training_result),
-        "language_modeling": language_modeling_metrics_from_training_result(training_result),
+        "training_loss": training_loss,
+        "language_modeling": language_modeling,
         "next_observation": {
             "status": "evaluated",
-            "eval_split": "held_out" if eval_documents is not None else "train",
-            "generalization_eval": eval_documents is not None,
-            "warnings": _evaluation_warnings(eval_documents),
+            "eval_split": eval_split,
+            "generalization_eval": generalization_eval,
+            "warnings": _evaluation_warnings(generalization_eval),
             "train_case_count": len(getattr(evaluation, "train_cases")),
             "eval_case_count": len(getattr(evaluation, "eval_cases")),
             "before": _ranking_metrics_to_dict(before_metrics),
@@ -293,6 +351,7 @@ def _summary_from_evaluation(
                 "mean_margin": after_metrics.mean_margin - before_metrics.mean_margin,
             },
             "modality_counts": _modality_counts(before_summary, after_summary),
+            "fallback_counts": _fallback_counts(before_summary, after_summary),
         },
         "symbolic_to_natural": symbolic_to_natural,
     }
@@ -311,19 +370,27 @@ def _summary_from_training_only(
     eval_case_count: int,
     symbolic_to_natural: dict[str, object],
 ) -> dict[str, object]:
+    eval_split, generalization_eval = _eval_reporting(eval_label, eval_documents)
+    training_loss = _training_result_to_dict(training_result)
+    language_modeling = language_modeling_metrics_from_training_result(training_result)
+    if eval_label == "generated_seen":
+        training_loss["eval_split"] = eval_split
+        training_loss["generalization_eval"] = generalization_eval
+        language_modeling["eval_split"] = eval_split
+        language_modeling["generalization_eval"] = generalization_eval
     return {
-        "corpus": _corpus_dict(corpus_label, eval_label),
+        "corpus": _corpus_dict(corpus_label, eval_label, eval_split),
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
         "model_config": _model_config_to_dict(model_config),
-        "training_loss": _training_result_to_dict(training_result),
-        "language_modeling": language_modeling_metrics_from_training_result(training_result),
+        "training_loss": training_loss,
+        "language_modeling": language_modeling,
         "next_observation": {
             "status": "skipped",
             "reason": "at least two next-observation cases are required",
-            "eval_split": "held_out" if eval_documents is not None else "train",
-            "generalization_eval": eval_documents is not None,
-            "warnings": _evaluation_warnings(eval_documents),
+            "eval_split": eval_split,
+            "generalization_eval": generalization_eval,
+            "warnings": _evaluation_warnings(generalization_eval),
             "train_case_count": train_case_count,
             "eval_case_count": eval_case_count,
         },
@@ -331,12 +398,21 @@ def _summary_from_training_only(
     }
 
 
-def _corpus_dict(label: str, eval_label: str) -> dict[str, object]:
+def _corpus_dict(label: str, eval_label: str, eval_split: str) -> dict[str, object]:
     return {
         "label": label,
         "eval_label": eval_label,
-        "eval_split": "train" if eval_label == "train" else "held_out",
+        "eval_split": eval_split,
     }
+
+
+def _eval_reporting(
+    eval_label: str,
+    eval_documents: Sequence[MixedDocument] | None,
+) -> tuple[str, bool]:
+    if eval_documents is None or eval_label in ("train", "generated_seen"):
+        return "train", False
+    return "held_out", True
 
 
 def _coverage_dict(
@@ -357,6 +433,7 @@ def _training_config_to_dict(config: GPTTrainingConfig) -> dict[str, object]:
         "max_steps": config.max_steps,
         "learning_rate": config.learning_rate,
         "seed": config.seed,
+        "device": config.device,
     }
 
 
@@ -393,12 +470,30 @@ def _training_result_to_dict(result: object) -> dict[str, object]:
     }
 
 
-def _evaluation_warnings(eval_documents: Sequence[MixedDocument] | None) -> list[str]:
-    if eval_documents is not None:
+def _evaluation_warnings(generalization_eval: bool) -> list[str]:
+    if generalization_eval:
         return []
     return [
         "No held-out eval corpus was provided; evaluation uses train data and is not a generalization estimate."
     ]
+
+
+def _run_evaluation(
+    evaluation_runner: EvaluationRunner,
+    *args: object,
+    distractor_policy: str,
+    **kwargs: object,
+) -> object:
+    signature = inspect.signature(evaluation_runner)
+    if (
+        "distractor_policy" in signature.parameters
+        or any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in signature.parameters.values()
+        )
+    ):
+        kwargs["distractor_policy"] = distractor_policy
+    return evaluation_runner(*args, **kwargs)
 
 
 def _ranking_metrics_to_dict(metrics: object) -> dict[str, float]:
@@ -453,6 +548,13 @@ def _modality_counts(before_summary: object | None, after_summary: object | None
     if summary is None:
         return {}
     return dict(getattr(summary, "modality_counts", {}))
+
+
+def _fallback_counts(before_summary: object | None, after_summary: object | None) -> dict[str, int]:
+    summary = after_summary if after_summary is not None else before_summary
+    if summary is None:
+        return {}
+    return dict(getattr(summary, "fallback_counts", {}))
 
 
 if __name__ == "__main__":

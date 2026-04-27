@@ -8,7 +8,7 @@ from intrep.byte_tokenizer import ByteTokenizer
 from intrep.next_observation_cases import NextObservationCase
 from intrep.pair_ranking import ContinuationScorer
 
-DISTRACTOR_POLICIES = ("all_other", "hard")
+DISTRACTOR_POLICIES = ("all_other", "hard", "same_entity")
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,7 @@ class NextObservationRankingSummary:
     overall: NextObservationRankingMetrics
     per_modality: dict[str, NextObservationRankingMetrics]
     modality_counts: dict[str, int]
+    fallback_counts: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class _ScoredNextObservationCase:
     best_distractor_loss: float
     margin: float
     top1_correct: bool
+    fallback_key: str | None = None
 
 
 def evaluate_next_observation_ranking(
@@ -83,6 +85,7 @@ def evaluate_next_observation_ranking_summary(
             modality: len(modality_cases)
             for modality, modality_cases in per_modality_cases.items()
         },
+        fallback_counts=_summarize_fallback_counts(scored_cases),
     )
 
 
@@ -106,9 +109,9 @@ def _score_next_observation_cases(
 
     for index, case in enumerate(cases):
         positive_loss = scorer(model, tokenizer, case.prefix, case.positive_next)
-        distractors = _select_distractors(cases, index, distractor_policy)
+        distractors, fallback_key = _select_distractors(cases, index, distractor_policy)
         distractor_losses = [
-            scorer(model, tokenizer, case.prefix, distractor.positive_next)
+            scorer(model, tokenizer, case.prefix, distractor)
             for distractor in distractors
         ]
         if not distractor_losses:
@@ -124,6 +127,7 @@ def _score_next_observation_cases(
                 best_distractor_loss=best_distractor_loss,
                 margin=margin,
                 top1_correct=positive_loss < best_distractor_loss,
+                fallback_key=fallback_key,
             )
         )
 
@@ -134,20 +138,50 @@ def _select_distractors(
     cases: Sequence[NextObservationCase],
     case_index: int,
     distractor_policy: str,
-) -> list[NextObservationCase]:
+) -> tuple[list[str], str | None]:
     case = cases[case_index]
     all_other = [
         distractor
         for distractor_index, distractor in enumerate(cases)
         if distractor_index != case_index
     ]
+    all_other_nexts = [distractor.positive_next for distractor in all_other]
     if distractor_policy == "all_other":
-        return all_other
+        return [*case.hard_negative_nexts, *all_other_nexts], None
 
-    hard_distractors = [
-        distractor for distractor in all_other if distractor.modality == case.modality
+    if distractor_policy == "same_entity":
+        if case.hard_negative_nexts:
+            return list(case.hard_negative_nexts), None
+        same_entity_distractors = [
+            distractor.positive_next
+            for distractor in all_other
+            if case.group_id is not None and distractor.group_id == case.group_id
+        ]
+        if same_entity_distractors:
+            return same_entity_distractors, None
+        hard_distractors, fallback_key = _select_hard_distractors(
+            case,
+            all_other,
+            all_other_nexts,
+        )
+        return hard_distractors, fallback_key or "same_entity_to_hard"
+
+    return _select_hard_distractors(case, all_other, all_other_nexts)
+
+
+def _select_hard_distractors(
+    case: NextObservationCase,
+    all_other: Sequence[NextObservationCase],
+    all_other_nexts: Sequence[str],
+) -> tuple[list[str], str | None]:
+    same_modality_distractors = [
+        distractor.positive_next
+        for distractor in all_other
+        if distractor.modality == case.modality
     ]
-    return hard_distractors or all_other
+    if same_modality_distractors:
+        return [*case.hard_negative_nexts, *same_modality_distractors], None
+    return [*case.hard_negative_nexts, *all_other_nexts], "hard_to_all_other"
 
 
 def _summarize_scored_cases(
@@ -170,6 +204,19 @@ def _summarize_scored_cases(
         / count,
         mean_margin=sum(scored_case.margin for scored_case in scored_cases) / count,
     )
+
+
+def _summarize_fallback_counts(
+    scored_cases: Sequence[_ScoredNextObservationCase],
+) -> dict[str, int]:
+    fallback_counts: dict[str, int] = {}
+    for scored_case in scored_cases:
+        if scored_case.fallback_key is None:
+            continue
+        fallback_counts[scored_case.fallback_key] = (
+            fallback_counts.get(scored_case.fallback_key, 0) + 1
+        )
+    return fallback_counts
 
 
 def torch_context_limited_continuation_loss(

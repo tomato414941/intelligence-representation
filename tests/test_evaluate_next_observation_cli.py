@@ -395,6 +395,74 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
             output.getvalue(),
         )
 
+    def test_generated_seen_reports_train_split_not_generalization(self) -> None:
+        def fake_evaluate_next_observation_learning(
+            documents,
+            *,
+            eval_documents=None,
+            training_config,
+            distractor_policy="hard",
+        ):
+            self.assertIsNotNone(eval_documents)
+            return FakeEvaluationResult(train_case_count=12, eval_case_count=12)
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            metrics_path = Path(temp_dir) / "metrics.json"
+            with patch.object(
+                evaluate_next_observation,
+                "evaluate_next_observation_learning",
+                fake_evaluate_next_observation_learning,
+            ):
+                with redirect_stdout(output):
+                    evaluate_next_observation.main(
+                        [
+                            "--corpus",
+                            "generated-environment",
+                            "--generated-eval-slice",
+                            "generated_seen",
+                            "--metrics-path",
+                            str(metrics_path),
+                        ],
+                    )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        self.assertIn(
+            "eval_corpus=generated_seen train_cases=12 eval_cases=12 tokens=123 steps=3 "
+            "eval_split=train generalization_eval=false distractor_policy=hard",
+            output.getvalue(),
+        )
+        self.assertEqual(payload["eval_split"], "train")
+        self.assertFalse(payload["generalization_eval"])
+        self.assertEqual(payload["training"]["eval_split"], "train")
+        self.assertFalse(payload["training"]["generalization_eval"])
+        self.assertTrue(payload["warnings"])
+
+    def test_same_entity_distractor_policy_is_passed_through(self) -> None:
+        captured_policy: str | None = None
+
+        def fake_evaluate_next_observation_learning(
+            documents,
+            *,
+            eval_documents=None,
+            training_config,
+            distractor_policy="hard",
+        ):
+            nonlocal captured_policy
+            captured_policy = distractor_policy
+            return FakeEvaluationResult()
+
+        with patch.object(
+            evaluate_next_observation,
+            "evaluate_next_observation_learning",
+            fake_evaluate_next_observation_learning,
+        ):
+            with redirect_stdout(io.StringIO()):
+                evaluate_next_observation.main(["--distractor-policy", "same_entity"])
+
+        self.assertEqual(captured_policy, "same_entity")
+
     def test_file_corpus_requires_path(self) -> None:
         error_output = io.StringIO()
 

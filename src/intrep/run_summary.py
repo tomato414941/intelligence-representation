@@ -306,13 +306,33 @@ def _value_at_path(payload: dict[str, object], path: str) -> object:
 def _comparison_config(payload: dict[str, object]) -> dict[str, object]:
     config = payload.get("config")
     if not isinstance(config, dict):
-        return {}
+        config = {}
     training = config.get("training")
     model = config.get("model")
     return {
+        "corpus": _comparison_corpus(payload.get("corpus")),
         "training": _select_keys(training, ("max_steps", "seed")),
         "model": _select_keys(model, ("embedding_dim", "num_layers", "num_heads")),
     }
+
+
+def _comparison_corpus(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    payload: dict[str, object] = {}
+    train = value.get("train")
+    eval_corpus = value.get("eval")
+    if isinstance(train, dict) and "label" in train:
+        payload["train_label"] = train["label"]
+    elif "label" in value:
+        payload["train_label"] = value["label"]
+    if isinstance(eval_corpus, dict) and "label" in eval_corpus:
+        payload["eval_label"] = eval_corpus["label"]
+    elif "eval_label" in value:
+        payload["eval_label"] = value["eval_label"]
+    if "eval_slice" in value:
+        payload["eval_slice"] = value["eval_slice"]
+    return payload
 
 
 def _select_keys(value: object, keys: Sequence[str]) -> dict[str, object]:

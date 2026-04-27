@@ -426,6 +426,59 @@ class CurrentExperimentTest(unittest.TestCase):
         self.assertEqual(payload["corpus"]["label"], "builtin-grid")
         self.assertEqual(payload["corpus"]["eval_label"], "train")
 
+    def test_cli_generated_seen_reports_train_split_and_passes_policy_and_device(self) -> None:
+        captured_documents: list[MixedDocument] | None = None
+        captured_eval_documents: list[MixedDocument] | None = None
+        captured_distractor_policy: str | None = None
+
+        def fake_runner(
+            documents_arg,
+            *,
+            eval_documents=None,
+            training_config,
+            model_config=None,
+            distractor_policy="hard",
+        ):
+            nonlocal captured_documents, captured_eval_documents, captured_distractor_policy
+            captured_documents = documents_arg
+            captured_eval_documents = eval_documents
+            captured_distractor_policy = distractor_policy
+            self.assertEqual(training_config.device, "auto")
+            return FakeEvaluationResult()
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            current_experiment.main(
+                [
+                    "--corpus",
+                    "generated-environment",
+                    "--generated-eval-slice",
+                    "generated_seen",
+                    "--distractor-policy",
+                    "same_entity",
+                    "--device",
+                    "auto",
+                ],
+                evaluation_runner=fake_runner,
+                symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
+            )
+
+        self.assertIsNotNone(captured_documents)
+        self.assertIsNotNone(captured_eval_documents)
+        assert captured_documents is not None
+        assert captured_eval_documents is not None
+        self.assertEqual(len(captured_documents), 24)
+        self.assertEqual(len(captured_eval_documents), 24)
+        self.assertEqual(captured_distractor_policy, "same_entity")
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["corpus"]["label"], "generated-environment")
+        self.assertEqual(payload["corpus"]["eval_label"], "generated_seen")
+        self.assertEqual(payload["corpus"]["eval_split"], "train")
+        self.assertEqual(payload["training_config"]["device"], "auto")
+        self.assertEqual(payload["next_observation"]["eval_split"], "train")
+        self.assertFalse(payload["next_observation"]["generalization_eval"])
+        self.assertTrue(payload["next_observation"]["warnings"])
+
     def test_file_corpus_requires_path(self) -> None:
         error_output = io.StringIO()
 

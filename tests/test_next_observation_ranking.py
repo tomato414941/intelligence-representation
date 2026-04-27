@@ -131,6 +131,60 @@ class NextObservationRankingTest(unittest.TestCase):
         self.assertEqual(len(scored), 9)
         self.assertIn(("symbolic a\n", "next grid"), scored)
 
+    def test_hard_negative_nexts_are_scored_as_distractors(self) -> None:
+        cases = [
+            _case("a", "episode a\n", "next a", hard_negative_nexts=("hard a",)),
+            _case("b", "episode b\n", "next b"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1 if continuation.startswith("next") else 0.2
+
+        evaluate_next_observation_ranking(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            score_continuation_loss=score,
+        )
+
+        self.assertIn(("episode a\n", "hard a"), scored)
+
+    def test_same_entity_distractor_policy_scores_same_group_only(self) -> None:
+        cases = [
+            _case("box_a", "box a\n", "next box a", group_id="box"),
+            _case("box_b", "box b\n", "next box b", group_id="box"),
+            _case("drawer_a", "drawer a\n", "next drawer", group_id="drawer"),
+        ]
+        scored: list[tuple[str, str]] = []
+
+        def score(
+            _model: object,
+            _tokenizer: ByteTokenizer,
+            prefix: str,
+            continuation: str,
+        ) -> float:
+            scored.append((prefix, continuation))
+            return 0.1
+
+        summary = evaluate_next_observation_ranking_summary(
+            cases,
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            distractor_policy="same_entity",
+            score_continuation_loss=score,
+        )
+
+        self.assertIn(("box a\n", "next box b"), scored)
+        self.assertNotIn(("box a\n", "next drawer"), scored)
+        self.assertEqual(summary.fallback_counts, {"same_entity_to_hard": 1})
+
     def test_evaluate_next_observation_ranking_summary_groups_by_modality(
         self,
     ) -> None:
@@ -175,6 +229,7 @@ class NextObservationRankingTest(unittest.TestCase):
         )
 
         self.assertEqual(summary.modality_counts, {"grid": 2, "language": 1, "image": 1})
+        self.assertEqual(summary.fallback_counts, {"hard_to_all_other": 2})
         self.assertEqual(set(summary.per_modality), {"grid", "language", "image"})
         self.assertAlmostEqual(summary.overall.top1_accuracy, 0.5)
         self.assertAlmostEqual(summary.overall.mean_positive_loss, 0.425)
@@ -310,12 +365,16 @@ def _case(
     positive_next: str,
     *,
     modality: str = "test",
+    hard_negative_nexts: tuple[str, ...] = (),
+    group_id: str | None = None,
 ) -> NextObservationCase:
     return NextObservationCase(
         id=case_id,
         modality=modality,
         prefix=prefix,
         positive_next=positive_next,
+        hard_negative_nexts=hard_negative_nexts,
+        group_id=group_id,
     )
 
 

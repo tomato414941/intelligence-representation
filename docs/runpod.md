@@ -50,3 +50,28 @@ result
 Checkpoint resume is intentionally not supported yet. The saved state dict is
 moved to CPU before writing so the file can be inspected or loaded on non-GPU
 machines.
+
+## Generated Environment Sweep
+
+Run the seed x generated-eval-slice sweep and write one normalized run summary
+per cell:
+
+```sh
+uv run python -m intrep.experiment_pipeline \
+  --output-dir /workspace/runs/generated-environment \
+  --seed 7 \
+  --seed 13 \
+  --max-steps 200
+```
+
+The sweep writes:
+
+```text
+generated-environment-seed-<seed>-<slice>.json
+comparison.json
+failures.json
+```
+
+`comparison.json` is the metric table for successful runs. `failures.json`
+records any failed seed/slice cells so a partial sweep can still be inspected.
+Use `--eval-slice` one or more times to run a subset of slices.

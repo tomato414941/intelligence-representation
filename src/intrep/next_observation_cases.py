@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from intrep.mixed_corpus import MixedDocument
 
@@ -12,6 +13,8 @@ class NextObservationCase:
     modality: str
     prefix: str
     positive_next: str
+    hard_negative_nexts: tuple[str, ...] = field(default_factory=tuple)
+    group_id: str | None = None
 
 
 def extract_next_observation_cases(
@@ -33,13 +36,15 @@ def _extract_marker_next_observation_cases(
         parsed = _split_symbolic_next_observation(document.content)
         if parsed is None:
             continue
-        prefix, positive_next = parsed
+        prefix, positive_next, hard_negative_nexts, group_id = parsed
         cases.append(
             NextObservationCase(
                 id=document.id,
                 modality=document.modality,
                 prefix=prefix,
                 positive_next=positive_next,
+                hard_negative_nexts=hard_negative_nexts,
+                group_id=group_id,
             )
         )
     return cases
@@ -72,18 +77,62 @@ def _extract_grid_cases(documents: Sequence[MixedDocument]) -> list[NextObservat
     return cases
 
 
-def _split_symbolic_next_observation(content: str) -> tuple[str, str] | None:
-    obs_marker = "<obs>"
-    action_marker = "<action>"
-    next_marker = "<next_obs>"
-    obs_index = content.find(obs_marker)
-    action_index = content.find(action_marker)
-    next_index = content.find(next_marker)
-    if not (0 <= obs_index < action_index < next_index):
+def _split_symbolic_next_observation(content: str) -> tuple[str, str, tuple[str, ...], str | None] | None:
+    obs_match = _find_marker(content, "obs")
+    action_match = _find_marker(content, "action")
+    next_match = _find_marker(content, "next_obs")
+    if obs_match is None or action_match is None or next_match is None:
+        return None
+    if not (obs_match.start() < action_match.start() < next_match.start()):
         return None
 
-    before_next, positive_next = content.split(next_marker, 1)
-    positive_next = positive_next.strip()
+    positive_next = content[next_match.end() :].strip()
     if not positive_next:
         return None
-    return f"{before_next.rstrip()} {next_marker} ", positive_next
+
+    metadata = _stable_marker_metadata(content)
+    prefix = f"{content[: next_match.start()].rstrip()} {next_match.group(0)} "
+    return (
+        prefix,
+        positive_next,
+        metadata.get("hard_negative_nexts", ()),
+        metadata.get("group_id"),
+    )
+
+
+def _find_marker(content: str, marker_name: str) -> re.Match[str] | None:
+    return re.search(rf"<{re.escape(marker_name)}(?:\s+[^>]*)?>", content)
+
+
+def _stable_marker_metadata(content: str) -> dict[str, str | tuple[str, ...]]:
+    metadata: dict[str, str | tuple[str, ...]] = {}
+    for marker_name in ("case", "next_observation_case", "obs", "next_obs"):
+        marker = _find_marker(content, marker_name)
+        if marker is None:
+            continue
+        attributes = _parse_marker_attributes(marker.group(0))
+        group_id = attributes.get("group_id") or attributes.get("entity_id")
+        if group_id and "group_id" not in metadata:
+            metadata["group_id"] = group_id
+        hard_negative_nexts = _split_hard_negative_nexts(attributes)
+        if hard_negative_nexts and "hard_negative_nexts" not in metadata:
+            metadata["hard_negative_nexts"] = hard_negative_nexts
+    return metadata
+
+
+def _parse_marker_attributes(marker: str) -> dict[str, str]:
+    return {
+        match.group("name"): match.group("quoted") or match.group("bare")
+        for match in re.finditer(
+            r"(?P<name>[A-Za-z_][A-Za-z0-9_-]*)="
+            r"(?:\"(?P<quoted>[^\"]*)\"|(?P<bare>[^\s>]+))",
+            marker,
+        )
+    }
+
+
+def _split_hard_negative_nexts(attributes: dict[str, str]) -> tuple[str, ...]:
+    value = attributes.get("hard_negative_nexts") or attributes.get("hard_negative_next")
+    if value is None:
+        return ()
+    return tuple(part.strip() for part in re.split(r"\s*\|\|?\s*", value) if part.strip())

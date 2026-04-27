@@ -109,6 +109,41 @@ class NextObservationCasesTest(unittest.TestCase):
 
         self.assertEqual(extract_next_observation_cases(documents), [])
 
+    def test_extracts_stable_case_markers_from_symbolic_documents(self) -> None:
+        documents = [
+            MixedDocument(
+                id="env_symbolic_entity_box",
+                modality="environment_symbolic",
+                content=(
+                    '<case group_id="box-1" hard_negative_nexts="coin hidden|coin missing"> '
+                    "<obs> coin in box "
+                    "<action> open box "
+                    "<next_obs> coin visible"
+                ),
+            ),
+            MixedDocument(
+                id="env_symbolic_entity_drawer",
+                modality="environment_symbolic",
+                content=(
+                    '<obs entity_id="drawer-1"> key in drawer '
+                    "<action> open drawer "
+                    '<next_obs hard_negative_next="key missing"> key visible'
+                ),
+            ),
+        ]
+
+        cases = extract_next_observation_cases(documents)
+
+        self.assertEqual(cases[0].group_id, "box-1")
+        self.assertEqual(cases[0].hard_negative_nexts, ("coin hidden", "coin missing"))
+        self.assertEqual(cases[0].positive_next, "coin visible")
+        self.assertEqual(cases[1].group_id, "drawer-1")
+        self.assertEqual(cases[1].hard_negative_nexts, ("key missing",))
+        self.assertEqual(
+            cases[1].prefix,
+            '<obs entity_id="drawer-1"> key in drawer <action> open drawer <next_obs hard_negative_next="key missing"> ',
+        )
+
     def test_extracts_next_observation_cases_from_external_web_action_documents(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "external-corpus.jsonl"

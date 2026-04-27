@@ -12,6 +12,7 @@ from intrep.next_observation_ranking import DISTRACTOR_POLICIES
 
 
 DocumentLoader = Callable[[str | Path], list[MixedDocument]]
+CLI_DISTRACTOR_POLICIES = tuple(dict.fromkeys((*DISTRACTOR_POLICIES, "same_entity")))
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,8 @@ def _load_generated_environment_documents(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from intrep.generated_environment_corpus import EVAL_SLICES
+
     parser = argparse.ArgumentParser(
         description="Evaluate next-observation ranking before and after tiny GPT training."
     )
@@ -69,18 +72,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--generated-eval-slice",
-        choices=(
-            "generated_seen",
-            "generated_held_out_object",
-            "generated_held_out_container",
-            "generated_held_out_location",
-        ),
+        choices=EVAL_SLICES,
         default="generated_held_out_object",
         help="Generated-environment eval slice when --corpus=generated-environment.",
     )
     parser.add_argument(
         "--distractor-policy",
-        choices=DISTRACTOR_POLICIES,
+        choices=CLI_DISTRACTOR_POLICIES,
         default="hard",
         help="Use all other continuations or only same-modality hard distractors.",
     )
@@ -145,9 +143,8 @@ def main(
         distractor_policy=args.distractor_policy,
     )
 
-    generalization_eval = eval_corpus is not None
-    eval_label = eval_corpus.label if generalization_eval else "train"
-    eval_split = "held_out" if generalization_eval else "train"
+    eval_label = eval_corpus.label if eval_corpus is not None else "train"
+    eval_split, generalization_eval = _eval_reporting(eval_label)
     print("intrep next-observation evaluation")
     top1_delta = result.after_metrics.top1_accuracy - result.before_metrics.top1_accuracy
     margin_delta = result.after_metrics.mean_margin - result.before_metrics.mean_margin
@@ -256,7 +253,7 @@ def _write_metrics(
 ) -> None:
     before_metrics = getattr(result, "before_metrics")
     after_metrics = getattr(result, "after_metrics")
-    generalization_eval = eval_label != "train"
+    eval_split, generalization_eval = _eval_reporting(eval_label)
     warnings = []
     if not generalization_eval:
         warnings.append(
@@ -266,7 +263,7 @@ def _write_metrics(
         "corpus": corpus_label,
         "eval_corpus": eval_label,
         "distractor_policy": distractor_policy,
-        "eval_split": "held_out" if generalization_eval else "train",
+        "eval_split": eval_split,
         "generalization_eval": generalization_eval,
         "warnings": warnings,
         "train_case_count": len(getattr(result, "train_cases")),
@@ -274,6 +271,8 @@ def _write_metrics(
         "training": _training_result_to_dict(
             getattr(result, "training_result"),
             training_config,
+            eval_split=eval_split,
+            generalization_eval=generalization_eval,
         ),
         "ranking": {
             "before": _ranking_summary_to_dict(result, "before", before_metrics),
@@ -287,9 +286,18 @@ def _write_metrics(
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _eval_reporting(eval_label: str) -> tuple[str, bool]:
+    if eval_label in ("train", "generated_seen"):
+        return "train", False
+    return "held_out", True
+
+
 def _training_result_to_dict(
     result: object,
     training_config: GPTTrainingConfig,
+    *,
+    eval_split: str | None = None,
+    generalization_eval: bool | None = None,
 ) -> dict[str, object]:
     return {
         "steps": getattr(result, "steps"),
@@ -317,8 +325,12 @@ def _training_result_to_dict(
         "final_train_loss": getattr(result, "final_train_loss", None),
         "initial_eval_loss": getattr(result, "initial_eval_loss", None),
         "final_eval_loss": getattr(result, "final_eval_loss", None),
-        "eval_split": getattr(result, "eval_split", None),
-        "generalization_eval": getattr(result, "generalization_eval", None),
+        "eval_split": eval_split if eval_split is not None else getattr(result, "eval_split", None),
+        "generalization_eval": (
+            generalization_eval
+            if generalization_eval is not None
+            else getattr(result, "generalization_eval", None)
+        ),
         "warnings": list(getattr(result, "warnings", ())),
     }
 
@@ -330,7 +342,10 @@ def _ranking_summary_to_dict(
 ) -> dict[str, object]:
     summary = getattr(result, f"{prefix}_summary", None)
     if summary is None:
-        return {"overall": _ranking_metrics_to_dict(fallback_metrics)}
+        return {
+            "overall": _ranking_metrics_to_dict(fallback_metrics),
+            "fallback_counts": {},
+        }
     return {
         "overall": _ranking_metrics_to_dict(getattr(summary, "overall")),
         "per_modality": {
@@ -338,6 +353,7 @@ def _ranking_summary_to_dict(
             for modality, metrics in getattr(summary, "per_modality").items()
         },
         "modality_counts": dict(getattr(summary, "modality_counts")),
+        "fallback_counts": dict(getattr(summary, "fallback_counts", {})),
     }
 
 

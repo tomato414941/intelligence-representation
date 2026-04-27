@@ -180,6 +180,33 @@ class RunSummaryTest(unittest.TestCase):
             0.5,
         )
 
+    def test_compare_json_outputs_includes_corpus_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            summary_path = root / "summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    build_run_summary(
+                        kind="current_experiment",
+                        corpus={
+                            "train": {"label": "generated-environment"},
+                            "eval": {"label": "generated_held_out_container"},
+                            "eval_slice": "generated_held_out_container",
+                        },
+                        training_config=GPTTrainingConfig(max_steps=3, seed=11),
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = compare_json_outputs([summary_path])
+
+        config = payload["runs"][0]["config"]
+        self.assertEqual(config["corpus"]["train_label"], "generated-environment")
+        self.assertEqual(config["corpus"]["eval_label"], "generated_held_out_container")
+        self.assertEqual(config["corpus"]["eval_slice"], "generated_held_out_container")
+        self.assertEqual(config["training"]["seed"], 11)
+
     def test_compare_json_outputs_sorts_missing_values_last(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

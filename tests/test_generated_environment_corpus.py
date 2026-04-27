@@ -48,6 +48,30 @@ class GeneratedEnvironmentCorpusTest(unittest.TestCase):
         )
         self.assertEqual(len(held_out_location_documents), 12)
 
+    def test_strict_train_eval_documents_include_metadata_and_negative_cases(self) -> None:
+        train_documents, eval_documents = generated_environment_train_eval_documents(
+            "generated_strict_same_entity_negative"
+        )
+
+        self.assertEqual(len(train_documents), 8)
+        self.assertEqual(len(eval_documents), 2)
+        self.assertIn('group_id="generated_strict_train"', train_documents[0].content)
+        self.assertIn(
+            'group_id="generated_strict_same_entity_negative"',
+            eval_documents[0].content,
+        )
+        self.assertIn("<next_obs> none", eval_documents[0].content)
+        self.assertIn('hard_negative_nexts="箱 at 棚"', eval_documents[0].content)
+
+    def test_strict_noisy_documents_render_stable_hard_negative_markers(self) -> None:
+        _, eval_documents = generated_environment_train_eval_documents("generated_strict_noisy")
+
+        self.assertEqual(len(eval_documents), 2)
+        self.assertIn(
+            'hard_negative_nexts="ポーチ at 机 | 時計 at ポーチ | 箱 at 棚 | 鍵 at 箱"',
+            eval_documents[0].content,
+        )
+
     def test_generated_environment_corpus_selection_names_eval_slice(self) -> None:
         selection = generated_environment_corpus_selection("generated_held_out_container")
 
@@ -104,6 +128,32 @@ class GeneratedEnvironmentCorpusTest(unittest.TestCase):
         self.assertEqual(len(train_documents), 24)
         self.assertEqual(len(eval_documents), 24)
         self.assertIn("eval_slice=generated_held_out_container", output.getvalue())
+
+    def test_cli_writes_strict_train_eval_documents(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train.jsonl"
+            eval_path = root / "eval.jsonl"
+            output = io.StringIO()
+
+            with redirect_stdout(output):
+                main(
+                    [
+                        "--train-output",
+                        str(train_path),
+                        "--eval-output",
+                        str(eval_path),
+                        "--eval-slice",
+                        "generated_strict_partial",
+                    ]
+                )
+
+            train_documents = load_mixed_documents_jsonl(train_path)
+            eval_documents = load_mixed_documents_jsonl(eval_path)
+
+        self.assertEqual(len(train_documents), 8)
+        self.assertEqual(len(eval_documents), 2)
+        self.assertIn("eval_slice=generated_strict_partial", output.getvalue())
 
     def test_cli_requires_complete_output_arguments(self) -> None:
         error_output = io.StringIO()
