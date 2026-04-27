@@ -92,6 +92,12 @@ tests/test_next_observation_cases.py:
 tests/test_next_observation_ranking.py:
   checks mixed next-observation continuation ranking without assuming a grid-only corpus
 
+tests/test_next_observation_evaluation.py:
+  checks before/after GPT ranking evaluation and held-out eval document separation
+
+tests/test_evaluate_next_observation_cli.py:
+  checks the independent next-observation evaluation CLI without changing train_gpt
+
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
 

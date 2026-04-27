@@ -17,6 +17,22 @@ class NextObservationRankingMetrics:
     mean_margin: float
 
 
+@dataclass(frozen=True)
+class NextObservationRankingSummary:
+    overall: NextObservationRankingMetrics
+    per_modality: dict[str, NextObservationRankingMetrics]
+    modality_counts: dict[str, int]
+
+
+@dataclass(frozen=True)
+class _ScoredNextObservationCase:
+    modality: str
+    positive_loss: float
+    best_distractor_loss: float
+    margin: float
+    top1_correct: bool
+
+
 def evaluate_next_observation_ranking(
     cases: Sequence[NextObservationCase],
     model: Any,
@@ -24,16 +40,60 @@ def evaluate_next_observation_ranking(
     *,
     score_continuation_loss: ContinuationScorer | None = None,
 ) -> NextObservationRankingMetrics:
+    scored_cases = _score_next_observation_cases(
+        cases,
+        model,
+        tokenizer,
+        score_continuation_loss=score_continuation_loss,
+    )
+    return _summarize_scored_cases(scored_cases)
+
+
+def evaluate_next_observation_ranking_summary(
+    cases: Sequence[NextObservationCase],
+    model: Any,
+    tokenizer: ByteTokenizer,
+    *,
+    score_continuation_loss: ContinuationScorer | None = None,
+) -> NextObservationRankingSummary:
+    scored_cases = _score_next_observation_cases(
+        cases,
+        model,
+        tokenizer,
+        score_continuation_loss=score_continuation_loss,
+    )
+
+    per_modality_cases: dict[str, list[_ScoredNextObservationCase]] = {}
+    for scored_case in scored_cases:
+        per_modality_cases.setdefault(scored_case.modality, []).append(scored_case)
+
+    return NextObservationRankingSummary(
+        overall=_summarize_scored_cases(scored_cases),
+        per_modality={
+            modality: _summarize_scored_cases(modality_cases)
+            for modality, modality_cases in per_modality_cases.items()
+        },
+        modality_counts={
+            modality: len(modality_cases)
+            for modality, modality_cases in per_modality_cases.items()
+        },
+    )
+
+
+def _score_next_observation_cases(
+    cases: Sequence[NextObservationCase],
+    model: Any,
+    tokenizer: ByteTokenizer,
+    *,
+    score_continuation_loss: ContinuationScorer | None = None,
+) -> list[_ScoredNextObservationCase]:
     if not cases:
         raise ValueError("cases must not be empty")
     if len(cases) < 2:
         raise ValueError("at least two cases are required to build distractors")
 
     scorer = score_continuation_loss or torch_context_limited_continuation_loss
-    positive_losses: list[float] = []
-    best_distractor_losses: list[float] = []
-    margins: list[float] = []
-    top1_count = 0
+    scored_cases: list[_ScoredNextObservationCase] = []
 
     for index, case in enumerate(cases):
         positive_loss = scorer(model, tokenizer, case.prefix, case.positive_next)
@@ -48,18 +108,38 @@ def evaluate_next_observation_ranking(
         best_distractor_loss = min(distractor_losses)
         margin = best_distractor_loss - positive_loss
 
-        positive_losses.append(positive_loss)
-        best_distractor_losses.append(best_distractor_loss)
-        margins.append(margin)
-        if positive_loss < best_distractor_loss:
-            top1_count += 1
+        scored_cases.append(
+            _ScoredNextObservationCase(
+                modality=case.modality,
+                positive_loss=positive_loss,
+                best_distractor_loss=best_distractor_loss,
+                margin=margin,
+                top1_correct=positive_loss < best_distractor_loss,
+            )
+        )
 
-    count = len(cases)
+    return scored_cases
+
+
+def _summarize_scored_cases(
+    scored_cases: Sequence[_ScoredNextObservationCase],
+) -> NextObservationRankingMetrics:
+    if not scored_cases:
+        raise ValueError("scored_cases must not be empty")
+
+    count = len(scored_cases)
     return NextObservationRankingMetrics(
-        top1_accuracy=top1_count / count,
-        mean_positive_loss=sum(positive_losses) / count,
-        mean_best_distractor_loss=sum(best_distractor_losses) / count,
-        mean_margin=sum(margins) / count,
+        top1_accuracy=sum(scored_case.top1_correct for scored_case in scored_cases)
+        / count,
+        mean_positive_loss=sum(
+            scored_case.positive_loss for scored_case in scored_cases
+        )
+        / count,
+        mean_best_distractor_loss=sum(
+            scored_case.best_distractor_loss for scored_case in scored_cases
+        )
+        / count,
+        mean_margin=sum(scored_case.margin for scored_case in scored_cases) / count,
     )
 
 

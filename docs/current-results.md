@@ -65,8 +65,8 @@ intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
 intrep.pair_ranking:
   symbolic-to-natural environment pair ranking by continuation loss
 
-intrep.next_observation_cases / intrep.next_observation_ranking:
-  mixed observation-plus-action to next-observation ranking by continuation loss
+intrep.next_observation_cases / intrep.next_observation_ranking / intrep.next_observation_evaluation:
+  mixed observation-plus-action to next-observation ranking before and after GPT training
 
 intrep.evaluation:
   evaluate_prediction_cases
@@ -131,6 +131,22 @@ rank by continuation loss
 ```
 
 This covers symbolic environment text and grid observations through the same evaluation shape, so grid does not become the only target.
+
+The independent evaluation runner compares untrained and trained ranking scores:
+
+```sh
+uv run python -m intrep.evaluate_next_observation --max-steps 5
+```
+
+For held-out ranking, pass a separate eval JSONL corpus:
+
+```sh
+uv run python -m intrep.evaluate_next_observation \
+  --corpus file --corpus-path train.jsonl \
+  --eval-corpus-path eval.jsonl
+```
+
+If no eval corpus is provided, the runner reports training-set ranking only. That is a smoke check, not a generalization claim.
 
 ## Support Benchmark
 
