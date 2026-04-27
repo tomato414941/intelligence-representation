@@ -130,3 +130,9 @@ uv run python -m intrep.demo
 ```sh
 uv run python -m intrep.train_gpt --max-steps 20
 ```
+
+To train from a JSONL corpus with records containing `id`, `modality`, and `content`:
+
+```sh
+uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jsonl --loss-summary
+```

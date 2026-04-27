@@ -25,6 +25,23 @@ class GPTTrainingResult:
     final_loss: float
     steps: int
     token_count: int
+    loss_history: tuple[float, ...] = ()
+
+    @property
+    def best_loss(self) -> float:
+        if not self.loss_history:
+            return 0.0
+        return min(self.loss_history)
+
+    @property
+    def loss_reduction(self) -> float:
+        return self.initial_loss - self.final_loss
+
+    @property
+    def loss_reduction_ratio(self) -> float:
+        if self.initial_loss == 0.0:
+            return 0.0
+        return self.loss_reduction / self.initial_loss
 
 
 def train_mixed_gpt(
@@ -33,9 +50,13 @@ def train_mixed_gpt(
     model_config: GPTConfig | None = None,
 ) -> GPTTrainingResult:
     config = training_config or GPTTrainingConfig()
+    _validate_training_config(config)
     torch.manual_seed(config.seed)
     tokenizer = ByteTokenizer()
-    corpus = render_corpus(documents or default_mixed_documents())
+    corpus_documents = documents if documents is not None else default_mixed_documents()
+    if not corpus_documents:
+        raise ValueError("documents must not be empty")
+    corpus = render_corpus(corpus_documents)
     token_ids = tokenizer.encode(corpus)
     inputs, targets = language_model_batches(
         token_ids=token_ids,
@@ -46,11 +67,16 @@ def train_mixed_gpt(
         vocab_size=tokenizer.vocab_size,
         context_length=config.context_length,
     )
+    if gpt_config.vocab_size != tokenizer.vocab_size:
+        raise ValueError("model_config.vocab_size must match the byte tokenizer vocab size")
+    if gpt_config.context_length != config.context_length:
+        raise ValueError("model_config.context_length must match training_config.context_length")
     model = DecoderOnlyGPT(gpt_config)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
     final_loss = 0.0
+    loss_history: list[float] = []
 
     model.train()
     for step in range(config.max_steps):
@@ -59,10 +85,11 @@ def train_mixed_gpt(
         batch_targets = targets[batch_index]
         optimizer.zero_grad()
         logits = model(batch_inputs)
-        loss = loss_fn(logits.reshape(-1, tokenizer.vocab_size), batch_targets.reshape(-1))
+        loss = loss_fn(logits.reshape(-1, logits.size(-1)), batch_targets.reshape(-1))
         if initial_loss is None:
             initial_loss = float(loss.item())
         final_loss = float(loss.item())
+        loss_history.append(final_loss)
         loss.backward()
         optimizer.step()
 
@@ -71,7 +98,19 @@ def train_mixed_gpt(
         final_loss=final_loss,
         steps=config.max_steps,
         token_count=len(token_ids),
+        loss_history=tuple(loss_history),
     )
+
+
+def _validate_training_config(config: GPTTrainingConfig) -> None:
+    if config.context_length <= 0:
+        raise ValueError("context_length must be positive")
+    if config.batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    if config.max_steps <= 0:
+        raise ValueError("max_steps must be positive")
+    if config.learning_rate <= 0:
+        raise ValueError("learning_rate must be positive")
 
 
 def language_model_batches(

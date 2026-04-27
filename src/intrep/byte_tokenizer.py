@@ -9,5 +9,11 @@ class ByteTokenizer:
         return list(text.encode("utf-8"))
 
     def decode(self, token_ids: list[int]) -> str:
-        payload = bytes(token_id for token_id in token_ids if 0 <= token_id < 256)
-        return payload.decode("utf-8", errors="replace")
+        payload = []
+        for token_id in token_ids:
+            if token_id == self.pad_id:
+                continue
+            if not 0 <= token_id < 256:
+                raise ValueError(f"invalid byte token id: {token_id}")
+            payload.append(token_id)
+        return bytes(payload).decode("utf-8", errors="replace")

@@ -19,6 +19,12 @@ class ByteTokenizerTest(unittest.TestCase):
 
         self.assertEqual(tokenizer.decode([65, tokenizer.pad_id, 66]), "AB")
 
+    def test_decode_rejects_invalid_token_id(self) -> None:
+        tokenizer = ByteTokenizer()
+
+        with self.assertRaisesRegex(ValueError, "invalid byte token id: 300"):
+            tokenizer.decode([65, 300])
+
 
 if __name__ == "__main__":
     unittest.main()

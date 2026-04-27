@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -11,11 +13,68 @@ class MixedDocument:
 
 
 def render_document(document: MixedDocument) -> str:
+    _validate_renderable_document(document)
     return f"<doc type={document.modality} id={document.id}>\n{document.content}\n</doc>\n"
 
 
 def render_corpus(documents: list[MixedDocument]) -> str:
     return "\n".join(render_document(document) for document in documents)
+
+
+def load_mixed_documents_jsonl(path: str | Path) -> list[MixedDocument]:
+    documents: list[MixedDocument] = []
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Invalid JSONL record at line {line_number}: {error.msg}") from error
+        if not isinstance(record, dict):
+            raise ValueError(f"Invalid JSONL record at line {line_number}: expected object")
+        missing_fields = {"id", "modality", "content"} - record.keys()
+        if missing_fields:
+            fields = ", ".join(sorted(missing_fields))
+            raise ValueError(
+                f"Invalid JSONL record at line {line_number}: missing required fields: {fields}"
+            )
+        for field in ("id", "modality", "content"):
+            if not isinstance(record[field], str):
+                raise ValueError(
+                    f"Invalid JSONL record at line {line_number}: field {field} must be a string"
+                )
+        documents.append(
+            MixedDocument(
+                id=record["id"],
+                modality=record["modality"],
+                content=record["content"],
+            )
+        )
+    return documents
+
+
+def write_mixed_documents_jsonl(path: str | Path, documents: list[MixedDocument]) -> None:
+    lines = [
+        json.dumps(
+            {
+                "id": document.id,
+                "modality": document.modality,
+                "content": document.content,
+            },
+            ensure_ascii=False,
+        )
+        for document in documents
+    ]
+    Path(path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def _validate_renderable_document(document: MixedDocument) -> None:
+    for field_name, value in (("id", document.id), ("modality", document.modality)):
+        if not value or any(character.isspace() for character in value) or ">" in value:
+            raise ValueError(f"document {field_name} is not renderable as a tag attribute")
+    if "</doc>" in document.content:
+        raise ValueError("document content must not contain </doc>")
 
 
 def default_mixed_documents() -> list[MixedDocument]:

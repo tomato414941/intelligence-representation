@@ -78,7 +78,7 @@ Expected shape:
 
 ```text
 intrep mixed-gpt training
-tokens=1025 steps=20 initial_loss=... final_loss=...
+corpus=builtin tokens=1025 steps=20 initial_loss=... final_loss=...
 ```
 
 The important condition is not high capability. It is that an untrained decoder-only GPT can consume the mixed corpus and reduce next-token loss in a short run.

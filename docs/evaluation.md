@@ -24,6 +24,7 @@ token count
 training steps
 initial loss
 final loss
+loss history / best loss
 ```
 
 The support symbolic benchmark tracks:

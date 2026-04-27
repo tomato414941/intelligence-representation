@@ -55,8 +55,28 @@ class GPTTrainingTest(unittest.TestCase):
         )
 
         self.assertEqual(result.steps, 12)
+        self.assertEqual(len(result.loss_history), 12)
         self.assertGreater(result.token_count, len(render_corpus(default_mixed_documents())))
-        self.assertLess(result.final_loss, result.initial_loss)
+        self.assertEqual(result.initial_loss, result.loss_history[0])
+        self.assertEqual(result.final_loss, result.loss_history[-1])
+        self.assertEqual(result.best_loss, min(result.loss_history))
+        self.assertLess(result.best_loss, result.initial_loss)
+        self.assertEqual(result.loss_reduction, result.initial_loss - result.final_loss)
+
+    def test_rejects_empty_documents(self) -> None:
+        with self.assertRaisesRegex(ValueError, "documents must not be empty"):
+            train_mixed_gpt(documents=[])
+
+    def test_rejects_invalid_training_config(self) -> None:
+        with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
+            train_mixed_gpt(training_config=GPTTrainingConfig(batch_size=0))
+
+    def test_rejects_model_config_mismatch(self) -> None:
+        with self.assertRaisesRegex(ValueError, "context_length must match"):
+            train_mixed_gpt(
+                training_config=GPTTrainingConfig(context_length=16),
+                model_config=GPTConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
+            )
 
 
 if __name__ == "__main__":
