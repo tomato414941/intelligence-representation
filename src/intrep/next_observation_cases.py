@@ -18,17 +18,17 @@ def extract_next_observation_cases(
     documents: Sequence[MixedDocument],
 ) -> list[NextObservationCase]:
     cases: list[NextObservationCase] = []
-    cases.extend(_extract_environment_symbolic_cases(documents))
+    cases.extend(_extract_marker_next_observation_cases(documents))
     cases.extend(_extract_grid_cases(documents))
     return cases
 
 
-def _extract_environment_symbolic_cases(
+def _extract_marker_next_observation_cases(
     documents: Sequence[MixedDocument],
 ) -> list[NextObservationCase]:
     cases: list[NextObservationCase] = []
     for document in documents:
-        if document.modality != "environment_symbolic":
+        if document.modality not in ("environment_symbolic", "external_action"):
             continue
         parsed = _split_symbolic_next_observation(document.content)
         if parsed is None:

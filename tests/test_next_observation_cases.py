@@ -1,7 +1,13 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from intrep.grid_corpus import default_grid_documents, episode_to_mixed_documents
-from intrep.mixed_corpus import MixedDocument, default_mixed_documents
+from intrep.mixed_corpus import (
+    MixedDocument,
+    default_mixed_documents,
+    load_mixed_documents_jsonl,
+)
 from intrep.next_observation_cases import (
     NextObservationCase,
     extract_next_observation_cases,
@@ -102,6 +108,63 @@ class NextObservationCasesTest(unittest.TestCase):
         ]
 
         self.assertEqual(extract_next_observation_cases(documents), [])
+
+    def test_extracts_next_observation_cases_from_external_web_action_documents(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "external-corpus.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        (
+                            '{"id":"external_web_cart","modality":"external_web",'
+                            '"content":"<web url=https://example.invalid/cart> cart page shows pending order </web>"}'
+                        ),
+                        (
+                            '{"id":"external_action_checkout","modality":"external_action",'
+                            '"content":"<obs> url=https://example.invalid/cart ; order pending '
+                            '<action> click checkout <next_obs> url=https://example.invalid/checkout ; checkout form visible"}'
+                        ),
+                        (
+                            '{"id":"external_action_pay","modality":"external_action",'
+                            '"content":"<obs> url=https://example.invalid/checkout ; checkout form visible '
+                            '<action> submit payment <next_obs> url=https://example.invalid/receipt ; receipt visible"}'
+                        ),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            documents = load_mixed_documents_jsonl(path)
+
+        cases = extract_next_observation_cases(documents)
+
+        self.assertEqual(
+            cases,
+            [
+                NextObservationCase(
+                    id="external_action_checkout",
+                    modality="external_action",
+                    prefix=(
+                        "<obs> url=https://example.invalid/cart ; order pending "
+                        "<action> click checkout <next_obs> "
+                    ),
+                    positive_next=(
+                        "url=https://example.invalid/checkout ; checkout form visible"
+                    ),
+                ),
+                NextObservationCase(
+                    id="external_action_pay",
+                    modality="external_action",
+                    prefix=(
+                        "<obs> url=https://example.invalid/checkout ; checkout form visible "
+                        "<action> submit payment <next_obs> "
+                    ),
+                    positive_next="url=https://example.invalid/receipt ; receipt visible",
+                ),
+            ],
+        )
+        self.assertNotIn("external_web_cart", {case.id for case in cases})
 
 
 if __name__ == "__main__":

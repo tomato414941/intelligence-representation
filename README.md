@@ -28,7 +28,7 @@ treated as parts of the same sequence-learning world?
 
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
 
-The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned mixed data can expand without turning the codebase into a broad taxonomy.
+The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned and public/internet-sourced mixed data can expand without turning the codebase into a broad taxonomy.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
@@ -144,3 +144,5 @@ uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jso
 ```
 
 JSONL file corpora are the intended path for real corpus growth.
+
+Public or internet-sourced corpora should enter through the same JSONL shape. Keep fetching, licensing review, filtering, and provenance capture outside the training architecture until a repeated experiment proves a new repo-level component is needed.

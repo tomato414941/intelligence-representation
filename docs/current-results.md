@@ -19,7 +19,7 @@ small grid observations and action-conditioned next observations
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
 
-The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned mixed data can be added without expanding code-level schemas or taxonomies.
+The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned and public/internet-sourced mixed data can be added without expanding code-level schemas or taxonomies.
 
 Historical experiment code and notes live under:
 
@@ -102,6 +102,8 @@ uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jso
 ```
 
 JSONL file corpora are the intended place for the main corpus to grow.
+
+Public or internet-sourced data should use the same file-backed corpus path after external collection, filtering, licensing/provenance review, and train/eval splitting. That keeps data growth on the main GPT corpus line without adding a Semantic State layer or a crawler-specific architecture.
 
 A small non-language observation smoke corpus is also available:
 

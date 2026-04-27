@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from intrep.byte_tokenizer import ByteTokenizer
 from intrep.mixed_corpus import (
     MixedDocument,
     default_mixed_documents,
@@ -116,6 +117,53 @@ class MixedCorpusTest(unittest.TestCase):
 
             self.assertEqual(load_mixed_documents_jsonl(path), documents)
             self.assertIn("鍵は箱の中にある", render_corpus(load_mixed_documents_jsonl(path)))
+
+    def test_external_web_action_jsonl_loads_as_trainable_mixed_documents(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "external-corpus.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        (
+                            '{"id":"external_web_checkout","modality":"external_web",'
+                            '"content":"<web url=https://example.invalid/cart> cart page shows pending order </web>"}'
+                        ),
+                        (
+                            '{"id":"external_action_checkout","modality":"external_action",'
+                            '"content":"<obs> url=https://example.invalid/cart ; order pending '
+                            '<action> click checkout <next_obs> url=https://example.invalid/checkout ; checkout form visible"}'
+                        ),
+                        (
+                            '{"id":"external_action_pay","modality":"external_action",'
+                            '"content":"<obs> url=https://example.invalid/checkout ; checkout form visible '
+                            '<action> submit payment <next_obs> url=https://example.invalid/receipt ; receipt visible"}'
+                        ),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            documents = load_mixed_documents_jsonl(path)
+
+        rendered = render_corpus(documents)
+        self.assertEqual(
+            [document.id for document in documents],
+            [
+                "external_web_checkout",
+                "external_action_checkout",
+                "external_action_pay",
+            ],
+        )
+        self.assertIn("external_web", {document.modality for document in documents})
+        self.assertIn("external_action", {document.modality for document in documents})
+        self.assertIn("https://example.invalid/cart", rendered)
+        self.assertIn("<action> click checkout", rendered)
+        self.assertIn("<next_obs> url=https://example.invalid/receipt", rendered)
+
+        token_ids = ByteTokenizer().encode(rendered)
+
+        self.assertGreater(len(token_ids), 24)
 
 
 if __name__ == "__main__":
