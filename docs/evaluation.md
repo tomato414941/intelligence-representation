@@ -4,11 +4,32 @@
 
 The current evaluation line is the `src/intrep` prototype, not the retired experiment tree.
 
-The main v1 question is:
+The conceptual project line is:
+
+```text
+World modeling as prediction over typed multimodal token streams.
+```
+
+The main v1 engineering question is:
 
 ```text
 Can an untrained decoder-only GPT consume a mixed-world corpus
 and reduce next-token loss in a short training run?
+```
+
+That is a smoke question, not a world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
+
+Use this distinction:
+
+```text
+training objective:
+  next-token prediction over typed streams
+
+training smoke metric:
+  average next-token loss reduction
+
+world-model-oriented metric:
+  held-out action-conditioned next-observation / future-token prediction
 ```
 
 In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI, with records containing `id`, `modality`, and `content`.
@@ -35,6 +56,8 @@ builtin-grid loss reduction smoke check
 ```
 
 Next-observation ranking now defaults to `distractor_policy=hard`, which ranks the positive next observation against other cases from the same modality. `distractor_policy=all_other` keeps the earlier behavior of using every other case as a distractor.
+
+Ranking requires at least two compatible evaluation cases: one positive case and at least one candidate distractor from the same evaluation pool or explicit hard-negative metadata. A generated slice with only one eval case is useful as a fixture, but it cannot produce a meaningful ranking metric by itself. Strict generated slices should therefore contain at least two cases, and preferably enough cases to make shortcut-driven distractor wins visible.
 
 The independent next-observation CLI supports the generated environment train/eval split directly:
 

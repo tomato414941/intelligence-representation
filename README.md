@@ -2,14 +2,14 @@
 
 This repository explores representation for intelligence through an installable, testable prototype.
 
-The current center is not a hand-designed semantic database. It is a small mixed-world GPT training foundation:
+The current center is not a hand-designed semantic database. It is a typed token stream prediction scaffold:
 
 ```text
-natural language + environment episodes + code + logs
-  -> byte-level tokens
-  -> decoder-only GPT
-  -> next-token training
-  -> loss / simple evaluation
+natural language + observations + actions + state/log/tool-like traces
+  -> typed token streams
+  -> decoder-only GPT-style prediction
+  -> next-token / future-token training
+  -> action-conditioned future evaluation
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -17,6 +17,12 @@ The active implementation is `src/intrep`. Historical experiments are kept under
 ## Current Position
 
 The repository still includes the earlier toy symbolic prediction benchmark, but that is now a support surface rather than the main direction.
+
+The conceptual center is:
+
+```text
+World modeling as prediction over typed multimodal token streams.
+```
 
 The main v1 direction is:
 
@@ -26,7 +32,11 @@ natural language, environment observations/actions, code, and logs are all
 treated as parts of the same sequence-learning world?
 ```
 
+Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model extends the same prediction frame to typed observation/action/consequence streams.
+
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
+
+Next-token loss reduction is a training smoke signal, not evidence that a world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
 The built-in mixed corpus is only the smoke/demo corpus. It exists so tests, demos, and short training checks can run without external files. The real growth path is JSONL file corpora supplied with `--corpus file --corpus-path ...`, where project-owned and public/internet-sourced mixed data can expand without turning the codebase into a broad taxonomy.
 
@@ -112,14 +122,15 @@ This repository should avoid turning into a handcrafted ontology project.
 Prefer:
 
 ```text
-mixed-world sequence data
+typed mixed-world sequence data
 small decoder-only GPT training runs
 byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world
 environment episodes in symbolic and natural-language renderings
 generated environment train/eval slices selected through the evaluation CLI
 same-modality hard distractors for next-observation ranking by default
-loss curves and simple eval before architecture expansion
+loss curves as smoke signals
+action-conditioned next-observation evaluation before architecture expansion
 existing symbolic benchmarks as support, not the main path
 ```
 

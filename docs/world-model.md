@@ -1,5 +1,149 @@
 # World Model Centering
 
+## 中心文
+
+```text
+World modeling as prediction over typed multimodal token streams.
+```
+
+このプロジェクトは、AIの内部表現を人間が先に設計することを中心にしない。
+また、自然言語モデルとworld modelを別物として対立させることもしない。
+
+中心仮説は次である。
+
+```text
+自然言語・観測・行動・映像・音声・状態・信念・記憶・報酬・誤差・tool useを
+typed token streamとして表現し、その未来を予測することで、
+world model的な表現がどこまで獲得されるかを調べる。
+```
+
+自然言語モデルは、world modelの敵でも代替物でもない。
+自然言語という特殊なtoken stream上で学習された、world-model-like predictorの一形態として扱う。
+
+より一般には、次の包含関係で見る。
+
+```text
+Autoregressive token predictor
+  ├─ Natural language model
+  │    └─ human text streamのnext-token predictor
+  │
+  └─ World model-like trajectory model
+       └─ observation/action/consequence streamのfuture-token predictor
+```
+
+この整理では、world modelを特殊な別アーキテクチャとして最初から作るのではなく、自然言語モデルを含むautoregressive predictorを、世界・行動・観測・信念まで含むtyped stream predictorへ拡張する。
+
+## 学習目的と評価目的
+
+Action-conditioned world predictionは、token streamにserializeすればnext-token predictionとして表現できる。
+
+例えば次の履歴がある。
+
+```text
+<OBS> room contains box_a and box_b </OBS>
+<OBS> key is inside box_a </OBS>
+<OBS> coin is inside box_b </OBS>
+<ACTION> open box_b </ACTION>
+<OBS> see coin </OBS>
+```
+
+この場合、`<OBS> see coin </OBS>`を予測することは形式的にはnext-token predictionである。
+したがって、world model的なpredictionをnext-token trainingで実装する方針は筋がよい。
+
+ただし、次の2つは違う。
+
+```text
+next-token predictionに還元できる
+```
+
+```text
+平均next-token lossが下がればworld modelができたと言える
+```
+
+モデルは、テンプレートの暗記、頻出語の予測、文体の模倣、固定フォーマットの補完だけでもlossを下げられる。
+そのため、このプロジェクトでは次の分離を守る。
+
+```text
+training objective:
+  next-token predictionを第一候補にする
+
+evaluation target:
+  action-conditioned next-observation / future-token predictionを見る
+```
+
+特に重要なのは、`<ACTION>`の後の`<OBS>`、`<TOOL_CALL>`の後の`<TOOL_RESULT>`、`<PREDICTION>`の後の`<ERROR>`のような、世界・行動・結果の関係が問われる位置である。
+
+## Token Streamと構造
+
+すべてをtoken streamにすることは、構造を捨てることではない。
+自然言語も一次元のtoken streamだが、その中には文法、照応、時間、因果、目的、信念、社会関係などの構造が含まれる。
+
+このプロジェクトで積極的に入れてよい構造は、主に薄いstream構造である。
+
+```text
+Level 1:
+  stream formatの構造
+  modality, role, boundary, time, position, agent, prediction target flag
+
+Level 2:
+  data distribution上の構造
+  open boxの後には箱の中身が見えることがある
+
+Level 3:
+  model内部のlearned structure
+  embedding geometry, attention pattern, latent state, internal circuit
+
+Level 4:
+  人間が手設計したsymbolic structure
+  Entity, Relation, Belief, Goal, Ontology
+```
+
+Level 1の型・境界・時間・modality情報は、Transformerが予測に必要な関係を学びやすくするためのinterfaceである。
+一方、Level 4の意味構造を大量に手設計する方向には寄せない。
+
+人間が設計するべきなのは、内部の意味構造そのものではなく、次である。
+
+```text
+tokenization
+serialization
+prediction target
+evaluation pressure
+encoder / decoder interface
+```
+
+これはThe Bitter Lessonと相性がよい。
+人間がontologyを細かく固定するのではなく、スケールする予測学習に構造を獲得させる。
+
+## Tokenizerの位置づけ
+
+新しいtokenizerを追加することは、新しい感覚器・行動器・内部状態チャネルを追加することに近い。
+
+```text
+vision tokenizer:
+  image / video -> visual tokens
+
+audio tokenizer:
+  waveform / speech -> audio tokens
+
+action tokenizer:
+  tool call / motor command -> action tokens
+
+state tokenizer:
+  environment state / event logs -> state tokens
+
+belief tokenizer:
+  belief report / latent predictive state -> belief tokens
+
+reward / error tokenizer:
+  feedback / loss / correction -> update-related tokens
+```
+
+ただし、新しいtokenizerを足せば即座に使えるわけではない。
+既存token空間との対応、新modalityのembedding、自然言語概念とのalignment、行動や観測との因果関係を学習する必要がある。
+
+現在の実装は、byte-level text、symbolic environment episode、grid observation、log-like textを扱う足場である。
+まだvision/audio/reward/error/tool-useを統合したmultimodal world modelではない。
+
 ## 目的
 
 プロジェクトの中心を、外部メモリやSemantic State Memoryではなく、世界モデルに置き直す。

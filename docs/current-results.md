@@ -4,7 +4,11 @@
 
 This document records the current prototype result after retiring the old experiment tree.
 
-The project has not produced a latent world model. The main direction has shifted from the old symbolic prediction benchmark toward a small mixed-world decoder-only GPT training foundation.
+The project has not produced a latent world model. The main direction has shifted from the old symbolic prediction benchmark toward a typed token stream prediction scaffold:
+
+```text
+World modeling as prediction over typed multimodal token streams.
+```
 
 The new v1 foundation trains an untrained GPT-style model on a mixed corpus:
 
@@ -18,6 +22,8 @@ small grid observations and action-conditioned next observations
 ```
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
+
+The current training objective is next-token prediction, but the project should not treat next-token loss reduction as evidence of a learned world model. World-model-oriented evidence must come from action-conditioned future prediction, especially held-out next-observation ranking after actions.
 
 The built-in corpus is the smoke corpus only. It is deliberately small and exists for demos, tests, and quick loss-reduction checks. The main corpus growth path is JSONL files loaded through the training CLI, where larger project-owned and public/internet-sourced mixed data can be added without expanding code-level schemas or taxonomies.
 
@@ -167,6 +173,42 @@ uv run python -m intrep.evaluate_next_observation \
 
 If no eval corpus is provided, the runner reports training-set ranking only. That is a smoke check, not a generalization claim.
 
+## RunPod Short Sweep
+
+A short RunPod sweep was run on `main` at commit `b2d8e03` with CUDA available, seed `7`, `max_steps=40`, and `distractor_policy=same_entity`.
+
+The generated environment slices showed next-token loss reduction:
+
+```text
+generated_seen:
+  final_eval_loss: 5.714 -> 2.870
+  next_observation_accuracy: 0.000 -> 0.000
+  symbolic_to_natural_accuracy: 0.083 -> 0.083
+  eval_cases: 12
+
+generated_held_out_object:
+  final_eval_loss: 5.733 -> 3.252
+  next_observation_accuracy: 0.000 -> 0.000
+  symbolic_to_natural_accuracy: 0.083 -> 0.083
+  eval_cases: 12
+
+generated_held_out_container:
+  final_eval_loss: 5.716 -> 3.335
+  next_observation_accuracy: 0.000 -> 0.000
+  symbolic_to_natural_accuracy: 0.083 -> 0.083
+  eval_cases: 12
+
+generated_held_out_location:
+  final_eval_loss: 5.728 -> 3.468
+  next_observation_accuracy: 0.000 -> 0.000
+  symbolic_to_natural_accuracy: 0.167 -> 0.167
+  eval_cases: 6
+```
+
+This supports only the narrow statement that the small byte-level GPT learned to reduce continuation loss on the generated text streams. It does not show improved action-conditioned next-observation prediction.
+
+The `generated_strict_*` slices were not yet usable as ranking metrics in this run because each slice had only one eval case. Candidate ranking needs at least one positive and one compatible distractor. The next data-generation fix is to expand each strict slice to multiple eval cases before treating strict ranking results as meaningful.
+
 ## Support Benchmark
 
 The old symbolic benchmark is still executable as `intrep.benchmark.run_benchmark()`.
@@ -279,6 +321,7 @@ partial observation
 out-of-distribution generalization
 planning or control
 learned state abstraction
+improved action-conditioned next-observation ranking
 ```
 
 The current milestone is not "a world model is built."
@@ -296,7 +339,8 @@ Next work should not add new taxonomies or semantic state schemas.
 It should either:
 
 ```text
-1. expand the mixed corpus while keeping the same decoder-only GPT training path
-2. add simple held-out evaluation for environment-text correspondences
-3. keep symbolic predictor work as regression/support only
+1. expand strict generated eval slices so ranking metrics actually run
+2. expand the mixed corpus while keeping the same decoder-only GPT training path
+3. add simple held-out evaluation for environment-text correspondences
+4. keep symbolic predictor work as regression/support only
 ```
