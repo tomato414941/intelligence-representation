@@ -10,6 +10,7 @@ from typing import Any
 from intrep.corpus_coverage import coverage_to_dict, summarize_corpus_coverage
 from intrep.gpt_model import GPTConfig
 from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt
+from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
 from intrep.mixed_corpus import (
     MixedDocument,
     default_mixed_documents,
@@ -199,6 +200,7 @@ def _summary_from_evaluation(
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
         "training_loss": _training_result_to_dict(training_result),
+        "language_modeling": language_modeling_metrics_from_training_result(training_result),
         "next_observation": {
             "status": "evaluated",
             "train_case_count": len(getattr(evaluation, "train_cases")),
@@ -230,6 +232,7 @@ def _summary_from_training_only(
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
         "training_loss": _training_result_to_dict(training_result),
+        "language_modeling": language_modeling_metrics_from_training_result(training_result),
         "next_observation": {
             "status": "skipped",
             "reason": "at least two next-observation cases are required",

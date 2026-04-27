@@ -76,7 +76,7 @@ class FakeEvaluationResult:
 
 
 class CurrentExperimentTest(unittest.TestCase):
-    def test_existing_builtin_corpora_run_real_learning_and_evaluation(self) -> None:
+    def test_existing_builtin_corpora_use_existing_corpus_selection(self) -> None:
         for corpus_name in ("builtin", "builtin-grid"):
             with self.subTest(corpus=corpus_name):
                 corpus = current_experiment.select_corpus(corpus_name)
@@ -90,14 +90,14 @@ class CurrentExperimentTest(unittest.TestCase):
                         max_steps=1,
                         seed=47,
                     ),
-                    model_config=_small_model_config(context_length=16),
+                    evaluation_runner=lambda *args, **kwargs: FakeEvaluationResult(),
                 )
 
                 self.assertEqual(summary["corpus"]["label"], corpus_name)
                 self.assertEqual(summary["corpus"]["eval_label"], "train")
-                self.assertEqual(summary["training_loss"]["steps"], 1)
-                self.assertEqual(len(summary["training_loss"]["loss_history"]), 1)
-                self.assertGreater(summary["training_loss"]["token_count"], 0)
+                self.assertEqual(summary["training_loss"]["steps"], 3)
+                self.assertIn("initial_train_perplexity", summary["language_modeling"])
+                self.assertIn("final_train_perplexity", summary["language_modeling"])
                 self.assertEqual(summary["next_observation"]["status"], "evaluated")
                 self.assertGreaterEqual(summary["next_observation"]["eval_case_count"], 2)
                 self.assertEqual(
@@ -139,7 +139,7 @@ class CurrentExperimentTest(unittest.TestCase):
                     max_steps=1,
                     seed=53,
                 ),
-                model_config=_small_model_config(context_length=16),
+                evaluation_runner=lambda *args, **kwargs: FakeEvaluationResult(),
             )
 
         self.assertEqual(summary["corpus"]["label"], str(train_path))
@@ -149,6 +149,8 @@ class CurrentExperimentTest(unittest.TestCase):
         self.assertEqual(summary["coverage"]["eval"]["document_count"], 2)
         self.assertIsNotNone(summary["training_loss"]["initial_eval_loss"])
         self.assertIsNotNone(summary["training_loss"]["final_eval_loss"])
+        self.assertIsNotNone(summary["language_modeling"]["initial_eval_perplexity"])
+        self.assertIsNotNone(summary["language_modeling"]["final_eval_perplexity"])
 
     def test_run_current_experiment_uses_injected_documents_config_and_runner(self) -> None:
         documents = _case_documents()
@@ -197,6 +199,8 @@ class CurrentExperimentTest(unittest.TestCase):
         self.assertEqual(summary["training_config"]["batch_stride"], 4)
         self.assertEqual(summary["training_loss"]["initial_loss"], 4.0)
         self.assertEqual(summary["training_loss"]["final_train_loss"], 2.75)
+        self.assertEqual(summary["language_modeling"]["train_loss_delta"], 1.5)
+        self.assertEqual(summary["language_modeling"]["eval_loss_delta"], 1.0)
         self.assertEqual(summary["next_observation"]["before"]["top1_accuracy"], 0.25)
         self.assertEqual(summary["next_observation"]["after"]["top1_accuracy"], 0.75)
         self.assertEqual(
@@ -267,6 +271,45 @@ class CurrentExperimentTest(unittest.TestCase):
         self.assertEqual(stdout_payload["corpus"]["label"], str(train_path))
         self.assertEqual(stdout_payload["corpus"]["eval_label"], str(eval_path))
         self.assertEqual(stdout_payload["training_loss"]["loss_history"], [4.0, 3.0, 2.5])
+        self.assertEqual(stdout_payload["language_modeling"]["train_loss_delta"], 1.5)
+
+    def test_natural_language_only_corpus_reports_language_modeling_and_skips_action_eval(self) -> None:
+        train_documents = [
+            MixedDocument(
+                id="train_text",
+                modality="external_text",
+                content="alpha beta gamma alpha beta gamma alpha beta gamma",
+            )
+        ]
+        eval_documents = [
+            MixedDocument(
+                id="eval_text",
+                modality="external_text",
+                content="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
+            )
+        ]
+
+        summary = current_experiment.run_current_experiment(
+            train_documents,
+            eval_documents=eval_documents,
+            corpus_label="natural-train",
+            eval_corpus_label="natural-eval",
+            training_config=GPTTrainingConfig(
+                context_length=8,
+                batch_size=1,
+                max_steps=1,
+                seed=59,
+            ),
+            model_config=_small_model_config(context_length=8),
+        )
+
+        self.assertEqual(summary["corpus"]["label"], "natural-train")
+        self.assertEqual(summary["next_observation"]["status"], "skipped")
+        self.assertEqual(summary["next_observation"]["eval_case_count"], 0)
+        self.assertIsNotNone(summary["language_modeling"]["initial_train_perplexity"])
+        self.assertIsNotNone(summary["language_modeling"]["final_train_perplexity"])
+        self.assertIsNotNone(summary["language_modeling"]["initial_eval_perplexity"])
+        self.assertIsNotNone(summary["language_modeling"]["final_eval_perplexity"])
 
     def test_cli_builtin_grid_uses_existing_grid_corpus(self) -> None:
         captured_documents: list[MixedDocument] | None = None
