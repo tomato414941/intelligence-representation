@@ -231,7 +231,9 @@ class CurrentExperimentTest(unittest.TestCase):
             captured_eval_documents = eval_documents
             self.assertEqual(training_config.max_steps, 9)
             self.assertEqual(training_config.learning_rate, 0.01)
-            self.assertIsNone(model_config)
+            self.assertIsNotNone(model_config)
+            self.assertEqual(model_config.embedding_dim, 8)
+            self.assertEqual(model_config.num_heads, 2)
             return FakeEvaluationResult()
 
         output = io.StringIO()
@@ -240,6 +242,7 @@ class CurrentExperimentTest(unittest.TestCase):
             train_path = temp_path / "train.jsonl"
             eval_path = temp_path / "eval.jsonl"
             summary_path = temp_path / "summary.json"
+            run_summary_path = temp_path / "run-summary.json"
             write_mixed_documents_jsonl(train_path, train_documents)
             write_mixed_documents_jsonl(eval_path, eval_documents)
 
@@ -256,22 +259,33 @@ class CurrentExperimentTest(unittest.TestCase):
                         "9",
                         "--learning-rate",
                         "0.01",
+                        "--model-preset",
+                        "tiny",
                         "--output",
                         str(summary_path),
+                        "--run-id",
+                        "current-run-1",
+                        "--run-summary-output",
+                        str(run_summary_path),
                     ],
                     evaluation_runner=fake_runner,
                 )
 
             stdout_payload = json.loads(output.getvalue())
             file_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+            run_summary_payload = json.loads(run_summary_path.read_text(encoding="utf-8"))
 
         self.assertEqual(captured_documents, train_documents)
         self.assertEqual(captured_eval_documents, eval_documents)
         self.assertEqual(stdout_payload, file_payload)
         self.assertEqual(stdout_payload["corpus"]["label"], str(train_path))
         self.assertEqual(stdout_payload["corpus"]["eval_label"], str(eval_path))
+        self.assertEqual(stdout_payload["model_config"]["embedding_dim"], 8)
         self.assertEqual(stdout_payload["training_loss"]["loss_history"], [4.0, 3.0, 2.5])
         self.assertEqual(stdout_payload["language_modeling"]["train_loss_delta"], 1.5)
+        self.assertEqual(run_summary_payload["schema_version"], "intrep.run_summary.v1")
+        self.assertEqual(run_summary_payload["run_id"], "current-run-1")
+        self.assertEqual(run_summary_payload["config"]["model"]["embedding_dim"], 8)
 
     def test_natural_language_only_corpus_reports_language_modeling_and_skips_action_eval(self) -> None:
         train_documents = [

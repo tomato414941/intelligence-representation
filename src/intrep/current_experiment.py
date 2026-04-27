@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from intrep.byte_tokenizer import ByteTokenizer
 from intrep.corpus_coverage import coverage_to_dict, summarize_corpus_coverage
-from intrep.gpt_model import GPTConfig
+from intrep.gpt_model import GPTConfig, GPT_MODEL_PRESETS, build_gpt_config, gpt_config_to_dict
 from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt
 from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
 from intrep.mixed_corpus import (
@@ -18,6 +20,7 @@ from intrep.mixed_corpus import (
 )
 from intrep.next_observation_cases import extract_next_observation_cases
 from intrep.next_observation_evaluation import evaluate_next_observation_learning
+from intrep.run_summary import build_run_summary, write_json
 
 
 DocumentLoader = Callable[[str | Path], list[MixedDocument]]
@@ -92,6 +95,7 @@ def run_current_experiment(
             corpus_label=corpus_label,
             eval_label=eval_label,
             training_config=config,
+            model_config=model_config,
         )
 
     training_result = train_mixed_gpt(
@@ -107,6 +111,7 @@ def run_current_experiment(
         corpus_label=corpus_label,
         eval_label=eval_label,
         training_config=config,
+        model_config=model_config,
         train_case_count=len(train_cases),
         eval_case_count=len(eval_cases),
     )
@@ -129,7 +134,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-stride", type=int)
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--model-preset", choices=sorted(GPT_MODEL_PRESETS), default="small")
+    parser.add_argument("--embedding-dim", type=int)
+    parser.add_argument("--num-heads", type=int)
+    parser.add_argument("--hidden-dim", type=int)
+    parser.add_argument("--num-layers", type=int)
+    parser.add_argument("--dropout", type=float)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--run-id")
+    parser.add_argument("--run-summary-output", type=Path)
     return parser
 
 
@@ -159,6 +172,21 @@ def main(
     except (OSError, ValueError) as error:
         parser.error(str(error))
 
+    try:
+        model_config = build_gpt_config(
+            preset=args.model_preset,
+            vocab_size=ByteTokenizer.vocab_size,
+            context_length=args.context_length,
+            embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            dropout=args.dropout,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+
+    started_at = time.perf_counter()
     summary = run_current_experiment(
         corpus.documents,
         eval_documents=eval_corpus.documents if eval_corpus is not None else None,
@@ -172,12 +200,35 @@ def main(
             learning_rate=args.learning_rate,
             seed=args.seed,
         ),
+        model_config=model_config,
         evaluation_runner=evaluation_runner,
     )
+    elapsed_seconds = time.perf_counter() - started_at
 
     payload = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
         args.output.write_text(payload, encoding="utf-8")
+    if args.run_summary_output is not None:
+        write_json(
+            args.run_summary_output,
+            build_run_summary(
+                kind="current_experiment",
+                run_id=args.run_id,
+                corpus={
+                    "train": {"label": corpus.label, "path": str(args.corpus_path) if args.corpus_path else None},
+                    "eval": {
+                        "label": eval_corpus.label if eval_corpus is not None else None,
+                        "path": str(args.eval_corpus_path) if args.eval_corpus_path else None,
+                    },
+                },
+                training_config=summary.get("training_config"),  # type: ignore[arg-type]
+                model_config=summary.get("model_config"),  # type: ignore[arg-type]
+                training_loss=summary.get("training_loss"),  # type: ignore[arg-type]
+                language_modeling=summary.get("language_modeling"),  # type: ignore[arg-type]
+                next_observation=summary.get("next_observation"),  # type: ignore[arg-type]
+                elapsed_seconds=elapsed_seconds,
+            ),
+        )
     print(payload, end="")
 
 
@@ -189,6 +240,7 @@ def _summary_from_evaluation(
     corpus_label: str,
     eval_label: str,
     training_config: GPTTrainingConfig,
+    model_config: GPTConfig | None,
 ) -> dict[str, object]:
     training_result = getattr(evaluation, "training_result")
     before_metrics = getattr(evaluation, "before_metrics")
@@ -199,6 +251,7 @@ def _summary_from_evaluation(
         "corpus": _corpus_dict(corpus_label, eval_label),
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
+        "model_config": _model_config_to_dict(model_config),
         "training_loss": _training_result_to_dict(training_result),
         "language_modeling": language_modeling_metrics_from_training_result(training_result),
         "next_observation": {
@@ -224,6 +277,7 @@ def _summary_from_training_only(
     corpus_label: str,
     eval_label: str,
     training_config: GPTTrainingConfig,
+    model_config: GPTConfig | None,
     train_case_count: int,
     eval_case_count: int,
 ) -> dict[str, object]:
@@ -231,6 +285,7 @@ def _summary_from_training_only(
         "corpus": _corpus_dict(corpus_label, eval_label),
         "coverage": _coverage_dict(train_documents, eval_documents),
         "training_config": _training_config_to_dict(training_config),
+        "model_config": _model_config_to_dict(model_config),
         "training_loss": _training_result_to_dict(training_result),
         "language_modeling": language_modeling_metrics_from_training_result(training_result),
         "next_observation": {
@@ -265,6 +320,10 @@ def _training_config_to_dict(config: GPTTrainingConfig) -> dict[str, object]:
         "learning_rate": config.learning_rate,
         "seed": config.seed,
     }
+
+
+def _model_config_to_dict(config: GPTConfig | None) -> dict[str, object] | None:
+    return None if config is None else gpt_config_to_dict(config)
 
 
 def _training_result_to_dict(result: object) -> dict[str, object]:

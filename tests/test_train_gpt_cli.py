@@ -33,12 +33,16 @@ class TrainGPTCLITest(unittest.TestCase):
     def test_default_uses_builtin_corpus(self) -> None:
         captured_documents = object()
 
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             nonlocal captured_documents
             captured_documents = documents
             self.assertIsNone(eval_documents)
             self.assertEqual(training_config.max_steps, 3)
             self.assertIsNone(training_config.batch_stride)
+            self.assertIsNotNone(model_config)
+            self.assertEqual(model_config.embedding_dim, 32)
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -50,8 +54,64 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
         self.assertIn("train_avg_initial=4.2500 train_avg_final=2.7500", output.getvalue())
 
+    def test_model_preset_tiny_passes_model_config(self) -> None:
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
+            self.assertIsNotNone(model_config)
+            self.assertEqual(model_config.embedding_dim, 8)
+            self.assertEqual(model_config.num_heads, 2)
+            self.assertEqual(model_config.hidden_dim, 16)
+            return FakeTrainingResult()
+
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stdout(io.StringIO()):
+                train_gpt.main(["--model-preset", "tiny"])
+
+    def test_model_overrides_pass_model_config(self) -> None:
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
+            self.assertIsNotNone(model_config)
+            self.assertEqual(model_config.embedding_dim, 24)
+            self.assertEqual(model_config.num_heads, 3)
+            self.assertEqual(model_config.hidden_dim, 48)
+            self.assertEqual(model_config.num_layers, 2)
+            self.assertEqual(model_config.dropout, 0.1)
+            return FakeTrainingResult()
+
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stdout(io.StringIO()):
+                train_gpt.main(
+                    [
+                        "--model-preset",
+                        "tiny",
+                        "--embedding-dim",
+                        "24",
+                        "--num-heads",
+                        "3",
+                        "--hidden-dim",
+                        "48",
+                        "--num-layers",
+                        "2",
+                        "--dropout",
+                        "0.1",
+                    ]
+                )
+
+    def test_invalid_model_config_reports_cli_error(self) -> None:
+        error_output = io.StringIO()
+
+        with redirect_stderr(error_output):
+            with self.assertRaises(SystemExit):
+                train_gpt.main(["--embedding-dim", "10", "--num-heads", "3"])
+
+        self.assertIn("embedding_dim must be divisible by num_heads", error_output.getvalue())
+
     def test_batch_stride_passes_to_training_config(self) -> None:
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             self.assertEqual(training_config.batch_stride, 5)
             return FakeTrainingResult()
 
@@ -65,7 +125,9 @@ class TrainGPTCLITest(unittest.TestCase):
     def test_builtin_grid_corpus_uses_grid_action_documents(self) -> None:
         captured_documents: list[MixedDocument] | None = None
 
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             nonlocal captured_documents
             captured_documents = documents
             self.assertIsNone(eval_documents)
@@ -96,7 +158,9 @@ class TrainGPTCLITest(unittest.TestCase):
             captured_path = Path(path)
             return loaded_documents
 
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             nonlocal captured_documents
             captured_documents = documents
             self.assertIsNone(eval_documents)
@@ -136,7 +200,9 @@ class TrainGPTCLITest(unittest.TestCase):
                 return eval_documents
             raise AssertionError(path)
 
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             nonlocal captured_eval_documents
             self.assertEqual(documents, train_documents)
             captured_eval_documents = eval_documents
@@ -161,7 +227,9 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertIn("eval_corpus=eval.jsonl", output.getvalue())
 
     def test_loss_summary_prints_compact_line(self) -> None:
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -177,7 +245,9 @@ class TrainGPTCLITest(unittest.TestCase):
         )
 
     def test_loss_history_path_writes_json(self) -> None:
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -207,6 +277,36 @@ class TrainGPTCLITest(unittest.TestCase):
             },
         )
 
+    def test_run_summary_path_writes_normalized_summary(self) -> None:
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
+            return FakeTrainingResult()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_summary_path = Path(temp_dir) / "run-summary.json"
+            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+                with redirect_stdout(io.StringIO()):
+                    train_gpt.main(
+                        [
+                            "--run-id",
+                            "run-1",
+                            "--run-summary-path",
+                            str(run_summary_path),
+                        ]
+                    )
+
+            payload = json.loads(run_summary_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["schema_version"], "intrep.run_summary.v1")
+        self.assertEqual(payload["run_id"], "run-1")
+        self.assertEqual(payload["kind"], "train_gpt")
+        self.assertEqual(payload["config"]["model"]["embedding_dim"], 32)
+        self.assertAlmostEqual(
+            payload["metrics"]["language_modeling"]["final_train_perplexity"],
+            15.642631884188171,
+        )
+
     def test_file_corpus_eval_corpus_and_loss_history_use_real_jsonl_loader(self) -> None:
         train_documents = [
             MixedDocument(id="train_text_001", modality="text", content="train observation"),
@@ -222,7 +322,9 @@ class TrainGPTCLITest(unittest.TestCase):
         captured_documents: list[MixedDocument] | None = None
         captured_eval_documents: list[MixedDocument] | None = None
 
-        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
             nonlocal captured_documents, captured_eval_documents
             captured_documents = documents
             captured_eval_documents = eval_documents

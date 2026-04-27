@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from collections.abc import Callable
 from pathlib import Path
 
+from intrep.byte_tokenizer import ByteTokenizer
+from intrep.gpt_model import GPT_MODEL_PRESETS, build_gpt_config, gpt_config_to_dict
 from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt
+from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
 from intrep.mixed_corpus import MixedDocument
+from intrep.run_summary import build_run_summary, write_json
 
 
 DocumentLoader = Callable[[str | Path], list[MixedDocument]]
@@ -72,6 +77,15 @@ def _write_loss_history(path: Path, result: object, training_config: GPTTraining
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _add_model_config_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--model-preset", choices=sorted(GPT_MODEL_PRESETS), default="small")
+    parser.add_argument("--embedding-dim", type=int)
+    parser.add_argument("--num-heads", type=int)
+    parser.add_argument("--hidden-dim", type=int)
+    parser.add_argument("--num-layers", type=int)
+    parser.add_argument("--dropout", type=float)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a tiny decoder-only GPT on mixed-world data.")
     parser.add_argument(
@@ -94,6 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--context-length", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--batch-stride", type=int)
+    _add_model_config_arguments(parser)
     parser.add_argument(
         "--loss-summary",
         action="store_true",
@@ -103,6 +118,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--loss-history-path",
         type=Path,
         help="Write training loss history and summary metrics to a JSON file.",
+    )
+    parser.add_argument("--run-id")
+    parser.add_argument(
+        "--run-summary-path",
+        type=Path,
+        help="Write normalized run summary JSON.",
     )
     return parser
 
@@ -147,11 +168,27 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         batch_size=args.batch_size,
         batch_stride=args.batch_stride,
     )
+    try:
+        model_config = build_gpt_config(
+            preset=args.model_preset,
+            vocab_size=ByteTokenizer.vocab_size,
+            context_length=args.context_length,
+            embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            dropout=args.dropout,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+    started_at = time.perf_counter()
     result = train_mixed_gpt(
         documents=documents,
         eval_documents=eval_documents,
         training_config=training_config,
+        model_config=model_config,
     )
+    elapsed_seconds = time.perf_counter() - started_at
     print("intrep mixed-gpt training")
     print(
         f"corpus={corpus_label}"
@@ -162,11 +199,42 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         f" final_loss={result.final_loss:.4f}"
         f" train_avg_initial={result.initial_train_loss:.4f}"
         f" train_avg_final={result.final_train_loss:.4f}"
+        f" model={json.dumps(gpt_config_to_dict(model_config), sort_keys=True)}"
     )
     if args.loss_summary:
         print(_loss_summary(result))
     if args.loss_history_path is not None:
         _write_loss_history(args.loss_history_path, result, training_config)
+    if args.run_summary_path is not None:
+        write_json(
+            args.run_summary_path,
+            build_run_summary(
+                kind="train_gpt",
+                run_id=args.run_id,
+                corpus={
+                    "train": {"label": corpus_label, "path": str(args.corpus_path) if args.corpus_path else None},
+                    "eval": {"label": eval_label, "path": str(args.eval_corpus_path) if args.eval_corpus_path else None},
+                },
+                training_config=training_config,
+                model_config=model_config,
+                training_loss={
+                    "initial_loss": result.initial_loss,
+                    "final_loss": result.final_loss,
+                    "steps": result.steps,
+                    "token_count": result.token_count,
+                    "best_loss": result.best_loss,
+                    "loss_reduction": result.loss_reduction,
+                    "loss_reduction_ratio": result.loss_reduction_ratio,
+                    "loss_history": list(result.loss_history),
+                    "initial_train_loss": result.initial_train_loss,
+                    "final_train_loss": result.final_train_loss,
+                    "initial_eval_loss": result.initial_eval_loss,
+                    "final_eval_loss": result.final_eval_loss,
+                },
+                language_modeling=language_modeling_metrics_from_training_result(result),
+                elapsed_seconds=elapsed_seconds,
+            ),
+        )
 
 
 if __name__ == "__main__":
