@@ -135,6 +135,7 @@ natural language as important data, not the whole world
 environment episodes in symbolic and natural-language renderings
 generated environment train/eval slices selected through the evaluation CLI
 generated environment TypedEvent train/eval slices with explicit hard-negative event ids
+for same-history/different-action and same-action/different-context checks
 same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion

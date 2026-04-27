@@ -73,7 +73,8 @@ intrep.grid_world / intrep.grid_corpus / intrep.grid_typed_corpus:
   and as typed observation/action/consequence streams
 
 intrep.generated_environment_typed_corpus:
-  generated environment train/eval TypedEvent streams with explicit same-split negative_event_ids
+  generated environment train/eval TypedEvent streams with explicit same-split negative_event_ids,
+  including same_history_different_action and same_action_different_context hard-negative fixtures
 
 intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
   decoder-only GPT, next-token training loop, and CLI entrypoint

@@ -65,8 +65,13 @@ The generated environment typed corpus builder creates train/eval `TypedEvent` J
 uv run python -m intrep.generated_environment_typed_corpus \
   --train-output train.typed.jsonl \
   --eval-output eval.typed.jsonl \
-  --eval-slice generated_strict_noisy
+  --eval-slice same_history_different_action \
+  --train-size 100 \
+  --eval-size 40 \
+  --seed 7
 ```
+
+Use `same_history_different_action` to keep the observation fixed while changing the action, and `same_action_different_context` to keep the action fixed while changing the observation. Both generated slices write reciprocal `negative_event_ids` so the ranking task uses intentional hard negatives rather than incidental distractors. The older generated slices, such as `generated_strict_noisy`, remain available for compatibility and broader smoke coverage.
 
 Those generated files can then be evaluated directly:
 
@@ -75,7 +80,7 @@ uv run python -m intrep.evaluate_future_prediction \
   --train-path train.typed.jsonl \
   --eval-path eval.typed.jsonl \
   --target-role consequence \
-  --condition same_modality_negative
+  --condition same_history_different_action
 ```
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
