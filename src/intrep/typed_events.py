@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -108,7 +108,7 @@ def render_typed_event(event: TypedEvent) -> str:
     if event.source_id is not None:
         attributes.append(("source", event.source_id))
     for key, value in sorted(event.metadata.items()):
-        attributes.append((_render_attribute_name(key), str(value)))
+        attributes.append((_render_attribute_name(key), _render_attribute_value(value)))
     rendered_attributes = " ".join(
         f'{name}="{_escape_tag_attribute(value)}"' for name, value in attributes
     )
@@ -132,6 +132,14 @@ def _escape_attribute(value: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
     )
+
+
+def _render_attribute_value(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Sequence):
+        return "|".join(str(part) for part in value)
+    return str(value)
 
 
 def _escape_tag_attribute(value: str) -> str:

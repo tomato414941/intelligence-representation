@@ -79,15 +79,23 @@ src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
 src/intrep/mixed_corpus.py
 src/intrep/generated_environment_corpus.py
+src/intrep/generated_environment_typed_corpus.py
 src/intrep/corpus_split.py
+src/intrep/typed_events.py
+src/intrep/typed_stream.py
+src/intrep/typed_corpus.py
+src/intrep/future_prediction_cases.py
+src/intrep/future_prediction_ranking.py
 src/intrep/gpt_model.py
 src/intrep/gpt_training.py
 src/intrep/train_gpt.py
+src/intrep/train_ptm.py
 src/intrep/symbolic_to_natural_evaluation.py
 src/intrep/next_observation_cases.py
 src/intrep/next_observation_ranking.py
 src/intrep/next_observation_evaluation.py
 src/intrep/evaluate_next_observation.py
+src/intrep/evaluate_future_prediction.py
 src/intrep/run_summary.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
@@ -126,6 +134,7 @@ byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world
 environment episodes in symbolic and natural-language renderings
 generated environment train/eval slices selected through the evaluation CLI
+generated environment TypedEvent train/eval slices with explicit hard-negative event ids
 same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion

@@ -54,6 +54,47 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
 
+    def test_eval_path_absent_reports_train_split_not_generalization(self) -> None:
+        output = io.StringIO()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train.jsonl"
+            metrics_path = root / "metrics.json"
+            _write_events(train_path, "train")
+
+            with redirect_stdout(output):
+                evaluate_future_prediction.main(
+                    [
+                        "--train-path",
+                        str(train_path),
+                        "--target-role",
+                        "consequence",
+                        "--condition",
+                        "same_modality_negative",
+                        "--model-preset",
+                        "tiny",
+                        "--max-steps",
+                        "1",
+                        "--context-length",
+                        "32",
+                        "--batch-size",
+                        "2",
+                        "--metrics-path",
+                        str(metrics_path),
+                    ]
+                )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        stdout = output.getvalue()
+        self.assertIn("eval_path=train", stdout)
+        self.assertIn("eval_split=train", stdout)
+        self.assertIn("generalization_eval=false", stdout)
+        self.assertEqual(payload["eval_split"], "train")
+        self.assertFalse(payload["generalization_eval"])
+        self.assertEqual(payload["train_case_count"], 2)
+        self.assertEqual(payload["eval_case_count"], 2)
+
 
 def _write_events(path: Path, prefix: str) -> None:
     rows = [

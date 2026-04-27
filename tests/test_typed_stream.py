@@ -45,6 +45,19 @@ class TypedStreamTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "attributes must not contain whitespace"):
             render_typed_event(event)
 
+    def test_render_typed_event_renders_sequence_metadata_without_spaces(self) -> None:
+        event = TypedEvent(
+            id="case",
+            role="consequence",
+            modality="text",
+            content="see key",
+            metadata={"negative_event_ids": ["neg_a", "neg_b"]},
+        )
+
+        rendered = render_typed_event(event)
+
+        self.assertIn('negative_event_ids="neg_a|neg_b"', rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

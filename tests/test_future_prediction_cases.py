@@ -89,6 +89,27 @@ class FuturePredictionCasesTest(unittest.TestCase):
         self.assertEqual(len(cases), 2)
         self.assertEqual([event.id for event in cases[0].negative_events], ["ep2_cons"])
 
+    def test_same_action_different_context_requires_different_history(self) -> None:
+        events = [
+            _event("ep1_obs", "observation", "text", "key in box", "ep1", 0),
+            _event("ep1_action", "action", "text", "open", "ep1", 1),
+            _event("ep1_cons", "consequence", "text", "see key", "ep1", 2),
+            _event("ep2_obs", "observation", "text", "coin in box", "ep2", 0),
+            _event("ep2_action", "action", "text", "open", "ep2", 1),
+            _event("ep2_cons", "consequence", "text", "see coin", "ep2", 2),
+            _event("ep3_obs", "observation", "text", "key in box", "ep3", 0),
+            _event("ep3_action", "action", "text", "open", "ep3", 1),
+            _event("ep3_cons", "consequence", "text", "see decoy", "ep3", 2),
+        ]
+
+        cases = extract_future_prediction_cases(
+            events,
+            condition="same_action_different_context",
+        )
+
+        self.assertEqual(len(cases), 3)
+        self.assertEqual([event.id for event in cases[0].negative_events], ["ep2_cons"])
+
     def test_same_history_different_action_filters_negative_history(self) -> None:
         events = [
             _event("ep1_obs", "observation", "text", "box_a key ; box_b coin", "ep1", 0),
@@ -106,6 +127,56 @@ class FuturePredictionCasesTest(unittest.TestCase):
 
         self.assertEqual(len(cases), 2)
         self.assertEqual([event.id for event in cases[0].negative_events], ["ep2_cons"])
+
+    def test_same_history_different_action_requires_different_action(self) -> None:
+        events = [
+            _event("ep1_obs", "observation", "text", "box_a key ; box_b coin", "ep1", 0),
+            _event("ep1_action", "action", "text", "open box_a", "ep1", 1),
+            _event("ep1_cons", "consequence", "text", "see key", "ep1", 2),
+            _event("ep2_obs", "observation", "text", "box_a key ; box_b coin", "ep2", 0),
+            _event("ep2_action", "action", "text", "open box_b", "ep2", 1),
+            _event("ep2_cons", "consequence", "text", "see coin", "ep2", 2),
+            _event("ep3_obs", "observation", "text", "box_a key ; box_b coin", "ep3", 0),
+            _event("ep3_action", "action", "text", "open box_a", "ep3", 1),
+            _event("ep3_cons", "consequence", "text", "see decoy", "ep3", 2),
+        ]
+
+        cases = extract_future_prediction_cases(
+            events,
+            condition="same_history_different_action",
+        )
+
+        self.assertEqual(len(cases), 3)
+        self.assertEqual([event.id for event in cases[0].negative_events], ["ep2_cons"])
+
+    def test_explicit_negative_ids_override_candidate_filtering(self) -> None:
+        events = [
+            _event("ep1_obs", "observation", "text", "key in box", "ep1", 0),
+            _event("ep1_action", "action", "text", "open", "ep1", 1),
+            _event(
+                "ep1_cons",
+                "consequence",
+                "text",
+                "see key",
+                "ep1",
+                2,
+                {"negative_event_ids": ["ep3_cons"]},
+            ),
+            _event("ep2_obs", "observation", "text", "coin in box", "ep2", 0),
+            _event("ep2_action", "action", "text", "open", "ep2", 1),
+            _event("ep2_cons", "consequence", "text", "see coin", "ep2", 2),
+            _event("ep3_obs", "observation", "grid", "map in box", "ep3", 0),
+            _event("ep3_action", "action", "grid_action", "shake", "ep3", 1),
+            _event("ep3_cons", "consequence", "grid", "hear paper", "ep3", 2),
+        ]
+
+        cases = extract_future_prediction_cases(
+            events,
+            condition="same_action_different_context",
+        )
+
+        self.assertEqual(cases[0].positive_event.id, "ep1_cons")
+        self.assertEqual([event.id for event in cases[0].negative_events], ["ep3_cons"])
 
     def test_renders_prefix_and_continuations_with_typed_stream(self) -> None:
         events = [

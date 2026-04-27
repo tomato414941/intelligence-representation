@@ -15,11 +15,11 @@ In that broader frame, world modeling is a core evaluation surface, not the whol
 The main v1 engineering question is:
 
 ```text
-Can an untrained decoder-only GPT consume a mixed-world corpus
-and reduce next-token loss in a short training run?
+Can an untrained decoder-only GPT consume typed event streams and improve
+target-role future prediction after a short next-token training run?
 ```
 
-That is a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
+Average next-token loss reduction remains a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
 
 Use this distinction:
 
@@ -50,6 +50,25 @@ negative_events:
 ```
 
 The general CLI for this path is:
+
+```sh
+uv run python -m intrep.evaluate_future_prediction \
+  --train-path train.typed.jsonl \
+  --eval-path eval.typed.jsonl \
+  --target-role consequence \
+  --condition same_modality_negative
+```
+
+The generated environment typed corpus builder creates train/eval `TypedEvent` JSONL with explicit same-split hard-negative ids on consequence events:
+
+```sh
+uv run python -m intrep.generated_environment_typed_corpus \
+  --train-output train.typed.jsonl \
+  --eval-output eval.typed.jsonl \
+  --eval-slice generated_strict_noisy
+```
+
+Those generated files can then be evaluated directly:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \

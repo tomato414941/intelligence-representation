@@ -235,19 +235,23 @@ def _negative_events_for(
     )
     if condition == "same_action_different_context":
         action = _nearest_previous_role(prefix_events, EventRole.ACTION)
+        history = tuple(event.content for event in prefix_events if event.role == EventRole.OBSERVATION)
         if action is not None:
             candidates = tuple(
                 event
                 for event in candidates
                 if _episode_has_event_content(negatives_by_role, event.episode_id, EventRole.ACTION, action.content)
+                and _episode_observation_history(negatives_by_role, event.episode_id) != history
             )
     elif condition == "same_history_different_action":
         history = tuple(event.content for event in prefix_events if event.role == EventRole.OBSERVATION)
+        action = _nearest_previous_role(prefix_events, EventRole.ACTION)
         candidates = tuple(
             event
             for event in candidates
             if _episode_observation_history(negatives_by_role, event.episode_id) == history
             and event.episode_id != positive_event.episode_id
+            and _episode_action_content(negatives_by_role, event.episode_id) != (action.content if action is not None else None)
         )
     elif condition not in (
         None,
@@ -281,6 +285,16 @@ def _episode_observation_history(
         for event in _stable_event_order(list(events_by_role.get(EventRole.OBSERVATION, ())))
         if event.episode_id == episode_id
     )
+
+
+def _episode_action_content(
+    events_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
+    episode_id: str | None,
+) -> str | None:
+    for event in _stable_event_order(list(events_by_role.get(EventRole.ACTION, ()))):
+        if event.episode_id == episode_id:
+            return event.content
+    return None
 
 
 def _metadata_list(value: object) -> tuple[str, ...]:

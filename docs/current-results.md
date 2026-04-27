@@ -63,19 +63,32 @@ intrep.byte_tokenizer:
   byte-level tokenizer for mixed Unicode/code/log text
 
 intrep.mixed_corpus:
-  minimal mixed-world corpus samples
+  legacy minimal mixed-world corpus samples
 
-intrep.grid_world / intrep.grid_corpus:
+intrep.typed_events / intrep.typed_stream / intrep.typed_corpus:
+  TypedEvent envelopes, typed-tag rendering, JSONL loading, and legacy MixedDocument bridging
+
+intrep.grid_world / intrep.grid_corpus / intrep.grid_typed_corpus:
   small hidden-state grid transitions rendered as text/grid/action/next-grid documents
+  and as typed observation/action/consequence streams
+
+intrep.generated_environment_typed_corpus:
+  generated environment train/eval TypedEvent streams with explicit same-split negative_event_ids
 
 intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
   decoder-only GPT, next-token training loop, and CLI entrypoint
 
+intrep.train_ptm:
+  TypedEvent JSONL training entrypoint over the existing GPT engine
+
 intrep.pair_ranking:
   symbolic-to-natural environment pair ranking by continuation loss
 
+intrep.future_prediction_cases / intrep.future_prediction_ranking / intrep.evaluate_future_prediction:
+  target-role future prediction cases and ranking over TypedEvent streams
+
 intrep.next_observation_cases / intrep.next_observation_ranking / intrep.next_observation_evaluation:
-  mixed observation-plus-action to next-observation ranking before and after GPT training,
+  legacy mixed observation-plus-action to next-observation ranking before and after GPT training,
   with same-modality hard distractors by default
 
 intrep.evaluation:
