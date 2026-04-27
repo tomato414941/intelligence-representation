@@ -30,6 +30,7 @@ loss history / best loss
 train corpus average loss
 held-out eval corpus loss
 symbolic-to-natural pair ranking accuracy and margin
+builtin-grid loss reduction smoke check
 ```
 
 The support symbolic benchmark tracks:
@@ -71,6 +72,12 @@ tests/test_byte_tokenizer.py:
 tests/test_mixed_corpus.py:
   checks the built-in smoke corpus and lightweight rendering tags
 
+tests/test_grid_world.py:
+  checks hidden grid state, partial observation, action steps, and next observations
+
+tests/test_grid_corpus.py:
+  checks grid episodes render into text/grid/action/next-grid mixed documents
+
 tests/test_gpt_training.py:
   checks language-model batches, decoder-only GPT logits, short-run loss reduction,
   and reusable training artifacts
@@ -97,6 +104,7 @@ A change is useful only if it improves or clarifies at least one of:
 
 ```text
 mixed corpus construction
+non-language grid observation corpus construction
 JSONL file corpus loading and growth
 decoder-only GPT training behavior
 loss reduction in short runs

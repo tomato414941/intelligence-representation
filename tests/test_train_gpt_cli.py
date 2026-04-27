@@ -62,6 +62,30 @@ class TrainGPTCLITest(unittest.TestCase):
 
         self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
 
+    def test_builtin_grid_corpus_uses_grid_action_documents(self) -> None:
+        captured_documents: list[MixedDocument] | None = None
+
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+            nonlocal captured_documents
+            captured_documents = documents
+            self.assertIsNone(eval_documents)
+            return FakeTrainingResult()
+
+        output = io.StringIO()
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stdout(output):
+                train_gpt.main(["--corpus", "builtin-grid"])
+
+        self.assertIsNotNone(captured_documents)
+        assert captured_documents is not None
+        modalities = {document.modality for document in captured_documents}
+        self.assertIn("grid", modalities)
+        self.assertIn("action_log", modalities)
+        self.assertIn("next_grid", modalities)
+        self.assertIn("next_text", modalities)
+        self.assertTrue(any("<action>" in document.content for document in captured_documents))
+        self.assertIn("corpus=builtin-grid eval_corpus=none tokens=123 steps=3", output.getvalue())
+
     def test_file_corpus_uses_document_loader(self) -> None:
         loaded_documents = [MixedDocument(id="custom", modality="text", content="hello")]
         captured_documents: list[MixedDocument] | None = None

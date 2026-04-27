@@ -20,6 +20,13 @@ def _load_file_documents(path: str | Path) -> list[MixedDocument]:
     return load_mixed_documents_jsonl(path)
 
 
+def _load_builtin_grid_documents() -> list[MixedDocument]:
+    from intrep import grid_corpus
+
+    default_grid_documents = grid_corpus.default_grid_documents
+    return default_grid_documents()
+
+
 def _loss_summary(result: object) -> str:
     initial_loss = getattr(result, "initial_loss")
     final_loss = getattr(result, "final_loss")
@@ -69,9 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a tiny decoder-only GPT on mixed-world data.")
     parser.add_argument(
         "--corpus",
-        choices=("builtin", "file"),
+        choices=("builtin", "builtin-grid", "file"),
         default="builtin",
-        help="Use the built-in mixed-world corpus or load documents from a JSONL file.",
+        help="Use a built-in corpus or load documents from a JSONL file.",
     )
     parser.add_argument(
         "--corpus-path",
@@ -109,7 +116,10 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     corpus_label = "builtin"
     eval_label = "none"
     loader = document_loader or _load_file_documents
-    if args.corpus == "file":
+    if args.corpus == "builtin-grid":
+        documents = _load_builtin_grid_documents()
+        corpus_label = "builtin-grid"
+    elif args.corpus == "file":
         if args.corpus_path is None:
             parser.error("--corpus-path is required when --corpus=file")
         try:

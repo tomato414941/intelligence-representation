@@ -14,6 +14,7 @@ environment episodes in symbolic form
 environment episodes in natural-language form
 code
 logs / tool-like outputs
+small grid observations and action-conditioned next observations
 ```
 
 This is not an OpenAI API wrapper and not a pretrained chat model. It uses the GPT/Transformer sequence-learning pattern directly.
@@ -55,6 +56,9 @@ intrep.byte_tokenizer:
 intrep.mixed_corpus:
   minimal mixed-world corpus samples
 
+intrep.grid_world / intrep.grid_corpus:
+  small hidden-state grid transitions rendered as text/grid/action/next-grid documents
+
 intrep.gpt_model / intrep.gpt_training / intrep.train_gpt:
   decoder-only GPT, next-token training loop, and CLI entrypoint
 
@@ -95,6 +99,14 @@ uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jso
 ```
 
 JSONL file corpora are the intended place for the main corpus to grow.
+
+A small non-language observation smoke corpus is also available:
+
+```sh
+uv run python -m intrep.train_gpt --corpus builtin-grid --max-steps 5 --loss-summary
+```
+
+This keeps the same byte-level GPT training path, but adds grid observations and action-conditioned next observations. It is still a toy corpus, not a true multimodal model.
 
 The first correspondence metric is available as a library-level evaluator:
 
