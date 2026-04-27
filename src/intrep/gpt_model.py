@@ -100,6 +100,7 @@ def gpt_config_to_dict(config: GPTConfig) -> dict[str, int | float]:
 class DecoderOnlyGPT(nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
+        validate_gpt_config(config)
         self.config = config
         self.token_embedding = nn.Embedding(config.vocab_size, config.embedding_dim)
         self.position_embedding = nn.Embedding(config.context_length, config.embedding_dim)
@@ -115,6 +116,7 @@ class DecoderOnlyGPT(nn.Module):
         self.output = nn.Linear(config.embedding_dim, config.vocab_size)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
+        _validate_token_ids(token_ids, self.config)
         length = token_ids.size(1)
         positions = torch.arange(length, device=token_ids.device).unsqueeze(0)
         hidden = self.token_embedding(token_ids) + self.position_embedding(positions)
@@ -124,3 +126,18 @@ class DecoderOnlyGPT(nn.Module):
         )
         encoded = self.encoder(hidden, mask=mask)
         return self.output(encoded)
+
+
+def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
+    if token_ids.ndim != 2:
+        raise ValueError("token_ids must be a rank-2 tensor with shape [batch, sequence]")
+    if token_ids.dtype != torch.long:
+        raise ValueError("token_ids must have dtype torch.long")
+    if token_ids.size(1) > config.context_length:
+        raise ValueError("token_ids sequence length must not exceed context_length")
+    if token_ids.numel() == 0:
+        raise ValueError("token_ids must not be empty")
+    min_id = int(token_ids.min().item())
+    max_id = int(token_ids.max().item())
+    if min_id < 0 or max_id >= config.vocab_size:
+        raise ValueError("token_ids values must be in the model vocabulary range")

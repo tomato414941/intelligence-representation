@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import unittest
 
-from intrep.gpt_model import build_gpt_config
+import torch
+
+from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
 
 
 class GPTModelConfigTest(unittest.TestCase):
@@ -56,6 +58,19 @@ class GPTModelConfigTest(unittest.TestCase):
                 embedding_dim=10,
                 num_heads=3,
             )
+
+    def test_forward_validates_token_ids(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = DecoderOnlyGPT(config)
+
+        with self.assertRaisesRegex(ValueError, "rank-2"):
+            model(torch.tensor([1, 2], dtype=torch.long))
+        with self.assertRaisesRegex(ValueError, "torch.long"):
+            model(torch.tensor([[1.0, 2.0]]))
+        with self.assertRaisesRegex(ValueError, "context_length"):
+            model(torch.tensor([[1, 2, 3, 4, 5]], dtype=torch.long))
+        with self.assertRaisesRegex(ValueError, "vocabulary range"):
+            model(torch.tensor([[1, 8]], dtype=torch.long))
 
 
 if __name__ == "__main__":

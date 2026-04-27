@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.future_prediction_cases import extract_future_prediction_cases
+from intrep.future_prediction_cases import FuturePredictionCase, extract_future_prediction_cases
 from intrep.future_prediction_ranking import (
     FuturePredictionRankingMetrics,
     FuturePredictionRankingSummary,
@@ -127,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
             args.metrics_path,
             before_summary=before_summary,
             after_summary=after_summary,
+            eval_cases=eval_cases,
             train_case_count=len(train_cases),
             eval_case_count=len(eval_cases),
             target_role=EventRole(args.target_role),
@@ -141,6 +142,7 @@ def _write_metrics(
     *,
     before_summary: FuturePredictionRankingSummary,
     after_summary: FuturePredictionRankingSummary,
+    eval_cases: list[FuturePredictionCase],
     train_case_count: int,
     eval_case_count: int,
     target_role: EventRole,
@@ -155,12 +157,27 @@ def _write_metrics(
         "generalization_eval": generalization_eval,
         "train_case_count": train_case_count,
         "eval_case_count": eval_case_count,
+        "delta_top1_accuracy": after_summary.overall.top1_accuracy - before_summary.overall.top1_accuracy,
+        "delta_margin": after_summary.overall.mean_margin - before_summary.overall.mean_margin,
+        "explicit_negative_rate": _explicit_negative_rate(eval_cases),
+        "no_negative_case_count": sum(1 for case in eval_cases if not case.negative_events),
         "ranking": {
             "before": _summary_to_dict(before_summary),
             "after": _summary_to_dict(after_summary),
         },
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _explicit_negative_rate(cases: list[FuturePredictionCase]) -> float:
+    if not cases:
+        return 0.0
+    explicit_count = sum(
+        1
+        for case in cases
+        if case.positive_event.metadata.get("negative_event_ids")
+    )
+    return explicit_count / len(cases)
 
 
 def _summary_to_dict(summary: FuturePredictionRankingSummary) -> dict[str, object]:

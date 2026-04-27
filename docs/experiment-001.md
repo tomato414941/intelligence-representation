@@ -41,8 +41,8 @@ uv run python -m intrep.generated_environment_typed_corpus \
   --train-output runs/exp001/same_history_train.typed.jsonl \
   --eval-output runs/exp001/same_history_eval.typed.jsonl \
   --eval-slice same_history_different_action \
-  --train-size 100 \
-  --eval-size 40 \
+  --train-size 80 \
+  --eval-size 32 \
   --seed 7
 ```
 
@@ -64,8 +64,8 @@ uv run python -m intrep.generated_environment_typed_corpus \
   --train-output runs/exp001/same_action_train.typed.jsonl \
   --eval-output runs/exp001/same_action_eval.typed.jsonl \
   --eval-slice same_action_different_context \
-  --train-size 100 \
-  --eval-size 40 \
+  --train-size 80 \
+  --eval-size 32 \
   --seed 7
 ```
 
@@ -90,20 +90,16 @@ eval_case_count
 generalization_eval
 before_top1_accuracy
 after_top1_accuracy
+delta_top1_accuracy
 before_margin
 after_margin
-train_final_loss
-```
-
-The current report is enough for the first run. A later metrics PR should add:
-
-```text
-delta_top1_accuracy
 delta_margin
 explicit_negative_rate
 no_negative_case_count
-case_count_by_condition
+train_final_loss
 ```
+
+The metrics report should make clear whether the ranking task actually used explicit hard negatives. `explicit_negative_rate` should be `1.0` for the generated hard-negative slices.
 
 ## Success Criteria
 
@@ -181,3 +177,83 @@ pretrained language model transfer
 ```
 
 Those should wait until the typed corpus and future-prediction metrics are stable.
+
+## First Run
+
+Date: 2026-04-27
+
+Configuration:
+
+```text
+train_size = 80
+eval_size = 32
+seed = 7
+target_role = consequence
+eval_split = held_out
+generalization_eval = true
+```
+
+Results:
+
+```text
+same_history_different_action:
+  train_case_count: 80
+  eval_case_count: 32
+  before_top1_accuracy: 0.5000
+  after_top1_accuracy: 0.5000
+  before_margin: -0.00000016
+  after_margin: -0.00000017
+  train_final_loss: 3.5707
+
+same_action_different_context:
+  train_case_count: 80
+  eval_case_count: 32
+  before_top1_accuracy: 0.5000
+  after_top1_accuracy: 0.5000
+  before_margin: 0.0000
+  after_margin: 0.0000
+  train_final_loss: 3.4959
+```
+
+Additional train-split smoke check:
+
+```text
+same_history_different_action:
+  eval_split: train
+  generalization_eval: false
+  eval_case_count: 80
+  explicit_negative_rate: 1.0
+  no_negative_case_count: 0
+  before_top1_accuracy: 0.5000
+  after_top1_accuracy: 0.5000
+  delta_top1_accuracy: 0.0000
+  before_margin: -0.00000015
+  after_margin: -0.00000004
+  delta_margin: 0.00000011
+
+same_action_different_context:
+  eval_split: train
+  generalization_eval: false
+  eval_case_count: 80
+  explicit_negative_rate: 1.0
+  no_negative_case_count: 0
+  before_top1_accuracy: 0.5000
+  after_top1_accuracy: 0.5000
+  delta_top1_accuracy: 0.0000
+  before_margin: 0.0000
+  after_margin: 0.0000
+  delta_margin: 0.0000
+```
+
+Reading:
+
+```text
+The short training run reduced next-token loss, but it did not improve
+held-out hard-negative future prediction ranking.
+```
+
+This is a useful negative result. It means the current byte-level typed-tag GPT scaffold can learn local stream statistics on this corpus, but this first run does not show action-conditioned or context-conditioned consequence discrimination.
+
+The train-split smoke check sharpens the reading: the failure is not only held-out generalization. Under the short default training run, the model does not distinguish the explicit hard negatives even on the training split.
+
+Next steps should not claim world-model evidence from this run. The next experimental step is to vary training steps, model size, context length, and tokenizer/rendering while keeping this hard-negative evaluation fixed.

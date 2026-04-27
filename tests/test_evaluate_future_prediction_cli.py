@@ -53,6 +53,10 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertTrue(payload["generalization_eval"])
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
+        self.assertIn("delta_top1_accuracy", payload)
+        self.assertIn("delta_margin", payload)
+        self.assertEqual(payload["explicit_negative_rate"], 0.0)
+        self.assertEqual(payload["no_negative_case_count"], 0)
 
     def test_eval_path_absent_reports_train_split_not_generalization(self) -> None:
         output = io.StringIO()
@@ -94,6 +98,8 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertFalse(payload["generalization_eval"])
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
+        self.assertIn("delta_top1_accuracy", payload)
+        self.assertIn("delta_margin", payload)
 
 
 def _write_events(path: Path, prefix: str) -> None:

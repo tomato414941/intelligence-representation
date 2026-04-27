@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
@@ -12,6 +13,7 @@ from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
 
 GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -281,6 +283,10 @@ def language_model_batches(
     batch_size: int,
     batch_stride: int | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    if context_length <= 0:
+        raise ValueError("context_length must be positive")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
     if len(token_ids) <= context_length:
         raise ValueError("token_ids must be longer than context_length")
     stride = batch_stride if batch_stride is not None else context_length
@@ -302,6 +308,18 @@ def language_model_batches(
     if usable == 0:
         usable = len(input_rows)
         batch_size = len(input_rows)
+    dropped_window_count = len(input_rows) - usable
+    logger.debug(
+        "language_model_batches token_count=%s context_length=%s stride=%s batch_size=%s window_count=%s usable_window_count=%s dropped_window_count=%s batch_count=%s",
+        len(token_ids),
+        context_length,
+        stride,
+        batch_size,
+        len(input_rows),
+        usable,
+        dropped_window_count,
+        usable // batch_size,
+    )
     inputs = torch.tensor(input_rows[:usable], dtype=torch.long).reshape(
         -1,
         batch_size,

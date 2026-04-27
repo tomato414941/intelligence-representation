@@ -45,6 +45,19 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(strided_inputs[0, 1].tolist(), [2, 3, 4, 5])
         self.assertEqual(strided_targets[0, 1].tolist(), [3, 4, 5, 6])
 
+    def test_language_model_batches_validates_dimensions(self) -> None:
+        with self.assertRaisesRegex(ValueError, "context_length must be positive"):
+            language_model_batches([1, 2, 3], context_length=0, batch_size=1)
+        with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
+            language_model_batches([1, 2, 3], context_length=1, batch_size=0)
+
+    def test_language_model_batches_logs_window_summary(self) -> None:
+        with self.assertLogs("intrep.gpt_training", level="DEBUG") as logs:
+            language_model_batches(list(range(20)), context_length=4, batch_size=3)
+
+        self.assertIn("window_count=", logs.output[0])
+        self.assertIn("dropped_window_count=", logs.output[0])
+
     def test_decoder_only_gpt_forward_returns_token_logits(self) -> None:
         model = DecoderOnlyGPT(
             GPTConfig(
