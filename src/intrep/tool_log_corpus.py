@@ -20,6 +20,8 @@ def load_tool_log_jsonl(
     modality: str = "tool_log",
     limit: int | None = None,
 ) -> list[MixedDocument]:
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
     records: list[ToolLogRecord] = []
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     for line_number, line in enumerate(lines, start=1):

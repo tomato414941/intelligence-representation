@@ -121,6 +121,14 @@ class ToolLogCorpusTest(unittest.TestCase):
         self.assertIn("<error> error=not available", written[1].content)
         self.assertIn("wrote 2 mixed documents", output.getvalue())
 
+    def test_load_tool_log_jsonl_rejects_negative_limit(self) -> None:
+        with TemporaryDirectory() as directory:
+            input_path = Path(directory) / "tool-log.jsonl"
+            input_path.write_text('{"id":"one","command":"date"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "limit must be non-negative"):
+                load_tool_log_jsonl(input_path, limit=-1)
+
 
 if __name__ == "__main__":
     unittest.main()

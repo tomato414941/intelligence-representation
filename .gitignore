@@ -13,5 +13,7 @@ dist/
 build/
 *.egg-info/
 
+data/
+
 .DS_Store
 *.log
