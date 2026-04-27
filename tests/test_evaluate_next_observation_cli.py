@@ -473,6 +473,58 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         self.assertNotEqual(raised.exception.code, 0)
         self.assertIn("--corpus-path is required", error_output.getvalue())
 
+    def test_file_corpus_can_evaluate_typed_event_jsonl_with_typed_rendering(self) -> None:
+        captured_documents: list[MixedDocument] | None = None
+
+        def fake_evaluate_next_observation_learning(
+            documents,
+            *,
+            eval_documents=None,
+            training_config,
+            distractor_policy="hard",
+        ):
+            nonlocal captured_documents
+            captured_documents = documents
+            self.assertIsNone(eval_documents)
+            return FakeEvaluationResult(train_case_count=2, eval_case_count=2)
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            corpus_path = Path(temp_dir) / "typed.jsonl"
+            corpus_path.write_text(
+                (
+                    '{"id":"case_1","role":"observation","modality":"environment_symbolic",'
+                    '"content":"<obs> box closed <action> open box <next_obs> key visible"}\n'
+                    '{"id":"case_2","role":"observation","modality":"environment_symbolic",'
+                    '"content":"<obs> box closed <action> open box <next_obs> coin visible"}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(
+                evaluate_next_observation,
+                "evaluate_next_observation_learning",
+                fake_evaluate_next_observation_learning,
+            ):
+                with redirect_stdout(output):
+                    evaluate_next_observation.main(
+                        [
+                            "--corpus",
+                            "file",
+                            "--corpus-path",
+                            str(corpus_path),
+                            "--corpus-format",
+                            "typed-event",
+                            "--render-format",
+                            "typed-tags",
+                        ]
+                    )
+
+        assert captured_documents is not None
+        self.assertEqual(captured_documents[0].modality, "observation:environment_symbolic")
+        self.assertIn('role="observation"', captured_documents[0].content)
+        self.assertIn("corpus_format=typed-event render_format=typed-tags", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

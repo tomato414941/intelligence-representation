@@ -120,6 +120,7 @@ Prefer:
 
 ```text
 typed mixed-world sequence data
+TypedEvent / typed-tag rendering as a backward-compatible stream layer
 small decoder-only GPT training runs
 byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world

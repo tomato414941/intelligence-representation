@@ -420,6 +420,49 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertEqual(payload["initial_eval_loss"], 5.5)
         self.assertEqual(payload["final_eval_loss"], 4.25)
 
+    def test_file_corpus_can_load_typed_event_jsonl_with_typed_rendering(self) -> None:
+        captured_documents: list[MixedDocument] | None = None
+
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
+            nonlocal captured_documents
+            captured_documents = documents
+            return FakeTrainingResult()
+
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            corpus_path = Path(temp_dir) / "typed.jsonl"
+            corpus_path.write_text(
+                (
+                    '{"id":"ep1_obs","role":"observation","modality":"grid",'
+                    '"episode_id":"ep1","time_index":0,"content":"A.."}\n'
+                    '{"id":"ep1_action","role":"action","modality":"grid_action",'
+                    '"episode_id":"ep1","time_index":1,"content":"right"}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+                with redirect_stdout(output):
+                    train_gpt.main(
+                        [
+                            "--corpus",
+                            "file",
+                            "--corpus-path",
+                            str(corpus_path),
+                            "--corpus-format",
+                            "typed-event",
+                            "--render-format",
+                            "typed-tags",
+                        ]
+                    )
+
+        assert captured_documents is not None
+        self.assertEqual(captured_documents[0].modality, "observation:grid")
+        self.assertIn('role="observation"', captured_documents[0].content)
+        self.assertIn("corpus_format=typed-event render_format=typed-tags", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,7 +31,8 @@ def _extract_marker_next_observation_cases(
 ) -> list[NextObservationCase]:
     cases: list[NextObservationCase] = []
     for document in documents:
-        if document.modality not in ("environment_symbolic", "external_action", "tool_log"):
+        modality = _base_modality(document.modality)
+        if modality not in ("environment_symbolic", "external_action", "tool_log"):
             continue
         parsed = _split_symbolic_next_observation(document.content)
         if parsed is None:
@@ -40,7 +41,7 @@ def _extract_marker_next_observation_cases(
         cases.append(
             NextObservationCase(
                 id=document.id,
-                modality=document.modality,
+                modality=modality,
                 prefix=prefix,
                 positive_next=positive_next,
                 hard_negative_nexts=hard_negative_nexts,
@@ -55,14 +56,14 @@ def _extract_grid_cases(documents: Sequence[MixedDocument]) -> list[NextObservat
     cases: list[NextObservationCase] = []
 
     for document in documents:
-        if document.modality != "grid" or not document.id.endswith("_grid"):
+        if _base_modality(document.modality) != "grid" or not document.id.endswith("_grid"):
             continue
         step_id = document.id[: -len("_grid")]
         action = by_id.get(f"{step_id}_action_log")
         next_grid = by_id.get(f"{step_id}_next_grid")
-        if action is None or action.modality != "action_log":
+        if action is None or _base_modality(action.modality) != "action_log":
             continue
-        if next_grid is None or next_grid.modality != "next_grid":
+        if next_grid is None or _base_modality(next_grid.modality) != "next_grid":
             continue
 
         cases.append(
@@ -77,16 +78,22 @@ def _extract_grid_cases(documents: Sequence[MixedDocument]) -> list[NextObservat
     return cases
 
 
+def _base_modality(modality: str) -> str:
+    return modality.split(":", 1)[1] if ":" in modality else modality
+
+
 def _split_symbolic_next_observation(content: str) -> tuple[str, str, tuple[str, ...], str | None] | None:
     obs_match = _find_marker(content, "obs")
     action_match = _find_marker(content, "action")
     next_match = _find_marker(content, "next_obs")
     if obs_match is None or action_match is None or next_match is None:
         return None
-    if not (obs_match.start() < action_match.start() < next_match.start()):
+    if not (obs_match.start() < next_match.start()):
+        return None
+    if action_match.start() > next_match.start():
         return None
 
-    positive_next = content[next_match.end() :].strip()
+    positive_next = _strip_event_closing_tag(content[next_match.end() :].strip())
     if not positive_next:
         return None
 
@@ -98,6 +105,10 @@ def _split_symbolic_next_observation(content: str) -> tuple[str, str, tuple[str,
         metadata.get("hard_negative_nexts", ()),
         metadata.get("group_id"),
     )
+
+
+def _strip_event_closing_tag(value: str) -> str:
+    return value[: -len("</EVENT>")].rstrip() if value.endswith("</EVENT>") else value
 
 
 def _find_marker(content: str, marker_name: str) -> re.Match[str] | None:

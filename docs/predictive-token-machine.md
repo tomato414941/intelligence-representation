@@ -208,6 +208,8 @@ reward / error tokenizer:
 byte-level text tokenizer
 small decoder-only GPT
 mixed text / environment / grid / log-like corpus
+TypedEvent envelope and typed-tag stream rendering
+typed-event JSONL input path with legacy MixedDocument compatibility
 symbolic-to-natural ranking
 action-conditioned next-observation ranking
 generated train/eval slices

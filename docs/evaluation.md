@@ -34,7 +34,7 @@ world-model-oriented metric:
   held-out action-conditioned next-observation / future-token prediction
 ```
 
-In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI, with records containing `id`, `modality`, and `content`.
+In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI. The legacy schema keeps `id`, `modality`, and `content`; the typed-event schema adds `role`, `episode_id`, `time_index`, and `metadata`, then renders events as typed tags before byte-level training.
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
 

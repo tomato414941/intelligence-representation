@@ -25,10 +25,10 @@ class CorpusSelection:
 
 def _load_file_documents(path: str | Path) -> list[MixedDocument]:
     try:
-        from intrep.mixed_corpus import load_mixed_documents_jsonl
+        from intrep.typed_corpus import load_corpus_jsonl_as_mixed_documents
     except ImportError as error:
         raise RuntimeError("file-backed corpus loading is not available in this build") from error
-    return load_mixed_documents_jsonl(path)
+    return load_corpus_jsonl_as_mixed_documents(path)
 
 
 def _load_builtin_grid_documents() -> list[MixedDocument]:
@@ -74,6 +74,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional mixed-document JSONL corpus for held-out ranking evaluation.",
     )
     parser.add_argument(
+        "--corpus-format",
+        choices=("auto", "mixed-document", "typed-event"),
+        default="auto",
+        help="JSONL schema for --corpus=file. auto detects typed-event records by role.",
+    )
+    parser.add_argument(
+        "--render-format",
+        choices=("plain", "typed-tags"),
+        default="plain",
+        help="Render corpus records as legacy plain documents or typed event tags.",
+    )
+    parser.add_argument(
         "--generated-eval-slice",
         choices=EVAL_SLICES,
         default="generated_held_out_object",
@@ -99,6 +111,32 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _load_documents(
+    path: str | Path,
+    *,
+    loader: DocumentLoader,
+    custom_loader: bool,
+    corpus_format: str,
+    render_format: str,
+) -> list[MixedDocument]:
+    if not custom_loader:
+        from intrep.typed_corpus import load_corpus_jsonl_as_mixed_documents
+
+        return load_corpus_jsonl_as_mixed_documents(
+            path,
+            corpus_format=corpus_format,
+            render_format=render_format,
+        )
+    documents = loader(path)
+    if render_format == "plain":
+        return documents
+    if render_format != "typed-tags":
+        raise ValueError("render_format must be plain or typed-tags")
+    from intrep.typed_corpus import mixed_documents_to_typed_events, typed_events_to_mixed_documents
+
+    return typed_events_to_mixed_documents(mixed_documents_to_typed_events(documents))
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -114,6 +152,9 @@ def main(
         args.generated_eval_slice,
         parser=parser,
         document_loader=loader,
+        custom_loader=document_loader is not None,
+        corpus_format=args.corpus_format,
+        render_format=args.render_format,
     )
     eval_corpus = (
         CorpusSelection(label=corpus.eval_label, documents=corpus.eval_documents)
@@ -124,7 +165,13 @@ def main(
         if eval_corpus is not None:
             parser.error("--eval-corpus-path cannot be used with --corpus=generated-environment")
         try:
-            eval_documents = loader(args.eval_corpus_path)
+            eval_documents = _load_documents(
+                args.eval_corpus_path,
+                loader=loader,
+                custom_loader=document_loader is not None,
+                corpus_format=args.corpus_format,
+                render_format=args.render_format,
+            )
         except RuntimeError as error:
             parser.error(str(error))
         except (OSError, ValueError) as error:
@@ -161,6 +208,8 @@ def main(
         f" eval_split={eval_split}"
         f" generalization_eval={str(generalization_eval).lower()}"
         f" distractor_policy={args.distractor_policy}"
+        f" corpus_format={args.corpus_format}"
+        f" render_format={args.render_format}"
         f" before_top1_accuracy={result.before_metrics.top1_accuracy:.4f}"
         f" after_top1_accuracy={result.after_metrics.top1_accuracy:.4f}"
         f" top1_delta={top1_delta:.4f}"
@@ -186,6 +235,9 @@ def _select_corpus(
     *,
     parser: argparse.ArgumentParser,
     document_loader: DocumentLoader,
+    custom_loader: bool,
+    corpus_format: str,
+    render_format: str,
 ) -> CorpusSelection:
     if corpus == "builtin":
         if corpus_path is not None:
@@ -217,7 +269,13 @@ def _select_corpus(
         if corpus_path is None:
             parser.error("--corpus-path is required when --corpus=file")
         try:
-            documents = document_loader(corpus_path)
+            documents = _load_documents(
+                corpus_path,
+                loader=document_loader,
+                custom_loader=custom_loader,
+                corpus_format=corpus_format,
+                render_format=render_format,
+            )
         except RuntimeError as error:
             parser.error(str(error))
         except (OSError, ValueError) as error:
