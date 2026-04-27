@@ -18,13 +18,16 @@ from intrep.mixed_corpus import (
     default_mixed_documents,
     load_mixed_documents_jsonl,
 )
+from intrep.mixed_corpus_evaluation import extract_environment_document_pairs
 from intrep.next_observation_cases import extract_next_observation_cases
 from intrep.next_observation_evaluation import evaluate_next_observation_learning
 from intrep.run_summary import build_run_summary, write_json
+from intrep.symbolic_to_natural_evaluation import evaluate_symbolic_to_natural_learning
 
 
 DocumentLoader = Callable[[str | Path], list[MixedDocument]]
 EvaluationRunner = Callable[..., Any]
+SymbolicToNaturalRunner = Callable[..., Any]
 
 
 @dataclass(frozen=True)
@@ -68,6 +71,7 @@ def run_current_experiment(
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
     evaluation_runner: EvaluationRunner = evaluate_next_observation_learning,
+    symbolic_to_natural_runner: SymbolicToNaturalRunner = evaluate_symbolic_to_natural_learning,
 ) -> dict[str, object]:
     config = training_config or GPTTrainingConfig()
     train_documents = list(documents)
@@ -80,6 +84,21 @@ def run_current_experiment(
     eval_case_documents = held_out_documents if held_out_documents is not None else train_documents
     train_cases = extract_next_observation_cases(train_documents)
     eval_cases = extract_next_observation_cases(eval_case_documents)
+    train_pairs = extract_environment_document_pairs(train_documents)
+    eval_pairs = extract_environment_document_pairs(eval_case_documents)
+    symbolic_to_natural = _skipped_symbolic_to_natural_summary(
+        train_pair_count=len(train_pairs),
+        eval_pair_count=len(eval_pairs),
+    )
+    if len(eval_pairs) >= 2:
+        symbolic_to_natural = _summary_from_symbolic_to_natural_evaluation(
+            symbolic_to_natural_runner(
+                train_documents,
+                eval_documents=held_out_documents,
+                training_config=config,
+                model_config=model_config,
+            )
+        )
 
     if len(eval_cases) >= 2:
         evaluation = evaluation_runner(
@@ -96,6 +115,7 @@ def run_current_experiment(
             eval_label=eval_label,
             training_config=config,
             model_config=model_config,
+            symbolic_to_natural=symbolic_to_natural,
         )
 
     training_result = train_mixed_gpt(
@@ -114,6 +134,7 @@ def run_current_experiment(
         model_config=model_config,
         train_case_count=len(train_cases),
         eval_case_count=len(eval_cases),
+        symbolic_to_natural=symbolic_to_natural,
     )
 
 
@@ -151,6 +172,7 @@ def main(
     *,
     document_loader: DocumentLoader = load_mixed_documents_jsonl,
     evaluation_runner: EvaluationRunner = evaluate_next_observation_learning,
+    symbolic_to_natural_runner: SymbolicToNaturalRunner = evaluate_symbolic_to_natural_learning,
 ) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -202,6 +224,7 @@ def main(
         ),
         model_config=model_config,
         evaluation_runner=evaluation_runner,
+        symbolic_to_natural_runner=symbolic_to_natural_runner,
     )
     elapsed_seconds = time.perf_counter() - started_at
 
@@ -226,6 +249,7 @@ def main(
                 training_loss=summary.get("training_loss"),  # type: ignore[arg-type]
                 language_modeling=summary.get("language_modeling"),  # type: ignore[arg-type]
                 next_observation=summary.get("next_observation"),  # type: ignore[arg-type]
+                symbolic_to_natural=summary.get("symbolic_to_natural"),  # type: ignore[arg-type]
                 elapsed_seconds=elapsed_seconds,
             ),
         )
@@ -241,6 +265,7 @@ def _summary_from_evaluation(
     eval_label: str,
     training_config: GPTTrainingConfig,
     model_config: GPTConfig | None,
+    symbolic_to_natural: dict[str, object],
 ) -> dict[str, object]:
     training_result = getattr(evaluation, "training_result")
     before_metrics = getattr(evaluation, "before_metrics")
@@ -266,6 +291,7 @@ def _summary_from_evaluation(
             },
             "modality_counts": _modality_counts(before_summary, after_summary),
         },
+        "symbolic_to_natural": symbolic_to_natural,
     }
 
 
@@ -280,6 +306,7 @@ def _summary_from_training_only(
     model_config: GPTConfig | None,
     train_case_count: int,
     eval_case_count: int,
+    symbolic_to_natural: dict[str, object],
 ) -> dict[str, object]:
     return {
         "corpus": _corpus_dict(corpus_label, eval_label),
@@ -294,6 +321,7 @@ def _summary_from_training_only(
             "train_case_count": train_case_count,
             "eval_case_count": eval_case_count,
         },
+        "symbolic_to_natural": symbolic_to_natural,
     }
 
 
@@ -349,6 +377,44 @@ def _ranking_metrics_to_dict(metrics: object) -> dict[str, float]:
         "mean_positive_loss": getattr(metrics, "mean_positive_loss"),
         "mean_best_distractor_loss": getattr(metrics, "mean_best_distractor_loss"),
         "mean_margin": getattr(metrics, "mean_margin"),
+    }
+
+
+def _pair_ranking_metrics_to_dict(metrics: object) -> dict[str, float]:
+    return {
+        "top1_accuracy": getattr(metrics, "top1_accuracy"),
+        "mean_correct_loss": getattr(metrics, "mean_correct_loss"),
+        "mean_best_distractor_loss": getattr(metrics, "mean_best_distractor_loss"),
+        "mean_margin": getattr(metrics, "mean_margin"),
+    }
+
+
+def _summary_from_symbolic_to_natural_evaluation(evaluation: object) -> dict[str, object]:
+    before_metrics = getattr(evaluation, "before_metrics")
+    after_metrics = getattr(evaluation, "after_metrics")
+    return {
+        "status": "evaluated",
+        "train_pair_count": len(getattr(evaluation, "train_pairs")),
+        "eval_pair_count": len(getattr(evaluation, "eval_pairs")),
+        "before": _pair_ranking_metrics_to_dict(before_metrics),
+        "after": _pair_ranking_metrics_to_dict(after_metrics),
+        "delta": {
+            "top1_accuracy": after_metrics.top1_accuracy - before_metrics.top1_accuracy,
+            "mean_margin": after_metrics.mean_margin - before_metrics.mean_margin,
+        },
+    }
+
+
+def _skipped_symbolic_to_natural_summary(
+    *,
+    train_pair_count: int,
+    eval_pair_count: int,
+) -> dict[str, object]:
+    return {
+        "status": "skipped",
+        "reason": "at least two environment pairs are required",
+        "train_pair_count": train_pair_count,
+        "eval_pair_count": eval_pair_count,
     }
 
 

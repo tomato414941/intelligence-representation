@@ -27,6 +27,7 @@ class FakeTrainingResult:
     final_train_loss: float | None = 2.75
     initial_eval_loss: float | None = 4.5
     final_eval_loss: float | None = 3.5
+    device: str = "cpu"
 
 
 class TrainGPTCLITest(unittest.TestCase):
@@ -121,6 +122,45 @@ class TrainGPTCLITest(unittest.TestCase):
                 train_gpt.main(["--batch-stride", "5"])
 
         self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
+
+    def test_device_and_checkpoint_path_pass_to_training_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "gpt.pt"
+
+            def fake_train_mixed_gpt(
+                *, documents=None, eval_documents=None, training_config, model_config=None
+            ):
+                self.assertEqual(training_config.device, "auto")
+                self.assertEqual(training_config.checkpoint_path, checkpoint_path)
+                return FakeTrainingResult(device="cuda")
+
+            output = io.StringIO()
+            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+                with redirect_stdout(output):
+                    train_gpt.main(
+                        [
+                            "--device",
+                            "auto",
+                            "--checkpoint-path",
+                            str(checkpoint_path),
+                        ]
+                    )
+
+        self.assertIn("device=cuda", output.getvalue())
+
+    def test_unavailable_cuda_reports_cli_error(self) -> None:
+        def fake_train_mixed_gpt(
+            *, documents=None, eval_documents=None, training_config, model_config=None
+        ):
+            raise ValueError("CUDA device requested but torch.cuda.is_available() is false")
+
+        error_output = io.StringIO()
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stderr(error_output):
+                with self.assertRaises(SystemExit):
+                    train_gpt.main(["--device", "cuda"])
+
+        self.assertIn("CUDA device requested", error_output.getvalue())
 
     def test_builtin_grid_corpus_uses_grid_action_documents(self) -> None:
         captured_documents: list[MixedDocument] | None = None

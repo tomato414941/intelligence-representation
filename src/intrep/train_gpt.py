@@ -108,6 +108,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--context-length", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--batch-stride", type=int)
+    parser.add_argument(
+        "--device",
+        choices=("auto", "cpu", "cuda"),
+        default="cpu",
+        help="Training device. The default stays CPU-compatible; use auto or cuda on GPU hosts.",
+    )
+    parser.add_argument(
+        "--checkpoint-path",
+        type=Path,
+        help="Write a final training checkpoint. Resume is intentionally not supported.",
+    )
     _add_model_config_arguments(parser)
     parser.add_argument(
         "--loss-summary",
@@ -167,6 +178,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         context_length=args.context_length,
         batch_size=args.batch_size,
         batch_stride=args.batch_stride,
+        device=args.device,
+        checkpoint_path=args.checkpoint_path,
     )
     try:
         model_config = build_gpt_config(
@@ -182,12 +195,15 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
     except ValueError as error:
         parser.error(str(error))
     started_at = time.perf_counter()
-    result = train_mixed_gpt(
-        documents=documents,
-        eval_documents=eval_documents,
-        training_config=training_config,
-        model_config=model_config,
-    )
+    try:
+        result = train_mixed_gpt(
+            documents=documents,
+            eval_documents=eval_documents,
+            training_config=training_config,
+            model_config=model_config,
+        )
+    except ValueError as error:
+        parser.error(str(error))
     elapsed_seconds = time.perf_counter() - started_at
     print("intrep mixed-gpt training")
     print(
@@ -199,6 +215,7 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         f" final_loss={result.final_loss:.4f}"
         f" train_avg_initial={result.initial_train_loss:.4f}"
         f" train_avg_final={result.final_train_loss:.4f}"
+        f" device={getattr(result, 'device', training_config.device)}"
         f" model={json.dumps(gpt_config_to_dict(model_config), sort_keys=True)}"
     )
     if args.loss_summary:

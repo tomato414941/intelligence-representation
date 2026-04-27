@@ -31,8 +31,8 @@ def split_mixed_documents(
         raise ValueError("eval_ratio must be between 0 and 1")
     if key not in ("id", "modality", "content"):
         raise ValueError("key must be one of: id, modality, content")
-    if strategy not in ("stable-hash", "category"):
-        raise ValueError("strategy must be one of: stable-hash, category")
+    if strategy not in ("stable-hash", "category", "environment-pair"):
+        raise ValueError("strategy must be one of: stable-hash, category, environment-pair")
     if category_key != "modality":
         raise ValueError("category_key must be modality")
 
@@ -43,6 +43,13 @@ def split_mixed_documents(
             key=key,
             seed=seed,
             category_key=category_key,
+        )
+    if strategy == "environment-pair":
+        return _split_by_environment_pair(
+            documents,
+            eval_ratio=eval_ratio,
+            key=key,
+            seed=seed,
         )
     return _split_by_stable_hash(documents, eval_ratio=eval_ratio, key=key, seed=seed)
 
@@ -107,6 +114,70 @@ def _split_by_category(
     return CorpusSplit(train_documents=train_documents, eval_documents=eval_documents)
 
 
+def _split_by_environment_pair(
+    documents: list[MixedDocument],
+    *,
+    eval_ratio: float,
+    key: str,
+    seed: str,
+) -> CorpusSplit:
+    paired_episode_ids = _paired_environment_episode_ids(documents)
+    if not paired_episode_ids:
+        return _split_by_stable_hash(documents, eval_ratio=eval_ratio, key=key, seed=seed)
+
+    eval_count = max(1, round(len(paired_episode_ids) * eval_ratio))
+    if len(paired_episode_ids) > 1:
+        eval_count = min(eval_count, len(paired_episode_ids) - 1)
+    ordered_episode_ids = sorted(
+        paired_episode_ids,
+        key=lambda episode_id: _stable_bucket(f"{seed}:environment-pair:{episode_id}"),
+    )
+    eval_episode_ids = set(ordered_episode_ids[:eval_count])
+    train_documents: list[MixedDocument] = []
+    eval_documents: list[MixedDocument] = []
+
+    for document in documents:
+        episode_id = _environment_episode_id(document)
+        if episode_id in eval_episode_ids:
+            eval_documents.append(document)
+        else:
+            train_documents.append(document)
+
+    return CorpusSplit(train_documents=train_documents, eval_documents=eval_documents)
+
+
+def _paired_environment_episode_ids(documents: list[MixedDocument]) -> list[str]:
+    symbolic_episode_ids: set[str] = set()
+    natural_episode_ids: set[str] = set()
+    for document in documents:
+        episode_id = _environment_episode_id(document)
+        if episode_id is None:
+            continue
+        if document.modality == "environment_symbolic":
+            symbolic_episode_ids.add(episode_id)
+        elif document.modality == "environment_natural":
+            natural_episode_ids.add(episode_id)
+    return sorted(symbolic_episode_ids & natural_episode_ids)
+
+
+def _environment_episode_id(document: MixedDocument) -> str | None:
+    prefixes = {
+        "environment_symbolic": (
+            ("env_symbolic_", ""),
+            ("env_pair_symbolic_", "pair_"),
+        ),
+        "environment_natural": (
+            ("env_natural_", ""),
+            ("env_pair_natural_", "pair_"),
+        ),
+    }
+    for prefix, episode_prefix in prefixes.get(document.modality, ()):
+        if document.id.startswith(prefix):
+            episode_id = document.id.removeprefix(prefix)
+            return f"{episode_prefix}{episode_id}" if episode_id else None
+    return None
+
+
 def write_split_jsonl(
     input_path: str | Path,
     train_path: str | Path,
@@ -152,7 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", default="intrep")
     parser.add_argument(
         "--strategy",
-        choices=("stable-hash", "category"),
+        choices=("stable-hash", "category", "environment-pair"),
         default="stable-hash",
     )
     parser.add_argument("--category-key", choices=("modality",), default="modality")

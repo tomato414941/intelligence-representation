@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 
@@ -8,6 +10,7 @@ from intrep.gpt_training import (
     GPTTrainingArtifacts,
     GPTTrainingConfig,
     language_model_batches,
+    resolve_training_device,
     train_mixed_gpt,
     train_mixed_gpt_with_artifacts,
 )
@@ -91,6 +94,56 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertGreater(result.final_train_loss, 0.0)
         self.assertIsNone(result.initial_eval_loss)
         self.assertIsNone(result.final_eval_loss)
+        self.assertEqual(result.device, "cpu")
+
+    def test_resolve_training_device_auto_prefers_cuda_when_available(self) -> None:
+        with unittest.mock.patch.object(torch.cuda, "is_available", return_value=True):
+            self.assertEqual(resolve_training_device("auto").type, "cuda")
+
+    def test_rejects_unavailable_cuda_device(self) -> None:
+        with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
+            with self.assertRaisesRegex(ValueError, "CUDA device requested"):
+                resolve_training_device("cuda")
+
+    def test_training_writes_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "checkpoints" / "gpt.pt"
+            with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
+                artifacts = train_mixed_gpt_with_artifacts(
+                    documents=[
+                        MixedDocument(
+                            id="checkpoint_tiny_001",
+                            modality="text",
+                            content="one two three one two three one two three",
+                        )
+                    ],
+                    training_config=GPTTrainingConfig(
+                        context_length=8,
+                        batch_size=2,
+                        max_steps=2,
+                        learning_rate=0.005,
+                        seed=19,
+                        device="auto",
+                        checkpoint_path=checkpoint_path,
+                    ),
+                    model_config=GPTConfig(
+                        vocab_size=ByteTokenizer.vocab_size,
+                        context_length=8,
+                        embedding_dim=16,
+                        num_heads=2,
+                        hidden_dim=32,
+                    ),
+                )
+            payload = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+
+        self.assertEqual(payload["schema_version"], "intrep.gpt_checkpoint.v1")
+        self.assertEqual(payload["model_config"]["context_length"], 8)
+        self.assertEqual(payload["training_config"]["device"], "auto")
+        self.assertEqual(payload["training_config"]["checkpoint_path"], str(checkpoint_path))
+        self.assertEqual(payload["result"]["device"], "cpu")
+        self.assertEqual(artifacts.result.device, "cpu")
+        self.assertTrue(payload["model_state_dict"])
+        self.assertTrue(all(tensor.device.type == "cpu" for tensor in payload["model_state_dict"].values()))
 
     def test_training_reports_held_out_eval_loss(self) -> None:
         train_documents = [

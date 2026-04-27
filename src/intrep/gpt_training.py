@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Literal
 
 import torch
 from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.gpt_model import DecoderOnlyGPT, GPTConfig
+from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
+
+GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
 
 
 @dataclass(frozen=True)
@@ -18,6 +22,8 @@ class GPTTrainingConfig:
     max_steps: int = 20
     learning_rate: float = 0.003
     seed: int = 7
+    device: GPTTrainingDevice = "cpu"
+    checkpoint_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -31,6 +37,7 @@ class GPTTrainingResult:
     final_train_loss: float | None = None
     initial_eval_loss: float | None = None
     final_eval_loss: float | None = None
+    device: str = "cpu"
 
     @property
     def best_loss(self) -> float:
@@ -79,6 +86,7 @@ def train_mixed_gpt_with_artifacts(
     config = training_config or GPTTrainingConfig()
     _validate_training_config(config)
     torch.manual_seed(config.seed)
+    device = resolve_training_device(config.device)
     tokenizer = ByteTokenizer()
     corpus_documents = documents if documents is not None else default_mixed_documents()
     if not corpus_documents:
@@ -91,6 +99,8 @@ def train_mixed_gpt_with_artifacts(
         batch_size=config.batch_size,
         batch_stride=config.batch_stride,
     )
+    inputs = inputs.to(device)
+    targets = targets.to(device)
     eval_inputs: torch.Tensor | None = None
     eval_targets: torch.Tensor | None = None
     if eval_documents is not None:
@@ -103,6 +113,8 @@ def train_mixed_gpt_with_artifacts(
             batch_size=config.batch_size,
             batch_stride=config.batch_stride,
         )
+        eval_inputs = eval_inputs.to(device)
+        eval_targets = eval_targets.to(device)
     gpt_config = model_config or GPTConfig(
         vocab_size=tokenizer.vocab_size,
         context_length=config.context_length,
@@ -111,7 +123,7 @@ def train_mixed_gpt_with_artifacts(
         raise ValueError("model_config.vocab_size must match the byte tokenizer vocab size")
     if gpt_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = DecoderOnlyGPT(gpt_config)
+    model = DecoderOnlyGPT(gpt_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
@@ -148,8 +160,50 @@ def train_mixed_gpt_with_artifacts(
         final_train_loss=final_train_loss,
         initial_eval_loss=initial_eval_loss,
         final_eval_loss=final_eval_loss,
+        device=str(device),
     )
+    if config.checkpoint_path is not None:
+        save_gpt_checkpoint(
+            path=config.checkpoint_path,
+            model=model,
+            model_config=gpt_config,
+            training_config=config,
+            result=result,
+        )
     return GPTTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
+
+
+def resolve_training_device(requested_device: GPTTrainingDevice) -> torch.device:
+    if requested_device == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA device requested but torch.cuda.is_available() is false")
+    return torch.device(requested_device)
+
+
+def save_gpt_checkpoint(
+    *,
+    path: Path,
+    model: DecoderOnlyGPT,
+    model_config: GPTConfig,
+    training_config: GPTTrainingConfig,
+    result: GPTTrainingResult,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    training_payload = asdict(training_config)
+    if training_config.checkpoint_path is not None:
+        training_payload["checkpoint_path"] = str(training_config.checkpoint_path)
+    payload = {
+        "schema_version": "intrep.gpt_checkpoint.v1",
+        "model_state_dict": {
+            name: tensor.detach().cpu()
+            for name, tensor in model.state_dict().items()
+        },
+        "model_config": gpt_config_to_dict(model_config),
+        "training_config": training_payload,
+        "result": asdict(result),
+    }
+    torch.save(payload, path)
 
 
 def _evaluate_loss(
@@ -185,6 +239,8 @@ def _validate_training_config(config: GPTTrainingConfig) -> None:
         raise ValueError("max_steps must be positive")
     if config.learning_rate <= 0:
         raise ValueError("learning_rate must be positive")
+    if config.device not in ("auto", "cpu", "cuda"):
+        raise ValueError("device must be one of: auto, cpu, cuda")
 
 
 def language_model_batches(

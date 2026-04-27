@@ -40,6 +40,14 @@ class FakeRankingMetrics:
 
 
 @dataclass(frozen=True)
+class FakePairRankingMetrics:
+    top1_accuracy: float = 0.5
+    mean_correct_loss: float = 1.5
+    mean_best_distractor_loss: float = 2.5
+    mean_margin: float = 1.0
+
+
+@dataclass(frozen=True)
 class FakeRankingSummary:
     overall: FakeRankingMetrics
     per_modality: dict[str, FakeRankingMetrics]
@@ -75,6 +83,20 @@ class FakeEvaluationResult:
         return [object(), object()]
 
 
+@dataclass(frozen=True)
+class FakeSymbolicToNaturalResult:
+    before_metrics: FakePairRankingMetrics = FakePairRankingMetrics(top1_accuracy=0.0)
+    after_metrics: FakePairRankingMetrics = FakePairRankingMetrics()
+
+    @property
+    def train_pairs(self) -> list[object]:
+        return [object(), object()]
+
+    @property
+    def eval_pairs(self) -> list[object]:
+        return [object(), object()]
+
+
 class CurrentExperimentTest(unittest.TestCase):
     def test_existing_builtin_corpora_use_existing_corpus_selection(self) -> None:
         for corpus_name in ("builtin", "builtin-grid"):
@@ -91,6 +113,7 @@ class CurrentExperimentTest(unittest.TestCase):
                         seed=47,
                     ),
                     evaluation_runner=lambda *args, **kwargs: FakeEvaluationResult(),
+                    symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
                 )
 
                 self.assertEqual(summary["corpus"]["label"], corpus_name)
@@ -140,6 +163,7 @@ class CurrentExperimentTest(unittest.TestCase):
                     seed=53,
                 ),
                 evaluation_runner=lambda *args, **kwargs: FakeEvaluationResult(),
+                symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
             )
 
         self.assertEqual(summary["corpus"]["label"], str(train_path))
@@ -190,6 +214,7 @@ class CurrentExperimentTest(unittest.TestCase):
                 batch_stride=4,
             ),
             evaluation_runner=fake_runner,
+            symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
         )
 
         self.assertEqual(captured_documents, documents)
@@ -207,6 +232,42 @@ class CurrentExperimentTest(unittest.TestCase):
             summary["next_observation"]["modality_counts"],
             {"environment_symbolic": 2},
         )
+        self.assertEqual(summary["symbolic_to_natural"]["status"], "skipped")
+        self.assertEqual(summary["symbolic_to_natural"]["eval_pair_count"], 0)
+
+    def test_run_current_experiment_reports_symbolic_to_natural_summary(self) -> None:
+        captured_documents: list[MixedDocument] | None = None
+        captured_eval_documents: list[MixedDocument] | None = None
+
+        def fake_symbolic_runner(documents_arg, *, eval_documents=None, training_config, model_config=None):
+            nonlocal captured_documents, captured_eval_documents
+            captured_documents = documents_arg
+            captured_eval_documents = eval_documents
+            self.assertEqual(training_config.max_steps, 3)
+            self.assertIsNone(model_config)
+            return FakeSymbolicToNaturalResult()
+
+        summary = current_experiment.run_current_experiment(
+            _paired_documents(),
+            corpus_label="paired",
+            training_config=GPTTrainingConfig(
+                max_steps=3,
+                context_length=16,
+                batch_size=2,
+            ),
+            evaluation_runner=lambda *args, **kwargs: FakeEvaluationResult(),
+            symbolic_to_natural_runner=fake_symbolic_runner,
+        )
+
+        self.assertEqual(captured_documents, _paired_documents())
+        self.assertIsNone(captured_eval_documents)
+        self.assertEqual(summary["symbolic_to_natural"]["status"], "evaluated")
+        self.assertEqual(summary["symbolic_to_natural"]["train_pair_count"], 2)
+        self.assertEqual(summary["symbolic_to_natural"]["eval_pair_count"], 2)
+        self.assertEqual(summary["symbolic_to_natural"]["before"]["top1_accuracy"], 0.0)
+        self.assertEqual(summary["symbolic_to_natural"]["after"]["top1_accuracy"], 0.5)
+        self.assertEqual(summary["symbolic_to_natural"]["delta"]["top1_accuracy"], 0.5)
+        self.assertEqual(summary["symbolic_to_natural"]["after"]["mean_correct_loss"], 1.5)
 
     def test_cli_loads_file_corpora_and_emits_json_summary(self) -> None:
         train_documents = _case_documents()
@@ -269,6 +330,7 @@ class CurrentExperimentTest(unittest.TestCase):
                         str(run_summary_path),
                     ],
                     evaluation_runner=fake_runner,
+                    symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
                 )
 
             stdout_payload = json.loads(output.getvalue())
@@ -286,6 +348,10 @@ class CurrentExperimentTest(unittest.TestCase):
         self.assertEqual(run_summary_payload["schema_version"], "intrep.run_summary.v1")
         self.assertEqual(run_summary_payload["run_id"], "current-run-1")
         self.assertEqual(run_summary_payload["config"]["model"]["embedding_dim"], 8)
+        self.assertEqual(
+            run_summary_payload["metrics"]["symbolic_to_natural"]["status"],
+            "skipped",
+        )
 
     def test_natural_language_only_corpus_reports_language_modeling_and_skips_action_eval(self) -> None:
         train_documents = [
@@ -336,7 +402,11 @@ class CurrentExperimentTest(unittest.TestCase):
 
         output = io.StringIO()
         with redirect_stdout(output):
-            current_experiment.main(["--corpus", "builtin-grid"], evaluation_runner=fake_runner)
+            current_experiment.main(
+                ["--corpus", "builtin-grid"],
+                evaluation_runner=fake_runner,
+                symbolic_to_natural_runner=lambda *args, **kwargs: FakeSymbolicToNaturalResult(),
+            )
 
         self.assertIsNotNone(captured_documents)
         assert captured_documents is not None
@@ -367,6 +437,31 @@ def _case_documents() -> list[MixedDocument]:
             id="case_b",
             modality="environment_symbolic",
             content="<obs> train b <action> act <next_obs> train other",
+        ),
+    ]
+
+
+def _paired_documents() -> list[MixedDocument]:
+    return [
+        MixedDocument(
+            id="env_symbolic_001",
+            modality="environment_symbolic",
+            content="<obs> coin in box <action> open box <next_obs> coin visible",
+        ),
+        MixedDocument(
+            id="env_natural_001",
+            modality="environment_natural",
+            content="Opening the box reveals the coin.",
+        ),
+        MixedDocument(
+            id="env_symbolic_002",
+            modality="environment_symbolic",
+            content="<obs> key in drawer <action> open drawer <next_obs> key visible",
+        ),
+        MixedDocument(
+            id="env_natural_002",
+            modality="environment_natural",
+            content="Opening the drawer reveals the key.",
         ),
     ]
 

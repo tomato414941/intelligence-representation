@@ -93,6 +93,36 @@ class CorpusSplitTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "category_key"):
             split_mixed_documents(documents, strategy="category", category_key="content")
 
+    def test_environment_pair_split_keeps_pairs_together(self) -> None:
+        documents = [
+            MixedDocument(id="env_pair_symbolic_001", modality="environment_symbolic", content="<obs> a"),
+            MixedDocument(id="env_pair_natural_001", modality="environment_natural", content="A."),
+            MixedDocument(id="env_pair_symbolic_002", modality="environment_symbolic", content="<obs> b"),
+            MixedDocument(id="env_pair_natural_002", modality="environment_natural", content="B."),
+            MixedDocument(id="env_pair_symbolic_003", modality="environment_symbolic", content="<obs> c"),
+            MixedDocument(id="env_pair_natural_003", modality="environment_natural", content="C."),
+            MixedDocument(id="text_001", modality="text", content="background"),
+        ]
+
+        split = split_mixed_documents(
+            documents,
+            eval_ratio=0.34,
+            strategy="environment-pair",
+            seed="pair-test",
+        )
+
+        train_episode_ids = {_environment_pair_suffix(document.id) for document in split.train_documents}
+        eval_episode_ids = {_environment_pair_suffix(document.id) for document in split.eval_documents}
+        train_episode_ids.discard(None)
+        eval_episode_ids.discard(None)
+        self.assertTrue(eval_episode_ids)
+        self.assertTrue(train_episode_ids)
+        self.assertTrue(train_episode_ids.isdisjoint(eval_episode_ids))
+        self.assertEqual(
+            {document.modality for document in split.eval_documents if document.modality.startswith("environment_")},
+            {"environment_symbolic", "environment_natural"},
+        )
+
     def test_write_split_jsonl_round_trips_outputs(self) -> None:
         documents = [
             MixedDocument(id=f"doc_{index}", modality="external_text", content=f"text {index}")
@@ -186,6 +216,50 @@ class CorpusSplitTest(unittest.TestCase):
         self.assertEqual(train_modalities, {"text", "code"})
         self.assertEqual(eval_modalities, {"text", "code"})
         self.assertIn("wrote train=", output.getvalue())
+
+    def test_cli_environment_pair_strategy_writes_split_files(self) -> None:
+        documents = [
+            MixedDocument(id="env_pair_symbolic_001", modality="environment_symbolic", content="<obs> a"),
+            MixedDocument(id="env_pair_natural_001", modality="environment_natural", content="A."),
+            MixedDocument(id="env_pair_symbolic_002", modality="environment_symbolic", content="<obs> b"),
+            MixedDocument(id="env_pair_natural_002", modality="environment_natural", content="B."),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "corpus.jsonl"
+            train_path = root / "train.jsonl"
+            eval_path = root / "eval.jsonl"
+            write_mixed_documents_jsonl(input_path, documents)
+
+            output = io.StringIO()
+            with redirect_stdout(output):
+                main(
+                    [
+                        "--input",
+                        str(input_path),
+                        "--train-output",
+                        str(train_path),
+                        "--eval-output",
+                        str(eval_path),
+                        "--strategy",
+                        "environment-pair",
+                    ]
+                )
+
+            train_ids = {_environment_pair_suffix(document.id) for document in load_mixed_documents_jsonl(train_path)}
+            eval_ids = {_environment_pair_suffix(document.id) for document in load_mixed_documents_jsonl(eval_path)}
+
+        self.assertEqual(len(train_ids), 1)
+        self.assertEqual(len(eval_ids), 1)
+        self.assertTrue(train_ids.isdisjoint(eval_ids))
+        self.assertIn("wrote train=", output.getvalue())
+
+
+def _environment_pair_suffix(document_id: str) -> str | None:
+    for prefix in ("env_pair_symbolic_", "env_pair_natural_"):
+        if document_id.startswith(prefix):
+            return document_id.removeprefix(prefix)
+    return None
 
 
 if __name__ == "__main__":

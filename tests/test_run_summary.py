@@ -10,8 +10,10 @@ from pathlib import Path
 from intrep.gpt_model import build_gpt_config
 from intrep.gpt_training import GPTTrainingConfig
 from intrep.run_summary import (
+    RUN_COMPARISON_SCHEMA,
     aggregate_json_outputs,
     build_run_summary,
+    compare_json_outputs,
     main,
     normalize_existing_json,
 )
@@ -31,6 +33,7 @@ class RunSummaryTest(unittest.TestCase):
             ),
             training_loss={"final_loss": 2.0},
             language_modeling={"final_eval_perplexity": 12.0},
+            symbolic_to_natural={"status": "evaluated"},
             elapsed_seconds=1.25,
         )
 
@@ -38,8 +41,10 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["run_id"], "run-1")
         self.assertEqual(payload["elapsed_seconds"], 1.25)
         self.assertEqual(payload["config"]["training"]["max_steps"], 3)
+        self.assertEqual(payload["config"]["training"]["device"], "cpu")
         self.assertEqual(payload["config"]["model"]["embedding_dim"], 8)
         self.assertEqual(payload["metrics"]["language_modeling"]["final_eval_perplexity"], 12.0)
+        self.assertEqual(payload["metrics"]["symbolic_to_natural"]["status"], "evaluated")
 
     def test_normalizes_current_experiment_json(self) -> None:
         payload = normalize_existing_json(
@@ -50,6 +55,7 @@ class RunSummaryTest(unittest.TestCase):
                 "training_loss": {"final_loss": 2.0},
                 "language_modeling": {"final_eval_perplexity": 10.0},
                 "next_observation": {"status": "skipped"},
+                "symbolic_to_natural": {"status": "skipped"},
             },
             source_path="summary.json",
         )
@@ -57,6 +63,7 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["kind"], "current_experiment")
         self.assertEqual(payload["source"]["path"], "summary.json")
         self.assertEqual(payload["metrics"]["training_loss"]["final_loss"], 2.0)
+        self.assertEqual(payload["metrics"]["symbolic_to_natural"]["status"], "skipped")
 
     def test_normalizes_loss_history_json_with_language_metrics(self) -> None:
         payload = normalize_existing_json(
@@ -126,6 +133,120 @@ class RunSummaryTest(unittest.TestCase):
             payload = json.loads(output_path.read_text(encoding="utf-8"))
 
         self.assertEqual(payload["run_count"], 1)
+
+    def test_compare_json_outputs_extracts_default_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_path = root / "first.json"
+            second_path = root / "second.json"
+            first_path.write_text(
+                json.dumps(
+                    build_run_summary(
+                        kind="current_experiment",
+                        run_id="first-run",
+                        training_loss={"final_loss": 4.0, "loss_reduction_ratio": 0.2},
+                        language_modeling={"final_eval_loss": 3.0, "final_eval_perplexity": 10.0},
+                        symbolic_to_natural={"after": {"top1_accuracy": 0.25}},
+                    )
+                ),
+                encoding="utf-8",
+            )
+            second_path.write_text(
+                json.dumps(
+                    build_run_summary(
+                        kind="current_experiment",
+                        run_id="second-run",
+                        training_loss={"final_loss": 3.0, "loss_reduction_ratio": 0.3},
+                        language_modeling={"final_eval_loss": 2.5, "final_eval_perplexity": 8.0},
+                        symbolic_to_natural={"after": {"top1_accuracy": 0.5}},
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = compare_json_outputs([first_path, second_path])
+
+        self.assertEqual(payload["schema_version"], RUN_COMPARISON_SCHEMA)
+        self.assertEqual(payload["run_count"], 2)
+        self.assertEqual(payload["runs"][0]["run_id"], "first-run")
+        self.assertEqual(
+            payload["runs"][0]["values"]["metrics.language_modeling.final_eval_loss"],
+            3.0,
+        )
+        self.assertEqual(
+            payload["runs"][1]["values"]["metrics.symbolic_to_natural.after.top1_accuracy"],
+            0.5,
+        )
+
+    def test_compare_json_outputs_sorts_missing_values_last(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            missing_path = root / "missing.json"
+            scored_path = root / "scored.json"
+            missing_path.write_text(json.dumps(build_run_summary(kind="current_experiment", run_id="missing")), encoding="utf-8")
+            scored_path.write_text(
+                json.dumps(
+                    build_run_summary(
+                        kind="current_experiment",
+                        run_id="scored",
+                        language_modeling={"final_eval_loss": 1.5},
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = compare_json_outputs(
+                [missing_path, scored_path],
+                metrics=["metrics.language_modeling.final_eval_loss"],
+                sort_by="metrics.language_modeling.final_eval_loss",
+            )
+
+        self.assertEqual([run["run_id"] for run in payload["runs"]], ["scored", "missing"])
+
+    def test_cli_compare_writes_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            baseline_path = root / "baseline.json"
+            candidate_path = root / "candidate.json"
+            output_path = root / "comparison.json"
+            baseline_path.write_text(
+                json.dumps(
+                    {
+                        "training_loss": {"final_loss": 2.0},
+                        "language_modeling": {"final_eval_perplexity": 6.0},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            candidate_path.write_text(
+                json.dumps(
+                    {
+                        "training_loss": {"final_loss": 1.5},
+                        "language_modeling": {"final_eval_perplexity": 4.0},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with redirect_stdout(io.StringIO()):
+                main(
+                    [
+                        "compare",
+                        "--input",
+                        str(baseline_path),
+                        "--input",
+                        str(candidate_path),
+                        "--metric",
+                        "metrics.training_loss.final_loss",
+                        "--output",
+                        str(output_path),
+                    ]
+                )
+            payload = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["schema_version"], RUN_COMPARISON_SCHEMA)
+        self.assertEqual(payload["run_count"], 2)
+        self.assertEqual(payload["runs"][0]["values"]["metrics.training_loss.final_loss"], 2.0)
 
 
 if __name__ == "__main__":

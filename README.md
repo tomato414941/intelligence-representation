@@ -66,10 +66,13 @@ src/intrep/torch_sequence.py
 src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
 src/intrep/mixed_corpus.py
+src/intrep/generated_environment_corpus.py
+src/intrep/corpus_split.py
 src/intrep/gpt_model.py
 src/intrep/gpt_training.py
 src/intrep/train_gpt.py
 src/intrep/symbolic_to_natural_evaluation.py
+src/intrep/run_summary.py
 src/intrep/benchmark.py
 src/intrep/update_loop.py
 ```
@@ -83,6 +86,7 @@ docs/world-model.md
 docs/bitter-lesson.md
 docs/evaluation.md
 docs/current-results.md
+docs/runpod.md
 ```
 
 Broad background:
@@ -145,5 +149,8 @@ uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jso
 ```
 
 JSONL file corpora are the intended path for real corpus growth.
+
+For GPU hosts such as RunPod, `intrep.train_gpt` supports `--device auto|cpu|cuda`
+and final checkpoint writing with `--checkpoint-path`. See `docs/runpod.md`.
 
 Public or internet-sourced corpora should enter through the same JSONL shape. Keep fetching, licensing review, filtering, and provenance capture outside the training architecture until a repeated experiment proves a new repo-level component is needed.
