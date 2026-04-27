@@ -79,6 +79,10 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.best_loss, min(result.loss_history))
         self.assertLess(result.best_loss, result.initial_loss)
         self.assertEqual(result.loss_reduction, result.initial_loss - result.final_loss)
+        self.assertIsNotNone(result.initial_train_loss)
+        self.assertIsNotNone(result.final_train_loss)
+        self.assertGreater(result.initial_train_loss, 0.0)
+        self.assertGreater(result.final_train_loss, 0.0)
         self.assertIsNone(result.initial_eval_loss)
         self.assertIsNone(result.final_eval_loss)
 

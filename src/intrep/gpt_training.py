@@ -27,6 +27,8 @@ class GPTTrainingResult:
     steps: int
     token_count: int
     loss_history: tuple[float, ...] = ()
+    initial_train_loss: float | None = None
+    final_train_loss: float | None = None
     initial_eval_loss: float | None = None
     final_eval_loss: float | None = None
 
@@ -94,6 +96,7 @@ def train_mixed_gpt(
     initial_loss: float | None = None
     final_loss = 0.0
     loss_history: list[float] = []
+    initial_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
     initial_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
 
     model.train()
@@ -111,6 +114,7 @@ def train_mixed_gpt(
         loss.backward()
         optimizer.step()
 
+    final_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
     final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
 
     return GPTTrainingResult(
@@ -119,6 +123,8 @@ def train_mixed_gpt(
         steps=config.max_steps,
         token_count=len(token_ids),
         loss_history=tuple(loss_history),
+        initial_train_loss=initial_train_loss,
+        final_train_loss=final_train_loss,
         initial_eval_loss=initial_eval_loss,
         final_eval_loss=final_eval_loss,
     )

@@ -23,6 +23,8 @@ class FakeTrainingResult:
     loss_reduction: float = 1.5
     loss_reduction_ratio: float = 0.375
     loss_history: tuple[float, ...] = (4.0, 3.0, 2.5)
+    initial_train_loss: float | None = 4.25
+    final_train_loss: float | None = 2.75
     initial_eval_loss: float | None = 4.5
     final_eval_loss: float | None = 3.5
 
@@ -36,6 +38,7 @@ class TrainGPTCLITest(unittest.TestCase):
             captured_documents = documents
             self.assertIsNone(eval_documents)
             self.assertEqual(training_config.max_steps, 3)
+            self.assertIsNone(training_config.batch_stride)
             return FakeTrainingResult()
 
         output = io.StringIO()
@@ -44,6 +47,19 @@ class TrainGPTCLITest(unittest.TestCase):
                 train_gpt.main(["--max-steps", "3"])
 
         self.assertIsNone(captured_documents)
+        self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
+        self.assertIn("train_avg_initial=4.2500 train_avg_final=2.7500", output.getvalue())
+
+    def test_batch_stride_passes_to_training_config(self) -> None:
+        def fake_train_mixed_gpt(*, documents=None, eval_documents=None, training_config):
+            self.assertEqual(training_config.batch_stride, 5)
+            return FakeTrainingResult()
+
+        output = io.StringIO()
+        with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
+            with redirect_stdout(output):
+                train_gpt.main(["--batch-stride", "5"])
+
         self.assertIn("corpus=builtin eval_corpus=none tokens=123 steps=3", output.getvalue())
 
     def test_file_corpus_uses_document_loader(self) -> None:
@@ -131,7 +147,8 @@ class TrainGPTCLITest(unittest.TestCase):
 
         self.assertIn(
             "loss initial=4.0000 final=2.5000 best=2.2500 delta=1.5000 ratio=37.50%"
-            " eval_initial=4.5000 eval_final=3.5000",
+            " eval_initial=4.5000 eval_final=3.5000"
+            " train_avg_initial=4.2500 train_avg_final=2.7500",
             output.getvalue(),
         )
 
@@ -154,10 +171,13 @@ class TrainGPTCLITest(unittest.TestCase):
             {
                 "steps": 3,
                 "token_count": 123,
+                "batch_stride": None,
                 "initial_loss": 4.0,
                 "final_loss": 2.5,
                 "best_loss": 2.25,
                 "loss_history": [4.0, 3.0, 2.5],
+                "initial_train_loss": 4.25,
+                "final_train_loss": 2.75,
                 "initial_eval_loss": 4.5,
                 "final_eval_loss": 3.5,
             },
@@ -211,6 +231,8 @@ class TrainGPTCLITest(unittest.TestCase):
                             str(eval_corpus_path),
                             "--max-steps",
                             "2",
+                            "--batch-stride",
+                            "7",
                             "--loss-summary",
                             "--loss-history-path",
                             str(loss_history_path),
@@ -225,7 +247,9 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertIn(f"corpus={corpus_path}", stdout)
         self.assertIn(f"eval_corpus={eval_corpus_path}", stdout)
         self.assertIn("tokens=456 steps=2 initial_loss=4.0000 final_loss=2.5000", stdout)
+        self.assertIn("train_avg_initial=4.2500 train_avg_final=2.7500", stdout)
         self.assertIn("eval_initial=5.5000 eval_final=4.2500", stdout)
+        self.assertEqual(payload["batch_stride"], 7)
         self.assertEqual(payload["initial_eval_loss"], 5.5)
         self.assertEqual(payload["final_eval_loss"], 4.25)
 
