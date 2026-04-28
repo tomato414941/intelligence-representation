@@ -135,11 +135,9 @@ The current image path renders local `file://` image payload refs through the
 simple patch tokenizer before byte-level GPT training or ranking:
 
 ```sh
-uv run python -m intrep.evaluate_future_prediction \
+uv run python -m intrep.evaluate_fashion_mnist \
   --train-path fashion-train.signals.jsonl \
   --eval-path fashion-eval.signals.jsonl \
-  --target-channel label \
-  --rendering image-tokens \
   --image-patch-size 4 \
   --image-channel-bins 4 \
   --max-negatives 3

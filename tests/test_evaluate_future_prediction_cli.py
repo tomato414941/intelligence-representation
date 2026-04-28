@@ -2,10 +2,29 @@ import io
 import json
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from intrep import evaluate_future_prediction
+from intrep.future_prediction_ranking import (
+    FuturePredictionRankingMetrics,
+    FuturePredictionRankingSummary,
+)
+from intrep.mixed_corpus import MixedDocument
+
+
+@dataclass(frozen=True)
+class FakeTrainingResult:
+    final_train_loss: float = 1.25
+
+
+@dataclass(frozen=True)
+class FakeTrainingArtifacts:
+    model: object = object()
+    tokenizer: object = object()
+    result: FakeTrainingResult = FakeTrainingResult()
 
 
 class EvaluateFuturePredictionCLITest(unittest.TestCase):
@@ -129,51 +148,178 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("does not support payload_ref", stderr.getvalue())
 
-    def test_evaluates_image_to_label_with_image_token_rendering(self) -> None:
+    def test_generic_cli_does_not_expose_image_label_target(self) -> None:
+        stderr = io.StringIO()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "train.jsonl"
+            _write_events(path, "train")
+
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as raised:
+                    evaluate_future_prediction.main(
+                        [
+                            "--train-path",
+                            str(path),
+                            "--target-channel",
+                            "label",
+                        ]
+                    )
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("invalid choice: 'label'", stderr.getvalue())
+
+    def test_run_config_passes_image_rendering_options_to_training_and_ranking(self) -> None:
         output = io.StringIO()
+        summary = FuturePredictionRankingSummary(
+            overall=FuturePredictionRankingMetrics(
+                top1_accuracy=0.5,
+                mean_positive_loss=1.0,
+                mean_best_negative_loss=2.0,
+                mean_margin=1.0,
+            ),
+            by_condition={
+                "image_to_label": FuturePredictionRankingMetrics(
+                    top1_accuracy=0.5,
+                    mean_positive_loss=1.0,
+                    mean_best_negative_loss=2.0,
+                    mean_margin=1.0,
+                )
+            },
+            condition_counts={"image_to_label": 2},
+        )
+        ranking_calls: list[dict[str, object]] = []
+        render_calls: list[dict[str, object]] = []
+        training_call_count = 0
+
+        def fake_evaluate_future_prediction_ranking(
+            cases,
+            model,
+            tokenizer,
+            *,
+            rendering="signal",
+            image_patch_size=1,
+            image_channel_bins=4,
+            max_negatives=None,
+        ):
+            del model, tokenizer
+            ranking_calls.append(
+                {
+                    "case_count": len(cases),
+                    "rendering": rendering,
+                    "image_patch_size": image_patch_size,
+                    "image_channel_bins": image_channel_bins,
+                    "max_negatives": max_negatives,
+                }
+            )
+            return summary
+
+        def fake_train_mixed_gpt_with_artifacts(
+            *,
+            documents,
+            eval_documents=None,
+            training_config,
+            model_config,
+        ):
+            nonlocal training_call_count
+            del documents, eval_documents, training_config, model_config
+            training_call_count += 1
+            return FakeTrainingArtifacts()
+
+        def fake_signals_to_mixed_documents(
+            events,
+            *,
+            render_format="signal-tags",
+            image_patch_size=1,
+            image_channel_bins=4,
+        ):
+            render_calls.append(
+                {
+                    "event_count": len(events),
+                    "render_format": render_format,
+                    "image_patch_size": image_patch_size,
+                    "image_channel_bins": image_channel_bins,
+                }
+            )
+            return [MixedDocument(id="fake", modality="signals", content="fake")]
+
         with TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
-            metrics_path = root / "metrics.json"
             _write_image_label_events(train_path, root / "train-images", "train")
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
-            with redirect_stdout(output):
-                evaluate_future_prediction.main(
-                    [
-                        "--train-path",
-                        str(train_path),
-                        "--eval-path",
-                        str(eval_path),
-                        "--target-channel",
-                        "label",
-                        "--rendering",
-                        "image-tokens",
-                        "--max-negatives",
-                        "2",
-                        "--model-preset",
-                        "tiny",
-                        "--max-steps",
-                        "1",
-                        "--context-length",
-                        "32",
-                        "--batch-size",
-                        "2",
-                        "--metrics-path",
-                        str(metrics_path),
-                    ]
+            with (
+                patch.object(
+                    evaluate_future_prediction,
+                    "evaluate_future_prediction_ranking",
+                    fake_evaluate_future_prediction_ranking,
+                ),
+                patch.object(
+                    evaluate_future_prediction,
+                    "train_mixed_gpt_with_artifacts",
+                    fake_train_mixed_gpt_with_artifacts,
+                ),
+                patch.object(
+                    evaluate_future_prediction,
+                    "signals_to_mixed_documents",
+                    fake_signals_to_mixed_documents,
+                ),
+                redirect_stdout(output),
+            ):
+                evaluate_future_prediction.run_future_prediction_evaluation(
+                    evaluate_future_prediction.FuturePredictionEvaluationConfig(
+                        train_path=train_path,
+                        eval_path=eval_path,
+                        target_channel="label",
+                        rendering="image-tokens",
+                        image_patch_size=2,
+                        image_channel_bins=8,
+                        max_negatives=1,
+                        max_steps=1,
+                    )
                 )
 
-            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
-
-        stdout = output.getvalue()
-        self.assertIn("target_channel=label", stdout)
-        self.assertIn("rendering=image-tokens", stdout)
-        self.assertIn("max_negatives=2", stdout)
-        self.assertEqual(payload["target_channel"], "label")
-        self.assertEqual(payload["train_case_count"], 2)
-        self.assertEqual(payload["eval_case_count"], 2)
+        self.assertEqual(len(ranking_calls), 2)
+        self.assertEqual(
+            ranking_calls,
+            [
+                {
+                    "case_count": 2,
+                    "rendering": "image-tokens",
+                    "image_patch_size": 2,
+                    "image_channel_bins": 8,
+                    "max_negatives": 1,
+                },
+                {
+                    "case_count": 2,
+                    "rendering": "image-tokens",
+                    "image_patch_size": 2,
+                    "image_channel_bins": 8,
+                    "max_negatives": 1,
+                },
+            ],
+        )
+        self.assertEqual(
+            render_calls,
+            [
+                {
+                    "event_count": 4,
+                    "render_format": "image-tokens",
+                    "image_patch_size": 2,
+                    "image_channel_bins": 8,
+                },
+                {
+                    "event_count": 4,
+                    "render_format": "image-tokens",
+                    "image_patch_size": 2,
+                    "image_channel_bins": 8,
+                },
+            ],
+        )
+        self.assertEqual(training_call_count, 1)
+        self.assertIn("rendering=image-tokens", output.getvalue())
+        self.assertIn("max_negatives=1", output.getvalue())
 
 
 def _write_events(path: Path, prefix: str) -> None:

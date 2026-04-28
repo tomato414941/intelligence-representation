@@ -271,6 +271,9 @@ Fashion-MNIST IDX
   -> image-to-label future prediction ranking
 ```
 
+The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
+future-prediction CLI remains focused on text-rendered Signal streams.
+
 Initial CPU smoke result with `patch_size = 4`, `channel_bins = 4`,
 `model_preset = tiny`, `train_cases = 20`, `max_steps = 100`, and
 `max_negatives = 3`:

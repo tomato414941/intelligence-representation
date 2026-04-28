@@ -5,7 +5,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from intrep.signals import PayloadRef, Signal, render_payload_text
+from intrep.image_rendering import render_image_token_payload
+from intrep.signals import Signal, render_payload_text
 from intrep.signal_stream import render_signal_stream
 
 FuturePredictionRendering = Literal["signal", "payload", "image-tokens"]
@@ -168,14 +169,11 @@ def _render_event_image_token_payload(
     patch_size: int,
     channel_bins: int,
 ) -> str:
-    if event.channel != "image" or not isinstance(event.payload, PayloadRef):
-        return render_payload_text(event)
-
-    from intrep.image_tokenizer import ImagePatchTokenizer
-
-    tokenizer = ImagePatchTokenizer(patch_size=patch_size, channel_bins=channel_bins)
-    token_ids = tokenizer.encode_ref(event.payload)
-    return " ".join(str(token_id) for token_id in token_ids)
+    return render_image_token_payload(
+        event,
+        patch_size=patch_size,
+        channel_bins=channel_bins,
+    )
 
 
 def _extract_observation_action_consequence_cases(
