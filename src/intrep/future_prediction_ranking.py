@@ -36,12 +36,24 @@ def evaluate_future_prediction_ranking(
     *,
     score_continuation_loss: ContinuationScorer | None = None,
     rendering: FuturePredictionRendering = "signal",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
+    max_negatives: int | None = None,
 ) -> FuturePredictionRankingSummary:
     if not cases:
         raise ValueError("cases must not be empty")
     scorer = score_continuation_loss or torch_next_token_continuation_loss
     case_metrics = [
-        _score_case(case, model=model, tokenizer=tokenizer, scorer=scorer, rendering=rendering)
+        _score_case(
+            case,
+            model=model,
+            tokenizer=tokenizer,
+            scorer=scorer,
+            rendering=rendering,
+            image_patch_size=image_patch_size,
+            image_channel_bins=image_channel_bins,
+            max_negatives=max_negatives,
+        )
         for case in cases
     ]
     by_condition_losses: dict[str, list[tuple[float, float, float, bool]]] = defaultdict(list)
@@ -67,10 +79,22 @@ def _score_case(
     tokenizer: ByteTokenizer,
     scorer: ContinuationScorer,
     rendering: FuturePredictionRendering,
+    image_patch_size: int,
+    image_channel_bins: int,
+    max_negatives: int | None,
 ) -> tuple[float, float, float, bool]:
     if not case.negative_events:
         raise ValueError(f"case {case.id} must have at least one negative event")
-    prefix, positive, negatives = render_future_prediction_texts(case, rendering=rendering)
+    prefix, positive, negatives = render_future_prediction_texts(
+        case,
+        rendering=rendering,
+        image_patch_size=image_patch_size,
+        image_channel_bins=image_channel_bins,
+    )
+    if max_negatives is not None:
+        if max_negatives <= 0:
+            raise ValueError("max_negatives must be positive")
+        negatives = negatives[:max_negatives]
     positive_loss = scorer(model, tokenizer, prefix, positive)
     negative_losses = [
         scorer(model, tokenizer, prefix, negative)

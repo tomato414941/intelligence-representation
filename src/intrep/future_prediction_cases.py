@@ -100,6 +100,8 @@ def render_future_prediction_texts(
     case: FuturePredictionCase,
     *,
     rendering: FuturePredictionRendering = "signal",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
 ) -> tuple[str, str, tuple[str, ...]]:
     if rendering == "signal":
         return (
@@ -115,9 +117,24 @@ def render_future_prediction_texts(
         )
     if rendering == "image-tokens":
         return (
-            _render_event_image_token_payloads(case.prefix_events),
-            _render_event_image_token_payloads((case.positive_event,)),
-            tuple(_render_event_image_token_payloads((event,)) for event in case.negative_events),
+            _render_event_image_token_payloads(
+                case.prefix_events,
+                patch_size=image_patch_size,
+                channel_bins=image_channel_bins,
+            ),
+            _render_event_image_token_payloads(
+                (case.positive_event,),
+                patch_size=image_patch_size,
+                channel_bins=image_channel_bins,
+            ),
+            tuple(
+                _render_event_image_token_payloads(
+                    (event,),
+                    patch_size=image_patch_size,
+                    channel_bins=image_channel_bins,
+                )
+                for event in case.negative_events
+            ),
         )
     raise ValueError(f"unsupported future prediction rendering: {rendering}")
 
@@ -126,17 +143,37 @@ def _render_event_payloads(events: Sequence[Signal]) -> str:
     return "\n".join(render_payload_text(event) for event in events) + "\n"
 
 
-def _render_event_image_token_payloads(events: Sequence[Signal]) -> str:
-    return "\n".join(_render_event_image_token_payload(event) for event in events) + "\n"
+def _render_event_image_token_payloads(
+    events: Sequence[Signal],
+    *,
+    patch_size: int,
+    channel_bins: int,
+) -> str:
+    return (
+        "\n".join(
+            _render_event_image_token_payload(
+                event,
+                patch_size=patch_size,
+                channel_bins=channel_bins,
+            )
+            for event in events
+        )
+        + "\n"
+    )
 
 
-def _render_event_image_token_payload(event: Signal) -> str:
+def _render_event_image_token_payload(
+    event: Signal,
+    *,
+    patch_size: int,
+    channel_bins: int,
+) -> str:
     if event.channel != "image" or not isinstance(event.payload, PayloadRef):
         return render_payload_text(event)
 
     from intrep.image_tokenizer import ImagePatchTokenizer
 
-    tokenizer = ImagePatchTokenizer(patch_size=1, channel_bins=4)
+    tokenizer = ImagePatchTokenizer(patch_size=patch_size, channel_bins=channel_bins)
     token_ids = tokenizer.encode_ref(event.payload)
     return " ".join(str(token_id) for token_id in token_ids)
 

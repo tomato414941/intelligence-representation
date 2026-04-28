@@ -55,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
         default="signal",
         help="Text rendering used for ranking prefixes and continuations.",
     )
+    parser.add_argument("--image-patch-size", type=int, default=1)
+    parser.add_argument("--image-channel-bins", type=int, default=4)
+    parser.add_argument("--max-negatives", type=int)
     parser.add_argument("--metrics-path", type=Path)
     return parser
 
@@ -107,16 +110,23 @@ def main(argv: list[str] | None = None) -> None:
         before_model,
         tokenizer,
         rendering=args.rendering,
+        image_patch_size=args.image_patch_size,
+        image_channel_bins=args.image_channel_bins,
+        max_negatives=args.max_negatives,
     )
     artifacts = train_mixed_gpt_with_artifacts(
         documents=signals_to_mixed_documents(
             train_events,
             render_format="image-tokens" if args.rendering == "image-tokens" else "signal-tags",
+            image_patch_size=args.image_patch_size,
+            image_channel_bins=args.image_channel_bins,
         ),
         eval_documents=(
             signals_to_mixed_documents(
                 eval_events,
                 render_format="image-tokens" if args.rendering == "image-tokens" else "signal-tags",
+                image_patch_size=args.image_patch_size,
+                image_channel_bins=args.image_channel_bins,
             )
             if args.eval_path
             else None
@@ -129,6 +139,9 @@ def main(argv: list[str] | None = None) -> None:
         artifacts.model,
         artifacts.tokenizer,
         rendering=args.rendering,
+        image_patch_size=args.image_patch_size,
+        image_channel_bins=args.image_channel_bins,
+        max_negatives=args.max_negatives,
     )
     generalization_eval = args.eval_path is not None
     eval_split = "held_out" if generalization_eval else "train"
@@ -141,6 +154,7 @@ def main(argv: list[str] | None = None) -> None:
         f" target_channel={args.target_channel}"
         f" condition={args.condition}"
         f" rendering={args.rendering}"
+        f" max_negatives={args.max_negatives if args.max_negatives is not None else 'all'}"
         f" eval_split={eval_split}"
         f" generalization_eval={str(generalization_eval).lower()}"
         f" before_top1_accuracy={before_summary.overall.top1_accuracy:.4f}"

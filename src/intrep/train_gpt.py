@@ -132,6 +132,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="plain",
         help="Render corpus records as legacy plain documents, signal tags, or image token text.",
     )
+    parser.add_argument("--image-patch-size", type=int, default=1)
+    parser.add_argument("--image-channel-bins", type=int, default=4)
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--context-length", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -174,6 +176,8 @@ def _load_documents(
     custom_loader: bool,
     corpus_format: str,
     render_format: str,
+    image_patch_size: int,
+    image_channel_bins: int,
 ) -> list[MixedDocument]:
     if not custom_loader:
         from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
@@ -182,6 +186,8 @@ def _load_documents(
             path,
             corpus_format=corpus_format,
             render_format=render_format,
+            image_patch_size=image_patch_size,
+            image_channel_bins=image_channel_bins,
         )
     documents = loader(path)
     if render_format == "plain":
@@ -190,7 +196,11 @@ def _load_documents(
         raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
     from intrep.signal_corpus import mixed_documents_to_signals, signals_to_mixed_documents
 
-    return signals_to_mixed_documents(mixed_documents_to_signals(documents))
+    return signals_to_mixed_documents(
+        mixed_documents_to_signals(documents),
+        image_patch_size=image_patch_size,
+        image_channel_bins=image_channel_bins,
+    )
 
 
 def main(argv: list[str] | None = None, document_loader: DocumentLoader | None = None) -> None:
@@ -215,6 +225,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
                 custom_loader=document_loader is not None,
                 corpus_format=args.corpus_format,
                 render_format=args.render_format,
+                image_patch_size=args.image_patch_size,
+                image_channel_bins=args.image_channel_bins,
             )
         except RuntimeError as error:
             parser.error(str(error))
@@ -232,6 +244,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
                 custom_loader=document_loader is not None,
                 corpus_format=args.corpus_format,
                 render_format=args.render_format,
+                image_patch_size=args.image_patch_size,
+                image_channel_bins=args.image_channel_bins,
             )
         except RuntimeError as error:
             parser.error(str(error))

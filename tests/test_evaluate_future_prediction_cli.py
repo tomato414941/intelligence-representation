@@ -150,6 +150,8 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                         "label",
                         "--rendering",
                         "image-tokens",
+                        "--max-negatives",
+                        "2",
                         "--model-preset",
                         "tiny",
                         "--max-steps",
@@ -168,6 +170,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         stdout = output.getvalue()
         self.assertIn("target_channel=label", stdout)
         self.assertIn("rendering=image-tokens", stdout)
+        self.assertIn("max_negatives=2", stdout)
         self.assertEqual(payload["target_channel"], "label")
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)

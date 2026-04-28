@@ -58,7 +58,13 @@ def render_signal_corpus(events: list[Signal]) -> str:
     return render_signal_stream(events)
 
 
-def signal_to_mixed_document(event: Signal, *, render_format: str = "signal-tags") -> MixedDocument:
+def signal_to_mixed_document(
+    event: Signal,
+    *,
+    render_format: str = "signal-tags",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
+) -> MixedDocument:
     if render_format == "plain":
         return MixedDocument(
             id=_document_id(event),
@@ -69,7 +75,11 @@ def signal_to_mixed_document(event: Signal, *, render_format: str = "signal-tags
         return MixedDocument(
             id=_document_id(event),
             modality=event.channel,
-            content=_render_image_token_document(event),
+            content=_render_image_token_document(
+                event,
+                patch_size=image_patch_size,
+                channel_bins=image_channel_bins,
+            ),
         )
     if render_format not in ("signal-tags", "typed-tags"):
         raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
@@ -84,8 +94,18 @@ def signals_to_mixed_documents(
     events: list[Signal],
     *,
     render_format: str = "signal-tags",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
 ) -> list[MixedDocument]:
-    return [signal_to_mixed_document(event, render_format=render_format) for event in events]
+    return [
+        signal_to_mixed_document(
+            event,
+            render_format=render_format,
+            image_patch_size=image_patch_size,
+            image_channel_bins=image_channel_bins,
+        )
+        for event in events
+    ]
 
 
 def load_signals_jsonl(path: str | Path) -> list[Signal]:
@@ -145,10 +165,14 @@ def load_signals_as_mixed_documents(
     path: str | Path,
     *,
     render_format: str = "signal-tags",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
 ) -> list[MixedDocument]:
     return signals_to_mixed_documents(
         load_signals_jsonl(path),
         render_format=render_format,
+        image_patch_size=image_patch_size,
+        image_channel_bins=image_channel_bins,
     )
 
 
@@ -157,6 +181,8 @@ def load_corpus_jsonl_as_mixed_documents(
     *,
     corpus_format: str = "auto",
     render_format: str = "plain",
+    image_patch_size: int = 1,
+    image_channel_bins: int = 4,
 ) -> list[MixedDocument]:
     from intrep.mixed_corpus import load_mixed_documents_jsonl
 
@@ -164,13 +190,23 @@ def load_corpus_jsonl_as_mixed_documents(
         documents = load_mixed_documents_jsonl(path)
         return _render_mixed_documents_if_requested(documents, render_format=render_format)
     if corpus_format in ("signal", "typed-event"):
-        return load_signals_as_mixed_documents(path, render_format=render_format)
+        return load_signals_as_mixed_documents(
+            path,
+            render_format=render_format,
+            image_patch_size=image_patch_size,
+            image_channel_bins=image_channel_bins,
+        )
     if corpus_format != "auto":
         raise ValueError("corpus_format must be auto, mixed-document, signal, or typed-event")
 
     first_record = _first_json_record(path)
     if isinstance(first_record, dict) and ("channel" in first_record or "role" in first_record):
-        return load_signals_as_mixed_documents(path, render_format=render_format)
+        return load_signals_as_mixed_documents(
+            path,
+            render_format=render_format,
+            image_patch_size=image_patch_size,
+            image_channel_bins=image_channel_bins,
+        )
     documents = load_mixed_documents_jsonl(path)
     return _render_mixed_documents_if_requested(documents, render_format=render_format)
 
@@ -187,7 +223,12 @@ def _render_mixed_documents_if_requested(
     raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
 
 
-def _render_image_token_document(event: Signal) -> str:
+def _render_image_token_document(
+    event: Signal,
+    *,
+    patch_size: int,
+    channel_bins: int,
+) -> str:
     if event.channel != "image":
         return render_payload_text(event)
     if not isinstance(event.payload, PayloadRef):
@@ -195,7 +236,7 @@ def _render_image_token_document(event: Signal) -> str:
 
     from intrep.image_tokenizer import ImagePatchTokenizer
 
-    tokenizer = ImagePatchTokenizer(patch_size=1, channel_bins=4)
+    tokenizer = ImagePatchTokenizer(patch_size=patch_size, channel_bins=channel_bins)
     token_ids = tokenizer.encode_ref(event.payload)
     return (
         f"<IMAGE_TOKENS patch_size=\"{tokenizer.patch_size}\" "

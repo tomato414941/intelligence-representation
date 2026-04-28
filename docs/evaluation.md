@@ -139,7 +139,10 @@ uv run python -m intrep.evaluate_future_prediction \
   --train-path fashion-train.signals.jsonl \
   --eval-path fashion-eval.signals.jsonl \
   --target-channel label \
-  --rendering image-tokens
+  --rendering image-tokens \
+  --image-patch-size 4 \
+  --image-channel-bins 4 \
+  --max-negatives 3
 ```
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
