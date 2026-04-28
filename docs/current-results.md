@@ -10,7 +10,7 @@ Use these documents for details:
 
 - [README](../README.md): project map and common commands
 - [Evaluation](evaluation.md): evaluation concepts and CLI shape
-- [Experiment 001](experiment-001.md): first hard-negative typed future-prediction run
+- [Experiment 001](experiment-001.md): first hard-negative Signal future-prediction run
 - [Experiment 002](experiment-002.md): 100x data and rendering-context investigation
 - [Experiment 003](experiment-003.md): natural language held-out loss smoke check
 - [RunPod Training Notes](runpod.md): GPU execution notes
@@ -23,7 +23,7 @@ or robust action-conditioned future prediction.
 The current milestone is narrower:
 
 ```text
-a small typed token stream GPT scaffold with target-position future-prediction evaluation
+a small Signal stream GPT scaffold with target-position future-prediction evaluation
 ```
 
 The conceptual center remains:
@@ -41,7 +41,7 @@ consequences.
 What is currently supported:
 
 ```text
-TypedEvent streams can represent observations, actions, consequences, tool
+Signal streams can represent observations, actions, consequences, tool
 events, prediction errors, and belief/memory-like records.
 
 A small decoder-only GPT can reduce next-token loss on the available smoke and
@@ -50,11 +50,11 @@ generated text streams.
 The same training path can reduce held-out loss on a small natural-language-like
 toy corpus.
 
-Generated hard-negative typed environment data can be produced at 100x the
+Generated hard-negative signal environment data can be produced at 100x the
 Experiment 001 scale.
 
-FuturePredictionCase ranking can target consequence events with explicit
-same-split hard negatives.
+FuturePredictionCase ranking can target consequence events with same-channel
+hard-negative distractors.
 ```
 
 What is not yet supported:
@@ -76,7 +76,7 @@ a predictive token machine or world model has been learned.
 
 ### Experiment 001
 
-Experiment 001 generated two hard-negative typed environment slices:
+Experiment 001 generated two hard-negative signal environment slices:
 
 ```text
 same_history_different_action
@@ -89,15 +89,15 @@ future-prediction ranking.
 Original reading:
 
 ```text
-The byte-level typed-tag GPT scaffold learned local stream statistics, but did
+The byte-level signal-tag GPT scaffold learned local stream statistics, but did
 not show action/context-conditioned consequence discrimination.
 ```
 
 Updated caveat:
 
 ```text
-The run used full typed-event rendering. With context_length = 64, the rendered
-tags were long enough that consequence content could be scored after the
+The run used full signal rendering. With context_length = 64, the rendered
+tags were long enough that consequence payload could be scored after the
 observation/action prefix had fallen out of the model window.
 ```
 
@@ -106,33 +106,34 @@ modeling failure. It also exposed an evaluation rendering problem.
 
 ### Experiment 002
 
-Experiment 002 scaled the generated hard-negative typed data to:
+Experiment 002 scaled the generated hard-negative Signal data to:
 
 ```text
 per condition:
   train_cases = 8000
   eval_cases = 3200
-  explicit_negative_rate = 1.0
+  explicit_negative_rate = 0.0
 ```
 
 It also separated future-prediction ranking rendering into:
 
 ```text
-typed_event:
-  full TypedEvent tag rendering, kept for compatibility
+signal:
+  full Signal tag rendering, treated as a low-priority experiment
 
-content:
-  event contents only, better for the current short context length
+payload:
+  rendered event payloads only, better for the current short context length
+  in the text/byte-tokenizer evaluation path
 ```
 
 The key finding:
 
 ```text
-typed_event rendering can hide the relevant observation/action prefix from the
+signal rendering can hide the relevant observation/action prefix from the
 scorer under context_length = 64.
 ```
 
-Small 100x probes with `rendering=content` removed the exact zero-margin
+Small 100x probes with `rendering=payload` removed the exact zero-margin
 artifact, but did not produce top-1 ranking improvement:
 
 ```text
@@ -155,7 +156,7 @@ Current reading:
 Data scale alone has not produced a clean ranking improvement in the small CPU
 probe.
 
-Content rendering is the better diagnostic for the current context length.
+Payload rendering is the better diagnostic for the current context length.
 
 The next experiments should keep the hard-negative evaluation fixed and vary
 only the factors that affect whether the model can see and use the relevant
@@ -249,7 +250,7 @@ Next work should not add new semantic taxonomies or fixed state schemas.
 The next useful pressure is:
 
 ```text
-rendering = content
+rendering = payload
 context_length
 max_steps
 model size

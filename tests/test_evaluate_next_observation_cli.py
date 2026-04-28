@@ -473,7 +473,7 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
         self.assertNotEqual(raised.exception.code, 0)
         self.assertIn("--corpus-path is required", error_output.getvalue())
 
-    def test_file_corpus_can_evaluate_typed_event_jsonl_with_typed_rendering(self) -> None:
+    def test_file_corpus_can_evaluate_signal_jsonl_with_signal_rendering(self) -> None:
         captured_documents: list[MixedDocument] | None = None
 
         def fake_evaluate_next_observation_learning(
@@ -490,7 +490,7 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
 
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as temp_dir:
-            corpus_path = Path(temp_dir) / "typed.jsonl"
+            corpus_path = Path(temp_dir) / "signal.jsonl"
             corpus_path.write_text(
                 (
                     '{"id":"case_1","role":"observation","modality":"environment_symbolic",'
@@ -514,16 +514,46 @@ class EvaluateNextObservationCLITest(unittest.TestCase):
                             "--corpus-path",
                             str(corpus_path),
                             "--corpus-format",
-                            "typed-event",
+                            "signal",
                             "--render-format",
-                            "typed-tags",
+                            "signal-tags",
                         ]
                     )
 
         assert captured_documents is not None
-        self.assertEqual(captured_documents[0].modality, "observation:environment_symbolic")
-        self.assertIn('role="observation"', captured_documents[0].content)
-        self.assertIn("corpus_format=typed-event render_format=typed-tags", output.getvalue())
+        self.assertEqual(captured_documents[0].modality, "observation")
+        self.assertIn('channel="observation"', captured_documents[0].content)
+        self.assertIn("corpus_format=signal render_format=signal-tags", output.getvalue())
+
+    def test_file_corpus_rejects_payload_ref_signal_jsonl(self) -> None:
+        stderr = io.StringIO()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            corpus_path = Path(temp_dir) / "signal.jsonl"
+            corpus_path.write_text(
+                (
+                    '{"channel":"image",'
+                    '"payload_ref":{"uri":"dataset://images/frame-1.png","media_type":"image/png"}}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as raised:
+                    evaluate_next_observation.main(
+                        [
+                            "--corpus",
+                            "file",
+                            "--corpus-path",
+                            str(corpus_path),
+                            "--corpus-format",
+                            "signal",
+                            "--render-format",
+                            "signal-tags",
+                        ]
+                    )
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("requires a channel-specific loader or encoder", stderr.getvalue())
 
 
 if __name__ == "__main__":

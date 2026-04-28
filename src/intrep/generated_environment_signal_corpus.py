@@ -14,8 +14,8 @@ from intrep.transition_data import (
     split_strict_generated_examples,
     strict_generated_examples,
 )
-from intrep.typed_corpus import write_typed_events_jsonl_v2
-from intrep.typed_events import EventRole, TypedEvent
+from intrep.signal_corpus import write_signals_jsonl_v2
+from intrep.signals import Signal
 from intrep.types import Action, Fact
 
 
@@ -23,37 +23,37 @@ HARD_NEGATIVE_EVAL_SLICES = (
     "same_history_different_action",
     "same_action_different_context",
 )
-TYPED_EVAL_SLICES = (*EVAL_SLICES, *HARD_NEGATIVE_EVAL_SLICES)
+SIGNAL_EVAL_SLICES = (*EVAL_SLICES, *HARD_NEGATIVE_EVAL_SLICES)
 
 
 @dataclass(frozen=True)
-class GeneratedEnvironmentTypedCorpusSelection:
-    train_events: list[TypedEvent]
-    eval_events: list[TypedEvent]
+class GeneratedEnvironmentSignalCorpusSelection:
+    train_events: list[Signal]
+    eval_events: list[Signal]
     eval_label: str
 
 
-def generated_environment_typed_corpus_selection(
+def generated_environment_signal_corpus_selection(
     eval_slice: str = "generated_held_out_object",
     *,
     train_size: int = 8,
     eval_size: int = 4,
     seed: int = 0,
-) -> GeneratedEnvironmentTypedCorpusSelection:
+) -> GeneratedEnvironmentSignalCorpusSelection:
     train_events, eval_events = generated_environment_train_eval_events(
         eval_slice,
         train_size=train_size,
         eval_size=eval_size,
         seed=seed,
     )
-    return GeneratedEnvironmentTypedCorpusSelection(
+    return GeneratedEnvironmentSignalCorpusSelection(
         train_events=train_events,
         eval_events=eval_events,
         eval_label=eval_slice,
     )
 
 
-def write_generated_environment_typed_jsonl(
+def write_generated_environment_signal_jsonl(
     train_output: str | Path,
     eval_output: str | Path,
     *,
@@ -61,15 +61,15 @@ def write_generated_environment_typed_jsonl(
     train_size: int = 8,
     eval_size: int = 4,
     seed: int = 0,
-) -> GeneratedEnvironmentTypedCorpusSelection:
-    selection = generated_environment_typed_corpus_selection(
+) -> GeneratedEnvironmentSignalCorpusSelection:
+    selection = generated_environment_signal_corpus_selection(
         eval_slice,
         train_size=train_size,
         eval_size=eval_size,
         seed=seed,
     )
-    write_typed_events_jsonl_v2(train_output, selection.train_events)
-    write_typed_events_jsonl_v2(eval_output, selection.eval_events)
+    write_signals_jsonl_v2(train_output, selection.train_events)
+    write_signals_jsonl_v2(eval_output, selection.eval_events)
     return selection
 
 
@@ -79,7 +79,7 @@ def generated_environment_train_eval_events(
     train_size: int = 8,
     eval_size: int = 4,
     seed: int = 0,
-) -> tuple[list[TypedEvent], list[TypedEvent]]:
+) -> tuple[list[Signal], list[Signal]]:
     if eval_slice in HARD_NEGATIVE_EVAL_SLICES:
         return generated_hard_negative_train_eval_events(
             eval_slice,
@@ -92,14 +92,14 @@ def generated_environment_train_eval_events(
     else:
         train_examples, slices = split_generated_examples(generated_find_examples())
     if eval_slice not in slices:
-        raise ValueError(f"eval_slice must be one of: {', '.join(TYPED_EVAL_SLICES)}")
+        raise ValueError(f"eval_slice must be one of: {', '.join(SIGNAL_EVAL_SLICES)}")
     return (
-        environment_typed_events_from_examples(
+        environment_signals_from_examples(
             train_examples,
             split="train",
             eval_slice=eval_slice,
         ),
-        environment_typed_events_from_examples(
+        environment_signals_from_examples(
             slices[eval_slice],
             split="eval",
             eval_slice=eval_slice,
@@ -113,7 +113,7 @@ def generated_hard_negative_train_eval_events(
     train_size: int = 8,
     eval_size: int = 4,
     seed: int = 0,
-) -> tuple[list[TypedEvent], list[TypedEvent]]:
+) -> tuple[list[Signal], list[Signal]]:
     if split_name == "same_history_different_action":
         builder = _same_history_different_action_pair
     elif split_name == "same_action_different_context":
@@ -183,9 +183,9 @@ def _events_from_hard_negative_specs(
     *,
     split: str,
     split_name: str,
-    builder: Callable[..., tuple[list[TypedEvent], list[TypedEvent]]],
-) -> list[TypedEvent]:
-    events: list[TypedEvent] = []
+    builder: Callable[..., tuple[list[Signal], list[Signal]]],
+) -> list[Signal]:
+    events: list[Signal] = []
     for index, (left_object, right_object, left_container, right_container) in enumerate(specs):
         pair_id = f"{split}_{split_name}_{index:04d}"
         left_events, right_events = builder(
@@ -211,12 +211,10 @@ def _same_history_different_action_pair(
     right_object: str,
     left_container: str,
     right_container: str,
-) -> tuple[list[TypedEvent], list[TypedEvent]]:
+) -> tuple[list[Signal], list[Signal]]:
     observation = f"{left_container} contains {left_object} ; {right_container} contains {right_object}"
     left_episode = f"{pair_id}_open_left"
     right_episode = f"{pair_id}_open_right"
-    left_consequence_id = _hard_event_id(left_episode, EventRole.CONSEQUENCE)
-    right_consequence_id = _hard_event_id(right_episode, EventRole.CONSEQUENCE)
     return (
         _hard_negative_episode(
             episode_id=left_episode,
@@ -226,7 +224,6 @@ def _same_history_different_action_pair(
             observation=observation,
             action=f"open {left_container}",
             consequence=f"see {left_object}",
-            negative_event_id=right_consequence_id,
         ),
         _hard_negative_episode(
             episode_id=right_episode,
@@ -236,7 +233,6 @@ def _same_history_different_action_pair(
             observation=observation,
             action=f"open {right_container}",
             consequence=f"see {right_object}",
-            negative_event_id=left_consequence_id,
         ),
     )
 
@@ -250,12 +246,10 @@ def _same_action_different_context_pair(
     right_object: str,
     left_container: str,
     right_container: str,
-) -> tuple[list[TypedEvent], list[TypedEvent]]:
+) -> tuple[list[Signal], list[Signal]]:
     del left_container, right_container
     left_episode = f"{pair_id}_left_context"
     right_episode = f"{pair_id}_right_context"
-    left_consequence_id = _hard_event_id(left_episode, EventRole.CONSEQUENCE)
-    right_consequence_id = _hard_event_id(right_episode, EventRole.CONSEQUENCE)
     return (
         _hard_negative_episode(
             episode_id=left_episode,
@@ -265,7 +259,6 @@ def _same_action_different_context_pair(
             observation=f"box contains {left_object}",
             action="open box",
             consequence=f"see {left_object}",
-            negative_event_id=right_consequence_id,
         ),
         _hard_negative_episode(
             episode_id=right_episode,
@@ -275,7 +268,6 @@ def _same_action_different_context_pair(
             observation=f"box contains {right_object}",
             action="open box",
             consequence=f"see {right_object}",
-            negative_event_id=left_consequence_id,
         ),
     )
 
@@ -289,137 +281,74 @@ def _hard_negative_episode(
     observation: str,
     action: str,
     consequence: str,
-    negative_event_id: str,
-) -> list[TypedEvent]:
-    metadata = {
-        "split": split,
-        "eval_slice": split_name,
-        "condition": split_name,
-        "pair_id": pair_id,
-    }
+) -> list[Signal]:
+    del episode_id, split, split_name, pair_id
     return [
-        TypedEvent(
-            id=_hard_event_id(episode_id, EventRole.OBSERVATION),
-            role=EventRole.OBSERVATION,
-            modality="environment_symbolic",
-            content=observation,
-            episode_id=episode_id,
-            time_index=0,
-            source_id=pair_id,
-            metadata=metadata,
+        Signal(
+            channel="observation",
+            payload=observation,
         ),
-        TypedEvent(
-            id=_hard_event_id(episode_id, EventRole.ACTION),
-            role=EventRole.ACTION,
-            modality="environment_action",
-            content=action,
-            episode_id=episode_id,
-            time_index=1,
-            source_id=pair_id,
-            metadata=metadata,
+        Signal(
+            channel="action",
+            payload=action,
         ),
-        TypedEvent(
-            id=_hard_event_id(episode_id, EventRole.CONSEQUENCE),
-            role=EventRole.CONSEQUENCE,
-            modality="environment_consequence",
-            content=consequence,
-            episode_id=episode_id,
-            time_index=2,
-            source_id=pair_id,
-            metadata={**metadata, "negative_event_ids": [negative_event_id]},
+        Signal(
+            channel="consequence",
+            payload=consequence,
         ),
     ]
 
 
-def _hard_event_id(episode_id: str, role: EventRole) -> str:
-    return f"env_typed_{episode_id}_{role.value}"
-
-
-def environment_typed_events_from_examples(
+def environment_signals_from_examples(
     examples: Sequence[ActionConditionedExample],
     *,
     split: str,
     eval_slice: str,
-) -> list[TypedEvent]:
-    consequence_ids_by_content = {
-        _render_consequence(example): _event_id(example, EventRole.CONSEQUENCE, split)
-        for example in examples
-    }
-    events: list[TypedEvent] = []
+) -> list[Signal]:
+    events: list[Signal] = []
     for example in examples:
         consequence = _render_consequence(example)
-        negative_event_ids = sorted(
-            event_id
-            for content, event_id in consequence_ids_by_content.items()
-            if content != consequence
-        )
         events.extend(
             [
-                _typed_event(
+                _signal(
                     example,
-                    role=EventRole.OBSERVATION,
-                    modality="environment_symbolic",
-                    content=_render_observation(example),
-                    time_index=0,
+                    channel="observation",
+                    payload=_render_observation(example),
                     split=split,
                     eval_slice=eval_slice,
                 ),
-                _typed_event(
+                _signal(
                     example,
-                    role=EventRole.ACTION,
-                    modality="environment_action",
-                    content=_render_action_text(example.action),
-                    time_index=1,
+                    channel="action",
+                    payload=_render_action_text(example.action),
                     split=split,
                     eval_slice=eval_slice,
                 ),
-                _typed_event(
+                _signal(
                     example,
-                    role=EventRole.CONSEQUENCE,
-                    modality="environment_consequence",
-                    content=consequence,
-                    time_index=2,
+                    channel="consequence",
+                    payload=consequence,
                     split=split,
                     eval_slice=eval_slice,
-                    metadata={"negative_event_ids": negative_event_ids},
                 ),
             ]
         )
     return events
 
 
-def _typed_event(
+def _signal(
     example: ActionConditionedExample,
     *,
-    role: EventRole,
-    modality: str,
-    content: str,
-    time_index: int,
+    channel: str,
+    payload: str,
     split: str,
     eval_slice: str,
-    metadata: dict[str, object] | None = None,
-) -> TypedEvent:
-    event_metadata: dict[str, object] = {
-        "split": split,
-        "eval_slice": eval_slice,
-        "source": example.source,
-        "source_example_id": example.id,
-    }
-    event_metadata.update(metadata or {})
-    return TypedEvent(
-        id=_event_id(example, role, split),
-        role=role,
-        modality=modality,
-        content=content,
-        episode_id=f"{split}_{example.id}",
-        time_index=time_index,
-        source_id=example.id,
-        metadata=event_metadata,
+) -> Signal:
+    del example, split, eval_slice
+    return Signal(
+        channel=channel,
+        payload=payload,
     )
-
-
-def _event_id(example: ActionConditionedExample, role: EventRole, split: str) -> str:
-    return f"env_typed_{split}_{role.value}_{example.id}"
 
 
 def _render_observation(example: ActionConditionedExample) -> str:
@@ -446,37 +375,37 @@ def _render_action_text(action: Action) -> str:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Generate typed observation/action/consequence environment JSONL."
+        description="Generate signal observation/action/consequence environment JSONL."
     )
-    parser.add_argument("--train-output", required=True, help="Path for train TypedEvent JSONL.")
-    parser.add_argument("--eval-output", required=True, help="Path for eval TypedEvent JSONL.")
+    parser.add_argument("--train-output", required=True, help="Path for train Signal JSONL.")
+    parser.add_argument("--eval-output", required=True, help="Path for eval Signal JSONL.")
     parser.add_argument(
         "--eval-slice",
         default="generated_held_out_object",
-        choices=TYPED_EVAL_SLICES,
+        choices=SIGNAL_EVAL_SLICES,
         help="Generated environment slice to reserve for eval.",
     )
     parser.add_argument(
         "--train-size",
         type=int,
         default=8,
-        help="Approximate number of train episodes for hard-negative typed slices.",
+        help="Approximate number of train episodes for hard-negative signal slices.",
     )
     parser.add_argument(
         "--eval-size",
         type=int,
         default=4,
-        help="Approximate number of eval episodes for hard-negative typed slices.",
+        help="Approximate number of eval episodes for hard-negative signal slices.",
     )
     parser.add_argument(
         "--seed",
         type=int,
         default=0,
-        help="Shuffle seed for hard-negative typed slices.",
+        help="Shuffle seed for hard-negative signal slices.",
     )
     args = parser.parse_args(argv)
 
-    selection = write_generated_environment_typed_jsonl(
+    selection = write_generated_environment_signal_jsonl(
         args.train_output,
         args.eval_output,
         eval_slice=args.eval_slice,
@@ -484,7 +413,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         eval_size=args.eval_size,
         seed=args.seed,
     )
-    print("intrep generated-environment typed corpus")
+    print("intrep generated-environment signal corpus")
     print(f"eval_slice={selection.eval_label}")
     print(f"train_events={len(selection.train_events)}")
     print(f"eval_events={len(selection.eval_events)}")

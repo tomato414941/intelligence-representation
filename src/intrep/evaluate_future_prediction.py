@@ -15,21 +15,21 @@ from intrep.future_prediction_ranking import (
 )
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
 from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt_with_artifacts
-from intrep.typed_corpus import (
-    load_typed_events_jsonl,
-    typed_events_to_mixed_documents,
+from intrep.signal_corpus import (
+    load_signals_jsonl,
+    reject_payload_refs,
+    signals_to_mixed_documents,
 )
-from intrep.typed_events import EventRole
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Evaluate target-role future prediction over typed event streams."
+        description="Evaluate target-channel future prediction over signal streams."
     )
     parser.add_argument("--train-path", type=Path, required=True)
     parser.add_argument("--eval-path", type=Path)
     parser.add_argument(
-        "--target-role",
+        "--target-channel",
         choices=("consequence", "tool_result", "prediction_error"),
         default="consequence",
     )
@@ -51,8 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="small")
     parser.add_argument(
         "--rendering",
-        choices=("typed_event", "content"),
-        default="typed_event",
+        choices=("signal", "payload"),
+        default="signal",
         help="Text rendering used for ranking prefixes and continuations.",
     )
     parser.add_argument("--metrics-path", type=Path)
@@ -63,22 +63,25 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        train_events = load_typed_events_jsonl(args.train_path)
-        eval_events = load_typed_events_jsonl(args.eval_path) if args.eval_path else train_events
+        train_events = load_signals_jsonl(args.train_path)
+        eval_events = load_signals_jsonl(args.eval_path) if args.eval_path else train_events
+        reject_payload_refs(train_events, context="future prediction training")
+        if args.eval_path:
+            reject_payload_refs(eval_events, context="future prediction evaluation")
         train_cases = extract_future_prediction_cases(
             train_events,
-            target_role=args.target_role,
+            target_channel=args.target_channel,
             condition=args.condition,
         )
         eval_cases = extract_future_prediction_cases(
             eval_events,
-            target_role=args.target_role,
+            target_channel=args.target_channel,
             condition=args.condition,
         )
         if not train_cases:
-            raise ValueError("training typed events did not produce future prediction cases")
+            raise ValueError("training signals did not produce future prediction cases")
         if not eval_cases:
-            raise ValueError("evaluation typed events did not produce future prediction cases")
+            raise ValueError("evaluation signals did not produce future prediction cases")
     except (OSError, ValueError) as error:
         parser.error(str(error))
 
@@ -105,8 +108,8 @@ def main(argv: list[str] | None = None) -> None:
         rendering=args.rendering,
     )
     artifacts = train_mixed_gpt_with_artifacts(
-        documents=typed_events_to_mixed_documents(train_events),
-        eval_documents=typed_events_to_mixed_documents(eval_events) if args.eval_path else None,
+        documents=signals_to_mixed_documents(train_events),
+        eval_documents=signals_to_mixed_documents(eval_events) if args.eval_path else None,
         training_config=training_config,
         model_config=model_config,
     )
@@ -124,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
         f" eval_path={args.eval_path if args.eval_path else 'train'}"
         f" train_cases={len(train_cases)}"
         f" eval_cases={len(eval_cases)}"
-        f" target_role={EventRole(args.target_role).value}"
+        f" target_channel={args.target_channel}"
         f" condition={args.condition}"
         f" rendering={args.rendering}"
         f" eval_split={eval_split}"
@@ -143,7 +146,7 @@ def main(argv: list[str] | None = None) -> None:
             eval_cases=eval_cases,
             train_case_count=len(train_cases),
             eval_case_count=len(eval_cases),
-            target_role=EventRole(args.target_role),
+            target_channel=args.target_channel,
             condition=args.condition,
             rendering=args.rendering,
             eval_split=eval_split,
@@ -159,14 +162,14 @@ def _write_metrics(
     eval_cases: list[FuturePredictionCase],
     train_case_count: int,
     eval_case_count: int,
-    target_role: EventRole,
+    target_channel: str,
     condition: str,
     rendering: str,
     eval_split: str,
     generalization_eval: bool,
 ) -> None:
     payload = {
-        "target_role": target_role.value,
+        "target_channel": target_channel,
         "condition": condition,
         "rendering": rendering,
         "eval_split": eval_split,
@@ -186,14 +189,7 @@ def _write_metrics(
 
 
 def _explicit_negative_rate(cases: list[FuturePredictionCase]) -> float:
-    if not cases:
-        return 0.0
-    explicit_count = sum(
-        1
-        for case in cases
-        if case.positive_event.metadata.get("negative_event_ids")
-    )
-    return explicit_count / len(cases)
+    return 0.0
 
 
 def _summary_to_dict(summary: FuturePredictionRankingSummary) -> dict[str, object]:

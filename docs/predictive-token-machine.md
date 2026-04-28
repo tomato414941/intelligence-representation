@@ -9,13 +9,13 @@ A predictive token machine for language, perception, action, memory, and belief.
 このプロジェクトの上位概念は、`world model` より広い。
 
 目指しているものは、単に世界状態を予測するモデルではない。
-自然言語、観測、行動、映像、音声、状態、信念、記憶、報酬、誤差、tool useをtyped token streamに落とし、Transformer / attentionによる予測計算を通じて、汎用的な知的計算を実現できるかを調べる。
+自然言語、観測、行動、映像、音声、状態、信念、記憶、報酬、誤差、tool useをsignal streamに落とし、Transformer / attentionによる予測計算を通じて、汎用的な知的計算を実現できるかを調べる。
 
 この上位仮説を、この文書では `Predictive Token Machine` と呼ぶ。
 
 ```text
 Predictive Token Machine:
-  typed multimodal token stream上で、
+  signal / multimodal token stream上で、
   予測・生成・変換・行動選択・観測統合・信念更新・記憶操作を行う
   学習可能な汎用token計算機
 ```
@@ -37,7 +37,7 @@ world model:
 
 Predictive Token Machine:
   text, vision, audio, action, state, belief, memory, reward, error, tool useを含む
-  typed multimodal token streamに対する汎用予測・生成・変換計算機
+  signal / multimodal token streamに対する汎用予測・生成・変換計算機
 ```
 
 この整理では、world modelは全体ではなく一部である。
@@ -73,7 +73,7 @@ Reward / Error Model:
   報酬、失敗、誤差、修正、更新信号をtokenとして扱う機能
 ```
 
-これらを別々のsymbolic systemとして手設計するのではなく、共通のtyped token streamと予測学習の上に載せる。
+これらを別々のsymbolic systemとして手設計するのではなく、共通のsignal streamと予測学習の上に載せる。
 
 ## 基本演算
 
@@ -103,7 +103,7 @@ toolを呼ぶ
 
 ```text
 training objective:
-  typed multimodal token stream上のnext-token / future-token prediction
+  signal / multimodal token stream上のnext-token / future-token prediction
 ```
 
 しかし、評価では全token平均lossだけを見ない。
@@ -126,6 +126,10 @@ training objective:
 
 すべてをtoken streamにすることは、構造を捨てることではない。
 自然言語も一次元のtoken streamだが、その中には文法、照応、時間、因果、目的、信念、社会関係が含まれる。
+
+このプロジェクトでの `Signal` は、token stream に入る前の薄い単位である。
+感覚器・行動器・tool・内部状態から来る入力や出力を、channel と payload だけで包む。
+重要なのは、`Signal` は意味DBのレコードではなく、モデルが条件づけたり予測したりする stream 単位だという点である。
 
 このプロジェクトで積極的に入れてよいのは、主に薄いstream構造である。
 
@@ -208,9 +212,9 @@ reward / error tokenizer:
 byte-level text tokenizer
 small decoder-only GPT
 mixed text / environment / grid / log-like corpus
-TypedEvent envelope and typed-tag stream rendering
-typed-event JSONL input path with legacy MixedDocument compatibility
-FuturePredictionCase evaluation directly over TypedEvent streams
+Signal envelope, with signal-tag rendering only as a low-priority byte-tokenizer experiment
+signal JSONL input path with legacy MixedDocument compatibility
+FuturePredictionCase evaluation directly over Signal streams
 train_ptm / evaluate_future_prediction CLI entry points
 symbolic-to-natural ranking
 action-conditioned next-observation ranking
@@ -233,7 +237,7 @@ planning or control
 ```
 
 したがって、今の実験結果は `Predictive Token Machine` の証拠ではない。
-それに向かうための小さな typed token stream scaffold ができてきた、という位置づけで扱う。
+それに向かうための小さな signal stream scaffold ができてきた、という位置づけで扱う。
 
 ## まとめ
 

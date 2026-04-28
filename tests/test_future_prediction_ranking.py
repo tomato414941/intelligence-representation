@@ -3,7 +3,7 @@ import unittest
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.future_prediction_cases import FuturePredictionCase
 from intrep.future_prediction_ranking import evaluate_future_prediction_ranking
-from intrep.typed_events import TypedEvent
+from intrep.signals import Signal
 
 
 class FuturePredictionRankingTest(unittest.TestCase):
@@ -35,7 +35,7 @@ class FuturePredictionRankingTest(unittest.TestCase):
         self.assertEqual(summary.condition_counts, {"same_modality_negative": 1})
         self.assertEqual(len(calls), 2)
 
-    def test_content_rendering_scores_only_event_contents(self) -> None:
+    def test_payload_rendering_scores_only_signal_payloads(self) -> None:
         case = FuturePredictionCase(
             prefix_events=(
                 _event("obs", "observation", "box contains key", 0),
@@ -56,7 +56,7 @@ class FuturePredictionRankingTest(unittest.TestCase):
             model=object(),
             tokenizer=ByteTokenizer(),
             score_continuation_loss=scorer,
-            rendering="content",
+            rendering="payload",
         )
 
         self.assertEqual(summary.overall.top1_accuracy, 1.0)
@@ -73,14 +73,11 @@ class FuturePredictionRankingTest(unittest.TestCase):
             evaluate_future_prediction_ranking([], object(), ByteTokenizer())
 
 
-def _event(event_id: str, role: str, content: str, time_index: int) -> TypedEvent:
-    return TypedEvent(
-        id=event_id,
-        role=role,
-        modality="text",
-        content=content,
-        episode_id="ep1",
-        time_index=time_index,
+def _event(event_id: str, channel: str, payload: str, time_index: int) -> Signal:
+    del event_id, time_index
+    return Signal(
+        channel=channel,
+        payload=payload,
     )
 
 

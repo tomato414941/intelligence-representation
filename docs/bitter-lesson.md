@@ -31,9 +31,9 @@ A predictive token machine for language, perception, action, memory, and belief.
 このプロジェクトの核は、手設計の意味DBでも、retrieval-first memory systemでもない。
 
 ```text
-TypedEvent streams
+Signal streams
   ↓
-thin role / modality / time / source metadata
+thin channel/payload boundaries
   ↓
 typed token rendering
   ↓
@@ -111,7 +111,7 @@ Learned predictive structure:
   what the model must acquire under training and evaluation pressure
 ```
 
-元の観測や typed event stream は残す。
+元の観測や signal stream は残す。
 そこから作った意味状態は、常に間違いうる派生物として扱う。
 
 ## Thin Structure Is Allowed
@@ -120,15 +120,10 @@ Bitter Lesson は「構造を一切入れない」という意味ではない。
 モデルが予測対象を見つけるための薄い stream interface は入れてよい。
 
 ```text
-id
-role
-modality
-episode
-time_index
-source
+channel
+payload
 boundary
-target role
-negative ids for evaluation
+target channel
 ```
 
 これは ontology ではない。
@@ -154,7 +149,7 @@ SocialModel
 現在の実験ループは retrieval loop ではない。
 
 ```text
-Generate or collect TypedEvent streams
+Generate or collect Signal streams
   ↓
 Render into a model-visible token stream
   ↓
@@ -198,7 +193,7 @@ support:
 
 ```text
 保存するのは typed observations / events
-固定するのは薄い stream metadata
+固定するのは薄い channel/payload boundary
 中心に置くのは learned predictor
 評価するのは target-position future prediction
 抽象化はモデルと評価圧に任せる

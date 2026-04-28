@@ -5,8 +5,8 @@ This repository explores representation for intelligence through an installable,
 The current center is not a hand-designed semantic database. It is a predictive token machine scaffold:
 
 ```text
-TypedEvent streams
-  -> typed-tag rendering
+Signal streams
+  -> optional signal-tag rendering for low-priority byte-tokenizer experiments
   -> decoder-only GPT-style prediction
   -> next-token / future-token training
   -> FuturePredictionCase ranking for language / world / tool / memory / belief targets
@@ -24,23 +24,23 @@ The conceptual center is:
 A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-The broader hypothesis is that typed multimodal token streams can support a learned general-purpose predictive computation substrate. In that framing, a world model is not the whole project. It is the part of a predictive token machine that predicts observations, actions, and environment transitions.
+The broader hypothesis is that multimodal Signal streams can support a learned general-purpose predictive computation substrate. In that framing, a world model is not the whole project. It is the part of a predictive token machine that predicts observations, actions, and environment transitions.
 
 The main v1 direction is:
 
 ```text
 Can a small untrained decoder-only GPT learn useful future prediction behavior
-from typed event streams where text, observations, actions, consequences, tool
+from signal streams where text, observations, actions, consequences, tool
 results, errors, and belief-like records share one sequence-learning substrate?
 ```
 
-Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over typed observation/action/consequence streams.
+Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over signal observation/action/consequence streams.
 
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
 
 Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
-`MixedDocument` remains as a legacy smoke/bridge format so existing demos and tests keep working. The active abstraction for new experiments is `TypedEvent` / typed streams, with `FuturePredictionCase` used for target-position-aware evaluation.
+`MixedDocument` remains as a legacy smoke/bridge format so existing demos and tests keep working. The active abstraction for new experiments is `Signal` streams, with `FuturePredictionCase` used for target-position-aware evaluation.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
@@ -81,15 +81,15 @@ src/intrep/language_modeling_metrics.py
 src/intrep/mixed_corpus.py
 src/intrep/mixed_corpus_evaluation.py
 src/intrep/generated_environment_corpus.py
-src/intrep/generated_environment_typed_corpus.py
+src/intrep/generated_environment_signal_corpus.py
 src/intrep/corpus_split.py
 src/intrep/corpus_coverage.py
-src/intrep/typed_events.py
-src/intrep/typed_stream.py
-src/intrep/typed_corpus.py
+src/intrep/signals.py
+src/intrep/signal_stream.py
+src/intrep/signal_corpus.py
 src/intrep/grid_world.py
 src/intrep/grid_corpus.py
-src/intrep/grid_typed_corpus.py
+src/intrep/grid_signal_corpus.py
 src/intrep/future_prediction_cases.py
 src/intrep/future_prediction_ranking.py
 src/intrep/gpt_model.py
@@ -145,14 +145,14 @@ This repository should avoid turning into a handcrafted ontology project.
 Prefer:
 
 ```text
-typed mixed-world sequence data
-TypedEvent / typed-tag rendering as a backward-compatible stream layer
+signal mixed-world sequence data
+Signal-tag rendering only as a low-priority byte-tokenizer experiment
 small decoder-only GPT training runs
 byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world
 environment episodes in symbolic and natural-language renderings
 generated environment train/eval slices selected through the evaluation CLI
-generated environment TypedEvent train/eval slices with explicit hard-negative event ids
+generated environment Signal train/eval slices for hard-negative checks
 for same-history/different-action and same-action/different-context checks
 same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
@@ -186,7 +186,8 @@ uv run python -m intrep.train_gpt --max-steps 20
 
 With no corpus flags, this uses the built-in smoke corpus only.
 
-To train from a JSONL corpus with records containing `id`, `modality`, and `content`:
+To train the current byte-tokenizer path from a legacy mixed-document JSONL
+corpus with records containing `id`, `modality`, and text `content`:
 
 ```sh
 uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jsonl --loss-summary

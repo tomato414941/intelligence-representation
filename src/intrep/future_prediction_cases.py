@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from intrep.typed_events import EventRole, TypedEvent
-from intrep.typed_stream import render_typed_stream
+from intrep.signals import Signal, render_payload_text
+from intrep.signal_stream import render_signal_stream
 
-FuturePredictionRendering = Literal["typed_event", "content"]
+FuturePredictionRendering = Literal["signal", "payload"]
 
 
 @dataclass(frozen=True)
 class FuturePredictionCase:
-    prefix_events: tuple[TypedEvent, ...]
-    positive_event: TypedEvent
-    negative_events: tuple[TypedEvent, ...] = field(default_factory=tuple)
-    target_role: EventRole = EventRole.CONSEQUENCE
+    prefix_events: tuple[Signal, ...]
+    positive_event: Signal
+    negative_events: tuple[Signal, ...] = field(default_factory=tuple)
+    target_channel: str = "consequence"
     condition: str = ""
     metadata: Mapping[str, object] = field(default_factory=dict)
 
     @property
     def id(self) -> str:
-        return str(self.metadata.get("positive_event_id", self.positive_event.id))
+        return str(self.metadata.get("positive_payload", self.positive_event.payload))
 
     @property
     def prefix(self) -> str:
@@ -38,48 +38,47 @@ class FuturePredictionCase:
 
 
 def extract_future_prediction_cases(
-    events: Sequence[TypedEvent],
+    events: Sequence[Signal],
     *,
-    target_role: EventRole | str | None = None,
+    target_channel: str | None = None,
     condition: str | None = None,
 ) -> list[FuturePredictionCase]:
-    ordered_events = _stable_event_order(events)
-    negatives_by_role = _negative_events_by_role(ordered_events)
+    ordered_events = list(events)
+    negatives_by_channel = _negative_events_by_channel(ordered_events)
     cases: list[FuturePredictionCase] = []
 
-    role = EventRole(target_role) if target_role is not None else None
-    for episode_events in _events_by_episode(ordered_events).values():
-        if role in (None, EventRole.CONSEQUENCE):
-            cases.extend(_extract_observation_action_consequence_cases(episode_events, negatives_by_role, condition))
-        if role in (None, EventRole.TOOL_RESULT):
-            cases.extend(_extract_tool_call_result_cases(episode_events, negatives_by_role, condition))
-        if role in (None, EventRole.PREDICTION_ERROR):
-            cases.extend(
-                _extract_adjacent_role_pair_cases(
-                    episode_events,
-                    negatives_by_role,
-                    prefix_role=EventRole.PREDICTION,
-                    target_role=EventRole.PREDICTION_ERROR,
-                    default_condition="prediction_to_error",
-                    condition=condition,
-                )
+    channel = target_channel
+    if channel in (None, "consequence"):
+        cases.extend(_extract_observation_action_consequence_cases(ordered_events, negatives_by_channel, condition))
+    if channel in (None, "tool_result"):
+        cases.extend(_extract_tool_call_result_cases(ordered_events, negatives_by_channel, condition))
+    if channel in (None, "prediction_error"):
+        cases.extend(
+            _extract_adjacent_channel_pair_cases(
+                ordered_events,
+                negatives_by_channel,
+                prefix_channel="prediction",
+                target_channel="prediction_error",
+                default_condition="prediction_to_error",
+                condition=condition,
             )
+        )
 
-    if role not in (None, EventRole.CONSEQUENCE, EventRole.TOOL_RESULT, EventRole.PREDICTION_ERROR):
-        raise ValueError(f"unsupported target_role for future prediction cases: {role.value}")
+    if channel not in (None, "consequence", "tool_result", "prediction_error"):
+        raise ValueError(f"unsupported target_channel for future prediction cases: {channel}")
     return cases
 
 
 def render_future_prediction_prefix(case: FuturePredictionCase) -> str:
-    return render_typed_stream(case.prefix_events)
+    return render_signal_stream(case.prefix_events)
 
 
 def render_future_prediction_positive(case: FuturePredictionCase) -> str:
-    return render_typed_stream([case.positive_event])
+    return render_signal_stream([case.positive_event])
 
 
 def render_future_prediction_negatives(case: FuturePredictionCase) -> tuple[str, ...]:
-    return tuple(render_typed_stream([event]) for event in case.negative_events)
+    return tuple(render_signal_stream([event]) for event in case.negative_events)
 
 
 def render_future_prediction_continuations(case: FuturePredictionCase) -> tuple[str, ...]:
@@ -89,48 +88,43 @@ def render_future_prediction_continuations(case: FuturePredictionCase) -> tuple[
 def render_future_prediction_texts(
     case: FuturePredictionCase,
     *,
-    rendering: FuturePredictionRendering = "typed_event",
+    rendering: FuturePredictionRendering = "signal",
 ) -> tuple[str, str, tuple[str, ...]]:
-    if rendering == "typed_event":
+    if rendering == "signal":
         return (
             render_future_prediction_prefix(case),
             render_future_prediction_positive(case),
             render_future_prediction_negatives(case),
         )
-    if rendering == "content":
+    if rendering == "payload":
         return (
-            _render_event_contents(case.prefix_events),
-            _render_event_contents((case.positive_event,)),
-            tuple(_render_event_contents((event,)) for event in case.negative_events),
+            _render_event_payloads(case.prefix_events),
+            _render_event_payloads((case.positive_event,)),
+            tuple(_render_event_payloads((event,)) for event in case.negative_events),
         )
     raise ValueError(f"unsupported future prediction rendering: {rendering}")
 
 
-def _render_event_contents(events: Sequence[TypedEvent]) -> str:
-    return "\n".join(event.content for event in events) + "\n"
+def _render_event_payloads(events: Sequence[Signal]) -> str:
+    return "\n".join(render_payload_text(event) for event in events) + "\n"
 
 
 def _extract_observation_action_consequence_cases(
-    episode_events: Sequence[TypedEvent],
-    negatives_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
+    episode_events: Sequence[Signal],
+    negatives_by_channel: Mapping[str, tuple[Signal, ...]],
     condition: str | None,
 ) -> list[FuturePredictionCase]:
     cases: list[FuturePredictionCase] = []
-    for index, event in enumerate(episode_events):
-        if event.role != EventRole.CONSEQUENCE:
+    for index in range(len(episode_events) - 2):
+        observation, action, event = episode_events[index : index + 3]
+        if (
+            observation.channel != "observation"
+            or action.channel != "action"
+            or event.channel != "consequence"
+        ):
             continue
-        action = _nearest_previous_role(episode_events[:index], EventRole.ACTION)
-        observation = _nearest_previous_role(episode_events[:index], EventRole.OBSERVATION)
-        if observation is None or action is None:
-            continue
-        prefix_events = tuple(
-            prefix_event
-            for prefix_event in episode_events[:index]
-            if prefix_event == observation or prefix_event == action
-        )
-        if len(prefix_events) != 2:
-            continue
-        negative_events = _negative_events_for(event, negatives_by_role, prefix_events, condition)
+        prefix_events = (observation, action)
+        negative_events = _negative_events_for(event, negatives_by_channel, prefix_events, condition)
         if not negative_events:
             continue
         cases.append(
@@ -138,7 +132,7 @@ def _extract_observation_action_consequence_cases(
                 prefix_events=prefix_events,
                 positive_event=event,
                 negative_events=negative_events,
-                target_role=EventRole.CONSEQUENCE,
+                target_channel="consequence",
                 condition=condition or "observation_action_to_consequence",
                 metadata=_case_metadata(event),
             )
@@ -147,18 +141,16 @@ def _extract_observation_action_consequence_cases(
 
 
 def _extract_tool_call_result_cases(
-    episode_events: Sequence[TypedEvent],
-    negatives_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
+    episode_events: Sequence[Signal],
+    negatives_by_channel: Mapping[str, tuple[Signal, ...]],
     condition: str | None,
 ) -> list[FuturePredictionCase]:
     cases: list[FuturePredictionCase] = []
-    for index, event in enumerate(episode_events):
-        if event.role != EventRole.TOOL_CALL:
+    for index in range(len(episode_events) - 1):
+        event, result = episode_events[index : index + 2]
+        if event.channel != "tool_call" or result.channel != "tool_result":
             continue
-        result = _first_following_tool_result(event, episode_events[index + 1 :])
-        if result is None:
-            continue
-        negative_events = _negative_events_for(result, negatives_by_role, (event,), condition)
+        negative_events = _negative_events_for(result, negatives_by_channel, (event,), condition)
         if not negative_events:
             continue
         cases.append(
@@ -166,7 +158,7 @@ def _extract_tool_call_result_cases(
                 prefix_events=(event,),
                 positive_event=result,
                 negative_events=negative_events,
-                target_role=EventRole.TOOL_RESULT,
+                target_channel="tool_result",
                 condition=condition or "tool_call_to_tool_result",
                 metadata=_case_metadata(result),
             )
@@ -174,23 +166,23 @@ def _extract_tool_call_result_cases(
     return cases
 
 
-def _extract_adjacent_role_pair_cases(
-    episode_events: Sequence[TypedEvent],
-    negatives_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
+def _extract_adjacent_channel_pair_cases(
+    episode_events: Sequence[Signal],
+    negatives_by_channel: Mapping[str, tuple[Signal, ...]],
     *,
-    prefix_role: EventRole,
-    target_role: EventRole,
+    prefix_channel: str,
+    target_channel: str,
     default_condition: str,
     condition: str | None,
 ) -> list[FuturePredictionCase]:
     cases: list[FuturePredictionCase] = []
     for index, event in enumerate(episode_events):
-        if event.role != target_role:
+        if event.channel != target_channel:
             continue
-        if index == 0 or episode_events[index - 1].role != prefix_role:
+        if index == 0 or episode_events[index - 1].channel != prefix_channel:
             continue
         prefix_events = (episode_events[index - 1],)
-        negative_events = _negative_events_for(event, negatives_by_role, prefix_events, condition)
+        negative_events = _negative_events_for(event, negatives_by_channel, prefix_events, condition)
         if not negative_events:
             continue
         cases.append(
@@ -198,7 +190,7 @@ def _extract_adjacent_role_pair_cases(
                 prefix_events=prefix_events,
                 positive_event=event,
                 negative_events=negative_events,
-                target_role=target_role,
+                target_channel=target_channel,
                 condition=condition or default_condition,
                 metadata=_case_metadata(event),
             )
@@ -206,80 +198,45 @@ def _extract_adjacent_role_pair_cases(
     return cases
 
 
-def _first_following_tool_result(call: TypedEvent, following_events: Sequence[TypedEvent]) -> TypedEvent | None:
-    call_id = call.metadata.get("tool_call_id")
+def _first_following_tool_result(call: Signal, following_events: Sequence[Signal]) -> Signal | None:
+    del call
     for event in following_events:
-        if event.role != EventRole.TOOL_RESULT:
-            continue
-        if call_id is None or event.metadata.get("tool_call_id") == call_id:
+        if event.channel == "tool_result":
             return event
     return None
 
 
-def _nearest_previous_role(events: Sequence[TypedEvent], role: EventRole) -> TypedEvent | None:
+def _nearest_previous_channel(events: Sequence[Signal], channel: str) -> Signal | None:
     for event in reversed(events):
-        if event.role == role:
+        if event.channel == channel:
             return event
     return None
 
 
-def _events_by_episode(events: Iterable[TypedEvent]) -> dict[str, list[TypedEvent]]:
-    by_episode: dict[str, list[TypedEvent]] = defaultdict(list)
+def _negative_events_by_channel(events: Sequence[Signal]) -> dict[str, tuple[Signal, ...]]:
+    by_channel: dict[str, list[Signal]] = defaultdict(list)
     for event in events:
-        if event.episode_id is None or event.time_index is None:
-            continue
-        by_episode[event.episode_id].append(event)
-    return dict(by_episode)
-
-
-def _negative_events_by_role(events: Sequence[TypedEvent]) -> dict[EventRole, tuple[TypedEvent, ...]]:
-    by_role: dict[EventRole, list[TypedEvent]] = defaultdict(list)
-    for event in events:
-        by_role[event.role].append(event)
-    return {role: tuple(role_events) for role, role_events in by_role.items()}
+        by_channel[event.channel].append(event)
+    return {channel: tuple(channel_events) for channel, channel_events in by_channel.items()}
 
 
 def _negative_events_for(
-    positive_event: TypedEvent,
-    negatives_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
-    prefix_events: Sequence[TypedEvent],
+    positive_event: Signal,
+    negatives_by_channel: Mapping[str, tuple[Signal, ...]],
+    prefix_events: Sequence[Signal],
     condition: str | None,
-) -> tuple[TypedEvent, ...]:
-    explicit_negative_ids = _metadata_list(positive_event.metadata.get("negative_event_ids"))
-    if explicit_negative_ids:
-        by_id = {event.id: event for event in negatives_by_role.get(positive_event.role, ())}
-        return tuple(
-            by_id[event_id]
-            for event_id in explicit_negative_ids
-            if event_id in by_id and by_id[event_id].content != positive_event.content
-        )
+) -> tuple[Signal, ...]:
     candidates = tuple(
         event
-        for event in negatives_by_role.get(positive_event.role, ())
+        for event in negatives_by_channel.get(positive_event.channel, ())
         if event != positive_event
-        and event.modality == positive_event.modality
-        and event.content != positive_event.content
+        and event.channel == positive_event.channel
+        and event.payload != positive_event.payload
     )
     if condition == "same_action_different_context":
-        action = _nearest_previous_role(prefix_events, EventRole.ACTION)
-        history = tuple(event.content for event in prefix_events if event.role == EventRole.OBSERVATION)
-        if action is not None:
-            candidates = tuple(
-                event
-                for event in candidates
-                if _episode_has_event_content(negatives_by_role, event.episode_id, EventRole.ACTION, action.content)
-                and _episode_observation_history(negatives_by_role, event.episode_id) != history
-            )
+        candidates = tuple(event for event in candidates if event != positive_event)
     elif condition == "same_history_different_action":
-        history = tuple(event.content for event in prefix_events if event.role == EventRole.OBSERVATION)
-        action = _nearest_previous_role(prefix_events, EventRole.ACTION)
-        candidates = tuple(
-            event
-            for event in candidates
-            if _episode_observation_history(negatives_by_role, event.episode_id) == history
-            and event.episode_id != positive_event.episode_id
-            and _episode_action_content(negatives_by_role, event.episode_id) != (action.content if action is not None else None)
-        )
+        candidates = tuple(event for event in candidates if event != positive_event)
     elif condition not in (
         None,
         "same_modality_negative",
@@ -291,66 +248,5 @@ def _negative_events_for(
     return candidates
 
 
-def _episode_has_event_content(
-    events_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
-    episode_id: str | None,
-    role: EventRole,
-    content: str,
-) -> bool:
-    return any(
-        event.episode_id == episode_id and event.role == role and event.content == content
-        for event in events_by_role.get(role, ())
-    )
-
-
-def _episode_observation_history(
-    events_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
-    episode_id: str | None,
-) -> tuple[str, ...]:
-    return tuple(
-        event.content
-        for event in _stable_event_order(list(events_by_role.get(EventRole.OBSERVATION, ())))
-        if event.episode_id == episode_id
-    )
-
-
-def _episode_action_content(
-    events_by_role: Mapping[EventRole, tuple[TypedEvent, ...]],
-    episode_id: str | None,
-) -> str | None:
-    for event in _stable_event_order(list(events_by_role.get(EventRole.ACTION, ()))):
-        if event.episode_id == episode_id:
-            return event.content
-    return None
-
-
-def _metadata_list(value: object) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    if isinstance(value, str):
-        return tuple(part.strip() for part in value.split("|") if part.strip())
-    if isinstance(value, Sequence):
-        return tuple(str(part) for part in value)
-    return ()
-
-
-def _case_metadata(event: TypedEvent) -> dict[str, object]:
-    metadata: dict[str, object] = {}
-    if event.episode_id is not None:
-        metadata["episode_id"] = event.episode_id
-    if event.time_index is not None:
-        metadata["time_index"] = event.time_index
-    if event.id:
-        metadata["positive_event_id"] = event.id
-    return metadata
-
-
-def _stable_event_order(events: Sequence[TypedEvent]) -> list[TypedEvent]:
-    return sorted(
-        events,
-        key=lambda event: (
-            event.episode_id or "",
-            event.time_index if event.time_index is not None else 10**12,
-            event.id,
-        ),
-    )
+def _case_metadata(event: Signal) -> dict[str, object]:
+    return {"positive_payload": event.payload}

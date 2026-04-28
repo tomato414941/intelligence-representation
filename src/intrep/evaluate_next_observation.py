@@ -25,7 +25,7 @@ class CorpusSelection:
 
 def _load_file_documents(path: str | Path) -> list[MixedDocument]:
     try:
-        from intrep.typed_corpus import load_corpus_jsonl_as_mixed_documents
+        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
     except ImportError as error:
         raise RuntimeError("file-backed corpus loading is not available in this build") from error
     return load_corpus_jsonl_as_mixed_documents(path)
@@ -75,15 +75,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--corpus-format",
-        choices=("auto", "mixed-document", "typed-event"),
+        choices=("auto", "mixed-document", "signal", "typed-event"),
         default="auto",
-        help="JSONL schema for --corpus=file. auto detects typed-event records by role.",
+        help="JSONL schema for --corpus=file. auto detects signal records by channel or role.",
     )
     parser.add_argument(
         "--render-format",
-        choices=("plain", "typed-tags"),
+        choices=("plain", "signal-tags", "typed-tags"),
         default="plain",
-        help="Render corpus records as legacy plain documents or typed event tags.",
+        help="Render corpus records as legacy plain documents or signal tags.",
     )
     parser.add_argument(
         "--generated-eval-slice",
@@ -120,7 +120,7 @@ def _load_documents(
     render_format: str,
 ) -> list[MixedDocument]:
     if not custom_loader:
-        from intrep.typed_corpus import load_corpus_jsonl_as_mixed_documents
+        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
 
         return load_corpus_jsonl_as_mixed_documents(
             path,
@@ -130,11 +130,11 @@ def _load_documents(
     documents = loader(path)
     if render_format == "plain":
         return documents
-    if render_format != "typed-tags":
-        raise ValueError("render_format must be plain or typed-tags")
-    from intrep.typed_corpus import mixed_documents_to_typed_events, typed_events_to_mixed_documents
+    if render_format not in ("signal-tags", "typed-tags"):
+        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    from intrep.signal_corpus import mixed_documents_to_signals, signals_to_mixed_documents
 
-    return typed_events_to_mixed_documents(mixed_documents_to_typed_events(documents))
+    return signals_to_mixed_documents(mixed_documents_to_signals(documents))
 
 
 def main(

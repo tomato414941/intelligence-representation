@@ -9,7 +9,7 @@ from intrep import train_ptm
 
 
 class TrainPTMCLITest(unittest.TestCase):
-    def test_forwards_typed_event_defaults_to_train_gpt(self) -> None:
+    def test_forwards_signal_defaults_to_train_gpt(self) -> None:
         captured_argv: list[str] | None = None
 
         def fake_train_gpt_main(argv):
@@ -38,9 +38,9 @@ class TrainPTMCLITest(unittest.TestCase):
 
         assert captured_argv is not None
         self.assertIn("--corpus-format", captured_argv)
-        self.assertIn("typed-event", captured_argv)
+        self.assertIn("signal", captured_argv)
         self.assertIn("--render-format", captured_argv)
-        self.assertIn("typed-tags", captured_argv)
+        self.assertIn("signal-tags", captured_argv)
         self.assertIn(str(eval_path), captured_argv)
 
 

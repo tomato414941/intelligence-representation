@@ -23,7 +23,7 @@ same_action_different_context:
 The main question is narrower than a world-model claim:
 
 ```text
-If the generated typed environment data is scaled by 100x, does the ranking
+If the generated signal environment data is scaled by 100x, does the ranking
 metric begin to move, and does the metric actually keep the relevant
 observation/action prefix in context?
 ```
@@ -48,10 +48,10 @@ seed = 7
 Generated files:
 
 ```text
-runs/exp002_100x/same_history_train.typed.jsonl
-runs/exp002_100x/same_history_eval.typed.jsonl
-runs/exp002_100x/same_action_train.typed.jsonl
-runs/exp002_100x/same_action_eval.typed.jsonl
+runs/exp002_100x/same_history_train.signals.jsonl
+runs/exp002_100x/same_history_eval.signals.jsonl
+runs/exp002_100x/same_action_train.signals.jsonl
+runs/exp002_100x/same_action_eval.signals.jsonl
 ```
 
 Observed scale:
@@ -62,7 +62,7 @@ per condition:
   train_cases = 8000
   eval_events = 9600
   eval_cases = 3200
-  explicit_negative_rate = 1.0
+  explicit_negative_rate = 0.0
 
 two conditions total:
   cases = 22400
@@ -107,12 +107,12 @@ OK
 The main finding is that the Experiment 001 ranking setup had a rendering
 problem.
 
-The default ranking rendering used full typed events:
+The default ranking rendering used full signals:
 
 ```text
-<EVENT id="..." role="..." modality="..." episode="..." ...>
-content
-</EVENT>
+<SIGNAL channel="...">
+payload
+</SIGNAL>
 ```
 
 For hard-negative ranking, this made prefixes and continuations long enough
@@ -122,16 +122,16 @@ prefix had already fallen out of the `context_length = 64` model window.
 Measured example from `same_action_different_context`:
 
 ```text
-typed_event rendering:
+signal rendering:
   prefix_tokens = 844
   positive_tokens = 523
   negative_tokens = 526
   prefix tail in a 64-token window:
     _action_different_context_0000" split="eval">
     open box
-    </EVENT>
+    </SIGNAL>
 
-content rendering:
+payload rendering:
   prefix_tokens = 27
   positive_tokens = 9
   negative_tokens = 11
@@ -141,32 +141,36 @@ content rendering:
 ```
 
 This explains why `same_action_different_context` produced exactly zero margins
-under typed-event rendering: the scorer was not reliably testing whether the
+under signal rendering: the scorer was not reliably testing whether the
 model used the observation context.
 
 ## Rendering Modes
 
 Future-prediction ranking now separates the case extraction responsibility from
-the text-rendering responsibility.
+the renderer responsibility. The current byte-tokenizer renderer consumes text
+payloads; structured JSON / action data should be canonicalized to text before
+it enters `Signal`. Future renderers may tokenize media references through
+channel-specific encoders.
 
 ```text
-typed_event:
-  full TypedEvent tag rendering, kept for compatibility
+signal:
+  full Signal tag rendering, treated as a low-priority experiment
 
-content:
-  prefix = event contents only
-  continuation = target event content only
+payload:
+  prefix = rendered event payloads only
+  continuation = rendered target event payload only
+  current byte-tokenizer implementation scores text payloads
 ```
 
 The CLI supports the rendering choice:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \
-  --train-path train.typed.jsonl \
-  --eval-path eval.typed.jsonl \
-  --target-role consequence \
+  --train-path train.signals.jsonl \
+  --eval-path eval.signals.jsonl \
+  --target-channel consequence \
   --condition same_action_different_context \
-  --rendering content
+  --rendering payload
 ```
 
 ## Probe Results
@@ -174,7 +178,7 @@ uv run python -m intrep.evaluate_future_prediction \
 The first 100x probe used the large train corpus, small held-out eval subsets,
 `max_steps = 20`, and `batch_stride = 65536` to keep CPU runtime manageable.
 
-Typed-event rendering:
+Signal rendering:
 
 ```text
 same_history_different_action:
@@ -194,7 +198,7 @@ same_action_different_context:
   delta_margin: 0.0
 ```
 
-Content rendering:
+Payload rendering:
 
 ```text
 same_history_different_action:
@@ -216,7 +220,7 @@ same_action_different_context:
   after_margin: -0.0246
 ```
 
-Small train-subset content probes also kept top-1 accuracy at `0.5000`, but the
+Small train-subset payload probes also kept top-1 accuracy at `0.5000`, but the
 margins were no longer exactly zero.
 
 ## Reading
@@ -224,7 +228,7 @@ margins were no longer exactly zero.
 This experiment does not show a modeling success.
 
 It does show that the Experiment 001 zero-margin result was partly an evaluation
-artifact. Full typed-event rendering hid the causal prefix from the scorer under
+artifact. Full signal rendering hid the causal prefix from the scorer under
 the short context length.
 
 Current reading:
@@ -233,7 +237,7 @@ Current reading:
 Data scale alone is not enough to produce a clean ranking improvement in the
 small CPU probe.
 
-However, content rendering is a better diagnostic for the current context
+However, payload rendering is a better diagnostic for the current context
 length because it preserves the observation/action signal inside the scoring
 window.
 ```
@@ -243,7 +247,7 @@ the hard-negative evaluation fixed and vary the minimal factors that affect
 whether the model can see and use the relevant prefix:
 
 ```text
-rendering = content
+rendering = payload
 context_length
 max_steps
 model_preset / model size

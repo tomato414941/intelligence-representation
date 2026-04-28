@@ -35,7 +35,7 @@ def evaluate_future_prediction_ranking(
     tokenizer: ByteTokenizer,
     *,
     score_continuation_loss: ContinuationScorer | None = None,
-    rendering: FuturePredictionRendering = "typed_event",
+    rendering: FuturePredictionRendering = "signal",
 ) -> FuturePredictionRankingSummary:
     if not cases:
         raise ValueError("cases must not be empty")

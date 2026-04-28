@@ -1,7 +1,7 @@
 import io
 import json
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -9,7 +9,7 @@ from intrep import evaluate_future_prediction
 
 
 class EvaluateFuturePredictionCLITest(unittest.TestCase):
-    def test_evaluates_typed_event_train_and_eval_paths(self) -> None:
+    def test_evaluates_signal_train_and_eval_paths(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -26,7 +26,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                         str(train_path),
                         "--eval-path",
                         str(eval_path),
-                        "--target-role",
+                        "--target-channel",
                         "consequence",
                         "--condition",
                         "same_modality_negative",
@@ -47,9 +47,9 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
 
         stdout = output.getvalue()
         self.assertIn("intrep future-prediction evaluation", stdout)
-        self.assertIn("target_role=consequence", stdout)
+        self.assertIn("target_channel=consequence", stdout)
         self.assertIn("generalization_eval=true", stdout)
-        self.assertEqual(payload["target_role"], "consequence")
+        self.assertEqual(payload["target_channel"], "consequence")
         self.assertTrue(payload["generalization_eval"])
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
@@ -71,7 +71,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     [
                         "--train-path",
                         str(train_path),
-                        "--target-role",
+                        "--target-channel",
                         "consequence",
                         "--condition",
                         "same_modality_negative",
@@ -101,56 +101,78 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertIn("delta_top1_accuracy", payload)
         self.assertIn("delta_margin", payload)
 
+    def test_payload_ref_train_path_is_rejected_before_training(self) -> None:
+        stderr = io.StringIO()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "train.jsonl"
+            path.write_text(
+                (
+                    '{"channel":"observation",'
+                    '"payload_ref":{"uri":"dataset://images/frame-1.png","media_type":"image/png"}}\n'
+                    '{"channel":"action","payload":"inspect image"}\n'
+                    '{"channel":"consequence","payload":"found object"}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            with redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as raised:
+                    evaluate_future_prediction.main(
+                        [
+                            "--train-path",
+                            str(path),
+                            "--target-channel",
+                            "consequence",
+                        ]
+                    )
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("does not support payload_ref", stderr.getvalue())
+
 
 def _write_events(path: Path, prefix: str) -> None:
     rows = [
         {
             "id": f"{prefix}_ep1_obs",
-            "role": "observation",
-            "modality": "text",
+            "channel": "observation",
             "episode_id": f"{prefix}_ep1",
             "time_index": 0,
-            "content": "box_a has key ; box_b has coin",
+            "payload": "box_a has key ; box_b has coin",
         },
         {
             "id": f"{prefix}_ep1_action",
-            "role": "action",
-            "modality": "text",
+            "channel": "action",
             "episode_id": f"{prefix}_ep1",
             "time_index": 1,
-            "content": "open box_a",
+            "payload": "open box_a",
         },
         {
             "id": f"{prefix}_ep1_cons",
-            "role": "consequence",
-            "modality": "text",
+            "channel": "consequence",
             "episode_id": f"{prefix}_ep1",
             "time_index": 2,
-            "content": "see key",
+            "payload": "see key",
         },
         {
             "id": f"{prefix}_ep2_obs",
-            "role": "observation",
-            "modality": "text",
+            "channel": "observation",
             "episode_id": f"{prefix}_ep2",
             "time_index": 0,
-            "content": "box_a has key ; box_b has coin",
+            "payload": "box_a has key ; box_b has coin",
         },
         {
             "id": f"{prefix}_ep2_action",
-            "role": "action",
-            "modality": "text",
+            "channel": "action",
             "episode_id": f"{prefix}_ep2",
             "time_index": 1,
-            "content": "open box_b",
+            "payload": "open box_b",
         },
         {
             "id": f"{prefix}_ep2_cons",
-            "role": "consequence",
-            "modality": "text",
+            "channel": "consequence",
             "episode_id": f"{prefix}_ep2",
             "time_index": 2,
-            "content": "see coin",
+            "payload": "see coin",
         },
     ]
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")

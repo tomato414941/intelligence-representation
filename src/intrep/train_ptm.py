@@ -8,7 +8,7 @@ from intrep import train_gpt
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Train the PTM typed-event path using the current decoder-only GPT backend."
+        description="Train the PTM signal path using the current decoder-only GPT backend."
     )
     parser.add_argument("--train-path", type=Path, required=True)
     parser.add_argument("--eval-path", type=Path)
@@ -31,9 +31,9 @@ def main(argv: list[str] | None = None) -> None:
         "--corpus-path",
         str(args.train_path),
         "--corpus-format",
-        "typed-event",
+        "signal",
         "--render-format",
-        "typed-tags",
+        "signal-tags",
         "--max-steps",
         str(args.max_steps),
         "--context-length",

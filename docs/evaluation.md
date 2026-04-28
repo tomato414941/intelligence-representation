@@ -15,8 +15,8 @@ In that broader frame, world modeling is a core evaluation surface, not the whol
 The main v1 engineering question is:
 
 ```text
-Can an untrained decoder-only GPT consume typed event streams and improve
-target-role future prediction after a short next-token training run?
+Can an untrained decoder-only GPT consume signal streams and improve
+target-channel future prediction after a short next-token training run?
 ```
 
 Average next-token loss reduction remains a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
@@ -25,7 +25,7 @@ Use this distinction:
 
 ```text
 training objective:
-  next-token prediction over typed streams
+  next-token prediction over Signal streams
 
 training smoke metric:
   average next-token loss reduction
@@ -34,74 +34,89 @@ world-model-oriented metric:
   held-out action-conditioned next-observation / future-token prediction
 ```
 
-In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI. The legacy schema keeps `id`, `modality`, and `content`; the typed-event schema adds `role`, `episode_id`, `time_index`, and `metadata`, then renders events as typed tags before byte-level training.
+In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI. The legacy mixed-document schema keeps `id`, `modality`, and `content`; the signal schema keeps `channel` and either text `payload` or non-text `payload_ref`.
 
-The active typed evaluation unit is `FuturePredictionCase`:
+Signal JSONL text payload:
+
+```json
+{"channel":"action","payload":"{\"name\":\"open_box\",\"arguments\":{\"box\":\"red\"}}"}
+```
+
+Signal JSONL reference payload:
+
+```json
+{"channel":"image","payload_ref":{"uri":"dataset://images/frame-1.png","media_type":"image/png","sha256":"...","size_bytes":12345}}
+```
+
+`payload` and `payload_ref` are mutually exclusive. `payload_ref` may represent non-text signals such as images that should become training targets or conditioning inputs. The current byte-tokenizer training and ranking path consumes text `payload` only because no channel-specific loader or encoder is wired in yet, so it explicitly rejects `payload_ref`.
+
+The active signal evaluation unit is `FuturePredictionCase`:
 
 ```text
 prefix_events:
-  typed events such as OBSERVATION + ACTION or TOOL_CALL
+  signals such as OBSERVATION + ACTION or TOOL_CALL
 
 positive_event:
   the correct CONSEQUENCE / TOOL_RESULT / PREDICTION_ERROR
 
 negative_events:
-  same-role, same-modality hard negatives
+  same-channel, same-modality hard negatives
 ```
 
 The general CLI for this path is:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \
-  --train-path train.typed.jsonl \
-  --eval-path eval.typed.jsonl \
-  --target-role consequence \
+  --train-path train.signals.jsonl \
+  --eval-path eval.signals.jsonl \
+  --target-channel consequence \
   --condition same_modality_negative
 ```
 
-The generated environment typed corpus builder creates train/eval `TypedEvent` JSONL with explicit same-split hard-negative ids on consequence events:
+The generated environment signal corpus builder creates train/eval `Signal` JSONL for hard-negative consequence ranking:
 
 ```sh
-uv run python -m intrep.generated_environment_typed_corpus \
-  --train-output train.typed.jsonl \
-  --eval-output eval.typed.jsonl \
+uv run python -m intrep.generated_environment_signal_corpus \
+  --train-output train.signals.jsonl \
+  --eval-output eval.signals.jsonl \
   --eval-slice same_history_different_action \
   --train-size 100 \
   --eval-size 40 \
   --seed 7
 ```
 
-Use `same_history_different_action` to keep the observation fixed while changing the action, and `same_action_different_context` to keep the action fixed while changing the observation. Both generated slices write reciprocal `negative_event_ids` so the ranking task uses intentional hard negatives rather than incidental distractors. The older generated slices, such as `generated_strict_noisy`, remain available for compatibility and broader smoke coverage.
+Use `same_history_different_action` to keep the observation fixed while changing the action, and `same_action_different_context` to keep the action fixed while changing the observation. Both generated slices create paired Signal triples so the intended hard-negative contrast is present in the same-channel consequence distractor set. The older generated slices, such as `generated_strict_noisy`, remain available for compatibility and broader smoke coverage.
 
 Those generated files can then be evaluated directly:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \
-  --train-path train.typed.jsonl \
-  --eval-path eval.typed.jsonl \
-  --target-role consequence \
+  --train-path train.signals.jsonl \
+  --eval-path eval.signals.jsonl \
+  --target-channel consequence \
   --condition same_history_different_action \
-  --rendering content
+  --rendering payload
 ```
 
 Future-prediction ranking has two rendering modes:
 
 ```text
-typed_event:
-  full TypedEvent tag rendering; useful for compatibility and for experiments
-  that explicitly test long typed-tag streams
+signal:
+  full Signal tag rendering; a low-priority experiment for explicitly testing
+  long signal-tag streams
 
-content:
-  event contents only; the current preferred diagnostic for short-context
+payload:
+  event text payloads only; the current text/byte-tokenizer scoring path is the
+  preferred diagnostic for short-context
   action/context-conditioned consequence ranking
 ```
 
-Use `--rendering content` when testing whether a short-context model can use
+Use `--rendering payload` when testing whether a short-context model can use
 the relevant observation/action prefix for hard-negative consequence ranking.
-Full typed-event rendering can make the tags long enough that the consequence
-content is scored after the causal prefix has fallen out of the model window.
+Full signal rendering can make the tags long enough that the consequence
+payload is scored after the causal prefix has fallen out of the model window.
 That makes it a poor default diagnostic for `context_length = 64` consequence
-ranking unless the experiment is explicitly about full typed-tag streams. See
+ranking unless the experiment is explicitly about full signal-tag streams. See
 [Experiment 002](experiment-002.md).
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
@@ -190,7 +205,7 @@ tests/test_pair_ranking.py:
   checks symbolic-to-natural continuation ranking metrics
 
 tests/test_future_prediction_ranking.py:
-  checks target-role future prediction ranking and content-only rendering
+  checks target-channel future prediction ranking and payload-only rendering
 
 tests/test_symbolic_to_natural_evaluation.py:
   checks before/after GPT symbolic-to-natural ranking evaluation,

@@ -108,7 +108,10 @@ def _split_symbolic_next_observation(content: str) -> tuple[str, str, tuple[str,
 
 
 def _strip_event_closing_tag(value: str) -> str:
-    return value[: -len("</EVENT>")].rstrip() if value.endswith("</EVENT>") else value
+    for closing_tag in ("</SIGNAL>", "</SIGNAL>"):
+        if value.endswith(closing_tag):
+            return value[: -len(closing_tag)].rstrip()
+    return value
 
 
 def _find_marker(content: str, marker_name: str) -> re.Match[str] | None:

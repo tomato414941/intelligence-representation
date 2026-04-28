@@ -1,4 +1,4 @@
-# Experiment 001: Typed Environment Future Prediction
+# Experiment 001: Signal Environment Future Prediction
 
 ## Purpose
 
@@ -7,7 +7,7 @@ This experiment is the first mainline check for the Predictive Token Machine sca
 It does not try to prove that a world model has been learned. It asks a narrower question:
 
 ```text
-Can a small decoder-only GPT trained on typed environment streams improve
+Can a small decoder-only GPT trained on signal environment streams improve
 held-out consequence ranking when the distractors require using either
 the action token or the observation context?
 ```
@@ -16,7 +16,7 @@ The training objective remains next-token prediction. The evaluation target is f
 
 ## Fixed Setup
 
-Use the generated typed environment corpus with explicit hard negatives:
+Use the generated signal environment corpus with paired hard-negative structure:
 
 ```text
 same_history_different_action:
@@ -30,16 +30,16 @@ same_action_different_context:
   different consequence
 ```
 
-Both slices attach reciprocal `negative_event_ids` to consequence events. This makes the ranking task depend on intentional hard negatives instead of incidental same-modality distractors.
+Both slices generate paired observation/action/consequence triples. The current Signal format does not carry explicit negative IDs; ranking uses same-channel consequence distractors, with the pair structure making the intended contrast available in the corpus.
 
 ## Commands
 
 Build the action-conditioned slice:
 
 ```sh
-uv run python -m intrep.generated_environment_typed_corpus \
-  --train-output runs/exp001/same_history_train.typed.jsonl \
-  --eval-output runs/exp001/same_history_eval.typed.jsonl \
+uv run python -m intrep.generated_environment_signal_corpus \
+  --train-output runs/exp001/same_history_train.signals.jsonl \
+  --eval-output runs/exp001/same_history_eval.signals.jsonl \
   --eval-slice same_history_different_action \
   --train-size 80 \
   --eval-size 32 \
@@ -50,9 +50,9 @@ Evaluate it:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \
-  --train-path runs/exp001/same_history_train.typed.jsonl \
-  --eval-path runs/exp001/same_history_eval.typed.jsonl \
-  --target-role consequence \
+  --train-path runs/exp001/same_history_train.signals.jsonl \
+  --eval-path runs/exp001/same_history_eval.signals.jsonl \
+  --target-channel consequence \
   --condition same_history_different_action \
   --metrics-path runs/exp001/same_history_metrics.json
 ```
@@ -60,9 +60,9 @@ uv run python -m intrep.evaluate_future_prediction \
 Build the context-conditioned slice:
 
 ```sh
-uv run python -m intrep.generated_environment_typed_corpus \
-  --train-output runs/exp001/same_action_train.typed.jsonl \
-  --eval-output runs/exp001/same_action_eval.typed.jsonl \
+uv run python -m intrep.generated_environment_signal_corpus \
+  --train-output runs/exp001/same_action_train.signals.jsonl \
+  --eval-output runs/exp001/same_action_eval.signals.jsonl \
   --eval-slice same_action_different_context \
   --train-size 80 \
   --eval-size 32 \
@@ -73,9 +73,9 @@ Evaluate it:
 
 ```sh
 uv run python -m intrep.evaluate_future_prediction \
-  --train-path runs/exp001/same_action_train.typed.jsonl \
-  --eval-path runs/exp001/same_action_eval.typed.jsonl \
-  --target-role consequence \
+  --train-path runs/exp001/same_action_train.signals.jsonl \
+  --eval-path runs/exp001/same_action_eval.signals.jsonl \
+  --target-channel consequence \
   --condition same_action_different_context \
   --metrics-path runs/exp001/same_action_metrics.json
 ```
@@ -99,17 +99,17 @@ no_negative_case_count
 train_final_loss
 ```
 
-The metrics report should make clear whether the ranking task actually used explicit hard negatives. `explicit_negative_rate` should be `1.0` for the generated hard-negative slices.
+The metrics report should make clear whether the ranking task had usable distractors. `explicit_negative_rate` is `0.0` for Signal files until explicit negative metadata is reintroduced.
 
 ## Success Criteria
 
 The experiment is successful as an engineering checkpoint if:
 
 ```text
-1. train/eval typed JSONL files are generated.
+1. train/eval Signal JSONL files are generated.
 2. eval_case_count >= 2 for both slices.
 3. generalization_eval = true.
-4. each eval consequence has at least one explicit negative.
+4. each eval consequence has at least one same-channel negative.
 5. before/after future prediction metrics are emitted.
 6. all repository tests still pass.
 ```
@@ -157,7 +157,7 @@ consequence over an explicit context-contrast negative.
 If both improve:
 
 ```text
-This is the first useful evidence that the typed stream scaffold can train
+This is the first useful evidence that the Signal stream scaffold can train
 toward action/context-conditioned future prediction on the generated task.
 It is still not evidence of a general predictive token machine.
 ```
@@ -176,7 +176,7 @@ large-scale generalization
 pretrained language model transfer
 ```
 
-Those should wait until the typed corpus and future-prediction metrics are stable.
+Those should wait until the signal corpus and future-prediction metrics are stable.
 
 ## First Run
 
@@ -188,7 +188,7 @@ Configuration:
 train_size = 80
 eval_size = 32
 seed = 7
-target_role = consequence
+target_channel = consequence
 eval_split = held_out
 generalization_eval = true
 ```
@@ -222,7 +222,7 @@ same_history_different_action:
   eval_split: train
   generalization_eval: false
   eval_case_count: 80
-  explicit_negative_rate: 1.0
+  explicit_negative_rate: 0.0
   no_negative_case_count: 0
   before_top1_accuracy: 0.5000
   after_top1_accuracy: 0.5000
@@ -235,7 +235,7 @@ same_action_different_context:
   eval_split: train
   generalization_eval: false
   eval_case_count: 80
-  explicit_negative_rate: 1.0
+  explicit_negative_rate: 0.0
   no_negative_case_count: 0
   before_top1_accuracy: 0.5000
   after_top1_accuracy: 0.5000
@@ -252,7 +252,7 @@ The short training run reduced next-token loss, but it did not improve
 held-out hard-negative future prediction ranking.
 ```
 
-This is a useful negative result. It means the current byte-level typed-tag GPT scaffold can learn local stream statistics on this corpus, but this first run does not show action-conditioned or context-conditioned consequence discrimination.
+This is a useful negative result. It means the current byte-level signal-tag GPT scaffold can learn local stream statistics on this corpus, but this first run does not show action-conditioned or context-conditioned consequence discrimination.
 
 The train-split smoke check sharpens the reading: the failure is not only held-out generalization. Under the short default training run, the model does not distinguish the explicit hard negatives even on the training split.
 
@@ -263,18 +263,18 @@ Next steps should not claim world-model evidence from this run. The next experim
 A follow-up investigation found that this first run should be read with an
 important evaluation caveat.
 
-The run used full typed-event rendering for ranking prefixes and continuations.
-With `context_length = 64`, the rendered `<EVENT ...>` tags were long enough
-that the consequence content was often scored after the observation/action
+The run used full signal rendering for ranking prefixes and continuations.
+With `context_length = 64`, the rendered `<SIGNAL ...>` tags were long enough
+that the consequence payload was often scored after the observation/action
 prefix had fallen out of the model window.
 
 For example, in a `same_action_different_context` case:
 
 ```text
-typed-event prefix: 844 byte tokens
-typed-event positive continuation: 523 byte tokens
-content-only prefix: 27 byte tokens
-content-only positive continuation: 9 byte tokens
+signal prefix: 844 byte tokens
+signal positive continuation: 523 byte tokens
+payload-only prefix: 27 byte tokens
+payload-only positive continuation: 9 byte tokens
 ```
 
 This means the zero or near-zero margins in the first run are not pure evidence
@@ -285,12 +285,12 @@ continuations without the relevant causal prefix still in context.
 The first-run negative result should still be preserved:
 
 ```text
-With full typed-event rendering and a short training run, the measured ranking
+With full signal rendering and a short training run, the measured ranking
 did not improve.
 ```
 
 But it should not be over-interpreted as a clean modeling failure. The follow-up
 experiment records the 100x data generation, scoring-speed change, and
-content-rendering probe:
+payload-rendering probe:
 
 - [Experiment 002](experiment-002.md)
