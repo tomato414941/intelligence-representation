@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--image-channel-bins", type=int, default=4)
+    parser.add_argument("--image-token-format", choices=("flat", "grid"), default="flat")
     parser.add_argument("--max-negatives", type=int, default=3)
     parser.add_argument("--metrics-path", type=Path)
     return parser
@@ -46,6 +47,7 @@ def main(argv: list[str] | None = None) -> None:
             rendering="image-tokens",
             image_patch_size=args.image_patch_size,
             image_channel_bins=args.image_channel_bins,
+            image_token_format=args.image_token_format,
             max_negatives=args.max_negatives,
             metrics_path=args.metrics_path,
         )

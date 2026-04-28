@@ -273,6 +273,9 @@ Fashion-MNIST IDX
 
 The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
 future-prediction CLI remains focused on text-rendered Signal streams.
+`evaluate_fashion_mnist` supports `--image-token-format flat|grid`; `grid`
+adds explicit row/column patch markers as a minimal step toward
+patch-plus-position image rendering.
 
 Initial CPU smoke result with `patch_size = 4`, `channel_bins = 4`,
 `model_preset = tiny`, `train_cases = 20`, `max_steps = 100`, and

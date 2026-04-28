@@ -155,9 +155,10 @@ class FuturePredictionCasesTest(unittest.TestCase):
             prefix, positive, negatives = render_future_prediction_texts(
                 case,
                 rendering="image-tokens",
+                image_token_format="grid",
             )
 
-        self.assertEqual(prefix, "0 63\n")
+        self.assertEqual(prefix, "r0c0:0 r0c1:63\n")
         self.assertEqual(positive, "9:Ankle boot\n")
         self.assertEqual(negatives[0], "0:T-shirt/top\n")
 

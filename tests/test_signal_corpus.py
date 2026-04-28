@@ -83,7 +83,7 @@ class SignalCorpusTest(unittest.TestCase):
             documents = signals_to_mixed_documents([event], render_format="image-tokens")
 
         self.assertEqual(documents[0].modality, "image")
-        self.assertIn('<IMAGE_TOKENS patch_size="1" channel_bins="4">', documents[0].content)
+        self.assertIn('<IMAGE_TOKENS patch_size="1" channel_bins="4" format="flat">', documents[0].content)
         self.assertIn("0 63", documents[0].content)
 
     def test_signal_jsonl_v2_helpers_round_trip_payload_ref(self) -> None:

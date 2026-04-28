@@ -22,7 +22,30 @@ class ImageRenderingTest(unittest.TestCase):
         self.assertEqual(payload, "0 63")
         self.assertEqual(
             document,
-            '<IMAGE_TOKENS patch_size="1" channel_bins="4">\n0 63\n</IMAGE_TOKENS>\n',
+            '<IMAGE_TOKENS patch_size="1" channel_bins="4" format="flat">\n0 63\n</IMAGE_TOKENS>\n',
+        )
+
+    def test_renders_grid_token_payload_with_patch_positions(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "image.pgm"
+            path.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 128, 64]))
+            event = Signal(
+                channel="image",
+                payload=PayloadRef(uri=path.as_uri(), media_type="image/x-portable-graymap"),
+            )
+
+            payload = render_image_token_payload(event, token_format="grid")
+            document = render_image_token_document(event, token_format="grid")
+
+        self.assertEqual(payload, "r0c0:0 r0c1:63\nr1c0:42 r1c1:21")
+        self.assertEqual(
+            document,
+            (
+                '<IMAGE_TOKENS patch_size="1" channel_bins="4" format="grid">\n'
+                "r0c0:0 r0c1:63\n"
+                "r1c0:42 r1c1:21\n"
+                "</IMAGE_TOKENS>\n"
+            ),
         )
 
     def test_non_image_payload_ref_events_fall_back_to_payload_text_error(self) -> None:

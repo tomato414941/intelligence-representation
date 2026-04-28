@@ -199,6 +199,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
             rendering="signal",
             image_patch_size=1,
             image_channel_bins=4,
+            image_token_format="flat",
             max_negatives=None,
         ):
             del model, tokenizer
@@ -208,6 +209,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "rendering": rendering,
                     "image_patch_size": image_patch_size,
                     "image_channel_bins": image_channel_bins,
+                    "image_token_format": image_token_format,
                     "max_negatives": max_negatives,
                 }
             )
@@ -231,6 +233,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
             render_format="signal-tags",
             image_patch_size=1,
             image_channel_bins=4,
+            image_token_format="flat",
         ):
             render_calls.append(
                 {
@@ -238,6 +241,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "render_format": render_format,
                     "image_patch_size": image_patch_size,
                     "image_channel_bins": image_channel_bins,
+                    "image_token_format": image_token_format,
                 }
             )
             return [MixedDocument(id="fake", modality="signals", content="fake")]
@@ -275,6 +279,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                         rendering="image-tokens",
                         image_patch_size=2,
                         image_channel_bins=8,
+                        image_token_format="grid",
                         max_negatives=1,
                         max_steps=1,
                     )
@@ -289,6 +294,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "rendering": "image-tokens",
                     "image_patch_size": 2,
                     "image_channel_bins": 8,
+                    "image_token_format": "grid",
                     "max_negatives": 1,
                 },
                 {
@@ -296,6 +302,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "rendering": "image-tokens",
                     "image_patch_size": 2,
                     "image_channel_bins": 8,
+                    "image_token_format": "grid",
                     "max_negatives": 1,
                 },
             ],
@@ -308,12 +315,14 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "render_format": "image-tokens",
                     "image_patch_size": 2,
                     "image_channel_bins": 8,
+                    "image_token_format": "grid",
                 },
                 {
                     "event_count": 4,
                     "render_format": "image-tokens",
                     "image_patch_size": 2,
                     "image_channel_bins": 8,
+                    "image_token_format": "grid",
                 },
             ],
         )

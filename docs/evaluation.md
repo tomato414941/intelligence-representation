@@ -140,6 +140,7 @@ uv run python -m intrep.evaluate_fashion_mnist \
   --eval-path fashion-eval.signals.jsonl \
   --image-patch-size 4 \
   --image-channel-bins 4 \
+  --image-token-format grid \
   --max-negatives 3
 ```
 

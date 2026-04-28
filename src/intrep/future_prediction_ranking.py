@@ -38,6 +38,7 @@ def evaluate_future_prediction_ranking(
     rendering: FuturePredictionRendering = "signal",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
     max_negatives: int | None = None,
 ) -> FuturePredictionRankingSummary:
     if not cases:
@@ -52,6 +53,7 @@ def evaluate_future_prediction_ranking(
             rendering=rendering,
             image_patch_size=image_patch_size,
             image_channel_bins=image_channel_bins,
+            image_token_format=image_token_format,
             max_negatives=max_negatives,
         )
         for case in cases
@@ -81,6 +83,7 @@ def _score_case(
     rendering: FuturePredictionRendering,
     image_patch_size: int,
     image_channel_bins: int,
+    image_token_format: str,
     max_negatives: int | None,
 ) -> tuple[float, float, float, bool]:
     if not case.negative_events:
@@ -90,6 +93,7 @@ def _score_case(
         rendering=rendering,
         image_patch_size=image_patch_size,
         image_channel_bins=image_channel_bins,
+        image_token_format=image_token_format,
     )
     if max_negatives is not None:
         if max_negatives <= 0:

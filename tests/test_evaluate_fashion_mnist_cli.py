@@ -47,6 +47,7 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
         self.assertEqual(captured_config.rendering, "image-tokens")
         self.assertEqual(captured_config.image_patch_size, 4)
         self.assertEqual(captured_config.image_channel_bins, 4)
+        self.assertEqual(captured_config.image_token_format, "flat")
         self.assertEqual(captured_config.max_negatives, 3)
         self.assertEqual(captured_config.context_length, 96)
         self.assertEqual(captured_config.model_preset, "tiny")
@@ -76,6 +77,8 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
                         "2",
                         "--image-patch-size",
                         "1",
+                        "--image-token-format",
+                        "grid",
                         "--metrics-path",
                         str(metrics_path),
                     ]

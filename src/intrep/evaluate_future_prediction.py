@@ -77,6 +77,7 @@ class FuturePredictionEvaluationConfig:
     rendering: str = "signal"
     image_patch_size: int = 1
     image_channel_bins: int = 4
+    image_token_format: str = "flat"
     max_negatives: int | None = None
     metrics_path: Path | None = None
 
@@ -151,6 +152,7 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
         rendering=config.rendering,
         image_patch_size=config.image_patch_size,
         image_channel_bins=config.image_channel_bins,
+        image_token_format=config.image_token_format,
         max_negatives=config.max_negatives,
     )
     artifacts = train_mixed_gpt_with_artifacts(
@@ -159,6 +161,7 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
             render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
             image_patch_size=config.image_patch_size,
             image_channel_bins=config.image_channel_bins,
+            image_token_format=config.image_token_format,
         ),
         eval_documents=(
             signals_to_mixed_documents(
@@ -166,6 +169,7 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
                 render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
                 image_patch_size=config.image_patch_size,
                 image_channel_bins=config.image_channel_bins,
+                image_token_format=config.image_token_format,
             )
             if config.eval_path
             else None
@@ -180,6 +184,7 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
         rendering=config.rendering,
         image_patch_size=config.image_patch_size,
         image_channel_bins=config.image_channel_bins,
+        image_token_format=config.image_token_format,
         max_negatives=config.max_negatives,
     )
     generalization_eval = config.eval_path is not None

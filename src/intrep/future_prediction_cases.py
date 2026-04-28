@@ -103,6 +103,7 @@ def render_future_prediction_texts(
     rendering: FuturePredictionRendering = "signal",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
 ) -> tuple[str, str, tuple[str, ...]]:
     if rendering == "signal":
         return (
@@ -122,17 +123,20 @@ def render_future_prediction_texts(
                 case.prefix_events,
                 patch_size=image_patch_size,
                 channel_bins=image_channel_bins,
+                token_format=image_token_format,
             ),
             _render_event_image_token_payloads(
                 (case.positive_event,),
                 patch_size=image_patch_size,
                 channel_bins=image_channel_bins,
+                token_format=image_token_format,
             ),
             tuple(
                 _render_event_image_token_payloads(
                     (event,),
                     patch_size=image_patch_size,
                     channel_bins=image_channel_bins,
+                    token_format=image_token_format,
                 )
                 for event in case.negative_events
             ),
@@ -149,6 +153,7 @@ def _render_event_image_token_payloads(
     *,
     patch_size: int,
     channel_bins: int,
+    token_format: str,
 ) -> str:
     return (
         "\n".join(
@@ -156,6 +161,7 @@ def _render_event_image_token_payloads(
                 event,
                 patch_size=patch_size,
                 channel_bins=channel_bins,
+                token_format=token_format,
             )
             for event in events
         )
@@ -168,11 +174,13 @@ def _render_event_image_token_payload(
     *,
     patch_size: int,
     channel_bins: int,
+    token_format: str,
 ) -> str:
     return render_image_token_payload(
         event,
         patch_size=patch_size,
         channel_bins=channel_bins,
+        token_format=token_format,
     )
 
 

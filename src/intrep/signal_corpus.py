@@ -65,6 +65,7 @@ def signal_to_mixed_document(
     render_format: str = "signal-tags",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
 ) -> MixedDocument:
     if render_format == "plain":
         return MixedDocument(
@@ -80,6 +81,7 @@ def signal_to_mixed_document(
                 event,
                 patch_size=image_patch_size,
                 channel_bins=image_channel_bins,
+                token_format=image_token_format,
             ),
         )
     if render_format not in ("signal-tags", "typed-tags"):
@@ -97,6 +99,7 @@ def signals_to_mixed_documents(
     render_format: str = "signal-tags",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     return [
         signal_to_mixed_document(
@@ -104,6 +107,7 @@ def signals_to_mixed_documents(
             render_format=render_format,
             image_patch_size=image_patch_size,
             image_channel_bins=image_channel_bins,
+            image_token_format=image_token_format,
         )
         for event in events
     ]
@@ -168,12 +172,14 @@ def load_signals_as_mixed_documents(
     render_format: str = "signal-tags",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     return signals_to_mixed_documents(
         load_signals_jsonl(path),
         render_format=render_format,
         image_patch_size=image_patch_size,
         image_channel_bins=image_channel_bins,
+        image_token_format=image_token_format,
     )
 
 
@@ -184,6 +190,7 @@ def load_corpus_jsonl_as_mixed_documents(
     render_format: str = "plain",
     image_patch_size: int = 1,
     image_channel_bins: int = 4,
+    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     from intrep.mixed_corpus import load_mixed_documents_jsonl
 
@@ -196,6 +203,7 @@ def load_corpus_jsonl_as_mixed_documents(
             render_format=render_format,
             image_patch_size=image_patch_size,
             image_channel_bins=image_channel_bins,
+            image_token_format=image_token_format,
         )
     if corpus_format != "auto":
         raise ValueError("corpus_format must be auto, mixed-document, signal, or typed-event")
@@ -207,6 +215,7 @@ def load_corpus_jsonl_as_mixed_documents(
             render_format=render_format,
             image_patch_size=image_patch_size,
             image_channel_bins=image_channel_bins,
+            image_token_format=image_token_format,
         )
     documents = load_mixed_documents_jsonl(path)
     return _render_mixed_documents_if_requested(documents, render_format=render_format)
