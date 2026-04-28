@@ -129,6 +129,49 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("does not support payload_ref", stderr.getvalue())
 
+    def test_evaluates_image_to_label_with_image_token_rendering(self) -> None:
+        output = io.StringIO()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train.jsonl"
+            eval_path = root / "eval.jsonl"
+            metrics_path = root / "metrics.json"
+            _write_image_label_events(train_path, root / "train-images", "train")
+            _write_image_label_events(eval_path, root / "eval-images", "eval")
+
+            with redirect_stdout(output):
+                evaluate_future_prediction.main(
+                    [
+                        "--train-path",
+                        str(train_path),
+                        "--eval-path",
+                        str(eval_path),
+                        "--target-channel",
+                        "label",
+                        "--rendering",
+                        "image-tokens",
+                        "--model-preset",
+                        "tiny",
+                        "--max-steps",
+                        "1",
+                        "--context-length",
+                        "32",
+                        "--batch-size",
+                        "2",
+                        "--metrics-path",
+                        str(metrics_path),
+                    ]
+                )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        stdout = output.getvalue()
+        self.assertIn("target_channel=label", stdout)
+        self.assertIn("rendering=image-tokens", stdout)
+        self.assertEqual(payload["target_channel"], "label")
+        self.assertEqual(payload["train_case_count"], 2)
+        self.assertEqual(payload["eval_case_count"], 2)
+
 
 def _write_events(path: Path, prefix: str) -> None:
     rows = [
@@ -174,6 +217,33 @@ def _write_events(path: Path, prefix: str) -> None:
             "time_index": 2,
             "payload": "see coin",
         },
+    ]
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+
+
+def _write_image_label_events(path: Path, image_dir: Path, prefix: str) -> None:
+    image_dir.mkdir(parents=True, exist_ok=True)
+    image_a = image_dir / f"{prefix}_a.pgm"
+    image_b = image_dir / f"{prefix}_b.pgm"
+    image_a.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
+    image_b.write_bytes(b"P5\n2 1\n255\n" + bytes([255, 0]))
+    rows = [
+        {
+            "channel": "image",
+            "payload_ref": {
+                "uri": image_a.as_uri(),
+                "media_type": "image/x-portable-graymap",
+            },
+        },
+        {"channel": "label", "payload": "9:Ankle boot"},
+        {
+            "channel": "image",
+            "payload_ref": {
+                "uri": image_b.as_uri(),
+                "media_type": "image/x-portable-graymap",
+            },
+        },
+        {"channel": "label", "payload": "0:T-shirt/top"},
     ]
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
 

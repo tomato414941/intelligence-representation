@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from intrep.future_prediction_cases import (
     extract_future_prediction_cases,
@@ -6,7 +8,7 @@ from intrep.future_prediction_cases import (
     render_future_prediction_prefix,
     render_future_prediction_texts,
 )
-from intrep.signals import Signal
+from intrep.signals import PayloadRef, Signal
 
 
 class FuturePredictionCasesTest(unittest.TestCase):
@@ -55,6 +57,22 @@ class FuturePredictionCasesTest(unittest.TestCase):
         self.assertEqual(len(cases), 2)
         self.assertEqual(cases[0].prefix_events[0].channel, "prediction")
         self.assertEqual(cases[0].positive_event.channel, "prediction_error")
+
+    def test_extracts_image_to_label_cases(self) -> None:
+        events = [
+            Signal(channel="image", payload="image tokens 1"),
+            Signal(channel="label", payload="9:Ankle boot"),
+            Signal(channel="image", payload="image tokens 2"),
+            Signal(channel="label", payload="0:T-shirt/top"),
+        ]
+
+        cases = extract_future_prediction_cases(events, target_channel="label")
+
+        self.assertEqual(len(cases), 2)
+        self.assertEqual(cases[0].condition, "image_to_label")
+        self.assertEqual(cases[0].prefix_events[0].channel, "image")
+        self.assertEqual(cases[0].positive_event.payload, "9:Ankle boot")
+        self.assertEqual(cases[0].negative_events[0].payload, "0:T-shirt/top")
 
     def test_renders_prefix_and_continuations_with_signal_stream(self) -> None:
         events = [
@@ -118,6 +136,30 @@ class FuturePredictionCasesTest(unittest.TestCase):
         self.assertEqual(prefix, '{"grid":"A.."}\n{"move":"right"}\n')
         self.assertEqual(positive, '{"grid":".A."}\n')
         self.assertEqual(negatives[0], '{"grid":"..B"}\n')
+
+    def test_image_token_rendering_encodes_image_payload_refs(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "image.pgm"
+            path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
+            events = [
+                Signal(
+                    channel="image",
+                    payload=PayloadRef(uri=path.as_uri(), media_type="image/x-portable-graymap"),
+                ),
+                Signal(channel="label", payload="9:Ankle boot"),
+                Signal(channel="image", payload="other image tokens"),
+                Signal(channel="label", payload="0:T-shirt/top"),
+            ]
+            case = extract_future_prediction_cases(events, target_channel="label")[0]
+
+            prefix, positive, negatives = render_future_prediction_texts(
+                case,
+                rendering="image-tokens",
+            )
+
+        self.assertEqual(prefix, "0 63\n")
+        self.assertEqual(positive, "9:Ankle boot\n")
+        self.assertEqual(negatives[0], "0:T-shirt/top\n")
 
 
 if __name__ == "__main__":

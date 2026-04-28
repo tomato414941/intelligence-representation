@@ -128,9 +128,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--render-format",
-        choices=("plain", "signal-tags", "typed-tags"),
+        choices=("plain", "signal-tags", "typed-tags", "image-tokens"),
         default="plain",
-        help="Render corpus records as legacy plain documents or signal tags.",
+        help="Render corpus records as legacy plain documents, signal tags, or image token text.",
     )
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--context-length", type=int, default=64)
@@ -186,8 +186,8 @@ def _load_documents(
     documents = loader(path)
     if render_format == "plain":
         return documents
-    if render_format not in ("signal-tags", "typed-tags"):
-        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    if render_format not in ("signal-tags", "typed-tags", "image-tokens"):
+        raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
     from intrep.signal_corpus import mixed_documents_to_signals, signals_to_mixed_documents
 
     return signals_to_mixed_documents(mixed_documents_to_signals(documents))

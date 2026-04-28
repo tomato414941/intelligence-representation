@@ -5,10 +5,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from intrep.signals import Signal, render_payload_text
+from intrep.signals import PayloadRef, Signal, render_payload_text
 from intrep.signal_stream import render_signal_stream
 
-FuturePredictionRendering = Literal["signal", "payload"]
+FuturePredictionRendering = Literal["signal", "payload", "image-tokens"]
 
 
 @dataclass(frozen=True)
@@ -63,8 +63,19 @@ def extract_future_prediction_cases(
                 condition=condition,
             )
         )
+    if channel in (None, "label"):
+        cases.extend(
+            _extract_adjacent_channel_pair_cases(
+                ordered_events,
+                negatives_by_channel,
+                prefix_channel="image",
+                target_channel="label",
+                default_condition="image_to_label",
+                condition=condition,
+            )
+        )
 
-    if channel not in (None, "consequence", "tool_result", "prediction_error"):
+    if channel not in (None, "consequence", "tool_result", "prediction_error", "label"):
         raise ValueError(f"unsupported target_channel for future prediction cases: {channel}")
     return cases
 
@@ -102,11 +113,32 @@ def render_future_prediction_texts(
             _render_event_payloads((case.positive_event,)),
             tuple(_render_event_payloads((event,)) for event in case.negative_events),
         )
+    if rendering == "image-tokens":
+        return (
+            _render_event_image_token_payloads(case.prefix_events),
+            _render_event_image_token_payloads((case.positive_event,)),
+            tuple(_render_event_image_token_payloads((event,)) for event in case.negative_events),
+        )
     raise ValueError(f"unsupported future prediction rendering: {rendering}")
 
 
 def _render_event_payloads(events: Sequence[Signal]) -> str:
     return "\n".join(render_payload_text(event) for event in events) + "\n"
+
+
+def _render_event_image_token_payloads(events: Sequence[Signal]) -> str:
+    return "\n".join(_render_event_image_token_payload(event) for event in events) + "\n"
+
+
+def _render_event_image_token_payload(event: Signal) -> str:
+    if event.channel != "image" or not isinstance(event.payload, PayloadRef):
+        return render_payload_text(event)
+
+    from intrep.image_tokenizer import ImagePatchTokenizer
+
+    tokenizer = ImagePatchTokenizer(patch_size=1, channel_bins=4)
+    token_ids = tokenizer.encode_ref(event.payload)
+    return " ".join(str(token_id) for token_id in token_ids)
 
 
 def _extract_observation_action_consequence_cases(

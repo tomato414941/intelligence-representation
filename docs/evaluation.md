@@ -119,6 +119,29 @@ That makes it a poor default diagnostic for `context_length = 64` consequence
 ranking unless the experiment is explicitly about full signal-tag streams. See
 [Experiment 002](experiment-002.md).
 
+Fashion-MNIST image-label smoke data can be converted from local IDX files into
+Signal JSONL:
+
+```sh
+uv run python -m intrep.fashion_mnist_signal_corpus \
+  --images-path train-images-idx3-ubyte.gz \
+  --labels-path train-labels-idx1-ubyte.gz \
+  --output-path fashion-train.signals.jsonl \
+  --image-output-dir fashion-images/train \
+  --limit 1000
+```
+
+The current image path renders local `file://` image payload refs through the
+simple patch tokenizer before byte-level GPT training or ranking:
+
+```sh
+uv run python -m intrep.evaluate_future_prediction \
+  --train-path fashion-train.signals.jsonl \
+  --eval-path fashion-eval.signals.jsonl \
+  --target-channel label \
+  --rendering image-tokens
+```
+
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
 
 Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.

@@ -65,8 +65,14 @@ def signal_to_mixed_document(event: Signal, *, render_format: str = "signal-tags
             modality=event.channel,
             content=render_payload_text(event),
         )
+    if render_format == "image-tokens":
+        return MixedDocument(
+            id=_document_id(event),
+            modality=event.channel,
+            content=_render_image_token_document(event),
+        )
     if render_format not in ("signal-tags", "typed-tags"):
-        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+        raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
     return MixedDocument(
         id=_document_id(event),
         modality=event.channel,
@@ -176,9 +182,27 @@ def _render_mixed_documents_if_requested(
 ) -> list[MixedDocument]:
     if render_format == "plain":
         return documents
-    if render_format in ("signal-tags", "typed-tags"):
+    if render_format in ("signal-tags", "typed-tags", "image-tokens"):
         return signals_to_mixed_documents(mixed_documents_to_signals(documents))
-    raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
+
+
+def _render_image_token_document(event: Signal) -> str:
+    if event.channel != "image":
+        return render_payload_text(event)
+    if not isinstance(event.payload, PayloadRef):
+        return render_payload_text(event)
+
+    from intrep.image_tokenizer import ImagePatchTokenizer
+
+    tokenizer = ImagePatchTokenizer(patch_size=1, channel_bins=4)
+    token_ids = tokenizer.encode_ref(event.payload)
+    return (
+        f"<IMAGE_TOKENS patch_size=\"{tokenizer.patch_size}\" "
+        f"channel_bins=\"{tokenizer.channel_bins}\">\n"
+        + " ".join(str(token_id) for token_id in token_ids)
+        + "\n</IMAGE_TOKENS>\n"
+    )
 
 
 def _first_json_record(path: str | Path) -> Any:

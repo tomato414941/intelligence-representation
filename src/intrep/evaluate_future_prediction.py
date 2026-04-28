@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--eval-path", type=Path)
     parser.add_argument(
         "--target-channel",
-        choices=("consequence", "tool_result", "prediction_error"),
+        choices=("consequence", "tool_result", "prediction_error", "label"),
         default="consequence",
     )
     parser.add_argument(
@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="small")
     parser.add_argument(
         "--rendering",
-        choices=("signal", "payload"),
+        choices=("signal", "payload", "image-tokens"),
         default="signal",
         help="Text rendering used for ranking prefixes and continuations.",
     )
@@ -65,8 +65,9 @@ def main(argv: list[str] | None = None) -> None:
     try:
         train_events = load_signals_jsonl(args.train_path)
         eval_events = load_signals_jsonl(args.eval_path) if args.eval_path else train_events
-        reject_payload_refs(train_events, context="future prediction training")
-        if args.eval_path:
+        if args.rendering != "image-tokens":
+            reject_payload_refs(train_events, context="future prediction training")
+        if args.eval_path and args.rendering != "image-tokens":
             reject_payload_refs(eval_events, context="future prediction evaluation")
         train_cases = extract_future_prediction_cases(
             train_events,
@@ -108,8 +109,18 @@ def main(argv: list[str] | None = None) -> None:
         rendering=args.rendering,
     )
     artifacts = train_mixed_gpt_with_artifacts(
-        documents=signals_to_mixed_documents(train_events),
-        eval_documents=signals_to_mixed_documents(eval_events) if args.eval_path else None,
+        documents=signals_to_mixed_documents(
+            train_events,
+            render_format="image-tokens" if args.rendering == "image-tokens" else "signal-tags",
+        ),
+        eval_documents=(
+            signals_to_mixed_documents(
+                eval_events,
+                render_format="image-tokens" if args.rendering == "image-tokens" else "signal-tags",
+            )
+            if args.eval_path
+            else None
+        ),
         training_config=training_config,
         model_config=model_config,
     )
