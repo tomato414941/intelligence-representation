@@ -257,3 +257,40 @@ This is a useful negative result. It means the current byte-level typed-tag GPT 
 The train-split smoke check sharpens the reading: the failure is not only held-out generalization. Under the short default training run, the model does not distinguish the explicit hard negatives even on the training split.
 
 Next steps should not claim world-model evidence from this run. The next experimental step is to vary training steps, model size, context length, and tokenizer/rendering while keeping this hard-negative evaluation fixed.
+
+## Postscript: Rendering Caveat
+
+A follow-up investigation found that this first run should be read with an
+important evaluation caveat.
+
+The run used full typed-event rendering for ranking prefixes and continuations.
+With `context_length = 64`, the rendered `<EVENT ...>` tags were long enough
+that the consequence content was often scored after the observation/action
+prefix had fallen out of the model window.
+
+For example, in a `same_action_different_context` case:
+
+```text
+typed-event prefix: 844 byte tokens
+typed-event positive continuation: 523 byte tokens
+content-only prefix: 27 byte tokens
+content-only positive continuation: 9 byte tokens
+```
+
+This means the zero or near-zero margins in the first run are not pure evidence
+that the model could not use action/context information. They also reflect an
+evaluation rendering problem: the ranking scorer could be comparing consequence
+continuations without the relevant causal prefix still in context.
+
+The first-run negative result should still be preserved:
+
+```text
+With full typed-event rendering and a short training run, the measured ranking
+did not improve.
+```
+
+But it should not be over-interpreted as a clean modeling failure. The follow-up
+experiment records the 100x data generation, scoring-speed change, and
+content-rendering probe:
+
+- [Experiment 002](experiment-002.md)

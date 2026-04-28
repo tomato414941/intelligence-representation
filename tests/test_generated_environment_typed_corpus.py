@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep.future_prediction_cases import extract_future_prediction_cases
+from intrep.future_prediction_cases import render_future_prediction_texts
 from intrep.generated_environment_typed_corpus import (
     generated_environment_train_eval_events,
     generated_environment_typed_corpus_selection,
@@ -171,6 +172,27 @@ class GeneratedEnvironmentTypedCorpusTest(unittest.TestCase):
             self.assertNotEqual(negative.content, case.positive_event.content)
             self.assertEqual(negative.metadata["pair_id"], case.positive_event.metadata["pair_id"])
 
+    def test_same_action_different_context_content_rendering_preserves_context_signal(self) -> None:
+        _, eval_events = generated_environment_train_eval_events(
+            "same_action_different_context",
+            train_size=4,
+            eval_size=2,
+            seed=7,
+        )
+        case = extract_future_prediction_cases(
+            eval_events,
+            condition="same_action_different_context",
+        )[0]
+
+        prefix, positive, negatives = render_future_prediction_texts(case, rendering="content")
+
+        self.assertIn(case.prefix_events[0].content, prefix)
+        self.assertIn(case.prefix_events[1].content, prefix)
+        self.assertEqual(positive, f"{case.positive_event.content}\n")
+        self.assertEqual(negatives, (f"{case.negative_events[0].content}\n",))
+        self.assertNotEqual(positive, negatives[0])
+        self.assertNotIn("<EVENT", prefix + positive + negatives[0])
+
     def test_generated_hard_negative_train_eval_have_no_id_or_negative_id_leakage(self) -> None:
         train_events, eval_events = generated_environment_train_eval_events(
             "same_history_different_action",
@@ -309,6 +331,25 @@ class GeneratedEnvironmentTypedCorpusTest(unittest.TestCase):
                 _event_content(negative_events, EventRole.OBSERVATION),
                 positive_observation.content,
             )
+
+    def test_hard_negative_typed_slices_support_100x_exp001_sizes(self) -> None:
+        for split_name in (
+            "same_history_different_action",
+            "same_action_different_context",
+        ):
+            with self.subTest(split_name=split_name):
+                train_events, eval_events = generated_environment_train_eval_events(
+                    split_name,
+                    train_size=8000,
+                    eval_size=3200,
+                    seed=7,
+                )
+
+                self.assertEqual(len(train_events), 24000)
+                self.assertEqual(len(eval_events), 9600)
+                cases = extract_future_prediction_cases(eval_events, condition=split_name)
+                self.assertEqual(len(cases), 3200)
+                self.assertTrue(all(len(case.negative_events) == 1 for case in cases))
 
     def test_writes_typed_train_eval_jsonl_v2(self) -> None:
         with TemporaryDirectory() as directory:

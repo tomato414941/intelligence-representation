@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.future_prediction_cases import FuturePredictionCase
+from intrep.future_prediction_cases import (
+    FuturePredictionCase,
+    FuturePredictionRendering,
+    render_future_prediction_texts,
+)
 from intrep.pair_ranking import ContinuationScorer, torch_next_token_continuation_loss
 
 
@@ -31,12 +35,13 @@ def evaluate_future_prediction_ranking(
     tokenizer: ByteTokenizer,
     *,
     score_continuation_loss: ContinuationScorer | None = None,
+    rendering: FuturePredictionRendering = "typed_event",
 ) -> FuturePredictionRankingSummary:
     if not cases:
         raise ValueError("cases must not be empty")
     scorer = score_continuation_loss or torch_next_token_continuation_loss
     case_metrics = [
-        _score_case(case, model=model, tokenizer=tokenizer, scorer=scorer)
+        _score_case(case, model=model, tokenizer=tokenizer, scorer=scorer, rendering=rendering)
         for case in cases
     ]
     by_condition_losses: dict[str, list[tuple[float, float, float, bool]]] = defaultdict(list)
@@ -61,15 +66,16 @@ def _score_case(
     model: Any,
     tokenizer: ByteTokenizer,
     scorer: ContinuationScorer,
+    rendering: FuturePredictionRendering,
 ) -> tuple[float, float, float, bool]:
     if not case.negative_events:
         raise ValueError(f"case {case.id} must have at least one negative event")
-    prefix = case.prefix
-    positive_loss = scorer(model, tokenizer, prefix, case.positive)
+    prefix, positive, negatives = render_future_prediction_texts(case, rendering=rendering)
+    positive_loss = scorer(model, tokenizer, prefix, positive)
     negative_losses = [
         scorer(model, tokenizer, prefix, negative)
-        for negative in case.negatives
-        if negative != case.positive
+        for negative in negatives
+        if negative != positive
     ]
     if not negative_losses:
         raise ValueError(f"case {case.id} must have at least one distinct negative event")

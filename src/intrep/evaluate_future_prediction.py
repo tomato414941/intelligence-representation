@@ -49,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="small")
+    parser.add_argument(
+        "--rendering",
+        choices=("typed_event", "content"),
+        default="typed_event",
+        help="Text rendering used for ranking prefixes and continuations.",
+    )
     parser.add_argument("--metrics-path", type=Path)
     return parser
 
@@ -92,7 +98,12 @@ def main(argv: list[str] | None = None) -> None:
     tokenizer = ByteTokenizer()
     torch.manual_seed(args.seed)
     before_model = DecoderOnlyGPT(model_config)
-    before_summary = evaluate_future_prediction_ranking(eval_cases, before_model, tokenizer)
+    before_summary = evaluate_future_prediction_ranking(
+        eval_cases,
+        before_model,
+        tokenizer,
+        rendering=args.rendering,
+    )
     artifacts = train_mixed_gpt_with_artifacts(
         documents=typed_events_to_mixed_documents(train_events),
         eval_documents=typed_events_to_mixed_documents(eval_events) if args.eval_path else None,
@@ -103,6 +114,7 @@ def main(argv: list[str] | None = None) -> None:
         eval_cases,
         artifacts.model,
         artifacts.tokenizer,
+        rendering=args.rendering,
     )
     generalization_eval = args.eval_path is not None
     eval_split = "held_out" if generalization_eval else "train"
@@ -114,6 +126,7 @@ def main(argv: list[str] | None = None) -> None:
         f" eval_cases={len(eval_cases)}"
         f" target_role={EventRole(args.target_role).value}"
         f" condition={args.condition}"
+        f" rendering={args.rendering}"
         f" eval_split={eval_split}"
         f" generalization_eval={str(generalization_eval).lower()}"
         f" before_top1_accuracy={before_summary.overall.top1_accuracy:.4f}"
@@ -132,6 +145,7 @@ def main(argv: list[str] | None = None) -> None:
             eval_case_count=len(eval_cases),
             target_role=EventRole(args.target_role),
             condition=args.condition,
+            rendering=args.rendering,
             eval_split=eval_split,
             generalization_eval=generalization_eval,
         )
@@ -147,12 +161,14 @@ def _write_metrics(
     eval_case_count: int,
     target_role: EventRole,
     condition: str,
+    rendering: str,
     eval_split: str,
     generalization_eval: bool,
 ) -> None:
     payload = {
         "target_role": target_role.value,
         "condition": condition,
+        "rendering": rendering,
         "eval_split": eval_split,
         "generalization_eval": generalization_eval,
         "train_case_count": train_case_count,

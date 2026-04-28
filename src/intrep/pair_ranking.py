@@ -94,15 +94,24 @@ def torch_next_token_continuation_loss(
 
     try:
         with torch.no_grad():
-            losses = []
+            windows_by_length: dict[int, list[list[int]]] = {}
+            targets_by_length: dict[int, list[int]] = {}
             for target_index in range(len(prefix_ids), len(token_ids)):
                 window_start = max(0, target_index - context_length)
                 window = token_ids[window_start:target_index]
-                input_ids = torch.tensor([window], dtype=torch.long, device=device)
-                target = torch.tensor([token_ids[target_index]], dtype=torch.long, device=device)
-                logits = model(input_ids)[0, -1:]
-                losses.append(F.cross_entropy(logits, target, reduction="none"))
-            return float(torch.cat(losses).mean().item())
+                windows_by_length.setdefault(len(window), []).append(window)
+                targets_by_length.setdefault(len(window), []).append(token_ids[target_index])
+
+            total_loss = 0.0
+            total_count = 0
+            for length, windows in windows_by_length.items():
+                input_ids = torch.tensor(windows, dtype=torch.long, device=device)
+                targets = torch.tensor(targets_by_length[length], dtype=torch.long, device=device)
+                logits = model(input_ids)[:, -1, :]
+                losses = F.cross_entropy(logits, targets, reduction="none")
+                total_loss += float(losses.sum().item())
+                total_count += len(windows)
+            return total_loss / total_count
     finally:
         if was_training and hasattr(model, "train"):
             model.train()

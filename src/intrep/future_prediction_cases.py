@@ -3,9 +3,12 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Literal
 
 from intrep.typed_events import EventRole, TypedEvent
 from intrep.typed_stream import render_typed_stream
+
+FuturePredictionRendering = Literal["typed_event", "content"]
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,30 @@ def render_future_prediction_negatives(case: FuturePredictionCase) -> tuple[str,
 
 def render_future_prediction_continuations(case: FuturePredictionCase) -> tuple[str, ...]:
     return (render_future_prediction_positive(case), *render_future_prediction_negatives(case))
+
+
+def render_future_prediction_texts(
+    case: FuturePredictionCase,
+    *,
+    rendering: FuturePredictionRendering = "typed_event",
+) -> tuple[str, str, tuple[str, ...]]:
+    if rendering == "typed_event":
+        return (
+            render_future_prediction_prefix(case),
+            render_future_prediction_positive(case),
+            render_future_prediction_negatives(case),
+        )
+    if rendering == "content":
+        return (
+            _render_event_contents(case.prefix_events),
+            _render_event_contents((case.positive_event,)),
+            tuple(_render_event_contents((event,)) for event in case.negative_events),
+        )
+    raise ValueError(f"unsupported future prediction rendering: {rendering}")
+
+
+def _render_event_contents(events: Sequence[TypedEvent]) -> str:
+    return "\n".join(event.content for event in events) + "\n"
 
 
 def _extract_observation_action_consequence_cases(

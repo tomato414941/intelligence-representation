@@ -160,10 +160,22 @@ def _hard_negative_pair_specs(count: int, *, seed: int) -> list[tuple[str, str, 
                 next_index = (containers.index(right_container) + 1) % len(containers)
                 right_container = containers[next_index]
             specs.append((left_object, right_object, left_container, right_container))
-    random.Random(seed).shuffle(specs)
     if count > len(specs):
-        raise ValueError(f"requested {count} hard-negative pairs, but only {len(specs)} are available")
+        specs.extend(_synthetic_hard_negative_pair_specs(count - len(specs)))
+    random.Random(seed).shuffle(specs)
     return specs[:count]
+
+
+def _synthetic_hard_negative_pair_specs(count: int) -> list[tuple[str, str, str, str]]:
+    return [
+        (
+            f"object_{index:04d}_left",
+            f"object_{index:04d}_right",
+            f"box_{index:04d}_left",
+            f"box_{index:04d}_right",
+        )
+        for index in range(count)
+    ]
 
 
 def _events_from_hard_negative_specs(

@@ -2,6 +2,10 @@
 
 This directory contains historical experiment notes and older architecture sketches.
 
+Historical concept drafts:
+
+- [Semantic State Memory Background](semantic-state-memory-background.md)
+
 The current project entry points are:
 
 ```text

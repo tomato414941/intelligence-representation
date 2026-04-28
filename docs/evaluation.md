@@ -80,8 +80,29 @@ uv run python -m intrep.evaluate_future_prediction \
   --train-path train.typed.jsonl \
   --eval-path eval.typed.jsonl \
   --target-role consequence \
-  --condition same_history_different_action
+  --condition same_history_different_action \
+  --rendering content
 ```
+
+Future-prediction ranking has two rendering modes:
+
+```text
+typed_event:
+  full TypedEvent tag rendering; useful for compatibility and for experiments
+  that explicitly test long typed-tag streams
+
+content:
+  event contents only; the current preferred diagnostic for short-context
+  action/context-conditioned consequence ranking
+```
+
+Use `--rendering content` when testing whether a short-context model can use
+the relevant observation/action prefix for hard-negative consequence ranking.
+Full typed-event rendering can make the tags long enough that the consequence
+content is scored after the causal prefix has fallen out of the model window.
+That makes it a poor default diagnostic for `context_length = 64` consequence
+ranking unless the experiment is explicitly about full typed-tag streams. See
+[Experiment 002](experiment-002.md).
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
 
@@ -167,6 +188,9 @@ tests/test_gpt_training.py:
 
 tests/test_pair_ranking.py:
   checks symbolic-to-natural continuation ranking metrics
+
+tests/test_future_prediction_ranking.py:
+  checks target-role future prediction ranking and content-only rendering
 
 tests/test_symbolic_to_natural_evaluation.py:
   checks before/after GPT symbolic-to-natural ranking evaluation,

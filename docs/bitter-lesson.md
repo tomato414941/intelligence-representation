@@ -2,12 +2,12 @@
 
 ## 問題
 
-Semantic State Memoryは、放っておくと手設計の知識表現システムに寄りすぎる。
+このプロジェクトは、放っておくと手設計の意味表現システムに寄りやすい。
 
 ```text
-人間が「知能に必要そうな構造」を細かく設計する
+人間が「知能に必要そうな構造」を先に固定する
   ↓
-Entity, Relation, Belief, Goal, Conflict, StateUpdateを大量に作る
+Entity, Relation, Belief, Goal, Conflict, StateUpdate を大量に作る
   ↓
 最初はきれいに見える
   ↓
@@ -16,161 +16,196 @@ Entity, Relation, Belief, Goal, Conflict, StateUpdateを大量に作る
 
 この方向は避ける。
 
-## 方針
+特に、`Semantic State Memory` や `Observation Store + Retrieval + LLM` を
+プロジェクトの中心に戻さない。
+それらは将来の補助装置になりうるが、現在の中心ではない。
 
-細かい意味構造を最初から固定するのではなく、モデルが学習・生成・再構成できる一般的な枠を用意する。
+## Current Correction
 
-現在の上位中心文は次である。
+現在の中心文は次である。
 
 ```text
 A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-つまり、人間が先に内部の意味構造を設計し切るのではなく、自然言語・観測・行動・状態・ログ・tool result・記憶・信念・誤差などを薄く型付けされたtoken streamとして与え、予測学習と評価圧によって必要な構造を獲得させる。
-
-`world model` はこの上位概念の全体ではなく、観測・行動・環境遷移を予測する側面である。
-
-最小構造は次でよい。
+このプロジェクトの核は、手設計の意味DBでも、retrieval-first memory systemでもない。
 
 ```text
-Observation Store
-Retriever
-Working Context Builder
-Transformer / LLM
-Update Log
+TypedEvent streams
+  ↓
+thin role / modality / time / source metadata
+  ↓
+typed token rendering
+  ↓
+small decoder-only Transformer predictor
+  ↓
+next-token training as a smoke objective
+  ↓
+target-position future prediction evaluation
 ```
 
-つまり、
-
-```text
-観測を保存する
-必要なものを検索する
-現在の文脈を構成する
-モデルに推論させる
-結果をログとして残す
-```
-
-を中心にする。
-
-## Stateは真理DBではない
-
-Stateを真理のデータベースにしない。
-Stateは観測から作られるキャッシュである。
-
-```text
-Raw Observation:
-  source of truth
-
-Derived State:
-  temporary / revisable cache
-```
-
-元の観測は残す。
-そこから作った意味状態は、常に間違いうる派生物として扱う。
-
-## 薄いメタデータ
-
-最初に保存する構造は薄くする。
-
-```text
-id
-content / payload
-timestamp
-source
-modality
-embedding
-links
-type: observation | summary | decision | question | artifact
-```
-
-`Claim`、`Belief`、`Conflict`、`Goal`などは、固定DBスキーマとして先に作り込みすぎない。
-必要なときにモデルが抽出・比較・要約できればよい。
-
-人間が設計する対象は、内部意味構造そのものではなく、主に次である。
+人間が設計するべきなのは、内部意味構造そのものではなく、モデルが学習できる入出力面と評価圧である。
 
 ```text
 tokenization
 serialization
 prediction target
+negative construction
+train/eval split
+ranking metric
 evaluation pressure
 encoder / decoder interface
 ```
 
-これらはモデルに世界を見せるinterfaceであり、手作りontologyの代替ではない。
+`world model` はこの上位概念の全体ではない。
+観測・行動・環境遷移を予測する能力として、Predictive Token Machine の中の評価面に置く。
 
-## 残してよい構造
+## What Not To Center
 
-```text
-observation
-retrieval
-timestamp
-source
-embedding
-lightweight links
-summaries as cache
-update log
-```
-
-## 慎重にすべき構造
+次をプロジェクトの中心にしない。
 
 ```text
 fixed ontology
-handcrafted belief system
-manual conflict taxonomy
+handcrafted Semantic State DB
+manual belief / conflict taxonomy
 hard-coded reasoning rules
 elaborate symbolic state machine
+retrieval-first LLM memory loop
 ```
 
-## 実行ループ
+これらは、必要な実験圧が出る前に作ると、Bitter Lesson に反する方向へ戻る。
 
-```text
-Observation Store
-  ↓
-Retriever / Router
-  ↓
-Context Builder
-  ↓
-Transformer / LLM
-  ↓
-Generated Summary / Decision / Next Action
-  ↓
-Store again
-```
-
-このループでは、抽象状態は固定された真理ではなく、その時点のタスクに合わせて構成される作業表現である。
-
-## このプロジェクトでの修正
-
-前の言い方:
+過去の言い方:
 
 ```text
 明示的な Semantic State Memory を作る
 ```
 
-修正後:
+中間的な言い方:
 
 ```text
 Observation Memory と Retrieval を中心にし、
-意味状態は固定スキーマではなく、
-モデルが必要に応じて構成する一時的表現として扱う。
+LLM が必要な文脈から抽象状態を構成する。
 ```
 
-つまり、このプロジェクトの核は、細かい意味DBを作ることではない。
+現在の言い方:
 
 ```text
-LLMが大量の観測履歴から、
-必要な文脈を取り出し、
-その場で適切な抽象状態を構成できるようにする。
+typed streams と learned predictor を中心にし、
+future prediction evaluation で有用な構造だけを残す。
 ```
 
-## まとめ
+## State Is Not The Source Of Truth
 
-強いモデル、薄い外部記憶、学習可能な検索・圧縮・文脈構成を中心にする。
+人間可読な `State`、`Belief`、`Claim`、`Conflict` は、必要なら説明・監査・デバッグ用のビューとして扱う。
+それらを最初から真理DBとして固定しない。
 
 ```text
-保存するのは観測
-固定するのは最小限のメタデータ
-抽象化はモデルに任せる
-状態はキャッシュとして扱う
-評価で有用なものだけ残す
+Raw / typed observations:
+  source material
+
+Derived state:
+  temporary / revisable view
+
+Learned predictive structure:
+  what the model must acquire under training and evaluation pressure
 ```
+
+元の観測や typed event stream は残す。
+そこから作った意味状態は、常に間違いうる派生物として扱う。
+
+## Thin Structure Is Allowed
+
+Bitter Lesson は「構造を一切入れない」という意味ではない。
+モデルが予測対象を見つけるための薄い stream interface は入れてよい。
+
+```text
+id
+role
+modality
+episode
+time_index
+source
+boundary
+target role
+negative ids for evaluation
+```
+
+これは ontology ではない。
+Transformer に世界を見せる serialization interface である。
+
+慎重にすべきなのは、次のような高レベル意味構造を実験前に固定することである。
+
+```text
+Entity
+Relation
+Belief
+Goal
+Conflict
+CausalSchema
+PhysicalObjectModel
+SocialModel
+```
+
+必要なら、それらはモデルが学習・生成・再構成する対象、または評価後に一時的に取り出す view として扱う。
+
+## Current Loop
+
+現在の実験ループは retrieval loop ではない。
+
+```text
+Generate or collect TypedEvent streams
+  ↓
+Render into a model-visible token stream
+  ↓
+Train a small decoder-only predictor
+  ↓
+Evaluate target-position future prediction
+  ↓
+Inspect prediction errors and ranking failures
+  ↓
+Adjust data, rendering, context length, model size, or evaluation
+```
+
+平均 next-token loss は smoke signal にすぎない。
+world-modeling 的な主張には、action-conditioned next-observation や consequence ranking の改善が必要である。
+
+## Retrieval And Memory
+
+Observation store、retrieval、context builder、summary cache は将来の補助装置としては有用になりうる。
+ただし、それらを現在の中心にしない。
+
+位置づけは次である。
+
+```text
+primary:
+  typed stream prediction and target-position evaluation
+
+support:
+  observation storage
+  retrieval
+  context building
+  summaries as cache
+  external memory interfaces
+```
+
+補助装置を足す条件は、評価で必要性が出たときである。
+たとえば context length、data scale、long-horizon dependency、memory read/write target が実験上のボトルネックとして確認された場合に限る。
+
+## Summary
+
+この文書の修正方針は次である。
+
+```text
+保存するのは typed observations / events
+固定するのは薄い stream metadata
+中心に置くのは learned predictor
+評価するのは target-position future prediction
+抽象化はモデルと評価圧に任せる
+手設計 ontology と retrieval-first memory system には戻らない
+```
+
+このプロジェクトは、意味DBを作るプロジェクトではない。
+また、retrieval + LLM memory system を作るプロジェクトでもない。
+
+現在の中心は、typed token streams 上で予測学習を行い、未来予測が改善するかを測る Predictive Token Machine scaffold である。
