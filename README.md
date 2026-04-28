@@ -77,13 +77,19 @@ src/intrep/sequence_predictor.py
 src/intrep/torch_sequence.py
 src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
+src/intrep/language_modeling_metrics.py
 src/intrep/mixed_corpus.py
+src/intrep/mixed_corpus_evaluation.py
 src/intrep/generated_environment_corpus.py
 src/intrep/generated_environment_typed_corpus.py
 src/intrep/corpus_split.py
+src/intrep/corpus_coverage.py
 src/intrep/typed_events.py
 src/intrep/typed_stream.py
 src/intrep/typed_corpus.py
+src/intrep/grid_world.py
+src/intrep/grid_corpus.py
+src/intrep/grid_typed_corpus.py
 src/intrep/future_prediction_cases.py
 src/intrep/future_prediction_ranking.py
 src/intrep/gpt_model.py
@@ -96,8 +102,17 @@ src/intrep/next_observation_ranking.py
 src/intrep/next_observation_evaluation.py
 src/intrep/evaluate_next_observation.py
 src/intrep/evaluate_future_prediction.py
+src/intrep/pair_ranking.py
+src/intrep/current_experiment.py
+src/intrep/experiment_pipeline.py
+src/intrep/external_corpus.py
+src/intrep/public_text_fetch.py
 src/intrep/run_summary.py
+src/intrep/source_manifest.py
+src/intrep/tool_log_corpus.py
 src/intrep/benchmark.py
+src/intrep/demo.py
+src/intrep/transition_data.py
 src/intrep/update_loop.py
 ```
 
