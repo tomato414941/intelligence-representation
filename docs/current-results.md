@@ -12,6 +12,7 @@ Use these documents for details:
 - [Evaluation](evaluation.md): evaluation concepts and CLI shape
 - [Experiment 001](experiment-001.md): first hard-negative typed future-prediction run
 - [Experiment 002](experiment-002.md): 100x data and rendering-context investigation
+- [Experiment 003](experiment-003.md): natural language held-out loss smoke check
 - [RunPod Training Notes](runpod.md): GPU execution notes
 
 ## Current Position
@@ -45,6 +46,9 @@ events, prediction errors, and belief/memory-like records.
 
 A small decoder-only GPT can reduce next-token loss on the available smoke and
 generated text streams.
+
+The same training path can reduce held-out loss on a small natural-language-like
+toy corpus.
 
 Generated hard-negative typed environment data can be produced at 100x the
 Experiment 001 scale.
@@ -156,6 +160,35 @@ Content rendering is the better diagnostic for the current context length.
 The next experiments should keep the hard-negative evaluation fixed and vary
 only the factors that affect whether the model can see and use the relevant
 prefix.
+```
+
+### Experiment 003
+
+Experiment 003 tested the current byte-level small GPT on a toy natural language
+corpus:
+
+```text
+train documents = 80
+eval documents = 24
+train byte tokens = 11839
+eval byte tokens = 3605
+max_steps = 100
+```
+
+Held-out eval loss decreased substantially:
+
+```text
+initial_eval_loss: 5.6550
+final_eval_loss: 2.3727
+```
+
+Current reading:
+
+```text
+The training path and small Transformer can learn local natural-language-like
+patterns. Hard-negative world-stream ranking failures should therefore be
+investigated as task/rendering/context/scoring/model-capacity issues, not as
+evidence that the model cannot learn at all.
 ```
 
 ## Historical RunPod Sweep

@@ -126,6 +126,7 @@ Read these first:
 - [Evaluation](docs/evaluation.md)
 - [Experiment 001](docs/experiment-001.md)
 - [Experiment 002](docs/experiment-002.md)
+- [Experiment 003](docs/experiment-003.md)
 - [Current Results](docs/current-results.md)
 - [RunPod Training Notes](docs/runpod.md)
 
