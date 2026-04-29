@@ -47,7 +47,7 @@ decoder-only GPT training utilities
 byte-level and simple byte-pair text tokenization
 TokenSequence with optional loss masks for text inputs
 Fashion-MNIST image-choice raw examples
-ImagePatchAdapter -> SharedTransformerCore -> ClassificationHead
+ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 grid-world action-conditioned smoke data
 run summary aggregation and comparison
 ```
@@ -123,8 +123,8 @@ The next useful pressure is:
 ```text
 image-choice continuation scoring
 text raw-example training path
-shared core tests across image and text adapters
-clear separation between tokenizer, adapter, core, and head
+shared core tests across image and text input layers
+clear separation between tokenizer, input layer, core, and head
 ```
 
 Do not add new semantic taxonomies or fixed state schemas unless a concrete

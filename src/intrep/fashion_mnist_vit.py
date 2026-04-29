@@ -86,7 +86,7 @@ class ImageClassificationMetrics:
         }
 
 
-class ImagePatchAdapter(nn.Module):
+class ImagePatchInputLayer(nn.Module):
     def __init__(
         self,
         *,
@@ -111,7 +111,7 @@ class ImagePatchAdapter(nn.Module):
         if images.ndim != 3:
             raise ValueError("images must have shape [batch, height, width]")
         if tuple(images.shape[1:]) != self.image_size:
-            raise ValueError("images do not match adapter image_size")
+            raise ValueError("images do not match input layer image_size")
         patches = _patchify(images, self.patch_size)
         positions = torch.arange(patches.size(1), device=images.device).unsqueeze(0)
         return self.patch_embedding(patches) + self.position_embedding(positions)
@@ -143,7 +143,7 @@ class PatchTransformerClassifier(nn.Module):
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
-        self.image_adapter = ImagePatchAdapter(
+        self.image_input_layer = ImagePatchInputLayer(
             image_size=image_size,
             patch_size=patch_size,
             embedding_dim=embedding_dim,
@@ -164,7 +164,7 @@ class PatchTransformerClassifier(nn.Module):
         return self.classify_embeddings(self.encode_images(images))
 
     def embed_images(self, images: torch.Tensor) -> torch.Tensor:
-        return self.image_adapter(images)
+        return self.image_input_layer(images)
 
     def encode_images(self, images: torch.Tensor) -> torch.Tensor:
         return self.core(self.embed_images(images))

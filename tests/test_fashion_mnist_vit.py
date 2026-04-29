@@ -10,7 +10,7 @@ from intrep.fashion_mnist_vit import (
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
     ImageClassificationConfig,
-    ImagePatchAdapter,
+    ImagePatchInputLayer,
     PatchTransformerClassifier,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
@@ -89,7 +89,7 @@ class FashionMNISTViTTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
-    def test_patch_transformer_classifier_composes_adapter_core_and_head(self) -> None:
+    def test_patch_transformer_classifier_composes_input_layer_core_and_head(self) -> None:
         model = PatchTransformerClassifier(
             image_size=(4, 4),
             patch_size=2,
@@ -128,10 +128,10 @@ class FashionMNISTViTTest(unittest.TestCase):
         self.assertEqual(encoded.shape, torch.Size([3, 4, 8]))
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
-    def test_image_patch_adapter_outputs_input_embedding_sequence(self) -> None:
-        adapter = ImagePatchAdapter(image_size=(4, 4), patch_size=2, embedding_dim=8)
+    def test_image_patch_input_layer_outputs_input_embedding_sequence(self) -> None:
+        input_layer = ImagePatchInputLayer(image_size=(4, 4), patch_size=2, embedding_dim=8)
 
-        embeddings = adapter(torch.zeros((3, 4, 4), dtype=torch.float32))
+        embeddings = input_layer(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(embeddings.shape, torch.Size([3, 4, 8]))
 

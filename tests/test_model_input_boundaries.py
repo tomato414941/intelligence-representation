@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from intrep.fashion_mnist_vit import ImagePatchAdapter
+from intrep.fashion_mnist_vit import ImagePatchInputLayer
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.transformer_core import SharedTransformerCore
@@ -25,7 +25,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
                 embedding_dim=embedding_dim,
             )
         )
-        image_input = ImagePatchAdapter(
+        image_input = ImagePatchInputLayer(
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=embedding_dim,
@@ -73,7 +73,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
                 embedding_dim=embedding_dim,
             )
         )
-        image_input = ImagePatchAdapter(
+        image_input = ImagePatchInputLayer(
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=embedding_dim,

@@ -107,7 +107,7 @@ counterfactual or intervention-sensitive prediction
 text path works
 image path works
 shared core path works
-adapter-specific failures are separable from core failures
+input-layer-specific failures are separable from core failures
 ```
 
 ## Negative Results
