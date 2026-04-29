@@ -97,12 +97,14 @@ def train_language_modeling_with_artifacts(
     train_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
     training_config: LanguageModelingTrainingConfig | None = None,
     model_config: CausalTextConfig | None = None,
+    initial_model: CausalTextModel | None = None,
     eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
 ) -> LanguageModelingTrainingArtifacts:
     return _train_text_corpus_with_artifacts(
         corpus=language_modeling_corpus_from_examples(train_examples),
         training_config=training_config,
         model_config=model_config,
+        initial_model=initial_model,
         eval_corpus=language_modeling_corpus_from_examples(eval_examples) if eval_examples is not None else None,
     )
 
@@ -112,6 +114,7 @@ def _train_text_corpus_with_artifacts(
     corpus: str,
     training_config: LanguageModelingTrainingConfig | None = None,
     model_config: CausalTextConfig | None = None,
+    initial_model: CausalTextModel | None = None,
     eval_corpus: str | None = None,
 ) -> LanguageModelingTrainingArtifacts:
     config = training_config or LanguageModelingTrainingConfig()
@@ -149,15 +152,24 @@ def _train_text_corpus_with_artifacts(
         )
         eval_inputs = eval_inputs.to(device)
         eval_targets = eval_targets.to(device)
-    causal_text_config = model_config or CausalTextConfig(
-        vocab_size=tokenizer.vocab_size,
-        context_length=config.context_length,
-    )
+    if initial_model is not None and model_config is not None:
+        _validate_initial_model_config(initial_model, model_config)
+    if initial_model is not None:
+        causal_text_config = initial_model.config
+    else:
+        causal_text_config = model_config or CausalTextConfig(
+            vocab_size=tokenizer.vocab_size,
+            context_length=config.context_length,
+        )
     if causal_text_config.vocab_size != tokenizer.vocab_size:
         raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
     if causal_text_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = CausalTextModel(causal_text_config).to(device)
+    model = (
+        initial_model.to(device)
+        if initial_model is not None
+        else CausalTextModel(causal_text_config).to(device)
+    )
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
@@ -290,6 +302,11 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("tokenizer_vocab_size must be positive")
     if config.tokenizer_min_pair_count <= 0:
         raise ValueError("tokenizer_min_pair_count must be positive")
+
+
+def _validate_initial_model_config(model: CausalTextModel, config: CausalTextConfig) -> None:
+    if causal_text_config_to_dict(model.config) != causal_text_config_to_dict(config):
+        raise ValueError("initial_model config must match model_config")
 
 
 def language_model_batches(

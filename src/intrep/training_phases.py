@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from intrep.causal_text_model import CausalTextConfig
+from intrep.causal_text_model import CausalTextConfig, CausalTextModel
 from intrep.fashion_mnist_vit import (
     ImageChoiceExample,
     ImageClassificationConfig,
@@ -52,14 +52,16 @@ def run_image_text_training_phases(
         train_examples=list(image_examples),
         config=image_config,
     )
+    text_model = _text_model_from_image_core(
+        image_result=image_result,
+        text_config=text_config,
+        model_preset=image_config.model_preset,
+    )
     text_artifacts = train_language_modeling_with_artifacts(
         train_examples=tuple(text_examples),
         training_config=text_config,
-        model_config=CausalTextConfig(
-            vocab_size=_model_vocab_size(text_config),
-            context_length=text_config.context_length,
-            **_core_shape(),
-        ),
+        model_config=text_model.config,
+        initial_model=text_model,
     )
     _validate_embedding_dim(
         image_result.model.image_input_layer.patch_embedding.out_features,
@@ -86,8 +88,25 @@ def _model_vocab_size(config: LanguageModelingTrainingConfig) -> int:
     return config.tokenizer_vocab_size
 
 
-def _core_shape() -> dict[str, int | float]:
-    preset = TRANSFORMER_CORE_PRESETS["tiny"]
+def _text_model_from_image_core(
+    *,
+    image_result: ImageClassificationTrainingResult,
+    text_config: LanguageModelingTrainingConfig,
+    model_preset: str,
+) -> CausalTextModel:
+    text_model = CausalTextModel(
+        CausalTextConfig(
+            vocab_size=_model_vocab_size(text_config),
+            context_length=text_config.context_length,
+            **_core_shape(model_preset),
+        )
+    )
+    text_model.core.load_state_dict(image_result.model.core.state_dict())
+    return text_model
+
+
+def _core_shape(model_preset: str) -> dict[str, int | float]:
+    preset = TRANSFORMER_CORE_PRESETS[model_preset]
     return {
         "embedding_dim": int(preset["embedding_dim"]),
         "num_heads": int(preset["num_heads"]),

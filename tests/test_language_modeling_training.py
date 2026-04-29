@@ -256,6 +256,33 @@ class LanguageModelingTrainingTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
 
+    def test_training_can_continue_from_initial_model(self) -> None:
+        initial_model = CausalTextModel(
+            CausalTextConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=8,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            )
+        )
+
+        artifacts = _train_text_corpus_with_artifacts(
+            corpus="red green blue red green blue red green blue",
+            training_config=LanguageModelingTrainingConfig(
+                context_length=8,
+                batch_size=2,
+                max_steps=1,
+                learning_rate=0.005,
+                seed=17,
+            ),
+            model_config=initial_model.config,
+            initial_model=initial_model,
+        )
+
+        self.assertIs(artifacts.model, initial_model)
+        self.assertEqual(artifacts.model.config, initial_model.config)
+
     def test_rejects_empty_corpus(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
             _train_text_corpus_with_artifacts(corpus="")
