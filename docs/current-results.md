@@ -50,6 +50,7 @@ Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 image-conditioned text candidate scoring
 image-choice scoring evaluation
+image-conditioned text training smoke loop
 grid-world action-conditioned smoke data
 run summary aggregation and comparison
 ```
