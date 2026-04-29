@@ -2,7 +2,7 @@
 
 ## 役割
 
-この文書は、[Predictive Token Machine](predictive-token-machine.md) のうち、
+この文書は、[Predictive Representation System](predictive-representation-system.md) のうち、
 world-modeling 側面だけを扱う。
 
 実装状態、データ形式、モデル部品、実験コマンドの正本ではない。
@@ -13,7 +13,7 @@ world-modeling 側面だけを扱う。
 このプロジェクト全体の上位概念は、`world model` より広い。
 
 ```text
-Predictive Token Machine:
+Predictive Representation System:
   言語、知覚、行動、記憶、信念を含む予測計算の上位概念
 
 World Model:
@@ -23,10 +23,10 @@ World Model:
 つまり、関係は次である。
 
 ```text
-world model ⊂ predictive token machine
+world model ⊂ predictive representation system
 ```
 
-この文書で `world model` と呼ぶものは、Predictive Token Machine の全体ではない。
+この文書で `world model` と呼ぶものは、Predictive Representation System の全体ではない。
 観測と行動から、未来の観測、結果、状態変化を予測する能力に焦点を当てた評価面である。
 
 ## 中心仮説
@@ -268,5 +268,5 @@ action-conditioned data が重要になる。
 未来や行動結果の予測で評価する。
 ```
 
-短く言えば、Predictive Token Machine の中で world-modeling を中核評価面として扱い、
+短く言えば、Predictive Representation System の中で world-modeling を中核評価面として扱い、
 外部メモリや自然言語はその入力、補助、インターフェースとして接続する。

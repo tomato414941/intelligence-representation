@@ -1,1 +1,1 @@
-"""Predictive token machine experiments for intelligence representation."""
+"""Predictive representation experiments for intelligence representation."""

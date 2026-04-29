@@ -18,12 +18,12 @@ smoke metric と evidence metric を分ける
 このプロジェクトの上位仮説は次である。
 
 ```text
-A predictive token machine for language, perception, action, memory, and belief.
+A predictive representation system for language, perception, action, memory, and belief.
 ```
 
 この仮説は広い。
 したがって、単一の損失低下や単一タスクの accuracy だけでは、
-Predictive Token Machine が実現したとは言えない。
+Predictive Representation System が実現したとは言えない。
 
 評価では、どの主張をしているのかを常に分ける。
 
@@ -37,7 +37,7 @@ task works:
 world-modeling evidence:
   観測・行動・文脈の違いに応じて未来予測が変わる
 
-predictive-token-machine evidence:
+predictive-representation-system evidence:
   複数の入力形式やタスクを共有予測計算へ接続できる
 ```
 

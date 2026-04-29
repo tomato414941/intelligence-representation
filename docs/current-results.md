@@ -15,22 +15,23 @@ Use these documents for details:
 
 ## Current Position
 
-The project has not produced a predictive token machine, a latent world model,
+The project has not produced a predictive representation system, a latent world model,
 or robust action-conditioned future prediction.
 
 The active milestone is narrower:
 
 ```text
 raw examples
-  -> modality-specific tokenizer / encoder / adapter
-  -> TokenSequence or hidden sequence
-  -> shared predictive model components
+  -> modality-specific input layers
+  -> input embedding sequence
+  -> shared Transformer core
+  -> task-specific output layer
 ```
 
 The conceptual center remains:
 
 ```text
-A predictive token machine for language, perception, action, memory, and belief.
+A predictive representation system for language, perception, action, memory, and belief.
 ```
 
 World modeling is one evaluation surface inside that broader frame. It should
@@ -44,7 +45,7 @@ Currently supported:
 ```text
 decoder-only GPT training utilities
 byte-level and simple byte-pair text tokenization
-TokenSequence with optional loss masks
+TokenSequence with optional loss masks for text inputs
 Fashion-MNIST image-choice raw examples
 ImagePatchAdapter -> SharedTransformerCore -> ClassificationHead
 grid-world action-conditioned smoke data
@@ -65,7 +66,7 @@ planning or control
 ```
 
 Next-token loss reduction remains only a smoke signal. It is not evidence that
-a predictive token machine or world model has been learned.
+a predictive representation system or world model has been learned.
 
 ## Historical Reading
 

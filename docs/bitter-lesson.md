@@ -44,7 +44,7 @@ evaluation pressure
 
 `world model` はこの上位概念の全体ではない。
 観測、行動、環境遷移を予測する能力として、
-Predictive Token Machine の中の評価面に置く。
+Predictive Representation System の中の評価面に置く。
 
 ## What Not To Center
 

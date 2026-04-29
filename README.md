@@ -6,7 +6,7 @@ testable research prototype.
 The conceptual center is:
 
 ```text
-A predictive token machine for language, perception, action, memory, and belief.
+A predictive representation system for language, perception, action, memory, and belief.
 ```
 
 The project does not aim to build a hand-designed semantic database. The current
@@ -27,7 +27,7 @@ whether observation and action history can improve predictions about future
 observations, outcomes, or state changes.
 
 Loss reduction is a training smoke signal, not evidence by itself that a
-predictive token machine or world model has been learned.
+predictive representation system or world model has been learned.
 
 ## Project Map
 
@@ -50,7 +50,7 @@ docs/legacy/
 Read these first:
 
 - [Concept](docs/concept.md)
-- [Predictive Token Machine](docs/predictive-token-machine.md)
+- [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Input Boundaries](docs/model-input-boundaries.md)
 - [Learning and Execution](docs/learning-and-execution.md)
 - [World Model Centering](docs/world-model.md)
