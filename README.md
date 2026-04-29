@@ -40,8 +40,8 @@ This does not use OpenAI API or a pretrained chat model. It uses the successful 
 
 Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
-`MixedDocument` remains as a legacy smoke/bridge format so existing demos and tests keep working. The active abstraction for new experiments is `Signal` streams, with `FuturePredictionCase` used for target-position-aware evaluation.
-Signal handling is split by responsibility: `signal_io` reads and writes Signal JSONL, `signal_rendering` renders text training streams, and `legacy_mixed_bridge` contains the MixedDocument compatibility path.
+The active abstraction for new experiments is `Signal` streams, with `FuturePredictionCase` used for target-position-aware evaluation.
+Signal handling is split by responsibility: `signal_io` reads and writes Signal JSONL, and `signal_rendering` renders text training streams.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
@@ -78,41 +78,27 @@ src/intrep/sequence_predictor.py
 src/intrep/torch_sequence.py
 src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
+src/intrep/text_tokenizer.py
 src/intrep/language_modeling_metrics.py
-src/intrep/mixed_corpus.py
-src/intrep/mixed_corpus_evaluation.py
-src/intrep/generated_environment_corpus.py
 src/intrep/generated_environment_signal_corpus.py
-src/intrep/corpus_split.py
-src/intrep/corpus_coverage.py
 src/intrep/signals.py
 src/intrep/signal_stream.py
-src/intrep/signal_corpus.py
+src/intrep/signal_io.py
+src/intrep/signal_rendering.py
 src/intrep/grid_world.py
-src/intrep/grid_corpus.py
-src/intrep/grid_signal_corpus.py
 src/intrep/future_prediction_cases.py
 src/intrep/future_prediction_ranking.py
 src/intrep/gpt_model.py
 src/intrep/gpt_training.py
 src/intrep/train_signal_text.py
-src/intrep/train_gpt.py
-src/intrep/symbolic_to_natural_evaluation.py
-src/intrep/next_observation_cases.py
-src/intrep/next_observation_ranking.py
-src/intrep/next_observation_evaluation.py
-src/intrep/evaluate_next_observation.py
 src/intrep/evaluate_future_prediction.py
+src/intrep/evaluate_fashion_mnist.py
+src/intrep/fashion_mnist_signal_corpus.py
+src/intrep/fashion_mnist_vit.py
+src/intrep/image_io.py
 src/intrep/pair_ranking.py
-src/intrep/current_experiment.py
-src/intrep/experiment_pipeline.py
-src/intrep/external_corpus.py
-src/intrep/public_text_fetch.py
 src/intrep/run_summary.py
-src/intrep/source_manifest.py
-src/intrep/tool_log_corpus.py
 src/intrep/benchmark.py
-src/intrep/demo.py
 src/intrep/transition_data.py
 src/intrep/update_loop.py
 ```
@@ -177,7 +163,7 @@ uv run python -m unittest
 uv run python -m intrep.demo
 ```
 
-The demo now runs the mixed-GPT mainline on the built-in smoke corpus. The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
+The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
 
 ## Train Signal Text
 
@@ -189,28 +175,18 @@ This trains the text-payload Signal path. Image `payload_ref` records are handle
 by image-specific entry points such as `intrep.evaluate_fashion_mnist`, not by
 the text trainer.
 
-## Legacy Mixed GPT
+Signal JSONL corpora are the intended path for real corpus growth.
 
-To train the current byte-tokenizer path from a legacy mixed-document JSONL
-corpus with records containing `id`, `modality`, and text `content`:
-
-```sh
-uv run python -m intrep.train_gpt --corpus file --corpus-path path/to/corpus.jsonl --loss-summary
-```
-
-JSONL file corpora are the intended path for real corpus growth.
-
-For GPU hosts such as RunPod, `intrep.train_gpt` supports `--device auto|cpu|cuda`
+For GPU hosts such as RunPod, `intrep.train_signal_text` supports `--device auto|cpu|cuda`
 and final checkpoint writing with `--checkpoint-path`. See `docs/runpod.md`.
-
-Public or internet-sourced corpora should enter through the same JSONL shape. Keep fetching, licensing review, filtering, and provenance capture outside the training architecture until a repeated experiment proves a new repo-level component is needed.
 
 The default text tokenizer remains byte-level for reproducibility. A small
 corpus-trained byte-pair tokenizer is available for GPT-like tokenization smoke
 checks without adding an external tokenizer dependency:
 
 ```sh
-uv run python -m intrep.train_gpt \
+uv run python -m intrep.train_signal_text \
+  --train-path path/to/signals.jsonl \
   --tokenizer byte-pair \
   --tokenizer-vocab-size 512
 ```

@@ -1,6 +1,6 @@
 # RunPod Training Notes
 
-This project can train the mixed GPT prototype on CPU by default or on a CUDA GPU
+This project can train the Signal text prototype on CPU by default or on a CUDA GPU
 when running on a RunPod container with PyTorch CUDA support.
 
 ## Device Selection
@@ -8,20 +8,20 @@ when running on a RunPod container with PyTorch CUDA support.
 The CLI default remains CPU-compatible:
 
 ```sh
-uv run python -m intrep.train_gpt --max-steps 20
+uv run python -m intrep.train_signal_text --train-path /workspace/data/signals.jsonl --max-steps 20
 ```
 
 On RunPod, use automatic CUDA detection:
 
 ```sh
-uv run python -m intrep.train_gpt --device auto --max-steps 200
+uv run python -m intrep.train_signal_text --train-path /workspace/data/signals.jsonl --device auto --max-steps 200
 ```
 
 Use `--device cuda` only when CUDA must be required. It exits with a CLI error if
 `torch.cuda.is_available()` is false.
 
 ```sh
-uv run python -m intrep.train_gpt --device cuda --max-steps 200
+uv run python -m intrep.train_signal_text --train-path /workspace/data/signals.jsonl --device cuda --max-steps 200
 ```
 
 ## Checkpoint Saving
@@ -29,12 +29,11 @@ uv run python -m intrep.train_gpt --device cuda --max-steps 200
 Write a final checkpoint with `--checkpoint-path`:
 
 ```sh
-uv run python -m intrep.train_gpt \
+uv run python -m intrep.train_signal_text \
   --device auto \
-  --corpus file \
-  --corpus-path /workspace/data/corpus.jsonl \
+  --train-path /workspace/data/signals.jsonl \
   --max-steps 200 \
-  --checkpoint-path /workspace/checkpoints/mixed-gpt.pt
+  --checkpoint-path /workspace/checkpoints/signal-text-gpt.pt
 ```
 
 The checkpoint contains:
@@ -51,31 +50,7 @@ Checkpoint resume is intentionally not supported yet. The saved state dict is
 moved to CPU before writing so the file can be inspected or loaded on non-GPU
 machines.
 
-## Generated Environment Sweep
+## Future Prediction Evaluation
 
-Run the seed x generated-eval-slice sweep and write one normalized run summary
-per cell:
-
-This is a world-modeling evaluation surface for the broader predictive token
-machine scaffold. It checks generated observation/action future prediction; it
-does not by itself demonstrate a general predictive token machine.
-
-```sh
-uv run python -m intrep.experiment_pipeline \
-  --output-dir /workspace/runs/generated-environment \
-  --seed 7 \
-  --seed 13 \
-  --max-steps 200
-```
-
-The sweep writes:
-
-```text
-generated-environment-seed-<seed>-<slice>.json
-comparison.json
-failures.json
-```
-
-`comparison.json` is the metric table for successful runs. `failures.json`
-records any failed seed/slice cells so a partial sweep can still be inspected.
-Use `--eval-slice` one or more times to run a subset of slices.
+Use `intrep.evaluate_future_prediction` for generated observation/action
+future-prediction checks.

@@ -10,7 +10,6 @@ from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
-from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
 from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
 GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
@@ -90,42 +89,6 @@ class GPTTrainingArtifacts:
     result: GPTTrainingResult
     model: DecoderOnlyGPT
     tokenizer: object
-
-
-def train_mixed_gpt(
-    documents: list[MixedDocument] | None = None,
-    training_config: GPTTrainingConfig | None = None,
-    model_config: GPTConfig | None = None,
-    eval_documents: list[MixedDocument] | None = None,
-) -> GPTTrainingResult:
-    return train_mixed_gpt_with_artifacts(
-        documents=documents,
-        training_config=training_config,
-        model_config=model_config,
-        eval_documents=eval_documents,
-    ).result
-
-
-def train_mixed_gpt_with_artifacts(
-    documents: list[MixedDocument] | None = None,
-    training_config: GPTTrainingConfig | None = None,
-    model_config: GPTConfig | None = None,
-    eval_documents: list[MixedDocument] | None = None,
-) -> GPTTrainingArtifacts:
-    corpus_documents = documents if documents is not None else default_mixed_documents()
-    if not corpus_documents:
-        raise ValueError("documents must not be empty")
-    eval_corpus = None
-    if eval_documents is not None:
-        if not eval_documents:
-            raise ValueError("eval_documents must not be empty")
-        eval_corpus = render_corpus(eval_documents)
-    return train_rendered_gpt_with_artifacts(
-        corpus=render_corpus(corpus_documents),
-        training_config=training_config,
-        model_config=model_config,
-        eval_corpus=eval_corpus,
-    )
 
 
 def train_rendered_gpt_with_artifacts(

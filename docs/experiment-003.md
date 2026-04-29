@@ -46,15 +46,13 @@ runs/exp003_natural_language/metrics_steps100.json
 ## Command
 
 ```sh
-OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 uv run python -m intrep.train_gpt \
-  --corpus file \
-  --corpus-path runs/exp003_natural_language/train.jsonl \
-  --eval-corpus-path runs/exp003_natural_language/eval.jsonl \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 uv run python -m intrep.train_signal_text \
+  --train-path runs/exp003_natural_language/train.jsonl \
+  --eval-path runs/exp003_natural_language/eval.jsonl \
   --max-steps 100 \
   --context-length 64 \
   --batch-size 8 \
   --batch-stride 32 \
-  --loss-summary \
   --loss-history-path runs/exp003_natural_language/metrics_steps100.json
 ```
 

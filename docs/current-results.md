@@ -278,10 +278,10 @@ position embedding, Transformer encoder, and a classification head. The older
 `image-tokens` text rendering path has been removed.
 
 The future-prediction evaluation path trains from rendered Signal streams
-directly. `MixedDocument` remains available for legacy corpora and older demos,
-but it is no longer on this main evaluation path.
+directly. The legacy mixed-document bridge has been removed from the main code
+path.
 Signal infrastructure is now split so new code can depend on the narrow module
-it needs: `signal_io`, `signal_rendering`, or `legacy_mixed_bridge`.
+it needs: `signal_io` or `signal_rendering`.
 
 The immediate experimental question is:
 
@@ -296,11 +296,12 @@ or architecture changes.
 ## Tokenizer Direction
 
 The default GPT path remains byte-level for stable smoke tests. A small
-corpus-trained byte-pair tokenizer is now available through `intrep.train_gpt`
+corpus-trained byte-pair tokenizer is now available through `intrep.train_signal_text`
 for GPT-like tokenization probes:
 
 ```sh
-uv run python -m intrep.train_gpt \
+uv run python -m intrep.train_signal_text \
+  --train-path path/to/signals.jsonl \
   --tokenizer byte-pair \
   --tokenizer-vocab-size 512
 ```

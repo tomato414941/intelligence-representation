@@ -11,10 +11,8 @@ from intrep.gpt_training import (
     GPTTrainingConfig,
     language_model_batches,
     resolve_training_device,
-    train_mixed_gpt,
-    train_mixed_gpt_with_artifacts,
+    train_rendered_gpt_with_artifacts,
 )
-from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
 
 
 class GPTTrainingTest(unittest.TestCase):
@@ -74,9 +72,9 @@ class GPTTrainingTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([2, 8, ByteTokenizer.vocab_size]))
 
-    def test_training_runs_on_mixed_corpus_and_reduces_loss(self) -> None:
-        result = train_mixed_gpt(
-            documents=default_mixed_documents(),
+    def test_training_runs_on_rendered_corpus_and_reduces_loss(self) -> None:
+        artifacts = train_rendered_gpt_with_artifacts(
+            corpus="alpha beta gamma alpha beta gamma alpha beta gamma " * 4,
             training_config=GPTTrainingConfig(
                 context_length=32,
                 batch_size=4,
@@ -92,10 +90,11 @@ class GPTTrainingTest(unittest.TestCase):
                 hidden_dim=32,
             ),
         )
+        result = artifacts.result
 
         self.assertEqual(result.steps, 12)
         self.assertEqual(len(result.loss_history), 12)
-        self.assertGreater(result.token_count, len(render_corpus(default_mixed_documents())))
+        self.assertGreater(result.token_count, 0)
         self.assertEqual(result.initial_loss, result.loss_history[0])
         self.assertEqual(result.final_loss, result.loss_history[-1])
         self.assertEqual(result.initial_step_loss, result.initial_loss)
@@ -130,14 +129,8 @@ class GPTTrainingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             checkpoint_path = Path(temp_dir) / "checkpoints" / "gpt.pt"
             with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
-                artifacts = train_mixed_gpt_with_artifacts(
-                    documents=[
-                        MixedDocument(
-                            id="checkpoint_tiny_001",
-                            modality="text",
-                            content="one two three one two three one two three",
-                        )
-                    ],
+                artifacts = train_rendered_gpt_with_artifacts(
+                    corpus="one two three one two three one two three",
                     training_config=GPTTrainingConfig(
                         context_length=8,
                         batch_size=2,
@@ -164,27 +157,14 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(payload["result"]["device"], "cpu")
         self.assertEqual(artifacts.result.device, "cpu")
         self.assertTrue(payload["model_state_dict"])
-        self.assertTrue(all(tensor.device.type == "cpu" for tensor in payload["model_state_dict"].values()))
+        self.assertTrue(
+            all(tensor.device.type == "cpu" for tensor in payload["model_state_dict"].values())
+        )
 
     def test_training_reports_held_out_eval_loss(self) -> None:
-        train_documents = [
-            MixedDocument(
-                id="train_tiny_001",
-                modality="text",
-                content="alpha beta gamma alpha beta gamma alpha beta gamma",
-            )
-        ]
-        eval_documents = [
-            MixedDocument(
-                id="eval_tiny_001",
-                modality="text",
-                content="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
-            )
-        ]
-
-        result = train_mixed_gpt(
-            documents=train_documents,
-            eval_documents=eval_documents,
+        artifacts = train_rendered_gpt_with_artifacts(
+            corpus="alpha beta gamma alpha beta gamma alpha beta gamma",
+            eval_corpus="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
             training_config=GPTTrainingConfig(
                 context_length=8,
                 batch_size=2,
@@ -200,6 +180,7 @@ class GPTTrainingTest(unittest.TestCase):
                 hidden_dim=32,
             ),
         )
+        result = artifacts.result
 
         self.assertIsNotNone(result.initial_eval_loss)
         self.assertIsNotNone(result.final_eval_loss)
@@ -211,14 +192,8 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.warnings, ())
 
     def test_training_with_artifacts_returns_model_tokenizer_and_result(self) -> None:
-        artifacts = train_mixed_gpt_with_artifacts(
-            documents=[
-                MixedDocument(
-                    id="artifact_tiny_001",
-                    modality="text",
-                    content="red green blue red green blue red green blue",
-                )
-            ],
+        artifacts = train_rendered_gpt_with_artifacts(
+            corpus="red green blue red green blue red green blue",
             training_config=GPTTrainingConfig(
                 context_length=8,
                 batch_size=2,
@@ -251,23 +226,34 @@ class GPTTrainingTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
 
-    def test_rejects_empty_documents(self) -> None:
-        with self.assertRaisesRegex(ValueError, "documents must not be empty"):
-            train_mixed_gpt(documents=[])
+    def test_rejects_empty_corpus(self) -> None:
+        with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
+            train_rendered_gpt_with_artifacts(corpus="")
 
-    def test_rejects_empty_eval_documents(self) -> None:
-        with self.assertRaisesRegex(ValueError, "eval_documents must not be empty"):
-            train_mixed_gpt(documents=default_mixed_documents(), eval_documents=[])
+    def test_rejects_empty_eval_corpus(self) -> None:
+        with self.assertRaisesRegex(ValueError, "eval_corpus must not be empty"):
+            train_rendered_gpt_with_artifacts(
+                corpus="abc abc abc abc abc",
+                eval_corpus="",
+                training_config=GPTTrainingConfig(context_length=4),
+            )
 
     def test_rejects_invalid_training_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
-            train_mixed_gpt(training_config=GPTTrainingConfig(batch_size=0))
+            train_rendered_gpt_with_artifacts(
+                corpus="abc",
+                training_config=GPTTrainingConfig(batch_size=0),
+            )
         with self.assertRaisesRegex(ValueError, "batch_stride must be positive"):
-            train_mixed_gpt(training_config=GPTTrainingConfig(batch_stride=0))
+            train_rendered_gpt_with_artifacts(
+                corpus="abc",
+                training_config=GPTTrainingConfig(batch_stride=0),
+            )
 
     def test_rejects_model_config_mismatch(self) -> None:
         with self.assertRaisesRegex(ValueError, "context_length must match"):
-            train_mixed_gpt(
+            train_rendered_gpt_with_artifacts(
+                corpus="abc abc abc abc abc",
                 training_config=GPTTrainingConfig(context_length=16),
                 model_config=GPTConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
             )

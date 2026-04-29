@@ -165,18 +165,6 @@ mixed next-observation ranking accuracy and margin
 builtin-grid loss reduction smoke check
 ```
 
-Next-observation ranking now defaults to `distractor_policy=hard`, which ranks the positive next observation against other cases from the same modality. `distractor_policy=all_other` keeps the earlier behavior of using every other case as a distractor.
-
-Ranking requires at least two compatible evaluation cases: one positive case and at least one candidate distractor from the same evaluation pool or explicit hard-negative metadata. A generated slice with only one eval case is useful as a fixture, but it cannot produce a meaningful ranking metric by itself. Strict generated slices should therefore contain at least two cases, and preferably enough cases to make shortcut-driven distractor wins visible.
-
-The independent next-observation CLI supports the generated environment train/eval split directly:
-
-```sh
-uv run python -m intrep.evaluate_next_observation \
-  --corpus generated-environment \
-  --generated-eval-slice generated_held_out_object
-```
-
 The support symbolic benchmark tracks:
 
 ```text
@@ -213,42 +201,18 @@ tests/test_tiny_transformer.py:
 tests/test_byte_tokenizer.py:
   checks byte-level round-trip for Japanese, English, code, and logs
 
-tests/test_mixed_corpus.py:
-  checks the built-in smoke corpus and lightweight rendering tags
-
 tests/test_grid_world.py:
   checks hidden grid state, partial observation, action steps, and next observations
-
-tests/test_grid_corpus.py:
-  checks grid episodes render into text/grid/action/next-grid mixed documents
 
 tests/test_gpt_training.py:
   checks language-model batches, decoder-only GPT logits, short-run loss reduction,
   and reusable training artifacts
 
 tests/test_pair_ranking.py:
-  checks symbolic-to-natural continuation ranking metrics
+  checks next-token continuation loss helpers
 
 tests/test_future_prediction_ranking.py:
   checks target-channel future prediction ranking and payload-only rendering
-
-tests/test_symbolic_to_natural_evaluation.py:
-  checks before/after GPT symbolic-to-natural ranking evaluation,
-  including held-out environment pair documents
-
-tests/test_next_observation_cases.py:
-  checks environment-symbolic and grid document extraction into next-observation cases
-
-tests/test_next_observation_ranking.py:
-  checks mixed next-observation continuation ranking and hard/all-other distractor policies
-
-tests/test_next_observation_evaluation.py:
-  checks before/after GPT ranking evaluation, distractor policy propagation,
-  and held-out eval document separation
-
-tests/test_evaluate_next_observation_cli.py:
-  checks the independent next-observation evaluation CLI, including generated-environment selection,
-  without changing train_gpt
 
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from intrep.dataset import ActionConditionedExample
-from intrep.generated_environment_corpus import EVAL_SLICES
 from intrep.transition_data import (
     generated_find_examples,
     split_generated_examples,
@@ -19,6 +18,17 @@ from intrep.signals import Signal
 from intrep.types import Action, Fact
 
 
+EVAL_SLICES = (
+    "generated_seen",
+    "generated_held_out_object",
+    "generated_held_out_container",
+    "generated_held_out_location",
+    "generated_strict_held_out_combination",
+    "generated_strict_action_sequence",
+    "generated_strict_partial",
+    "generated_strict_noisy",
+    "generated_strict_same_entity_negative",
+)
 HARD_NEGATIVE_EVAL_SLICES = (
     "same_history_different_action",
     "same_action_different_context",
