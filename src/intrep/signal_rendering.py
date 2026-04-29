@@ -15,6 +15,6 @@ def render_signals_for_training(
 ) -> str:
     if render_format == "plain":
         return "\n".join(render_payload_text(event) for event in events) + "\n"
-    if render_format not in ("signal-tags", "typed-tags"):
-        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    if render_format != "signal-tags":
+        raise ValueError("render_format must be plain or signal-tags")
     return render_signal_stream(events)

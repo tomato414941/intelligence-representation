@@ -64,8 +64,8 @@ def signal_to_mixed_document(
             modality=event.channel,
             content=render_payload_text(event),
         )
-    if render_format not in ("signal-tags", "typed-tags"):
-        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    if render_format != "signal-tags":
+        raise ValueError("render_format must be plain or signal-tags")
     return MixedDocument(
         id=_document_id(event),
         modality=event.channel,
@@ -132,9 +132,9 @@ def _render_mixed_documents_if_requested(
 ) -> list[MixedDocument]:
     if render_format == "plain":
         return documents
-    if render_format in ("signal-tags", "typed-tags"):
+    if render_format == "signal-tags":
         return signals_to_mixed_documents(mixed_documents_to_signals(documents))
-    raise ValueError("render_format must be plain, signal-tags, or typed-tags")
+    raise ValueError("render_format must be plain or signal-tags")
 
 
 def _document_id(event: Signal) -> str:
