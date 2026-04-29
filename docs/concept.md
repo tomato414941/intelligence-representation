@@ -2,8 +2,10 @@
 
 ## 位置づけ
 
-この文書は、現在のプロジェクトコンセプトを短くまとめる入口である。
-実装方針の正本は次の文書に置く。
+この文書は、プロジェクトの中心概念を短くまとめる入口である。
+実装状態、データ形式、CLI、評価コマンドの正本ではない。
+
+詳細は次の文書に置く。
 
 - [Predictive Token Machine](predictive-token-machine.md)
 - [Token Sequence Direction](token-sequence-direction.md)
@@ -15,12 +17,10 @@
 旧 Semantic State Memory 寄りの背景メモは、現在のコンセプトから切り離して
 [Semantic State Memory Background](legacy/semantic-state-memory-background.md) に移した。
 
-## Current Concept
+## 中心仮説
 
 AIにとって自然な意味表現は、人間が先に固定した意味DBではなく、
-受け取る・生成する・予測する bounded signal の流れとして扱う。
-記憶、信念、誤差、tool use は重要な対象だが、現時点では固定 channel
-として先に作り込まない。
+受け取る・生成する・予測する bounded signal の流れの中で形成される。
 
 このプロジェクトの中心は次である。
 
@@ -29,19 +29,41 @@ A predictive token machine for language, perception, action, memory, and belief.
 ```
 
 ここでの `world model` は全体名ではない。
-観測、行動、環境遷移を予測する能力として、Predictive Token Machine の中核的な評価面に位置づける。
+観測、行動、環境遷移を予測する能力として、
+Predictive Token Machine の中核的な評価面に位置づける。
 
-## Design Direction
+## 意味表現の見方
+
+自然言語は重要な入力源だが、唯一の入力源ではない。
+画像、音声、センサー、行動結果、tool output、環境状態も、
+学習可能な入力と出力の列として扱える。
+
+重要なのは、最初から人間が意味カテゴリを固定することではない。
+元データを tokenizer / encoder / adapter が扱いやすい形で保持し、
+そこから予測学習に使える系列へ変換することである。
+
+```text
+raw examples
+  -> tokenizer / encoder / adapter
+  -> token or hidden sequence
+  -> shared predictive model
+```
+
+この形なら、テキスト、画像、音声、行動、選択分類、自由記述応答を、
+同じ中間の予測計算へ接続しやすい。
+ただし、入力側と出力側の adapter まで無理に同一化する必要はない。
+
+## 設計原則
 
 優先するもの:
 
 ```text
-token を作りやすい raw examples
-TokenSequence を共通学習入力にする
-next-token training as a smoke objective
-continuation / future-token evaluation
-held-out hard-negative ranking
-loss reduction と modeling evidence の分離
+raw examples close to their source
+simple tokenizer / encoder boundaries
+TokenSequence or hidden sequence as learning input
+next-token or future-token training as smoke objectives
+held-out continuation / ranking / task evaluation
+loss reduction and modeling evidence kept separate
 ```
 
 避けるもの:
@@ -50,61 +72,13 @@ loss reduction と modeling evidence の分離
 handcrafted ontology
 fixed Semantic State DB
 manual belief / conflict taxonomy
+generic envelope schema as the common layer
 large schema design before repeated experimental pressure
-generic Signal JSONL growth path
 loss reduction alone as a world-model claim
 ```
 
-## Signal
+## 観測を起点にする
 
-このプロジェクトでの `Signal` は、過去の実験で使っている薄い入力・出力単位である。
-人間に例えるなら、感覚器官や身体や道具から入ってくる時系列入力に近い。
-
-```text
-Signal:
-  channel と payload だけを持つ
-  channel 値はデータセットと評価が決める実用ラベルであり、コード上の固定分類ではない
-```
-
-`Signal` は手設計された意味オブジェクトではない。
-モデルが条件づけたり予測したりするための、最小限の envelope として扱う。
-ただし、新しい本線では `Signal` を成長させず、raw example から
-`TokenSequence` を作る方向へ寄せる。
-
-## Channel
-
-`channel` は、Signal をどの入力経路・tokenizer・評価経路に流すかを表す実用ラベルである。
-以前は `role` と `modality` を分けていたが、現時点では過剰なので 1 つにまとめる。
-
-```text
-channel = tokenizer / encoder / evaluation routing のための入力経路
-payload = tokenizer / encoder に渡される可変長の実データ
-
-現在の byte-tokenizer 系 renderer は、text / code / structured JSON / action を text payload として扱う。
-構造化 action などは Signal に入れる前に canonical JSON text にする。
-非テキストメディアは `payload_ref` として保存できる。
-`payload_ref` は画像などを学習対象・条件入力として扱うための dataset/corpus 層の参照境界である。
-ただし現在の byte-tokenizer training path には channel-specific loader / encoder がまだ接続されていないため、`payload_ref` はそこで明示的に拒否する。
-```
-
-現時点では core channel list をコードに持たない。
-`text`, `image`, `action`, `observation`, `consequence` のような語は、
-固定 ontology ではなく、データセット生成・encoder 選択・評価 target 指定のための
-ローカルなラベルとして扱う。
-
-特に次の語は、扱いたい対象ではあっても固定 channel として先に作り込まない。
-
-```text
-tool_call / tool_result:
-  当面は action や observation/consequence の特殊例として扱う
-
-prediction_error / state / belief / memory / reward:
-  重要な対象だが、現時点では channel として固定しない
-```
-
-## Observation First
-
-人間の自然言語は重要な入力源だが、唯一の入力源ではない。
 より一般には、入力は observation stream である。
 
 ```text
@@ -121,34 +95,29 @@ Observation Stream
 自然言語は、人間が世界を観測・解釈し、圧縮した強力な stream である。
 ただし、world-modeling 的な評価では、行動後の観測や結果を直接予測できるかを見る必要がある。
 
-## Token Stream And Structure
+## 構造をどこに置くか
 
-すべてを token stream にすることは、構造を捨てることではない。
-このプロジェクトで先に固定してよい構造は、Transformer が予測対象を見つけやすくするための薄い interface に限る。
+すべてを系列として扱うことは、構造を捨てることではない。
+ただし、意味構造そのものを手設計の固定 schema として先に作り込まない。
 
-```text
-channel
-time
-boundary
-source
-episode
-prediction target
-```
+先に固定してよいのは、学習と評価に必要な境界である。
+たとえば、どの raw example をどの tokenizer / encoder に渡すか、
+どの範囲を予測対象にするか、どの評価で読むか、といった境界である。
 
-意味構造そのものは、手設計の固定 schema として先に作り込まない。
-必要な構造は、データ分布、予測対象、評価圧によって学習されるべきものとして扱う。
+意味のある内部表現は、データ分布、予測対象、評価圧によって
+学習されるべきものとして扱う。
 
-## Current Non-Claims
+## Non-Claims
 
 このリポジトリは、まだ Predictive Token Machine を実現していない。
-現在あるのは、小さな signal stream scaffold と評価系である。
+実装状態は README と [Current Results](current-results.md) を参照する。
 
 まだ示していないもの:
 
 ```text
 robust action-conditioned future prediction
 learned latent predictive state
-vision / audio tokenizer integration
+vision / audio tokenizer integration at scale
 belief update
 memory read/write learning
 large-scale tool-use outcome prediction
