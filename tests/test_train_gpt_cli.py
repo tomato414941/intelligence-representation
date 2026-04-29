@@ -493,54 +493,5 @@ class TrainGPTCLITest(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("requires a channel-specific loader or encoder", stderr.getvalue())
 
-    def test_file_corpus_can_load_image_payload_ref_as_token_documents(self) -> None:
-        captured_documents: list[MixedDocument] | None = None
-
-        def fake_train_mixed_gpt(
-            *, documents=None, eval_documents=None, training_config, model_config=None
-        ):
-            nonlocal captured_documents
-            captured_documents = documents
-            return FakeTrainingResult()
-
-        output = io.StringIO()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            image_path = root / "image.pgm"
-            image_path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            corpus_path = root / "fashion.jsonl"
-            corpus_path.write_text(
-                (
-                    '{"channel":"image","payload_ref":{'
-                    f'"uri":"{image_path.as_uri()}","media_type":"image/x-portable-graymap"'
-                    '}}\n'
-                    '{"channel":"label","payload":"9:Ankle boot"}\n'
-                ),
-                encoding="utf-8",
-            )
-
-            with patch.object(train_gpt, "train_mixed_gpt", fake_train_mixed_gpt):
-                with redirect_stdout(output):
-                    train_gpt.main(
-                        [
-                            "--corpus",
-                            "file",
-                            "--corpus-path",
-                            str(corpus_path),
-                            "--corpus-format",
-                            "signal",
-                            "--render-format",
-                            "image-tokens",
-                        ]
-                    )
-
-        assert captured_documents is not None
-        self.assertEqual([document.modality for document in captured_documents], ["image", "label"])
-        self.assertIn("<IMAGE_TOKENS", captured_documents[0].content)
-        self.assertIn("0 63", captured_documents[0].content)
-        self.assertEqual(captured_documents[1].content, "9:Ankle boot")
-        self.assertIn("render_format=image-tokens", output.getvalue())
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -275,8 +275,7 @@ The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
 future-prediction CLI remains focused on text-rendered Signal streams.
 It now uses the normal image path: patchify, learned patch embedding, learned
 position embedding, Transformer encoder, and a classification head. The older
-`image-tokens` text rendering remains available only as a legacy Signal/GPT
-experiment; it is no longer the Fashion-MNIST mainline.
+`image-tokens` text rendering path has been removed.
 
 The future-prediction evaluation path trains from rendered Signal streams
 directly. `MixedDocument` remains available for legacy corpora and older demos,

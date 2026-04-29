@@ -4,7 +4,6 @@ import hashlib
 import json
 from pathlib import Path
 
-from intrep.image_rendering import render_image_token_document
 from intrep.mixed_corpus import MixedDocument, load_mixed_documents_jsonl
 from intrep.signal_io import first_json_record, load_signals_jsonl, signal_to_record
 from intrep.signals import (
@@ -58,9 +57,6 @@ def signal_to_mixed_document(
     event: Signal,
     *,
     render_format: str = "signal-tags",
-    image_patch_size: int = 1,
-    image_channel_bins: int = 4,
-    image_token_format: str = "flat",
 ) -> MixedDocument:
     if render_format == "plain":
         return MixedDocument(
@@ -68,19 +64,8 @@ def signal_to_mixed_document(
             modality=event.channel,
             content=render_payload_text(event),
         )
-    if render_format == "image-tokens":
-        return MixedDocument(
-            id=_document_id(event),
-            modality=event.channel,
-            content=render_image_token_document(
-                event,
-                patch_size=image_patch_size,
-                channel_bins=image_channel_bins,
-                token_format=image_token_format,
-            ),
-        )
     if render_format not in ("signal-tags", "typed-tags"):
-        raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
+        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
     return MixedDocument(
         id=_document_id(event),
         modality=event.channel,
@@ -92,17 +77,11 @@ def signals_to_mixed_documents(
     events: list[Signal],
     *,
     render_format: str = "signal-tags",
-    image_patch_size: int = 1,
-    image_channel_bins: int = 4,
-    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     return [
         signal_to_mixed_document(
             event,
             render_format=render_format,
-            image_patch_size=image_patch_size,
-            image_channel_bins=image_channel_bins,
-            image_token_format=image_token_format,
         )
         for event in events
     ]
@@ -112,16 +91,10 @@ def load_signals_as_mixed_documents(
     path: str | Path,
     *,
     render_format: str = "signal-tags",
-    image_patch_size: int = 1,
-    image_channel_bins: int = 4,
-    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     return signals_to_mixed_documents(
         load_signals_jsonl(path),
         render_format=render_format,
-        image_patch_size=image_patch_size,
-        image_channel_bins=image_channel_bins,
-        image_token_format=image_token_format,
     )
 
 
@@ -130,9 +103,6 @@ def load_corpus_jsonl_as_mixed_documents(
     *,
     corpus_format: str = "auto",
     render_format: str = "plain",
-    image_patch_size: int = 1,
-    image_channel_bins: int = 4,
-    image_token_format: str = "flat",
 ) -> list[MixedDocument]:
     if corpus_format == "mixed-document":
         documents = load_mixed_documents_jsonl(path)
@@ -141,9 +111,6 @@ def load_corpus_jsonl_as_mixed_documents(
         return load_signals_as_mixed_documents(
             path,
             render_format=render_format,
-            image_patch_size=image_patch_size,
-            image_channel_bins=image_channel_bins,
-            image_token_format=image_token_format,
         )
     if corpus_format != "auto":
         raise ValueError("corpus_format must be auto, mixed-document, signal, or typed-event")
@@ -153,9 +120,6 @@ def load_corpus_jsonl_as_mixed_documents(
         return load_signals_as_mixed_documents(
             path,
             render_format=render_format,
-            image_patch_size=image_patch_size,
-            image_channel_bins=image_channel_bins,
-            image_token_format=image_token_format,
         )
     documents = load_mixed_documents_jsonl(path)
     return _render_mixed_documents_if_requested(documents, render_format=render_format)
@@ -168,9 +132,9 @@ def _render_mixed_documents_if_requested(
 ) -> list[MixedDocument]:
     if render_format == "plain":
         return documents
-    if render_format in ("signal-tags", "typed-tags", "image-tokens"):
+    if render_format in ("signal-tags", "typed-tags"):
         return signals_to_mixed_documents(mixed_documents_to_signals(documents))
-    raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
+    raise ValueError("render_format must be plain, signal-tags, or typed-tags")
 
 
 def _document_id(event: Signal) -> str:

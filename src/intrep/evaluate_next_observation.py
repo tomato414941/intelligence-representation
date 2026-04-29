@@ -82,9 +82,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--render-format",
-        choices=("plain", "signal-tags", "typed-tags", "image-tokens"),
+        choices=("plain", "signal-tags", "typed-tags"),
         default="plain",
-        help="Render corpus records as legacy plain documents, signal tags, or image token text.",
+        help="Render corpus records as legacy plain documents or signal tags.",
     )
     parser.add_argument(
         "--generated-eval-slice",
@@ -129,8 +129,8 @@ def _load_documents(
     documents = loader(path)
     if render_format == "plain":
         return documents
-    if render_format not in ("signal-tags", "typed-tags", "image-tokens"):
-        raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
+    if render_format not in ("signal-tags", "typed-tags"):
+        raise ValueError("render_format must be plain, signal-tags, or typed-tags")
 
     return signals_to_mixed_documents(mixed_documents_to_signals(documents))
 

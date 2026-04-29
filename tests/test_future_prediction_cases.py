@@ -1,6 +1,4 @@
 import unittest
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from intrep.future_prediction_cases import (
     extract_future_prediction_cases,
@@ -8,7 +6,7 @@ from intrep.future_prediction_cases import (
     render_future_prediction_prefix,
     render_future_prediction_texts,
 )
-from intrep.signals import PayloadRef, Signal
+from intrep.signals import Signal
 
 
 class FuturePredictionCasesTest(unittest.TestCase):
@@ -136,32 +134,6 @@ class FuturePredictionCasesTest(unittest.TestCase):
         self.assertEqual(prefix, '{"grid":"A.."}\n{"move":"right"}\n')
         self.assertEqual(positive, '{"grid":".A."}\n')
         self.assertEqual(negatives[0], '{"grid":"..B"}\n')
-
-    def test_image_token_rendering_encodes_image_payload_refs(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "image.pgm"
-            path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            events = [
-                Signal(
-                    channel="image",
-                    payload=PayloadRef(uri=path.as_uri(), media_type="image/x-portable-graymap"),
-                ),
-                Signal(channel="label", payload="9:Ankle boot"),
-                Signal(channel="image", payload="other image tokens"),
-                Signal(channel="label", payload="0:T-shirt/top"),
-            ]
-            case = extract_future_prediction_cases(events, target_channel="label")[0]
-
-            prefix, positive, negatives = render_future_prediction_texts(
-                case,
-                rendering="image-tokens",
-                image_token_format="grid",
-            )
-
-        self.assertEqual(prefix, "r0c0:0 r0c1:63\n")
-        self.assertEqual(positive, "9:Ankle boot\n")
-        self.assertEqual(negatives[0], "0:T-shirt/top\n")
-
 
 if __name__ == "__main__":
     unittest.main()

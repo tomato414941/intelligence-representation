@@ -5,11 +5,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from intrep.image_rendering import render_image_token_payload
 from intrep.signals import Signal, render_payload_text
 from intrep.signal_stream import render_signal_stream
 
-FuturePredictionRendering = Literal["signal", "payload", "image-tokens"]
+FuturePredictionRendering = Literal["signal", "payload"]
 
 
 @dataclass(frozen=True)
@@ -101,9 +100,6 @@ def render_future_prediction_texts(
     case: FuturePredictionCase,
     *,
     rendering: FuturePredictionRendering = "signal",
-    image_patch_size: int = 1,
-    image_channel_bins: int = 4,
-    image_token_format: str = "flat",
 ) -> tuple[str, str, tuple[str, ...]]:
     if rendering == "signal":
         return (
@@ -117,71 +113,11 @@ def render_future_prediction_texts(
             _render_event_payloads((case.positive_event,)),
             tuple(_render_event_payloads((event,)) for event in case.negative_events),
         )
-    if rendering == "image-tokens":
-        return (
-            _render_event_image_token_payloads(
-                case.prefix_events,
-                patch_size=image_patch_size,
-                channel_bins=image_channel_bins,
-                token_format=image_token_format,
-            ),
-            _render_event_image_token_payloads(
-                (case.positive_event,),
-                patch_size=image_patch_size,
-                channel_bins=image_channel_bins,
-                token_format=image_token_format,
-            ),
-            tuple(
-                _render_event_image_token_payloads(
-                    (event,),
-                    patch_size=image_patch_size,
-                    channel_bins=image_channel_bins,
-                    token_format=image_token_format,
-                )
-                for event in case.negative_events
-            ),
-        )
     raise ValueError(f"unsupported future prediction rendering: {rendering}")
 
 
 def _render_event_payloads(events: Sequence[Signal]) -> str:
     return "\n".join(render_payload_text(event) for event in events) + "\n"
-
-
-def _render_event_image_token_payloads(
-    events: Sequence[Signal],
-    *,
-    patch_size: int,
-    channel_bins: int,
-    token_format: str,
-) -> str:
-    return (
-        "\n".join(
-            _render_event_image_token_payload(
-                event,
-                patch_size=patch_size,
-                channel_bins=channel_bins,
-                token_format=token_format,
-            )
-            for event in events
-        )
-        + "\n"
-    )
-
-
-def _render_event_image_token_payload(
-    event: Signal,
-    *,
-    patch_size: int,
-    channel_bins: int,
-    token_format: str,
-) -> str:
-    return render_image_token_payload(
-        event,
-        patch_size=patch_size,
-        channel_bins=channel_bins,
-        token_format=token_format,
-    )
 
 
 def _extract_observation_action_consequence_cases(

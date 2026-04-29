@@ -105,21 +105,6 @@ class SignalCorpusTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires a channel-specific loader or encoder"):
             signals_to_mixed_documents([event])
 
-    def test_signal_to_mixed_document_can_render_file_image_payload_ref_as_tokens(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "image.pgm"
-            path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            event = Signal(
-                channel="image",
-                payload=PayloadRef(uri=path.as_uri(), media_type="image/x-portable-graymap"),
-            )
-
-            documents = signals_to_mixed_documents([event], render_format="image-tokens")
-
-        self.assertEqual(documents[0].modality, "image")
-        self.assertIn('<IMAGE_TOKENS patch_size="1" channel_bins="4" format="flat">', documents[0].content)
-        self.assertIn("0 63", documents[0].content)
-
     def test_signal_jsonl_v2_helpers_round_trip_payload_ref(self) -> None:
         events = [
             Signal(

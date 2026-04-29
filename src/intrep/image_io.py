@@ -1,57 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse
 
 import numpy as np
-
-from intrep.signals import PayloadRef
-
-
-@dataclass(frozen=True)
-class ImagePatchTokenizer:
-    patch_size: int = 1
-    channel_bins: int = 4
-
-    @property
-    def pad_id(self) -> int:
-        return self.channel_bins**3
-
-    @property
-    def vocab_size(self) -> int:
-        return self.pad_id + 1
-
-    def __post_init__(self) -> None:
-        if self.patch_size <= 0:
-            raise ValueError("patch_size must be positive")
-        if self.channel_bins <= 1:
-            raise ValueError("channel_bins must be greater than 1")
-
-    def encode_pixels(self, pixels: np.ndarray) -> list[int]:
-        rgb = _as_rgb_uint8(pixels)
-        height, width, _channels = rgb.shape
-        if height % self.patch_size != 0 or width % self.patch_size != 0:
-            raise ValueError("image dimensions must be divisible by patch_size")
-
-        token_ids: list[int] = []
-        for row in range(0, height, self.patch_size):
-            for col in range(0, width, self.patch_size):
-                patch = rgb[row : row + self.patch_size, col : col + self.patch_size]
-                mean_rgb = patch.reshape(-1, 3).mean(axis=0)
-                token_ids.append(self._quantize_rgb(mean_rgb))
-        return token_ids
-
-    def encode_ref(self, ref: PayloadRef) -> list[int]:
-        path = _local_path_from_ref(ref)
-        pixels = read_portable_image(path)
-        return self.encode_pixels(pixels)
-
-    def _quantize_rgb(self, rgb: np.ndarray) -> int:
-        bins = np.floor(rgb.astype(np.float64) * self.channel_bins / 256.0).astype(int)
-        bins = np.clip(bins, 0, self.channel_bins - 1)
-        red, green, blue = (int(value) for value in bins)
-        return (red * self.channel_bins + green) * self.channel_bins + blue
 
 
 def read_portable_image(path: str | Path) -> np.ndarray:
@@ -89,26 +40,6 @@ def read_portable_image(path: str | Path) -> np.ndarray:
     if magic in ("P6", "P3"):
         return array.reshape(height, width, 3)
     return array.reshape(height, width)
-
-
-def _as_rgb_uint8(pixels: np.ndarray) -> np.ndarray:
-    array = np.asarray(pixels)
-    if array.dtype != np.uint8:
-        raise ValueError("image pixels must use dtype uint8")
-    if array.ndim == 2:
-        return np.repeat(array[:, :, np.newaxis], 3, axis=2)
-    if array.ndim == 3 and array.shape[2] == 3:
-        return array
-    raise ValueError("image pixels must be HxW grayscale or HxWx3 RGB")
-
-
-def _local_path_from_ref(ref: PayloadRef) -> Path:
-    parsed = urlparse(ref.uri)
-    if parsed.scheme != "file":
-        raise ValueError("image tokenizer currently supports file:// payload refs only")
-    if not ref.media_type.startswith("image/"):
-        raise ValueError("image tokenizer requires an image/* media_type")
-    return Path(parsed.path)
 
 
 def _read_ppm_header(data: bytes) -> tuple[tuple[str, str, str, str], int]:

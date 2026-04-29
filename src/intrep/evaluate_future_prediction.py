@@ -72,9 +72,6 @@ class FuturePredictionEvaluationConfig:
     seed: int = 7
     model_preset: str = "small"
     rendering: str = "signal"
-    image_patch_size: int = 1
-    image_channel_bins: int = 4
-    image_token_format: str = "flat"
     max_negatives: int | None = None
     metrics_path: Path | None = None
 
@@ -107,9 +104,8 @@ def main(argv: list[str] | None = None) -> None:
 def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -> None:
     train_events = load_signals_jsonl(config.train_path)
     eval_events = load_signals_jsonl(config.eval_path) if config.eval_path else train_events
-    if config.rendering != "image-tokens":
-        reject_payload_refs(train_events, context="future prediction training")
-    if config.eval_path and config.rendering != "image-tokens":
+    reject_payload_refs(train_events, context="future prediction training")
+    if config.eval_path:
         reject_payload_refs(eval_events, context="future prediction evaluation")
     train_cases = extract_future_prediction_cases(
         train_events,
@@ -147,26 +143,17 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
         before_model,
         tokenizer,
         rendering=config.rendering,
-        image_patch_size=config.image_patch_size,
-        image_channel_bins=config.image_channel_bins,
-        image_token_format=config.image_token_format,
         max_negatives=config.max_negatives,
     )
     artifacts = train_rendered_gpt_with_artifacts(
         corpus=render_signals_for_training(
             train_events,
-            render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
-            image_patch_size=config.image_patch_size,
-            image_channel_bins=config.image_channel_bins,
-            image_token_format=config.image_token_format,
+            render_format="signal-tags",
         ),
         eval_corpus=(
             render_signals_for_training(
                 eval_events,
-                render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
-                image_patch_size=config.image_patch_size,
-                image_channel_bins=config.image_channel_bins,
-                image_token_format=config.image_token_format,
+                render_format="signal-tags",
             )
             if config.eval_path
             else None
@@ -179,9 +166,6 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
         artifacts.model,
         artifacts.tokenizer,
         rendering=config.rendering,
-        image_patch_size=config.image_patch_size,
-        image_channel_bins=config.image_channel_bins,
-        image_token_format=config.image_token_format,
         max_negatives=config.max_negatives,
     )
     generalization_eval = config.eval_path is not None

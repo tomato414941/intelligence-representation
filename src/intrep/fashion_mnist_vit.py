@@ -12,7 +12,7 @@ from torch import nn
 from intrep.fashion_mnist_signal_corpus import FASHION_MNIST_LABELS
 from intrep.gpt_model import GPT_MODEL_PRESETS
 from intrep.gpt_training import resolve_training_device
-from intrep.image_tokenizer import read_portable_image
+from intrep.image_io import read_portable_image
 from intrep.signals import PayloadRef, Signal
 
 

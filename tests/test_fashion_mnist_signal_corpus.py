@@ -5,6 +5,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import urlparse
 
 from intrep.fashion_mnist_signal_corpus import (
     main,
@@ -12,7 +13,7 @@ from intrep.fashion_mnist_signal_corpus import (
     read_idx_labels,
     write_fashion_mnist_signal_jsonl,
 )
-from intrep.image_tokenizer import ImagePatchTokenizer
+from intrep.image_io import read_portable_image
 from intrep.signal_io import load_signals_jsonl_v2
 from intrep.signals import PayloadRef
 
@@ -66,7 +67,7 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
         self.assertEqual(loaded[0].payload.media_type, "image/x-portable-graymap")
         self.assertEqual(loaded[1].payload, "9:Ankle boot")
 
-    def test_generated_payload_ref_can_be_image_tokenized(self) -> None:
+    def test_generated_payload_ref_can_be_loaded_as_image(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             images_path = root / "images.idx3-ubyte.gz"
@@ -84,11 +85,10 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
             )
             image_signal = load_signals_jsonl_v2(output_path)[0]
             assert isinstance(image_signal.payload, PayloadRef)
-            token_ids = ImagePatchTokenizer(patch_size=1, channel_bins=4).encode_ref(
-                image_signal.payload
-            )
+            image_path = Path(urlparse(image_signal.payload.uri).path)
+            pixels = read_portable_image(image_path)
 
-        self.assertEqual(token_ids, [0, 63, 42, 21])
+        self.assertEqual(pixels.tolist(), [[0, 255], [128, 64]])
 
     def test_rejects_mismatched_image_and_label_counts(self) -> None:
         with TemporaryDirectory() as directory:
