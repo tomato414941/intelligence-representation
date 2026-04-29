@@ -34,7 +34,11 @@ world-model-oriented metric:
   held-out action-conditioned next-observation / future-token prediction
 ```
 
-In this question, the built-in corpus is only the smoke/demo corpus. It verifies the mixed-GPT mainline without requiring external data. The real corpus growth path is JSONL files passed to the training CLI. The legacy mixed-document schema keeps `id`, `modality`, and `content`; the signal schema keeps `channel` and either text `payload` or non-text `payload_ref`.
+In this question, the generated corpus is only the smoke corpus. It verifies the
+Signal training and evaluation path without requiring external data. The real
+corpus growth path is Signal JSONL files passed to the training CLI. Signal
+JSONL records keep `channel` and exactly one of text `payload` or non-text
+`payload_ref`; legacy `role` / `modality` / `content` records are not accepted.
 
 Signal JSONL text payload:
 

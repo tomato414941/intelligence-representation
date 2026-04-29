@@ -122,8 +122,7 @@ Observation Stream
 このプロジェクトで先に固定してよい構造は、Transformer が予測対象を見つけやすくするための薄い interface に限る。
 
 ```text
-role
-modality
+channel
 time
 boundary
 source

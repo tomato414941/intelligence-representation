@@ -27,12 +27,11 @@ train byte tokens: 11839
 eval byte tokens: 3605
 ```
 
-The records use the legacy mixed-document JSONL shape:
+The records use Signal JSONL:
 
 ```text
-id
-modality = text
-content
+channel = text
+payload
 ```
 
 Generated files:

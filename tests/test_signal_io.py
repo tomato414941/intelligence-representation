@@ -43,7 +43,7 @@ class SignalIoTest(unittest.TestCase):
 
         self.assertEqual(loaded, events)
 
-    def test_jsonl_loader_accepts_legacy_role_content_records(self) -> None:
+    def test_jsonl_loader_rejects_legacy_role_content_records(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "legacy.jsonl"
             path.write_text(
@@ -51,9 +51,30 @@ class SignalIoTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            loaded = load_signals_jsonl_v2(path)
+            with self.assertRaisesRegex(ValueError, "unsupported fields: content, role"):
+                load_signals_jsonl_v2(path)
 
-        self.assertEqual(loaded, [Signal(channel="action", payload="move east")])
+    def test_jsonl_loader_rejects_legacy_modality_content_records(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.jsonl"
+            path.write_text(
+                '{"modality":"text","content":"hello"}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsupported fields: content, modality"):
+                load_signals_jsonl_v2(path)
+
+    def test_jsonl_loader_rejects_mixed_legacy_fields(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.jsonl"
+            path.write_text(
+                '{"channel":"text","payload":"hello","modality":"text"}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsupported fields: modality"):
+                load_signals_jsonl_v2(path)
 
     def test_first_json_record_skips_blank_lines(self) -> None:
         with TemporaryDirectory() as directory:

@@ -47,10 +47,23 @@ def first_json_record(path: str | Path) -> object:
 def signal_from_record(record: object, *, line_number: int) -> Signal:
     if not isinstance(record, dict):
         raise ValueError(f"Invalid JSONL record at line {line_number}: expected object")
+    extra_fields = set(record.keys()) - {
+        "channel",
+        "payload",
+        "payload_ref",
+        "id",
+        "episode_id",
+        "time_index",
+    }
+    if extra_fields:
+        fields = ", ".join(sorted(extra_fields))
+        raise ValueError(
+            f"Invalid JSONL record at line {line_number}: unsupported fields: {fields}"
+        )
     missing_fields = set()
-    if "payload" not in record and "payload_ref" not in record and "content" not in record:
+    if "payload" not in record and "payload_ref" not in record:
         missing_fields.add("payload")
-    if "channel" not in record and "role" not in record and "modality" not in record:
+    if "channel" not in record:
         missing_fields.add("channel")
     if missing_fields:
         fields = ", ".join(sorted(missing_fields))
@@ -66,12 +79,12 @@ def signal_from_record(record: object, *, line_number: int) -> Signal:
     if "payload_ref" in record:
         payload = payload_ref_from_record(record["payload_ref"], line_number=line_number)
     else:
-        payload = record.get("payload", record.get("content"))
+        payload = record["payload"]
         if not isinstance(payload, str):
             raise ValueError(
                 f"Invalid JSONL record at line {line_number}: field payload must be a string"
             )
-    channel = record.get("channel", record.get("role", record.get("modality")))
+    channel = record["channel"]
     if not isinstance(channel, str):
         raise ValueError(
             f"Invalid JSONL record at line {line_number}: field channel must be a string"
