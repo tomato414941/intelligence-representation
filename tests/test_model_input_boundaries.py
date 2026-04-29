@@ -2,9 +2,10 @@ import unittest
 
 import torch
 
-from intrep.fashion_mnist_vit import ImagePatchAdapter, SharedTransformerCore
+from intrep.fashion_mnist_vit import ImagePatchAdapter
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
 from intrep.model_input import concatenate_input_embedding_sequences
+from intrep.transformer_core import SharedTransformerCore
 
 
 class ModelInputBoundariesTest(unittest.TestCase):

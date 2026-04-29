@@ -12,11 +12,11 @@ from intrep.fashion_mnist_vit import (
     ImageClassificationConfig,
     ImagePatchAdapter,
     PatchTransformerClassifier,
-    SharedTransformerCore,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
     train_fashion_mnist_classifier,
 )
+from intrep.transformer_core import SharedTransformerCore
 
 
 class FashionMNISTViTTest(unittest.TestCase):
