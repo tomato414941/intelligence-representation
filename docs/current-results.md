@@ -45,6 +45,7 @@ Currently supported:
 ```text
 causal text model training utilities
 byte-level and simple byte-pair text tokenization
+Tiny Shakespeare language modeling run with held-out evaluation
 token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
@@ -69,8 +70,21 @@ memory read/write learning
 planning or control
 ```
 
-Next-token loss reduction remains only a smoke signal. It is not evidence that
-a predictive representation system or world model has been learned.
+Tiny Shakespeare was trained as a real text corpus run, not a toy fixture:
+
+```text
+corpus: Tiny Shakespeare
+model: small causal text model
+tokenizer: byte
+train/eval split: 90/10
+steps: 1000
+eval loss: 5.7576 -> 2.3971
+eval perplexity: 316.58 -> 10.99
+```
+
+Next-token loss reduction is evidence for language-model training, but it is
+not evidence by itself that a predictive representation system or world model
+has been learned.
 
 ## Historical Reading
 
