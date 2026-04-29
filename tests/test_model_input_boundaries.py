@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from intrep.fashion_mnist_vit import ImagePatchInputLayer
-from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
+from intrep.gpt_model import CausalTextModel, build_gpt_config
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.transformer_core import SharedTransformerCore
 
@@ -17,7 +17,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
             hidden_dim=16,
             num_layers=1,
         )
-        text_model = DecoderOnlyGPT(
+        text_model = CausalTextModel(
             build_gpt_config(
                 preset="tiny",
                 vocab_size=16,
@@ -78,7 +78,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
             hidden_dim=16,
             num_layers=1,
         )
-        text_model = DecoderOnlyGPT(
+        text_model = CausalTextModel(
             build_gpt_config(
                 preset="tiny",
                 vocab_size=16,

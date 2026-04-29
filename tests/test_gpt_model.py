@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
+from intrep.gpt_model import CausalTextModel, TokenOutputHead, build_gpt_config
 from intrep.transformer_core import SharedTransformerCore
 
 
@@ -62,7 +62,7 @@ class GPTModelConfigTest(unittest.TestCase):
 
     def test_forward_validates_token_ids(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
-        model = DecoderOnlyGPT(config)
+        model = CausalTextModel(config)
 
         with self.assertRaisesRegex(ValueError, "rank-2"):
             model(torch.tensor([1, 2], dtype=torch.long))
@@ -75,7 +75,7 @@ class GPTModelConfigTest(unittest.TestCase):
 
     def test_model_exposes_input_embedding_sequence_path(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
-        model = DecoderOnlyGPT(config)
+        model = CausalTextModel(config)
         token_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
 
         embeddings = model.embed_tokens(token_ids)
@@ -86,13 +86,23 @@ class GPTModelConfigTest(unittest.TestCase):
 
     def test_model_uses_shared_transformer_core(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
-        model = DecoderOnlyGPT(config)
+        model = CausalTextModel(config)
 
         self.assertIsInstance(model.core, SharedTransformerCore)
 
+    def test_model_exposes_token_output_head(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = CausalTextModel(config)
+        hidden = torch.zeros((1, 4, config.embedding_dim), dtype=torch.float32)
+
+        logits = model.token_logits(hidden)
+
+        self.assertIsInstance(model.token_output, TokenOutputHead)
+        self.assertEqual(logits.shape, torch.Size([1, 4, config.vocab_size]))
+
     def test_encode_embeddings_validates_input_embedding_sequence_shape(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
-        model = DecoderOnlyGPT(config)
+        model = CausalTextModel(config)
 
         with self.assertRaisesRegex(ValueError, "shape"):
             model.encode_embeddings(torch.zeros((4, config.embedding_dim)))
@@ -102,6 +112,17 @@ class GPTModelConfigTest(unittest.TestCase):
             model.encode_embeddings(torch.zeros((1, 5, config.embedding_dim)))
         with self.assertRaisesRegex(ValueError, "embedding_dim"):
             model.encode_embeddings(torch.zeros((1, 4, config.embedding_dim + 1)))
+
+    def test_token_logits_validates_hidden_states(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = CausalTextModel(config)
+
+        with self.assertRaisesRegex(ValueError, "shape"):
+            model.token_logits(torch.zeros((4, config.embedding_dim)))
+        with self.assertRaisesRegex(ValueError, "floating point"):
+            model.token_logits(torch.zeros((1, 4, config.embedding_dim), dtype=torch.long))
+        with self.assertRaisesRegex(ValueError, "embedding_dim"):
+            model.token_logits(torch.zeros((1, 4, config.embedding_dim + 1)))
 
 
 if __name__ == "__main__":

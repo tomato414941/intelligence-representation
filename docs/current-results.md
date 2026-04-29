@@ -43,7 +43,7 @@ next-token loss alone.
 Currently supported:
 
 ```text
-decoder-only GPT training utilities
+causal text model training utilities
 byte-level and simple byte-pair text tokenization
 TokenSequence with optional loss masks for text inputs
 Fashion-MNIST image-choice raw examples

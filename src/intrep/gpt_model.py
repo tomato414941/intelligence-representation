@@ -99,7 +99,18 @@ def gpt_config_to_dict(config: GPTConfig) -> dict[str, int | float]:
     }
 
 
-class DecoderOnlyGPT(nn.Module):
+class TokenOutputHead(nn.Module):
+    def __init__(self, *, embedding_dim: int, vocab_size: int) -> None:
+        super().__init__()
+        self.output = nn.Linear(embedding_dim, vocab_size)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3:
+            raise ValueError("hidden states must have shape [batch, sequence, hidden]")
+        return self.output(hidden)
+
+
+class CausalTextModel(nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
         validate_gpt_config(config)
@@ -113,12 +124,15 @@ class DecoderOnlyGPT(nn.Module):
             num_layers=config.num_layers,
             dropout=config.dropout,
         )
-        self.output = nn.Linear(config.embedding_dim, config.vocab_size)
+        self.token_output = TokenOutputHead(
+            embedding_dim=config.embedding_dim,
+            vocab_size=config.vocab_size,
+        )
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
         _validate_token_ids(token_ids, self.config)
         encoded = self.encode_tokens(token_ids)
-        return self.output(encoded)
+        return self.token_logits(encoded)
 
     def embed_tokens(self, token_ids: torch.Tensor) -> torch.Tensor:
         _validate_token_ids(token_ids, self.config)
@@ -132,6 +146,10 @@ class DecoderOnlyGPT(nn.Module):
     def encode_embeddings(self, embeddings: torch.Tensor, *, causal: bool = True) -> torch.Tensor:
         _validate_embeddings(embeddings, self.config)
         return self.core(embeddings, causal=causal)
+
+    def token_logits(self, hidden: torch.Tensor) -> torch.Tensor:
+        _validate_hidden_states(hidden, self.config)
+        return self.token_output(hidden)
 
 
 def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
@@ -160,3 +178,14 @@ def _validate_embeddings(embeddings: torch.Tensor, config: GPTConfig) -> None:
         raise ValueError("embeddings hidden size must match embedding_dim")
     if embeddings.numel() == 0:
         raise ValueError("embeddings must not be empty")
+
+
+def _validate_hidden_states(hidden: torch.Tensor, config: GPTConfig) -> None:
+    if hidden.ndim != 3:
+        raise ValueError("hidden states must have shape [batch, sequence, hidden]")
+    if not torch.is_floating_point(hidden):
+        raise ValueError("hidden states must be floating point")
+    if hidden.size(2) != config.embedding_dim:
+        raise ValueError("hidden states hidden size must match embedding_dim")
+    if hidden.numel() == 0:
+        raise ValueError("hidden states must not be empty")

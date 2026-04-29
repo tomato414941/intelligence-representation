@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.gpt_model import DecoderOnlyGPT, GPTConfig
+from intrep.gpt_model import CausalTextModel, GPTConfig
 from intrep.gpt_training import (
     GPTTrainingArtifacts,
     GPTTrainingConfig,
@@ -58,8 +58,8 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertIn("window_count=", logs.output[0])
         self.assertIn("dropped_window_count=", logs.output[0])
 
-    def test_decoder_only_gpt_forward_returns_token_logits(self) -> None:
-        model = DecoderOnlyGPT(
+    def test_causal_text_model_forward_returns_token_logits(self) -> None:
+        model = CausalTextModel(
             GPTConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
@@ -243,7 +243,7 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertIsInstance(artifacts, GPTTrainingArtifacts)
         self.assertIsInstance(artifacts.result.steps, int)
         self.assertEqual(artifacts.result.steps, 2)
-        self.assertIsInstance(artifacts.model, DecoderOnlyGPT)
+        self.assertIsInstance(artifacts.model, CausalTextModel)
         self.assertIsInstance(artifacts.tokenizer, ByteTokenizer)
 
         token_ids = artifacts.tokenizer.encode("red blue")[:8]

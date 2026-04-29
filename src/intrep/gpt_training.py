@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
+from intrep.gpt_model import CausalTextModel, GPTConfig, gpt_config_to_dict
 from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
 from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
@@ -88,7 +88,7 @@ class GPTTrainingResult:
 @dataclass(frozen=True)
 class GPTTrainingArtifacts:
     result: GPTTrainingResult
-    model: DecoderOnlyGPT
+    model: CausalTextModel
     tokenizer: object
 
 
@@ -157,7 +157,7 @@ def _train_text_corpus_gpt_with_artifacts(
         raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
     if gpt_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = DecoderOnlyGPT(gpt_config).to(device)
+    model = CausalTextModel(gpt_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
@@ -227,7 +227,7 @@ def resolve_training_device(requested_device: GPTTrainingDevice) -> torch.device
 def save_gpt_checkpoint(
     *,
     path: Path,
-    model: DecoderOnlyGPT,
+    model: CausalTextModel,
     model_config: GPTConfig,
     training_config: GPTTrainingConfig,
     result: GPTTrainingResult,
@@ -250,7 +250,7 @@ def save_gpt_checkpoint(
 
 
 def _evaluate_loss(
-    model: DecoderOnlyGPT,
+    model: CausalTextModel,
     loss_fn: nn.CrossEntropyLoss,
     inputs: torch.Tensor | None,
     targets: torch.Tensor | None,
