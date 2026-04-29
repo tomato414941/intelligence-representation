@@ -235,7 +235,6 @@ It shows:
 rule baselines are brittle
 frequency predictors memorize seen transitions
 state-aware predictors can fix specific held-out symbolic cases
-sequence-feature and tiny Transformer baselines expose current generalization limits
 prediction-error update can make one unsupported case predictable
 ```
 

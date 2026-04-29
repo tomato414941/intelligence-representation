@@ -46,7 +46,9 @@ tokenize, then `TokenSequence` training. The old Signal JSONL path has been
 retired from `src/intrep`; the reserved `Signal` class remains only to block
 accidental reuse of that abstraction.
 
-The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
+The old benchmark still compares rule, frequency, and state-aware predictors
+over symbolic world-model examples. It remains useful as a regression and
+contrast, but it is no longer the main project path.
 
 ## Project Map
 
@@ -75,11 +77,6 @@ src/intrep/dataset.py
 src/intrep/environment.py
 src/intrep/predictors.py
 src/intrep/evaluation.py
-src/intrep/tokens.py
-src/intrep/sequence.py
-src/intrep/sequence_predictor.py
-src/intrep/torch_sequence.py
-src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
 src/intrep/text_tokenizer.py
 src/intrep/token_sequence.py

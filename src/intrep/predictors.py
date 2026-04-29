@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 
 from intrep.dataset import ActionConditionedExample
-from intrep.sequence import sequences_from_examples
-from intrep.tokens import fact_from_token, model_input_tokens
 from intrep.types import Action, Fact, Predictor
 
 
@@ -72,23 +70,6 @@ class StateAwarePredictor:
             return Fact(subject=action.object, predicate="located_at", object=action.target)
 
         return None
-
-
-class TransformerReadyPredictor:
-    def __init__(self) -> None:
-        self._targets_by_input: dict[tuple[str, ...], str] = {}
-
-    def fit(self, examples: list[ActionConditionedExample]) -> None:
-        self._targets_by_input = {
-            tuple(example.input_tokens): example.target_token
-            for example in sequences_from_examples(examples)
-        }
-
-    def predict(self, state: list[Fact], action: Action) -> Fact | None:
-        target = self._targets_by_input.get(tuple(model_input_tokens(state, action)))
-        if target is None:
-            return None
-        return fact_from_token(target)
 
 
 def _action_key(action: Action) -> tuple[str, str, str]:
