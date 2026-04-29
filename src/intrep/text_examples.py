@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class RawTextExample:
+class LanguageModelingExample:
     text: str
 
     def __post_init__(self) -> None:
@@ -12,7 +12,9 @@ class RawTextExample:
             raise ValueError("text must not be empty")
 
 
-def text_corpus_from_examples(examples: list[RawTextExample] | tuple[RawTextExample, ...]) -> str:
+def language_modeling_corpus_from_examples(
+    examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
+) -> str:
     if not examples:
         raise ValueError("examples must not be empty")
     return "\n".join(example.text for example in examples)

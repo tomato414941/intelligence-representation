@@ -10,7 +10,7 @@ from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
-from intrep.text_examples import RawTextExample, text_corpus_from_examples
+from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
 from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
 GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
@@ -92,18 +92,18 @@ class GPTTrainingArtifacts:
     tokenizer: object
 
 
-def train_raw_text_gpt_with_artifacts(
+def train_language_modeling_gpt_with_artifacts(
     *,
-    train_examples: list[RawTextExample] | tuple[RawTextExample, ...],
+    train_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
     training_config: GPTTrainingConfig | None = None,
     model_config: GPTConfig | None = None,
-    eval_examples: list[RawTextExample] | tuple[RawTextExample, ...] | None = None,
+    eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
 ) -> GPTTrainingArtifacts:
     return train_rendered_gpt_with_artifacts(
-        corpus=text_corpus_from_examples(train_examples),
+        corpus=language_modeling_corpus_from_examples(train_examples),
         training_config=training_config,
         model_config=model_config,
-        eval_corpus=text_corpus_from_examples(eval_examples) if eval_examples is not None else None,
+        eval_corpus=language_modeling_corpus_from_examples(eval_examples) if eval_examples is not None else None,
     )
 
 

@@ -11,10 +11,10 @@ from intrep.gpt_training import (
     GPTTrainingConfig,
     language_model_batches,
     resolve_training_device,
-    train_raw_text_gpt_with_artifacts,
+    train_language_modeling_gpt_with_artifacts,
     train_rendered_gpt_with_artifacts,
 )
-from intrep.text_examples import RawTextExample
+from intrep.text_examples import LanguageModelingExample
 
 
 class GPTTrainingTest(unittest.TestCase):
@@ -118,13 +118,13 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertTrue(result.warnings)
         self.assertEqual(result.device, "cpu")
 
-    def test_training_runs_on_raw_text_examples(self) -> None:
-        artifacts = train_raw_text_gpt_with_artifacts(
+    def test_training_runs_on_language_modeling_examples(self) -> None:
+        artifacts = train_language_modeling_gpt_with_artifacts(
             train_examples=(
-                RawTextExample("alpha beta gamma alpha beta gamma"),
-                RawTextExample("alpha beta gamma alpha beta gamma"),
+                LanguageModelingExample("alpha beta gamma alpha beta gamma"),
+                LanguageModelingExample("alpha beta gamma alpha beta gamma"),
             ),
-            eval_examples=(RawTextExample("delta epsilon zeta delta epsilon zeta"),),
+            eval_examples=(LanguageModelingExample("delta epsilon zeta delta epsilon zeta"),),
             training_config=GPTTrainingConfig(
                 context_length=8,
                 batch_size=2,
