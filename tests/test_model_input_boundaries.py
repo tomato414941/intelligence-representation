@@ -104,6 +104,33 @@ class ModelInputBoundariesTest(unittest.TestCase):
         self.assertTrue(torch.allclose(combined[:, :4, :], image_embeddings))
         self.assertTrue(torch.allclose(combined[:, 4:, :], text_embeddings))
 
+    def test_image_and_text_embeddings_can_produce_token_logits(self) -> None:
+        embedding_dim = 8
+        vocab_size = 16
+        text_model = CausalTextModel(
+            build_gpt_config(
+                preset="tiny",
+                vocab_size=vocab_size,
+                context_length=8,
+                embedding_dim=embedding_dim,
+            )
+        )
+        image_input = ImagePatchInputLayer(
+            image_size=(4, 4),
+            patch_size=2,
+            embedding_dim=embedding_dim,
+        )
+
+        image_embeddings = image_input(torch.zeros((1, 4, 4), dtype=torch.float32))
+        prompt_embeddings = text_model.embed_tokens(torch.tensor([[1, 2]], dtype=torch.long))
+        combined = concatenate_input_embedding_sequences(image_embeddings, prompt_embeddings)
+        hidden = text_model.encode_embeddings(combined, causal=True)
+        logits = text_model.token_logits(hidden)
+
+        self.assertEqual(combined.shape, torch.Size([1, 6, embedding_dim]))
+        self.assertEqual(hidden.shape, torch.Size([1, 6, embedding_dim]))
+        self.assertEqual(logits.shape, torch.Size([1, 6, vocab_size]))
+
     def test_concatenate_input_embedding_sequences_validates_boundaries(self) -> None:
         embeddings = torch.zeros((1, 2, 8), dtype=torch.float32)
 
