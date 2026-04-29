@@ -1,9 +1,13 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.text_tokenizer import (
     BytePairTokenizer,
     build_text_tokenizer,
+    load_text_tokenizer,
+    save_text_tokenizer,
     text_tokenizer_from_payload,
     text_tokenizer_to_payload,
     train_byte_pair_tokenizer,
@@ -55,6 +59,17 @@ class TextTokenizerTest(unittest.TestCase):
         self.assertIsInstance(restored, BytePairTokenizer)
         self.assertEqual(restored.encode("hello hello"), original.encode("hello hello"))
         self.assertEqual(restored.decode(restored.encode("hello hello")), "hello hello")
+
+    def test_saves_and_loads_text_tokenizer_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "tokenizer.json"
+            original = train_byte_pair_tokenizer("hello hello", vocab_size=265)
+
+            save_text_tokenizer(path, original)
+            restored = load_text_tokenizer(path)
+
+        self.assertIsInstance(restored, BytePairTokenizer)
+        self.assertEqual(restored.encode("hello hello"), original.encode("hello hello"))
 
 
 if __name__ == "__main__":

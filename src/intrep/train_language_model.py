@@ -13,7 +13,7 @@ from intrep.language_modeling_training import (
     train_language_modeling_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import TextTokenizerKind
+from intrep.text_tokenizer import TextTokenizerKind, load_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
     parser.add_argument("--tokenizer", choices=("byte", "byte-pair"), default="byte")
+    parser.add_argument("--tokenizer-path", type=Path)
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
     parser.add_argument("--eval-batch-limit", type=int, default=64)
@@ -58,15 +59,21 @@ def main(argv: list[str] | None = None) -> None:
         tokenizer_min_pair_count=args.tokenizer_min_pair_count,
         eval_batch_limit=args.eval_batch_limit,
     )
+    tokenizer = load_text_tokenizer(args.tokenizer_path) if args.tokenizer_path is not None else None
+    vocab_size = tokenizer.vocab_size if tokenizer is not None else _vocab_size(
+        args.tokenizer,
+        args.tokenizer_vocab_size,
+    )
     artifacts = train_language_modeling_with_artifacts(
         train_examples=(LanguageModelingExample(train_text),),
         eval_examples=(LanguageModelingExample(eval_text),),
         training_config=training_config,
         model_config=build_causal_text_config(
             preset=args.model_preset,
-            vocab_size=_vocab_size(args.tokenizer, args.tokenizer_vocab_size),
+            vocab_size=vocab_size,
             context_length=args.context_length,
         ),
+        tokenizer_override=tokenizer,
     )
     payload = {
         "schema_version": "intrep.language_model_run.v1",

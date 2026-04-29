@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_language_model
+from intrep.text_tokenizer import save_text_tokenizer, train_byte_pair_tokenizer
 
 
 class TrainLanguageModelCLITest(unittest.TestCase):
@@ -87,6 +88,40 @@ class TrainLanguageModelCLITest(unittest.TestCase):
         self.assertEqual(train_text.count("b"), 8)
         self.assertEqual(eval_text.count("a"), 2)
         self.assertEqual(eval_text.count("b"), 2)
+
+    def test_trains_with_saved_tokenizer(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            corpus_path = root / "corpus.txt"
+            tokenizer_path = root / "tokenizer.json"
+            metrics_path = root / "metrics.json"
+            corpus_path.write_text("red green blue red green blue\n" * 20, encoding="utf-8")
+            tokenizer = train_byte_pair_tokenizer(corpus_path.read_text(encoding="utf-8"), vocab_size=260)
+            save_text_tokenizer(tokenizer_path, tokenizer)
+
+            train_language_model.main(
+                [
+                    "--corpus-path",
+                    str(corpus_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--tokenizer-path",
+                    str(tokenizer_path),
+                    "--context-length",
+                    "8",
+                    "--batch-size",
+                    "2",
+                    "--max-steps",
+                    "1",
+                    "--device",
+                    "cpu",
+                ]
+            )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["training_config"]["tokenizer"], "byte")
+        self.assertGreater(payload["result"]["token_count"], 0)
 
     def test_split_text_corpus_rejects_empty_text(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):

@@ -16,6 +16,7 @@ from intrep.language_modeling_training import (
     _train_text_corpus_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
+from intrep.text_tokenizer import train_byte_pair_tokenizer
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):
@@ -303,6 +304,31 @@ class LanguageModelingTrainingTest(unittest.TestCase):
             logits = artifacts.model(inputs)
 
         self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
+
+    def test_training_can_reuse_pretrained_tokenizer(self) -> None:
+        tokenizer = train_byte_pair_tokenizer("red green blue red green blue", vocab_size=260)
+
+        artifacts = _train_text_corpus_with_artifacts(
+            corpus="red green blue red green blue red green blue",
+            training_config=LanguageModelingTrainingConfig(
+                context_length=8,
+                batch_size=2,
+                max_steps=1,
+                learning_rate=0.005,
+                seed=17,
+            ),
+            model_config=CausalTextConfig(
+                vocab_size=260,
+                context_length=8,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            ),
+            tokenizer_override=tokenizer,
+        )
+
+        self.assertIs(artifacts.tokenizer, tokenizer)
+        self.assertGreater(artifacts.result.token_count, 0)
 
     def test_training_can_continue_from_initial_model(self) -> None:
         initial_model = CausalTextModel(

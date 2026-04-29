@@ -139,6 +139,7 @@ def train_language_modeling_with_artifacts(
     model_config: CausalTextConfig | None = None,
     initial_model: CausalTextModel | None = None,
     eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
+    tokenizer_override: TextTokenizer | None = None,
 ) -> LanguageModelingTrainingArtifacts:
     return _train_text_corpus_with_artifacts(
         corpus=language_modeling_corpus_from_examples(train_examples),
@@ -146,6 +147,7 @@ def train_language_modeling_with_artifacts(
         model_config=model_config,
         initial_model=initial_model,
         eval_corpus=language_modeling_corpus_from_examples(eval_examples) if eval_examples is not None else None,
+        tokenizer_override=tokenizer_override,
     )
 
 
@@ -156,6 +158,7 @@ def _train_text_corpus_with_artifacts(
     model_config: CausalTextConfig | None = None,
     initial_model: CausalTextModel | None = None,
     eval_corpus: str | None = None,
+    tokenizer_override: TextTokenizer | None = None,
 ) -> LanguageModelingTrainingArtifacts:
     config = training_config or LanguageModelingTrainingConfig()
     _validate_training_config(config)
@@ -163,7 +166,7 @@ def _train_text_corpus_with_artifacts(
     device = resolve_training_device(config.device)
     if not corpus:
         raise ValueError("corpus must not be empty")
-    tokenizer = build_text_tokenizer(
+    tokenizer = tokenizer_override or build_text_tokenizer(
         corpus,
         kind=config.tokenizer,
         vocab_size=config.tokenizer_vocab_size,

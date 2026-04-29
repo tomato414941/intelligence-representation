@@ -140,6 +140,20 @@ train tokens: 268211
 eval loss: 6.4252 -> 5.1240
 ```
 
+Text tokenizers can now be trained and saved separately from language-model
+training. The language-model CLI can reuse a saved tokenizer, avoiding repeated
+BPE fitting during experiment runs:
+
+```text
+tokenizer: saved byte-level BPE, vocab 512
+corpora: Tiny Shakespeare sample, WikiText-2 sample, TinyStories sample
+sample size: about 200KB per corpus
+model: small causal text model
+steps: 100
+train tokens: 267036
+eval loss: 6.4150 -> 5.1430
+```
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.

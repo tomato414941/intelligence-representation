@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+import json
+from pathlib import Path
 from typing import Literal, Protocol
 
 from intrep.byte_tokenizer import ByteTokenizer
@@ -103,6 +105,25 @@ def text_tokenizer_from_payload(payload: dict[str, object] | None) -> TextTokeni
             configured_vocab_size=int(payload["vocab_size"]),
         )
     raise ValueError("unsupported tokenizer kind")
+
+
+def save_text_tokenizer(path: Path, tokenizer: TextTokenizer) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": "intrep.text_tokenizer.v1",
+        "tokenizer": text_tokenizer_to_payload(tokenizer),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def load_text_tokenizer(path: Path) -> TextTokenizer:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema_version") != "intrep.text_tokenizer.v1":
+        raise ValueError("unsupported text tokenizer schema version")
+    tokenizer_payload = payload.get("tokenizer")
+    if not isinstance(tokenizer_payload, dict):
+        raise ValueError("text tokenizer payload requires tokenizer")
+    return text_tokenizer_from_payload(tokenizer_payload)
 
 
 def train_byte_pair_tokenizer(
