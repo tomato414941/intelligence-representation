@@ -2,26 +2,27 @@
 
 ## Purpose
 
-This note is a concept review for `Signal`, `channel`, and `symbol`.
-It is not an implementation plan and does not define a fixed ontology.
+This note is a concept review for signal, channel, and symbol.
+Here, "signal" means the abstract learning object, not the retired `Signal`
+class. This is not an implementation plan and does not define a fixed ontology.
 
 The current goal is to clarify what an intelligence handles before deciding
-which channels should exist in code.
+whether any channel-like boundary should exist in code.
 
 Current review status:
 
 ```text
-Signal:
-  keep as the minimal channel / payload envelope
+signal:
+  use as an abstract name for bounded appearances handled by intelligence
 
 channel:
-  treat as a practical boundary, not ontology
+  treat as a practical tokenizer / encoder / evaluator boundary, not ontology
 
 text:
   keep as the reference success case
 
 observation:
-  keep under review; close to input-side Signal itself
+  keep under review; close to input-side signal itself
 
 action:
   keep as a strong channel candidate; covers intervention-like signals
@@ -80,31 +81,6 @@ This list is intentionally broader than the current channel list. Some items
 may become channels, some may become tasks or datasets, and some may remain
 implicit in learned representations.
 
-## PayloadRef
-
-`PayloadRef` is a dataset-layer reference for non-text signals. It is not a
-claim that images, audio, or video are outside the learning target. It is the
-opposite: it gives those signals a reproducible corpus representation without
-putting raw bytes, decoded media objects, or tensors directly inside `Signal`.
-
-Current status:
-
-```text
-text / code / structured JSON / action:
-  enter the current byte-tokenizer path as text payloads
-
-image / audio / video and other non-text signals:
-  may enter Signal JSONL as payload_ref
-  can become training targets or conditioning inputs
-  require channel-specific loaders / encoders before training
-
-current byte-tokenizer training / ranking:
-  rejects payload_ref explicitly because it has no media loader / encoder yet
-```
-
-Therefore `payload_ref` means "not trainable by the current text-only path",
-not "not a learning target".
-
 ## Intelligence And Its Objects
 
 An intelligence does not directly handle the world-as-such.
@@ -114,7 +90,7 @@ action, tools, memory, and prediction.
 ```text
 world / object / situation
   -> structured appearance
-  -> Signal
+  -> raw example or signal-like data
   -> tokenization / encoding
   -> model
   -> prediction / generation / action
@@ -126,12 +102,12 @@ tool outputs, or memory-like records.
 
 ## Signal As Projection
 
-`Signal` is not the object itself.
-It is a bounded projection of something an intelligence can receive, predict,
+An abstract signal is not the object itself. It is a bounded projection of
+something an intelligence can receive, predict,
 generate, remember, or act upon.
 
 ```text
-Signal = bounded structured appearance handled by intelligence
+signal = bounded structured appearance handled by intelligence
 ```
 
 Examples:
@@ -143,7 +119,7 @@ apple as spoken word -> audio-like signal
 apple as object to pick up -> action-related signal
 ```
 
-This means `Signal` is not input-only.
+This means a signal is not input-only.
 A signal can be an input, an output, a prediction target, an imagined future,
 or a remembered past. Human bodies constrain what humans can output directly,
 but models and tool-using systems can output many signal forms through decoders
@@ -247,13 +223,13 @@ They should not automatically become channels.
 ## Observation Is Under Review
 
 `observation` is the most problematic current channel candidate because it is
-close to Signal itself.
+close to signal itself.
 
-If `Signal` is a bounded appearance handled by intelligence, then an input-side
+If a signal is a bounded appearance handled by intelligence, then an input-side
 signal is already close to an observation.
 
 ```text
-input Signal nearly = observation
+input signal nearly = observation
 ```
 
 This makes `channel="observation"` conceptually different from channels such as
@@ -292,21 +268,21 @@ usually modeling that input as an explicit `Observation` object.
 One possible distinction is:
 
 ```text
-Signal:
+signal:
   any bounded structured appearance handled by intelligence
 
 Observation:
-  a Signal as received by an intelligence
+  a signal as received by an intelligence
 ```
 
 Under this distinction, `observation` is not a signal form. It is closer to a
 relation or direction:
 
 ```text
-input / received Signal -> observation
-output / generated Signal -> expression or action
-predicted Signal -> prediction target
-remembered Signal -> memory-like reuse
+input / received signal -> observation
+output / generated signal -> expression or action
+predicted signal -> prediction target
+remembered signal -> memory-like reuse
 ```
 
 This does not mean the implementation should immediately add a `relation`
@@ -317,8 +293,8 @@ channel as signal form / tokenizer route
 channel as relation to intelligence
 ```
 
-The current implementation may keep `observation` as an experimental label, but
-the concept should remain under review.
+An implementation should add `observation` only when a tokenizer, adapter,
+dataset, or evaluator actually needs that boundary.
 
 ## Action Is A Strong Candidate
 
@@ -366,7 +342,7 @@ action as signal:
   learnable, predictable, generatable, and evaluable
 
 Action as project abstraction:
-  an explicit channel, class, or schema
+  an explicit boundary, class, or schema
   optional, but harder to replace than Observation
 ```
 
@@ -384,20 +360,20 @@ action:
 
 A text payload can describe an action, command an action, or become an action
 when the surrounding system treats it as something to execute. For this reason,
-`action` should remain in the channel review as a strong candidate, even though
+`action` should remain in the boundary review as a strong candidate, even though
 it is not a sensory signal form like `text`, `image`, `audio`, or `video`.
 
-For now, `action` remains a stronger channel candidate than `observation`,
+For now, `action` remains a stronger boundary candidate than `observation`,
 because action-conditioned prediction and action generation require a stable
 boundary for intervention-like signals.
 
-## Current Channel Review Notes
+## Boundary Review Notes
 
-The channel list should be reviewed against the things the project wants to
-handle. A channel should exist only when it is useful for tokenization,
-encoding, generation, evaluation, or dataset construction.
+Any channel-like boundary should be reviewed against the things the project
+wants to handle. A boundary should exist only when it is useful for
+tokenization, encoding, generation, evaluation, or dataset construction.
 
-The current channel list mixes several axes:
+Older sketches mixed several axes:
 
 ```text
 text
