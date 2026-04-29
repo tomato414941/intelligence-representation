@@ -7,6 +7,7 @@ import torch
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, CausalTextConfig
 from intrep.language_modeling_training import (
+    LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,
     LanguageModelingTrainingConfig,
     language_model_batches,
@@ -18,6 +19,23 @@ from intrep.text_examples import LanguageModelingExample
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):
+    def test_language_modeling_dataset_returns_shifted_windows(self) -> None:
+        dataset = LanguageModelingDataset(list(range(12)), context_length=4, batch_stride=2)
+
+        inputs, targets = dataset[1]
+
+        self.assertEqual(len(dataset), 4)
+        self.assertEqual(inputs.tolist(), [2, 3, 4, 5])
+        self.assertEqual(targets.tolist(), [3, 4, 5, 6])
+
+    def test_language_modeling_dataset_validates_dimensions(self) -> None:
+        with self.assertRaisesRegex(ValueError, "context_length must be positive"):
+            LanguageModelingDataset([1, 2, 3], context_length=0)
+        with self.assertRaisesRegex(ValueError, "token_ids must be longer than context_length"):
+            LanguageModelingDataset([1, 2, 3], context_length=3)
+        with self.assertRaisesRegex(ValueError, "batch_stride must be positive"):
+            LanguageModelingDataset([1, 2, 3], context_length=1, batch_stride=0)
+
     def test_language_model_batches_shift_targets_by_one_token(self) -> None:
         token_ids = list(range(20))
 

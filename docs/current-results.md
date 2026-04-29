@@ -115,6 +115,31 @@ This is an integration check, not a quality result. Larger mixed text runs
 exposed that the current eager window materialization and naive byte-pair
 training are too slow for larger corpora on CPU.
 
+The text language-model training loop now uses a PyTorch `Dataset` and
+`DataLoader` for token windows instead of materializing every window into a
+large eager tensor before training. This keeps the public behavior the same
+while making larger corpus runs practical:
+
+```text
+corpora: Tiny Shakespeare sample, WikiText-2 sample, TinyStories sample
+sample size: about 200KB per corpus
+model: small causal text model
+tokenizer: byte
+steps: 100
+train tokens: 540044
+eval loss: 5.7667 -> 2.7941
+```
+
+```text
+corpora: Tiny Shakespeare sample, WikiText-2 sample, TinyStories sample
+sample size: about 200KB per corpus
+model: small causal text model
+tokenizer: byte-level BPE, vocab 512
+steps: 100
+train tokens: 268211
+eval loss: 6.4252 -> 5.1240
+```
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.

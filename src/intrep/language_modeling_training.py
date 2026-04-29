@@ -7,6 +7,7 @@ from typing import Literal
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
@@ -98,6 +99,39 @@ class LanguageModelingTrainingArtifacts:
     tokenizer: TextTokenizer
 
 
+class LanguageModelingDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(
+        self,
+        token_ids: list[int],
+        *,
+        context_length: int,
+        batch_stride: int | None = None,
+    ) -> None:
+        if context_length <= 0:
+            raise ValueError("context_length must be positive")
+        if len(token_ids) <= context_length:
+            raise ValueError("token_ids must be longer than context_length")
+        stride = batch_stride if batch_stride is not None else context_length
+        if stride <= 0:
+            raise ValueError("batch_stride must be positive")
+        self._token_ids = torch.tensor(token_ids, dtype=torch.long)
+        self.context_length = context_length
+        self.stride = stride
+        self.window_count = ((len(token_ids) - context_length - 1) // stride) + 1
+        if self.window_count <= 0:
+            raise ValueError("not enough tokens to build language-model batches")
+
+    def __len__(self) -> int:
+        return self.window_count
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        if index < 0 or index >= self.window_count:
+            raise IndexError(index)
+        start = index * self.stride
+        window = self._token_ids[start : start + self.context_length + 1]
+        return window[:-1], window[1:]
+
+
 def train_language_modeling_with_artifacts(
     *,
     train_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
@@ -136,28 +170,39 @@ def _train_text_corpus_with_artifacts(
         min_pair_count=config.tokenizer_min_pair_count,
     )
     token_ids = tokenizer.encode(corpus)
-    inputs, targets = language_model_batches(
+    train_dataset = LanguageModelingDataset(
         token_ids=token_ids,
         context_length=config.context_length,
-        batch_size=config.batch_size,
         batch_stride=config.batch_stride,
     )
-    inputs = inputs.to(device)
-    targets = targets.to(device)
-    eval_inputs: torch.Tensor | None = None
-    eval_targets: torch.Tensor | None = None
+    train_loader = _language_model_data_loader(
+        train_dataset,
+        batch_size=config.batch_size,
+        seed=config.seed,
+        shuffle=True,
+    )
+    train_eval_loader = _language_model_data_loader(
+        train_dataset,
+        batch_size=config.batch_size,
+        seed=config.seed,
+        shuffle=False,
+    )
+    eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
     if eval_corpus is not None:
         if not eval_corpus:
             raise ValueError("eval_corpus must not be empty")
         eval_token_ids = tokenizer.encode(eval_corpus)
-        eval_inputs, eval_targets = language_model_batches(
+        eval_dataset = LanguageModelingDataset(
             token_ids=eval_token_ids,
             context_length=config.context_length,
-            batch_size=config.batch_size,
             batch_stride=config.batch_stride,
         )
-        eval_inputs = eval_inputs.to(device)
-        eval_targets = eval_targets.to(device)
+        eval_loader = _language_model_data_loader(
+            eval_dataset,
+            batch_size=config.batch_size,
+            seed=config.seed,
+            shuffle=False,
+        )
     if initial_model is not None and model_config is not None:
         _validate_initial_model_config(initial_model, model_config)
     if initial_model is not None:
@@ -184,23 +229,28 @@ def _train_text_corpus_with_artifacts(
     initial_train_loss = _evaluate_loss(
         model,
         loss_fn,
-        inputs,
-        targets,
+        train_eval_loader,
+        device,
         batch_limit=config.eval_batch_limit,
     )
     initial_eval_loss = _evaluate_loss(
         model,
         loss_fn,
-        eval_inputs,
-        eval_targets,
+        eval_loader,
+        device,
         batch_limit=config.eval_batch_limit,
     )
 
     model.train()
+    train_iterator = iter(train_loader)
     for step in range(config.max_steps):
-        batch_index = step % inputs.size(0)
-        batch_inputs = inputs[batch_index]
-        batch_targets = targets[batch_index]
+        try:
+            batch_inputs, batch_targets = next(train_iterator)
+        except StopIteration:
+            train_iterator = iter(train_loader)
+            batch_inputs, batch_targets = next(train_iterator)
+        batch_inputs = batch_inputs.to(device)
+        batch_targets = batch_targets.to(device)
         optimizer.zero_grad()
         logits = model(batch_inputs)
         loss = loss_fn(logits.reshape(-1, logits.size(-1)), batch_targets.reshape(-1))
@@ -214,15 +264,15 @@ def _train_text_corpus_with_artifacts(
     final_train_loss = _evaluate_loss(
         model,
         loss_fn,
-        inputs,
-        targets,
+        train_eval_loader,
+        device,
         batch_limit=config.eval_batch_limit,
     )
     final_eval_loss = _evaluate_loss(
         model,
         loss_fn,
-        eval_inputs,
-        eval_targets,
+        eval_loader,
+        device,
         batch_limit=config.eval_batch_limit,
     )
     generalization_eval = eval_corpus is not None
@@ -297,30 +347,50 @@ def save_causal_text_checkpoint(
 def _evaluate_loss(
     model: CausalTextModel,
     loss_fn: nn.CrossEntropyLoss,
-    inputs: torch.Tensor | None,
-    targets: torch.Tensor | None,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None,
+    device: torch.device,
     *,
     batch_limit: int | None = None,
 ) -> float | None:
-    if inputs is None or targets is None:
+    if data_loader is None:
         return None
 
     was_training = model.training
     model.eval()
     total_loss = 0.0
-    batch_count = inputs.size(0) if batch_limit is None else min(inputs.size(0), batch_limit)
+    batch_count = 0
     with torch.no_grad():
-        for batch_inputs, batch_targets in zip(
-            inputs[:batch_count],
-            targets[:batch_count],
-            strict=True,
-        ):
+        for batch_inputs, batch_targets in data_loader:
+            if batch_limit is not None and batch_count >= batch_limit:
+                break
+            batch_inputs = batch_inputs.to(device)
+            batch_targets = batch_targets.to(device)
             logits = model(batch_inputs)
             loss = loss_fn(logits.reshape(-1, logits.size(-1)), batch_targets.reshape(-1))
             total_loss += float(loss.item())
+            batch_count += 1
     if was_training:
         model.train()
     return total_loss / batch_count
+
+
+def _language_model_data_loader(
+    dataset: LanguageModelingDataset,
+    *,
+    batch_size: int,
+    seed: int,
+    shuffle: bool,
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        generator=generator,
+    )
 
 
 def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
