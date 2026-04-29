@@ -266,43 +266,21 @@ The first image-signal smoke path is now wired end to end:
 Fashion-MNIST IDX
   -> local PGM files
   -> image Signal payload_ref
-  -> patch-token rendering
-  -> decoder-only GPT
-  -> image-to-label future prediction ranking
+  -> image patch embedding
+  -> Transformer encoder
+  -> classification head
 ```
 
 The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
 future-prediction CLI remains focused on text-rendered Signal streams.
-`evaluate_fashion_mnist` supports `--image-token-format flat|grid`; `grid`
-adds explicit row/column patch markers as a minimal step toward
-patch-plus-position image rendering.
+It now uses the normal image path: patchify, learned patch embedding, learned
+position embedding, Transformer encoder, and a classification head. The older
+`image-tokens` text rendering remains available only as a legacy Signal/GPT
+experiment; it is no longer the Fashion-MNIST mainline.
 
-Future-prediction ranking now batches continuation scoring for the default
-torch scorer. On the Fashion-MNIST train20/eval20 smoke, `max_negatives = 3`
-completes in a few seconds on CPU, making flat/grid comparisons practical.
-
-The future-prediction and Fashion-MNIST evaluation path now trains from rendered
-Signal streams directly. `MixedDocument` remains available for legacy corpora
-and older demos, but it is no longer on this main evaluation path.
-
-Initial CPU smoke result with `patch_size = 4`, `channel_bins = 4`,
-`model_preset = tiny`, `train_cases = 20`, `max_steps = 100`, and
-`max_negatives = 3`:
-
-```text
-train split:
-  before_top1_accuracy = 0.1500
-  after_top1_accuracy = 0.3500
-  delta_top1_accuracy = 0.2000
-  before_margin = -0.0505
-  after_margin = -0.3269
-```
-
-This is a weak train-split memorization signal, not evidence of image
-generalization. A held-out 100/20 smoke with the same tiny setup worsened
-top-1 accuracy from `0.2500` to `0.1000`. The current ranking implementation is
-also slow unless `max_negatives` is used, so broader Fashion-MNIST runs should
-first improve evaluation throughput or use smaller diagnostic subsets.
+The future-prediction evaluation path trains from rendered Signal streams
+directly. `MixedDocument` remains available for legacy corpora and older demos,
+but it is no longer on this main evaluation path.
 
 The immediate experimental question is:
 

@@ -131,17 +131,17 @@ uv run python -m intrep.fashion_mnist_signal_corpus \
   --limit 1000
 ```
 
-The current image path renders local `file://` image payload refs through the
-simple patch tokenizer before byte-level GPT training or ranking:
+The current image path keeps image handling separate from the text tokenizer:
+local `file://` image payload refs are loaded as grayscale tensors, patchified,
+embedded, passed through a Transformer encoder, and evaluated with a
+classification head:
 
 ```sh
 uv run python -m intrep.evaluate_fashion_mnist \
   --train-path fashion-train.signals.jsonl \
   --eval-path fashion-eval.signals.jsonl \
   --image-patch-size 4 \
-  --image-channel-bins 4 \
-  --image-token-format grid \
-  --max-negatives 3
+  --max-steps 100
 ```
 
 The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
