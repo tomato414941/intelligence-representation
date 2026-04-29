@@ -43,49 +43,29 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["config"]["training"]["device"], "cpu")
         self.assertEqual(payload["config"]["model"]["embedding_dim"], 8)
         self.assertEqual(payload["metrics"]["language_modeling"]["final_eval_perplexity"], 12.0)
-        self.assertEqual(payload["metrics"]["training_loss"]["final_step_loss"], 2.0)
-        self.assertEqual(payload["metrics"]["training_loss"]["best_step_loss"], 1.75)
-        self.assertNotIn("symbolic_to_natural", payload["metrics"])
-
-    def test_normalizes_current_experiment_json(self) -> None:
-        payload = normalize_existing_json(
-            {
-                "corpus": {"label": "train", "eval_label": "eval"},
-                "training_config": {"max_steps": 2},
-                "model_config": {"embedding_dim": 8},
-                "training_loss": {"final_loss": 2.0},
-                "language_modeling": {"final_eval_perplexity": 10.0},
-                "next_observation": {"status": "skipped"},
-            },
-            source_path="summary.json",
-        )
-
-        self.assertEqual(payload["kind"], "current_experiment")
-        self.assertEqual(payload["source"]["path"], "summary.json")
         self.assertEqual(payload["metrics"]["training_loss"]["final_loss"], 2.0)
+        self.assertEqual(payload["metrics"]["training_loss"]["best_loss"], 1.75)
         self.assertNotIn("symbolic_to_natural", payload["metrics"])
 
-    def test_normalizes_loss_history_json_with_language_metrics(self) -> None:
-        payload = normalize_existing_json(
-            {
-                "steps": 3,
-                "batch_stride": None,
-                "loss_history": [4.0, 3.0, 2.0],
-                "initial_loss": 4.0,
-                "final_loss": 2.0,
-                "best_loss": 2.0,
-                "initial_train_loss": 4.0,
-                "final_train_loss": 2.0,
-                "initial_eval_loss": None,
-                "final_eval_loss": None,
-            }
+    def test_normalizes_current_run_summary_json(self) -> None:
+        original = build_run_summary(
+            kind="current_experiment",
+            run_id="run-1",
+            training_loss={"final_loss": 2.0},
         )
 
-        self.assertEqual(payload["kind"], "train_language_modeling_loss_history")
-        self.assertAlmostEqual(
-            payload["metrics"]["language_modeling"]["final_train_perplexity"],
-            7.38905609893065,
-        )
+        payload = normalize_existing_json(original, source_path="summary.json")
+
+        self.assertEqual(payload, original)
+
+    def test_rejects_legacy_summary_json(self) -> None:
+        with self.assertRaisesRegex(ValueError, "expected intrep.run_summary.v1"):
+            normalize_existing_json(
+                {
+                    "training_loss": {"final_loss": 2.0},
+                    "language_modeling": {"final_eval_perplexity": 10.0},
+                }
+            )
 
     def test_aggregate_json_outputs_wraps_runs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -93,13 +73,12 @@ class RunSummaryTest(unittest.TestCase):
             summary_path = root / "summary.json"
             summary_path.write_text(
                 json.dumps(
-                    {
-                        "corpus": {"label": "train", "eval_label": "eval"},
-                        "training_config": {"max_steps": 2},
-                        "training_loss": {"final_loss": 2.0},
-                        "language_modeling": {"final_eval_perplexity": 10.0},
-                        "next_observation": {"status": "skipped"},
-                    }
+                    build_run_summary(
+                        kind="current_experiment",
+                        corpus={"label": "train", "eval_label": "eval"},
+                        training_loss={"final_loss": 2.0},
+                        language_modeling={"final_eval_perplexity": 10.0},
+                    )
                 ),
                 encoding="utf-8",
             )
@@ -117,13 +96,12 @@ class RunSummaryTest(unittest.TestCase):
             output_path = root / "runs.json"
             summary_path.write_text(
                 json.dumps(
-                    {
-                        "corpus": {"label": "train", "eval_label": "eval"},
-                        "training_config": {"max_steps": 2},
-                        "training_loss": {"final_loss": 2.0},
-                        "language_modeling": {"final_eval_perplexity": 10.0},
-                        "next_observation": {"status": "skipped"},
-                    }
+                    build_run_summary(
+                        kind="current_experiment",
+                        corpus={"label": "train", "eval_label": "eval"},
+                        training_loss={"final_loss": 2.0},
+                        language_modeling={"final_eval_perplexity": 10.0},
+                    )
                 ),
                 encoding="utf-8",
             )
@@ -178,12 +156,9 @@ class RunSummaryTest(unittest.TestCase):
                 "metrics.language_modeling.final_eval_perplexity",
                 "metrics.language_modeling.final_train_loss",
                 "metrics.training_loss.final_loss",
-                "metrics.training_loss.final_step_loss",
                 "metrics.training_loss.best_loss",
-                "metrics.training_loss.best_step_loss",
                 "metrics.training_loss.loss_reduction",
                 "metrics.training_loss.loss_reduction_ratio",
-                "metrics.next_observation.after.top1_accuracy",
                 "elapsed_seconds",
             ],
         )
@@ -248,19 +223,21 @@ class RunSummaryTest(unittest.TestCase):
             output_path = root / "comparison.json"
             baseline_path.write_text(
                 json.dumps(
-                    {
-                        "training_loss": {"final_loss": 2.0},
-                        "language_modeling": {"final_eval_perplexity": 6.0},
-                    }
+                    build_run_summary(
+                        kind="current_experiment",
+                        training_loss={"final_loss": 2.0},
+                        language_modeling={"final_eval_perplexity": 6.0},
+                    )
                 ),
                 encoding="utf-8",
             )
             candidate_path.write_text(
                 json.dumps(
-                    {
-                        "training_loss": {"final_loss": 1.5},
-                        "language_modeling": {"final_eval_perplexity": 4.0},
-                    }
+                    build_run_summary(
+                        kind="current_experiment",
+                        training_loss={"final_loss": 1.5},
+                        language_modeling={"final_eval_perplexity": 4.0},
+                    )
                 ),
                 encoding="utf-8",
             )
