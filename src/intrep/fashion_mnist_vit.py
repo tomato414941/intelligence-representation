@@ -11,7 +11,6 @@ from torch import nn
 from intrep.gpt_model import GPT_MODEL_PRESETS
 from intrep.gpt_training import resolve_training_device
 from intrep.image_io import read_portable_image
-from intrep.token_sequence import TokenSequence, token_sequence_from_ids
 
 
 FASHION_MNIST_LABELS = (
@@ -349,22 +348,6 @@ def image_choice_example_to_record(example: ImageChoiceExample) -> dict[str, obj
     }
 
 
-def fashion_mnist_label_continuation_sequence(
-    example: ImageChoiceExample,
-    tokenizer: object,
-    *,
-    prompt: str = "Class:",
-) -> TokenSequence:
-    prompt_ids = tokenizer.encode(prompt)
-    label_ids = tokenizer.encode(example.answer_text)
-    if not label_ids:
-        raise ValueError("label text must encode to at least one token")
-    image_ids = _image_placeholder_token_ids(example.image_path)
-    token_ids = [*image_ids, *prompt_ids, *label_ids]
-    loss_mask = [False] * (len(image_ids) + len(prompt_ids)) + [True] * len(label_ids)
-    return token_sequence_from_ids(token_ids, loss_mask=loss_mask)
-
-
 def write_metrics(path: str | Path, metrics: ImageClassificationMetrics) -> None:
     Path(path).write_text(json.dumps(metrics.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -381,11 +364,6 @@ def _read_image_path(path: Path) -> np.ndarray:
     if pixels.ndim == 3 and pixels.shape[2] == 3:
         return np.rint(pixels.mean(axis=2)).astype(np.uint8)
     raise ValueError("image payload must be grayscale or RGB")
-
-
-def _image_placeholder_token_ids(path: Path) -> list[int]:
-    pixels = _read_image_path(path)
-    return [int(value) for value in pixels.reshape(-1).tolist()]
 
 
 def _validate_config(config: ImageClassificationConfig) -> None:

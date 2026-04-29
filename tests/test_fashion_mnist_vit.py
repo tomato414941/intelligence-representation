@@ -13,12 +13,10 @@ from intrep.fashion_mnist_vit import (
     ImagePatchAdapter,
     PatchTransformerClassifier,
     SharedTransformerCore,
-    fashion_mnist_label_continuation_sequence,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
     train_fashion_mnist_classifier,
 )
-from intrep.byte_tokenizer import ByteTokenizer
 
 
 class FashionMNISTViTTest(unittest.TestCase):
@@ -75,24 +73,6 @@ class FashionMNISTViTTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "all images must have the same shape"):
                 image_label_tensors_from_examples(examples)
-
-    def test_label_continuation_sequence_masks_loss_to_label_tokens(self) -> None:
-        with TemporaryDirectory() as directory:
-            image_path = Path(directory) / "a.pgm"
-            image_path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            example = ImageChoiceExample(
-                image_path=image_path,
-                choices=FASHION_MNIST_LABELS,
-                answer_index=9,
-            )
-            tokenizer = ByteTokenizer()
-
-            sequence = fashion_mnist_label_continuation_sequence(example, tokenizer)
-
-        label_length = len(tokenizer.encode("Ankle boot"))
-        self.assertEqual(len(sequence.token_ids), len(sequence.loss_mask or ()))
-        self.assertEqual(sum(sequence.loss_mask or ()), label_length)
-        self.assertEqual(sequence.loss_mask[-label_length:], (True,) * label_length)
 
     def test_patch_transformer_classifier_outputs_class_logits(self) -> None:
         model = PatchTransformerClassifier(
