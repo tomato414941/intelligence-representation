@@ -84,6 +84,22 @@ class CausalTextModelConfigTest(unittest.TestCase):
         self.assertEqual(embeddings.shape, torch.Size([1, 4, config.embedding_dim]))
         self.assertEqual(encoded.shape, torch.Size([1, 4, config.embedding_dim]))
 
+    def test_embed_tokens_supports_position_offset(self) -> None:
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
+        model = CausalTextModel(config)
+        token_ids = torch.tensor([[1, 2]], dtype=torch.long)
+
+        offset_embeddings = model.embed_tokens(token_ids, position_offset=2)
+        manual_embeddings = model.token_embedding(token_ids) + model.position_embedding(
+            torch.tensor([[2, 3]], dtype=torch.long)
+        )
+
+        self.assertTrue(torch.allclose(offset_embeddings, manual_embeddings))
+        with self.assertRaisesRegex(ValueError, "position_offset"):
+            model.embed_tokens(token_ids, position_offset=-1)
+        with self.assertRaisesRegex(ValueError, "context_length"):
+            model.embed_tokens(token_ids, position_offset=3)
+
     def test_model_uses_shared_transformer_core(self) -> None:
         config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)

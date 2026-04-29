@@ -117,10 +117,18 @@ class CausalTextModel(nn.Module):
         encoded = self.encode_tokens(token_ids)
         return self.token_logits(encoded)
 
-    def embed_tokens(self, token_ids: torch.Tensor) -> torch.Tensor:
+    def embed_tokens(self, token_ids: torch.Tensor, *, position_offset: int = 0) -> torch.Tensor:
         _validate_token_ids(token_ids, self.config)
+        if position_offset < 0:
+            raise ValueError("position_offset must be non-negative")
         length = token_ids.size(1)
-        positions = torch.arange(length, device=token_ids.device).unsqueeze(0)
+        if position_offset + length > self.config.context_length:
+            raise ValueError("token positions must not exceed context_length")
+        positions = torch.arange(
+            position_offset,
+            position_offset + length,
+            device=token_ids.device,
+        ).unsqueeze(0)
         return self.token_embedding(token_ids) + self.position_embedding(positions)
 
     def encode_tokens(self, token_ids: torch.Tensor) -> torch.Tensor:

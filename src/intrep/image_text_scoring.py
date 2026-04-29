@@ -95,7 +95,10 @@ def _score_image_text_candidate(
             image_batch = _image_batch(image).to(device)
             image_embeddings = image_input_layer(image_batch)
             text_ids = torch.tensor([prompt_ids + candidate_ids], dtype=torch.long, device=device)
-            text_embeddings = text_model.embed_tokens(text_ids)
+            text_embeddings = text_model.embed_tokens(
+                text_ids,
+                position_offset=image_embeddings.size(1),
+            )
             combined_embeddings = concatenate_input_embedding_sequences(
                 image_embeddings,
                 text_embeddings,

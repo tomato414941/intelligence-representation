@@ -123,7 +123,10 @@ class ModelInputBoundariesTest(unittest.TestCase):
         )
 
         image_embeddings = image_input(torch.zeros((1, 4, 4), dtype=torch.float32))
-        prompt_embeddings = text_model.embed_tokens(torch.tensor([[1, 2]], dtype=torch.long))
+        prompt_embeddings = text_model.embed_tokens(
+            torch.tensor([[1, 2]], dtype=torch.long),
+            position_offset=image_embeddings.size(1),
+        )
         combined = concatenate_input_embedding_sequences(image_embeddings, prompt_embeddings)
         hidden = text_model.encode_embeddings(combined, causal=True)
         logits = text_model.token_logits(hidden)
@@ -151,7 +154,10 @@ class ModelInputBoundariesTest(unittest.TestCase):
 
         image_embeddings = image_input(torch.zeros((1, 4, 4), dtype=torch.float32))
         text_token_ids = torch.tensor([[1, 2, 3]], dtype=torch.long)
-        text_embeddings = text_model.embed_tokens(text_token_ids)
+        text_embeddings = text_model.embed_tokens(
+            text_token_ids,
+            position_offset=image_embeddings.size(1),
+        )
         combined = concatenate_input_embedding_sequences(image_embeddings, text_embeddings)
         hidden = text_model.encode_embeddings(combined, causal=True)
         logits = text_model.token_logits(hidden)
