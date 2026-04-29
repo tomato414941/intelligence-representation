@@ -8,6 +8,7 @@ from intrep.mixed_corpus_evaluation import MixedEnvironmentDocumentPair
 from intrep.pair_ranking import (
     evaluate_symbolic_to_natural_ranking,
     torch_next_token_continuation_loss,
+    torch_next_token_continuation_losses,
 )
 
 
@@ -64,6 +65,27 @@ class PairRankingTest(unittest.TestCase):
 
         self.assertLess(loss, 0.01)
 
+    def test_batched_continuation_losses_match_single_loss(self) -> None:
+        tokenizer = ByteTokenizer()
+        model = UniformLogitModel(vocab_size=tokenizer.vocab_size)
+        prefix = "ab"
+        continuations = ["cd", "ef"]
+
+        batched_losses = torch_next_token_continuation_losses(
+            model,
+            tokenizer,
+            prefix,
+            continuations,
+        )
+        single_losses = [
+            torch_next_token_continuation_loss(model, tokenizer, prefix, continuation)
+            for continuation in continuations
+        ]
+
+        self.assertEqual(len(batched_losses), 2)
+        for batched_loss, single_loss in zip(batched_losses, single_losses, strict=True):
+            self.assertAlmostEqual(batched_loss, single_loss, places=5)
+
 
 class FixedLogitModel(torch.nn.Module):
     def __init__(self, vocab_size: int) -> None:
@@ -87,6 +109,19 @@ class FixedLogitModel(torch.nn.Module):
             preferred_token = 0 if self.wrong_prefix_loss and index == 0 else next_token
             logits[:, index, preferred_token] = 10.0 + self.bias
         return logits
+
+
+class UniformLogitModel(torch.nn.Module):
+    def __init__(self, vocab_size: int) -> None:
+        super().__init__()
+        self.bias = torch.nn.Parameter(torch.zeros(1))
+        self.vocab_size = vocab_size
+
+    def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
+        return torch.zeros(
+            (token_ids.size(0), token_ids.size(1), self.vocab_size),
+            device=token_ids.device,
+        ) + self.bias
 
 
 def _pair(

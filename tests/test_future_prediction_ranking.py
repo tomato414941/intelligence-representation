@@ -68,6 +68,33 @@ class FuturePredictionRankingTest(unittest.TestCase):
             ],
         )
 
+    def test_custom_scorer_still_scores_continuations_individually(self) -> None:
+        case = FuturePredictionCase(
+            prefix_events=(_event("obs", "observation", "box contains key", 0),),
+            positive_event=_event("label_pos", "label", "9:Ankle boot", 1),
+            negative_events=(
+                _event("label_neg_1", "label", "0:T-shirt/top", 1),
+                _event("label_neg_2", "label", "1:Trouser", 1),
+            ),
+            condition="image_to_label",
+        )
+        calls: list[str] = []
+
+        def scorer(model, tokenizer, prefix, continuation):
+            del model, tokenizer, prefix
+            calls.append(continuation)
+            return 1.0 if continuation == "<SIGNAL channel=\"label\">\n9:Ankle boot\n</SIGNAL>\n" else 2.0
+
+        summary = evaluate_future_prediction_ranking(
+            [case],
+            model=object(),
+            tokenizer=ByteTokenizer(),
+            score_continuation_loss=scorer,
+        )
+
+        self.assertEqual(summary.overall.top1_accuracy, 1.0)
+        self.assertEqual(len(calls), 3)
+
     def test_rejects_empty_cases(self) -> None:
         with self.assertRaisesRegex(ValueError, "cases must not be empty"):
             evaluate_future_prediction_ranking([], object(), ByteTokenizer())

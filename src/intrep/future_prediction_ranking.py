@@ -12,6 +12,7 @@ from intrep.future_prediction_cases import (
     render_future_prediction_texts,
 )
 from intrep.pair_ranking import ContinuationScorer, torch_next_token_continuation_loss
+from intrep.pair_ranking import torch_next_token_continuation_losses
 
 
 @dataclass(frozen=True)
@@ -99,12 +100,22 @@ def _score_case(
         if max_negatives <= 0:
             raise ValueError("max_negatives must be positive")
         negatives = negatives[:max_negatives]
-    positive_loss = scorer(model, tokenizer, prefix, positive)
-    negative_losses = [
-        scorer(model, tokenizer, prefix, negative)
-        for negative in negatives
-        if negative != positive
-    ]
+    distinct_negatives = [negative for negative in negatives if negative != positive]
+    if scorer is torch_next_token_continuation_loss:
+        losses = torch_next_token_continuation_losses(
+            model,
+            tokenizer,
+            prefix,
+            [positive, *distinct_negatives],
+        )
+        positive_loss = losses[0]
+        negative_losses = losses[1:]
+    else:
+        positive_loss = scorer(model, tokenizer, prefix, positive)
+        negative_losses = [
+            scorer(model, tokenizer, prefix, negative)
+            for negative in distinct_negatives
+        ]
     if not negative_losses:
         raise ValueError(f"case {case.id} must have at least one distinct negative event")
     best_negative_loss = min(negative_losses)

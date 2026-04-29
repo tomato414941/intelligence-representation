@@ -70,19 +70,26 @@ def torch_next_token_continuation_loss(
     prefix: str,
     continuation: str,
 ) -> float:
+    return torch_next_token_continuation_losses(model, tokenizer, prefix, [continuation])[0]
+
+
+def torch_next_token_continuation_losses(
+    model: Any,
+    tokenizer: ByteTokenizer,
+    prefix: str,
+    continuations: Sequence[str],
+) -> list[float]:
     import torch
     import torch.nn.functional as F
 
     prefix_ids = tokenizer.encode(prefix)
-    continuation_ids = tokenizer.encode(continuation)
     if not prefix_ids:
         raise ValueError("prefix must encode to at least one token")
-    if not continuation_ids:
+    continuation_id_rows = [tokenizer.encode(continuation) for continuation in continuations]
+    if not continuation_id_rows:
+        raise ValueError("continuations must not be empty")
+    if any(not continuation_ids for continuation_ids in continuation_id_rows):
         raise ValueError("continuation must encode to at least one token")
-
-    token_ids = prefix_ids + continuation_ids
-    if len(token_ids) < 2:
-        raise ValueError("prefix and continuation must encode to at least two tokens")
 
     was_training = bool(getattr(model, "training", False))
     if hasattr(model, "eval"):
@@ -90,28 +97,37 @@ def torch_next_token_continuation_loss(
 
     parameter = next(iter(model.parameters()), None) if hasattr(model, "parameters") else None
     device = parameter.device if parameter is not None else torch.device("cpu")
-    context_length = int(getattr(getattr(model, "config", None), "context_length", len(token_ids)))
+    max_token_count = max(len(prefix_ids) + len(continuation_ids) for continuation_ids in continuation_id_rows)
+    context_length = int(getattr(getattr(model, "config", None), "context_length", max_token_count))
 
     try:
         with torch.no_grad():
-            windows_by_length: dict[int, list[list[int]]] = {}
+            windows_by_length: dict[int, list[tuple[int, list[int]]]] = {}
             targets_by_length: dict[int, list[int]] = {}
-            for target_index in range(len(prefix_ids), len(token_ids)):
-                window_start = max(0, target_index - context_length)
-                window = token_ids[window_start:target_index]
-                windows_by_length.setdefault(len(window), []).append(window)
-                targets_by_length.setdefault(len(window), []).append(token_ids[target_index])
+            for continuation_index, continuation_ids in enumerate(continuation_id_rows):
+                token_ids = prefix_ids + continuation_ids
+                if len(token_ids) < 2:
+                    raise ValueError("prefix and continuation must encode to at least two tokens")
+                for target_index in range(len(prefix_ids), len(token_ids)):
+                    window_start = max(0, target_index - context_length)
+                    window = token_ids[window_start:target_index]
+                    windows_by_length.setdefault(len(window), []).append((continuation_index, window))
+                    targets_by_length.setdefault(len(window), []).append(token_ids[target_index])
 
-            total_loss = 0.0
-            total_count = 0
+            total_losses = [0.0 for _ in continuation_id_rows]
+            total_counts = [0 for _ in continuation_id_rows]
             for length, windows in windows_by_length.items():
-                input_ids = torch.tensor(windows, dtype=torch.long, device=device)
+                input_ids = torch.tensor([window for _index, window in windows], dtype=torch.long, device=device)
                 targets = torch.tensor(targets_by_length[length], dtype=torch.long, device=device)
                 logits = model(input_ids)[:, -1, :]
                 losses = F.cross_entropy(logits, targets, reduction="none")
-                total_loss += float(losses.sum().item())
-                total_count += len(windows)
-            return total_loss / total_count
+                for (continuation_index, _window), loss in zip(windows, losses, strict=True):
+                    total_losses[continuation_index] += float(loss.item())
+                    total_counts[continuation_index] += 1
+            return [
+                total_loss / total_count
+                for total_loss, total_count in zip(total_losses, total_counts, strict=True)
+            ]
     finally:
         if was_training and hasattr(model, "train"):
             model.train()

@@ -277,6 +277,10 @@ future-prediction CLI remains focused on text-rendered Signal streams.
 adds explicit row/column patch markers as a minimal step toward
 patch-plus-position image rendering.
 
+Future-prediction ranking now batches continuation scoring for the default
+torch scorer. On the Fashion-MNIST train20/eval20 smoke, `max_negatives = 3`
+completes in a few seconds on CPU, making flat/grid comparisons practical.
+
 Initial CPU smoke result with `patch_size = 4`, `channel_bins = 4`,
 `model_preset = tiny`, `train_cases = 20`, `max_steps = 100`, and
 `max_negatives = 3`:
