@@ -281,6 +281,10 @@ Future-prediction ranking now batches continuation scoring for the default
 torch scorer. On the Fashion-MNIST train20/eval20 smoke, `max_negatives = 3`
 completes in a few seconds on CPU, making flat/grid comparisons practical.
 
+The future-prediction and Fashion-MNIST evaluation path now trains from rendered
+Signal streams directly. `MixedDocument` remains available for legacy corpora
+and older demos, but it is no longer on this main evaluation path.
+
 Initial CPU smoke result with `patch_size = 4`, `channel_bins = 4`,
 `model_preset = tiny`, `train_cases = 20`, `max_steps = 100`, and
 `max_negatives = 3`:

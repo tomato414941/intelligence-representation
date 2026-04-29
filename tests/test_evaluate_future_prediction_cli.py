@@ -12,7 +12,6 @@ from intrep.future_prediction_ranking import (
     FuturePredictionRankingMetrics,
     FuturePredictionRankingSummary,
 )
-from intrep.mixed_corpus import MixedDocument
 
 
 @dataclass(frozen=True)
@@ -215,19 +214,19 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
             )
             return summary
 
-        def fake_train_mixed_gpt_with_artifacts(
+        def fake_train_rendered_gpt_with_artifacts(
             *,
-            documents,
-            eval_documents=None,
+            corpus,
+            eval_corpus=None,
             training_config,
             model_config,
         ):
             nonlocal training_call_count
-            del documents, eval_documents, training_config, model_config
+            del corpus, eval_corpus, training_config, model_config
             training_call_count += 1
             return FakeTrainingArtifacts()
 
-        def fake_signals_to_mixed_documents(
+        def fake_render_signals_for_training(
             events,
             *,
             render_format="signal-tags",
@@ -244,7 +243,7 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                     "image_token_format": image_token_format,
                 }
             )
-            return [MixedDocument(id="fake", modality="signals", content="fake")]
+            return "fake rendered corpus"
 
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -261,13 +260,13 @@ class EvaluateFuturePredictionCLITest(unittest.TestCase):
                 ),
                 patch.object(
                     evaluate_future_prediction,
-                    "train_mixed_gpt_with_artifacts",
-                    fake_train_mixed_gpt_with_artifacts,
+                    "train_rendered_gpt_with_artifacts",
+                    fake_train_rendered_gpt_with_artifacts,
                 ),
                 patch.object(
                     evaluate_future_prediction,
-                    "signals_to_mixed_documents",
-                    fake_signals_to_mixed_documents,
+                    "render_signals_for_training",
+                    fake_render_signals_for_training,
                 ),
                 redirect_stdout(output),
             ):

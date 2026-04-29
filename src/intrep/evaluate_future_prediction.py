@@ -15,11 +15,11 @@ from intrep.future_prediction_ranking import (
     evaluate_future_prediction_ranking,
 )
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
-from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt_with_artifacts
+from intrep.gpt_training import GPTTrainingConfig, train_rendered_gpt_with_artifacts
 from intrep.signal_corpus import (
     load_signals_jsonl,
     reject_payload_refs,
-    signals_to_mixed_documents,
+    render_signals_for_training,
 )
 
 
@@ -155,16 +155,16 @@ def run_future_prediction_evaluation(config: FuturePredictionEvaluationConfig) -
         image_token_format=config.image_token_format,
         max_negatives=config.max_negatives,
     )
-    artifacts = train_mixed_gpt_with_artifacts(
-        documents=signals_to_mixed_documents(
+    artifacts = train_rendered_gpt_with_artifacts(
+        corpus=render_signals_for_training(
             train_events,
             render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
             image_patch_size=config.image_patch_size,
             image_channel_bins=config.image_channel_bins,
             image_token_format=config.image_token_format,
         ),
-        eval_documents=(
-            signals_to_mixed_documents(
+        eval_corpus=(
+            render_signals_for_training(
                 eval_events,
                 render_format="image-tokens" if config.rendering == "image-tokens" else "signal-tags",
                 image_patch_size=config.image_patch_size,

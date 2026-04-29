@@ -112,14 +112,35 @@ def train_mixed_gpt_with_artifacts(
     model_config: GPTConfig | None = None,
     eval_documents: list[MixedDocument] | None = None,
 ) -> GPTTrainingArtifacts:
+    corpus_documents = documents if documents is not None else default_mixed_documents()
+    if not corpus_documents:
+        raise ValueError("documents must not be empty")
+    eval_corpus = None
+    if eval_documents is not None:
+        if not eval_documents:
+            raise ValueError("eval_documents must not be empty")
+        eval_corpus = render_corpus(eval_documents)
+    return train_rendered_gpt_with_artifacts(
+        corpus=render_corpus(corpus_documents),
+        training_config=training_config,
+        model_config=model_config,
+        eval_corpus=eval_corpus,
+    )
+
+
+def train_rendered_gpt_with_artifacts(
+    *,
+    corpus: str,
+    training_config: GPTTrainingConfig | None = None,
+    model_config: GPTConfig | None = None,
+    eval_corpus: str | None = None,
+) -> GPTTrainingArtifacts:
     config = training_config or GPTTrainingConfig()
     _validate_training_config(config)
     torch.manual_seed(config.seed)
     device = resolve_training_device(config.device)
-    corpus_documents = documents if documents is not None else default_mixed_documents()
-    if not corpus_documents:
-        raise ValueError("documents must not be empty")
-    corpus = render_corpus(corpus_documents)
+    if not corpus:
+        raise ValueError("corpus must not be empty")
     tokenizer = build_text_tokenizer(
         corpus,
         kind=config.tokenizer,
@@ -137,10 +158,10 @@ def train_mixed_gpt_with_artifacts(
     targets = targets.to(device)
     eval_inputs: torch.Tensor | None = None
     eval_targets: torch.Tensor | None = None
-    if eval_documents is not None:
-        if not eval_documents:
-            raise ValueError("eval_documents must not be empty")
-        eval_token_ids = tokenizer.encode(render_corpus(eval_documents))
+    if eval_corpus is not None:
+        if not eval_corpus:
+            raise ValueError("eval_corpus must not be empty")
+        eval_token_ids = tokenizer.encode(eval_corpus)
         eval_inputs, eval_targets = language_model_batches(
             token_ids=eval_token_ids,
             context_length=config.context_length,
@@ -183,7 +204,7 @@ def train_mixed_gpt_with_artifacts(
 
     final_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
     final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
-    generalization_eval = eval_documents is not None
+    generalization_eval = eval_corpus is not None
     warnings = ()
     if not generalization_eval:
         warnings = (
