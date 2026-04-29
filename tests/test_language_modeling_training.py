@@ -184,12 +184,42 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertEqual(payload["model_config"]["context_length"], 8)
         self.assertEqual(payload["training_config"]["device"], "auto")
         self.assertEqual(payload["training_config"]["checkpoint_path"], str(checkpoint_path))
+        self.assertEqual(payload["tokenizer"], {"kind": "byte"})
         self.assertEqual(payload["result"]["device"], "cpu")
         self.assertEqual(artifacts.result.device, "cpu")
         self.assertTrue(payload["model_state_dict"])
         self.assertTrue(
             all(tensor.device.type == "cpu" for tensor in payload["model_state_dict"].values())
         )
+
+    def test_training_writes_byte_pair_tokenizer_checkpoint_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir) / "checkpoints" / "causal-text.pt"
+            _train_text_corpus_with_artifacts(
+                corpus="hello hello hello hello",
+                training_config=LanguageModelingTrainingConfig(
+                    context_length=4,
+                    batch_size=2,
+                    max_steps=1,
+                    learning_rate=0.005,
+                    seed=19,
+                    checkpoint_path=checkpoint_path,
+                    tokenizer="byte-pair",
+                    tokenizer_vocab_size=260,
+                ),
+                model_config=CausalTextConfig(
+                    vocab_size=260,
+                    context_length=4,
+                    embedding_dim=16,
+                    num_heads=2,
+                    hidden_dim=32,
+                ),
+            )
+            payload = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+
+        self.assertEqual(payload["tokenizer"]["kind"], "byte-pair")
+        self.assertEqual(payload["tokenizer"]["vocab_size"], 260)
+        self.assertTrue(payload["tokenizer"]["merges"])
 
     def test_training_reports_held_out_eval_loss(self) -> None:
         artifacts = _train_text_corpus_with_artifacts(

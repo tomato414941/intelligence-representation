@@ -11,7 +11,12 @@ from torch import nn
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.text_tokenizer import TextTokenizer, TextTokenizerKind, build_text_tokenizer
+from intrep.text_tokenizer import (
+    TextTokenizer,
+    TextTokenizerKind,
+    build_text_tokenizer,
+    text_tokenizer_to_payload,
+)
 
 LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
@@ -224,6 +229,7 @@ def _train_text_corpus_with_artifacts(
             model_config=causal_text_config,
             training_config=config,
             result=result,
+            tokenizer=tokenizer,
         )
     return LanguageModelingTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
 
@@ -243,6 +249,7 @@ def save_causal_text_checkpoint(
     model_config: CausalTextConfig,
     training_config: LanguageModelingTrainingConfig,
     result: LanguageModelingTrainingResult,
+    tokenizer: TextTokenizer,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     training_payload = asdict(training_config)
@@ -255,6 +262,7 @@ def save_causal_text_checkpoint(
             for name, tensor in model.state_dict().items()
         },
         "model_config": causal_text_config_to_dict(model_config),
+        "tokenizer": text_tokenizer_to_payload(tokenizer),
         "training_config": training_payload,
         "result": asdict(result),
     }

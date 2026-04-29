@@ -4,6 +4,8 @@ from intrep.byte_tokenizer import ByteTokenizer
 from intrep.text_tokenizer import (
     BytePairTokenizer,
     build_text_tokenizer,
+    text_tokenizer_from_payload,
+    text_tokenizer_to_payload,
     train_byte_pair_tokenizer,
 )
 
@@ -37,6 +39,22 @@ class TextTokenizerTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "invalid byte-pair token id"):
             tokenizer.decode([tokenizer.vocab_size])
+
+    def test_serializes_byte_tokenizer(self) -> None:
+        tokenizer = text_tokenizer_from_payload(text_tokenizer_to_payload(ByteTokenizer()))
+
+        self.assertIsInstance(tokenizer, ByteTokenizer)
+        self.assertEqual(tokenizer.decode(tokenizer.encode("hello")), "hello")
+
+    def test_serializes_byte_pair_tokenizer(self) -> None:
+        original = train_byte_pair_tokenizer("hello hello", vocab_size=265)
+        payload = text_tokenizer_to_payload(original)
+
+        restored = text_tokenizer_from_payload(payload)
+
+        self.assertIsInstance(restored, BytePairTokenizer)
+        self.assertEqual(restored.encode("hello hello"), original.encode("hello hello"))
+        self.assertEqual(restored.decode(restored.encode("hello hello")), "hello hello")
 
 
 if __name__ == "__main__":

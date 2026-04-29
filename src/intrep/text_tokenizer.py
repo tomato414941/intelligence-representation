@@ -16,6 +16,9 @@ class TextTokenizer(Protocol):
     def encode(self, text: str) -> list[int]:
         ...
 
+    def decode(self, token_ids: list[int]) -> str:
+        ...
+
 
 @dataclass(frozen=True)
 class BytePairTokenizer:
@@ -73,6 +76,35 @@ def build_text_tokenizer(
     raise ValueError("tokenizer must be one of: byte, byte-pair")
 
 
+def text_tokenizer_to_payload(tokenizer: TextTokenizer) -> dict[str, object]:
+    if isinstance(tokenizer, ByteTokenizer):
+        return {"kind": "byte"}
+    if isinstance(tokenizer, BytePairTokenizer):
+        return {
+            "kind": "byte-pair",
+            "vocab_size": tokenizer.vocab_size,
+            "merges": [list(pair) for pair in tokenizer.merges],
+        }
+    raise TypeError(f"unsupported tokenizer type: {type(tokenizer).__name__}")
+
+
+def text_tokenizer_from_payload(payload: dict[str, object] | None) -> TextTokenizer:
+    if payload is None:
+        return ByteTokenizer()
+    kind = payload.get("kind")
+    if kind == "byte":
+        return ByteTokenizer()
+    if kind == "byte-pair":
+        merges = payload.get("merges")
+        if not isinstance(merges, list):
+            raise ValueError("byte-pair tokenizer payload requires merges")
+        return BytePairTokenizer(
+            merges=tuple(_merge_pair_from_payload(pair) for pair in merges),
+            configured_vocab_size=int(payload["vocab_size"]),
+        )
+    raise ValueError("unsupported tokenizer kind")
+
+
 def train_byte_pair_tokenizer(
     text: str,
     *,
@@ -98,6 +130,16 @@ def train_byte_pair_tokenizer(
         token_ids = _apply_merge(token_ids, pair, merged_id)
         merges.append(pair)
     return BytePairTokenizer(merges=tuple(merges), configured_vocab_size=vocab_size)
+
+
+def _merge_pair_from_payload(pair: object) -> tuple[int, int]:
+    if (
+        not isinstance(pair, list)
+        or len(pair) != 2
+        or not all(isinstance(value, int) for value in pair)
+    ):
+        raise ValueError("byte-pair tokenizer merge must be a pair of integers")
+    return (pair[0], pair[1])
 
 
 def _apply_merge(token_ids: list[int], pair: tuple[int, int], merged_id: int) -> list[int]:

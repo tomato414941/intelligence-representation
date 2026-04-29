@@ -5,8 +5,8 @@ from pathlib import Path
 
 import torch
 
-from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextConfig, CausalTextModel
+from intrep.text_tokenizer import TextTokenizer, text_tokenizer_from_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,8 +49,7 @@ def generate_text_from_checkpoint(
     if temperature < 0.0:
         raise ValueError("temperature must be non-negative")
     torch.manual_seed(seed)
-    tokenizer = ByteTokenizer()
-    model = load_causal_text_checkpoint(checkpoint_path, device=device)
+    model, tokenizer = load_causal_text_checkpoint(checkpoint_path, device=device)
     token_ids = tokenizer.encode(prompt)
     for _ in range(max_new_tokens):
         next_token_id = _next_token_id(
@@ -63,14 +62,21 @@ def generate_text_from_checkpoint(
     return tokenizer.decode(token_ids)
 
 
-def load_causal_text_checkpoint(checkpoint_path: Path, *, device: str = "cpu") -> CausalTextModel:
+def load_causal_text_checkpoint(
+    checkpoint_path: Path,
+    *,
+    device: str = "cpu",
+) -> tuple[CausalTextModel, TextTokenizer]:
     payload = torch.load(checkpoint_path, map_location=device, weights_only=False)
     if payload.get("schema_version") != "intrep.causal_text_checkpoint.v1":
         raise ValueError("unsupported checkpoint schema")
     model = CausalTextModel(CausalTextConfig(**payload["model_config"])).to(device)
     model.load_state_dict(payload["model_state_dict"])
     model.eval()
-    return model
+    tokenizer = text_tokenizer_from_payload(payload.get("tokenizer"))
+    if tokenizer.vocab_size != model.config.vocab_size:
+        raise ValueError("checkpoint tokenizer vocab size does not match model vocab size")
+    return model, tokenizer
 
 
 def _next_token_id(

@@ -46,6 +46,7 @@ Currently supported:
 causal text model training utilities
 byte-level and simple byte-pair text tokenization
 Tiny Shakespeare language modeling run with held-out evaluation
+Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
@@ -80,6 +81,20 @@ train/eval split: 90/10
 steps: 1000
 eval loss: 5.7576 -> 2.3971
 eval perplexity: 316.58 -> 10.99
+```
+
+The first byte-level BPE run restores its tokenizer from the checkpoint and can
+generate text without falling back to the byte tokenizer:
+
+```text
+corpus: Tiny Shakespeare
+model: small causal text model
+tokenizer: byte-level BPE, vocab 512
+train/eval split: 90/10
+steps: 1000
+train tokens: 511494
+eval loss: 6.4169 -> 3.9908
+eval perplexity: 54.10
 ```
 
 Next-token loss reduction is evidence for language-model training, but it is
