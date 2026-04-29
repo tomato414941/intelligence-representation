@@ -72,6 +72,30 @@ class GPTModelConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "vocabulary range"):
             model(torch.tensor([[1, 8]], dtype=torch.long))
 
+    def test_model_exposes_hidden_sequence_path(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = DecoderOnlyGPT(config)
+        token_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
+
+        embeddings = model.embed_tokens(token_ids)
+        encoded = model.encode_embeddings(embeddings)
+
+        self.assertEqual(embeddings.shape, torch.Size([1, 4, config.embedding_dim]))
+        self.assertEqual(encoded.shape, torch.Size([1, 4, config.embedding_dim]))
+
+    def test_encode_embeddings_validates_hidden_sequence_shape(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = DecoderOnlyGPT(config)
+
+        with self.assertRaisesRegex(ValueError, "shape"):
+            model.encode_embeddings(torch.zeros((4, config.embedding_dim)))
+        with self.assertRaisesRegex(ValueError, "floating point"):
+            model.encode_embeddings(torch.zeros((1, 4, config.embedding_dim), dtype=torch.long))
+        with self.assertRaisesRegex(ValueError, "context_length"):
+            model.encode_embeddings(torch.zeros((1, 5, config.embedding_dim)))
+        with self.assertRaisesRegex(ValueError, "embedding_dim"):
+            model.encode_embeddings(torch.zeros((1, 4, config.embedding_dim + 1)))
+
 
 if __name__ == "__main__":
     unittest.main()

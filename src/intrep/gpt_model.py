@@ -117,15 +117,26 @@ class DecoderOnlyGPT(nn.Module):
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
         _validate_token_ids(token_ids, self.config)
+        encoded = self.encode_tokens(token_ids)
+        return self.output(encoded)
+
+    def embed_tokens(self, token_ids: torch.Tensor) -> torch.Tensor:
+        _validate_token_ids(token_ids, self.config)
         length = token_ids.size(1)
         positions = torch.arange(length, device=token_ids.device).unsqueeze(0)
-        hidden = self.token_embedding(token_ids) + self.position_embedding(positions)
+        return self.token_embedding(token_ids) + self.position_embedding(positions)
+
+    def encode_tokens(self, token_ids: torch.Tensor) -> torch.Tensor:
+        return self.encode_embeddings(self.embed_tokens(token_ids), causal=True)
+
+    def encode_embeddings(self, embeddings: torch.Tensor, *, causal: bool = True) -> torch.Tensor:
+        _validate_embeddings(embeddings, self.config)
+        length = embeddings.size(1)
         mask = torch.triu(
-            torch.ones(length, length, device=token_ids.device, dtype=torch.bool),
+            torch.ones(length, length, device=embeddings.device, dtype=torch.bool),
             diagonal=1,
-        )
-        encoded = self.encoder(hidden, mask=mask)
-        return self.output(encoded)
+        ) if causal else None
+        return self.encoder(embeddings, mask=mask)
 
 
 def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
@@ -141,3 +152,16 @@ def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
     max_id = int(token_ids.max().item())
     if min_id < 0 or max_id >= config.vocab_size:
         raise ValueError("token_ids values must be in the model vocabulary range")
+
+
+def _validate_embeddings(embeddings: torch.Tensor, config: GPTConfig) -> None:
+    if embeddings.ndim != 3:
+        raise ValueError("embeddings must have shape [batch, sequence, hidden]")
+    if not torch.is_floating_point(embeddings):
+        raise ValueError("embeddings must be floating point")
+    if embeddings.size(1) > config.context_length:
+        raise ValueError("embeddings sequence length must not exceed context_length")
+    if embeddings.size(2) != config.embedding_dim:
+        raise ValueError("embeddings hidden size must match embedding_dim")
+    if embeddings.numel() == 0:
+        raise ValueError("embeddings must not be empty")
