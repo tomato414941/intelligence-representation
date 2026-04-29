@@ -1,125 +1,151 @@
 # Evaluation
 
-## Current Line
+## 役割
 
-The current evaluation line is the `src/intrep` prototype, not the retired experiment tree.
+この文書は、評価の考え方をまとめる。
+実装状態、CLI、テスト一覧、実験ログの正本ではない。
 
-The conceptual project line is:
+評価で守るべき中心は、次である。
+
+```text
+training objective と project claim を分ける
+smoke metric と evidence metric を分ける
+平均 loss と能力獲得を同一視しない
+```
+
+## Project Claim
+
+このプロジェクトの上位仮説は次である。
 
 ```text
 A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-In that broader frame, world modeling is a core evaluation surface, not the whole project. It measures whether the predictive token machine can use observation/action history to predict future observations or consequences.
+この仮説は広い。
+したがって、単一の損失低下や単一タスクの accuracy だけでは、
+Predictive Token Machine が実現したとは言えない。
 
-The main v1 engineering question is:
-
-```text
-Can raw text/image/action-conditioned examples be converted into token
-sequences that improve continuation or future-token prediction after a short
-training run?
-```
-
-Average next-token loss reduction remains a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
-
-Use this distinction:
+評価では、どの主張をしているのかを常に分ける。
 
 ```text
-training objective:
-  next-token prediction over TokenSequence
+training works:
+  optimizer, model, batching, data path が壊れていない
 
-training smoke metric:
-  average next-token loss reduction
+task works:
+  特定タスクで有用な予測や分類ができる
 
-world-model-oriented metric:
-  held-out action-conditioned next-observation / future-token prediction
+world-modeling evidence:
+  観測・行動・文脈の違いに応じて未来予測が変わる
+
+predictive-token-machine evidence:
+  複数の入力形式やタスクを共有予測計算へ接続できる
 ```
 
-In this question, generated corpora are smoke corpora. New datasets should keep
-raw examples close to their source and convert them to `TokenSequence` or hidden
-sequences at training or evaluation time.
+## Smoke Metrics
 
-The old Signal JSONL and `FuturePredictionCase` evaluation line has been
-retired from `src/intrep`. Historical notes remain under older experiment docs,
-but new evaluation code should not use a generic channel envelope.
-
-Fashion-MNIST image-choice smoke data can be converted from local IDX files into
-raw image-choice JSONL:
-
-```sh
-uv run python -m intrep.fashion_mnist_image_choice_corpus \
-  --images-path train-images-idx3-ubyte.gz \
-  --labels-path train-labels-idx1-ubyte.gz \
-  --output-path fashion-train.jsonl \
-  --image-output-dir fashion-images/train \
-  --limit 1000
-```
-
-The current image path keeps image handling separate from the text tokenizer:
-local image paths are loaded as grayscale tensors, patchified, embedded, passed
-through a Transformer encoder, and evaluated with a classification head:
-
-```sh
-uv run python -m intrep.evaluate_fashion_mnist \
-  --train-path fashion-train.jsonl \
-  --eval-path fashion-eval.jsonl \
-  --image-patch-size 4 \
-  --max-steps 100
-```
-
-Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.
-
-## Metrics
-
-The current mixed-GPT smoke check tracks the built-in smoke corpus:
+smoke metric は、学習経路が最低限動いているかを見るための指標である。
 
 ```text
-token count
-training steps
-initial loss
-final loss
-loss history / best loss
-train corpus average loss
-held-out eval corpus loss
-mixed next-observation ranking accuracy and margin
-builtin-grid loss reduction smoke check
+training loss reduction
+held-out loss reduction
+perplexity reduction
+small task accuracy above chance
+ranking helper sanity checks
 ```
 
-## Current Tests
+これらは重要だが、主張は狭い。
+たとえば平均 loss が下がっても、それだけでは world model ができたとは言わない。
+
+## Evidence Metrics
+
+より強い主張には、主張に対応した評価が必要である。
+
+### Text
+
+テキストでは、単なる training loss だけでなく held-out continuation を見る。
 
 ```text
-tests/test_byte_tokenizer.py:
-  checks byte-level round-trip for Japanese, English, code, and logs
-
-tests/test_grid_world.py:
-  checks hidden grid state, partial observation, action steps, and next observations
-
-tests/test_gpt_training.py:
-  checks language-model batches, decoder-only GPT logits, short-run loss reduction,
-  and reusable training artifacts
-
-tests/test_pair_ranking.py:
-  checks next-token continuation loss helpers
-
-tests/test_demo.py:
-  checks the package demo runs the mixed-GPT mainline smoke path
-
-tests/test_intrep_imports.py:
-  checks the current package surface imports normally
+held-out loss
+perplexity
+continuation ranking
+longer-context degradation
 ```
+
+### Image
+
+画像では、分類なら task accuracy が基本である。
+ただし、画像を shared predictive model に接続したいなら、
+分類 accuracy だけでなく、画像条件付きの continuation や選択肢 ranking も見る。
+
+```text
+classification accuracy
+choice ranking accuracy
+image-conditioned text or label continuation
+```
+
+### World Modeling
+
+world-modeling 的な主張には、行動条件付きの未来予測が必要である。
+
+```text
+same observation, different action -> different predicted outcome
+same action, different context -> different predicted outcome
+held-out next-observation ranking
+counterfactual or intervention-sensitive prediction
+```
+
+見るべきなのは、表面的な系列補完ではなく、
+観測、行動、文脈の違いが予測に反映されるかである。
+
+### Shared Core
+
+共有中間層を主張するなら、単にコードが同じクラスを呼んでいるだけでは足りない。
+少なくとも、複数の入力経路が同じ予測計算へ接続され、
+それぞれのタスクで劣化や改善が測れる必要がある。
+
+```text
+text path works
+image path works
+shared core path works
+adapter-specific failures are separable from core failures
+```
+
+## Negative Results
+
+失敗は捨てない。
+ただし、何に失敗したのかを狭く読む。
+
+```text
+data scale problem
+context length problem
+task construction problem
+evaluation leakage
+model capacity problem
+optimization problem
+representation problem
+```
+
+1つの条件で失敗しても、構造的に不可能とは結論づけない。
+逆に、1つの smoke metric が成功しても、大きな能力獲得を主張しない。
 
 ## Acceptance Criteria
 
-A change is useful only if it improves or clarifies at least one of:
+変更は、少なくとも次のどれかを明確にするべきである。
 
 ```text
-mixed corpus construction
-non-language grid observation corpus construction
-JSONL file corpus loading and growth
-decoder-only GPT training behavior
-loss reduction in short runs
-mixed next-observation ranking evaluation
-image-choice classification or continuation evaluation
+training path is working
+held-out generalization is measured
+task metric is measured
+world-modeling claim has a matching future-prediction test
+shared-core claim has a matching cross-path test
+failure mode is easier to diagnose
 ```
 
-Avoid adding broad schemas, ontology categories, or new experiment files unless the benchmark exposes a repeated need for them.
+避けるべきこと:
+
+```text
+metric を増やすだけで主張を明確にしない
+平均 loss だけで大きな能力を主張する
+実験ごとに新しい broad schema を作る
+評価に必要ない ontology を先に足す
+```
