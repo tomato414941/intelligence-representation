@@ -3,15 +3,15 @@
 ## Role
 
 This document records the current project conclusion. Historical experiment
-details remain in the numbered experiment notes and under `docs/legacy/`.
+details remain under `docs/legacy/`.
 
 Use these documents for details:
 
 - [README](../README.md): project map and common commands
 - [Evaluation](evaluation.md): evaluation concepts
-- [Experiment 001](experiment-001.md): retired Signal future-prediction run
-- [Experiment 002](experiment-002.md): retired rendering-context investigation
-- [Experiment 003](experiment-003.md): natural language held-out loss smoke check
+- [Legacy Experiment 001](legacy/experiments/experiment-001.md): retired Signal future-prediction run
+- [Legacy Experiment 002](legacy/experiments/experiment-002.md): retired rendering-context investigation
+- [Legacy Experiment 003](legacy/experiments/experiment-003.md): natural language held-out loss smoke check
 
 ## Current Position
 

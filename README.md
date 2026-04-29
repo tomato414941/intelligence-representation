@@ -91,9 +91,6 @@ Read these first:
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
-- [Experiment 001](docs/experiment-001.md)
-- [Experiment 002](docs/experiment-002.md)
-- [Experiment 003](docs/experiment-003.md)
 - [Current Results](docs/current-results.md)
 
 Broad background:
@@ -103,6 +100,7 @@ Broad background:
 Legacy / exploratory notes:
 
 - [Legacy Notes](docs/legacy/)
+- [Legacy Experiments](docs/legacy/experiments/)
 
 ## Design Constraints
 
