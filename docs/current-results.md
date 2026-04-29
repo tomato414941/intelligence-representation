@@ -202,22 +202,18 @@ The generated environment slices showed next-token loss reduction:
 generated_seen:
   final_eval_loss: 5.714 -> 2.870
   next_observation_accuracy: 0.000 -> 0.000
-  symbolic_to_natural_accuracy: 0.083 -> 0.083
 
 generated_held_out_object:
   final_eval_loss: 5.733 -> 3.252
   next_observation_accuracy: 0.000 -> 0.000
-  symbolic_to_natural_accuracy: 0.083 -> 0.083
 
 generated_held_out_container:
   final_eval_loss: 5.716 -> 3.335
   next_observation_accuracy: 0.000 -> 0.000
-  symbolic_to_natural_accuracy: 0.083 -> 0.083
 
 generated_held_out_location:
   final_eval_loss: 5.728 -> 3.468
   next_observation_accuracy: 0.000 -> 0.000
-  symbolic_to_natural_accuracy: 0.167 -> 0.167
 ```
 
 This historical run supports only the narrow statement that the small byte-level

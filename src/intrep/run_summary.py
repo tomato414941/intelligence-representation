@@ -28,7 +28,6 @@ DEFAULT_COMPARISON_METRICS = (
     "metrics.training_loss.loss_reduction",
     "metrics.training_loss.loss_reduction_ratio",
     "metrics.next_observation.after.top1_accuracy",
-    "metrics.symbolic_to_natural.after.top1_accuracy",
     "elapsed_seconds",
 )
 
@@ -75,7 +74,6 @@ def build_run_summary(
     training_loss: dict[str, object] | None = None,
     language_modeling: dict[str, object] | None = None,
     next_observation: dict[str, object] | None = None,
-    symbolic_to_natural: dict[str, object] | None = None,
     elapsed_seconds: float | None = None,
     source_path: str | None = None,
 ) -> dict[str, object]:
@@ -93,7 +91,6 @@ def build_run_summary(
             "training_loss": _training_loss_with_aliases(training_loss),
             "language_modeling": language_modeling or {},
             "next_observation": next_observation or {},
-            "symbolic_to_natural": symbolic_to_natural or {},
         },
     }
     if source_path is not None:
@@ -117,7 +114,6 @@ def normalize_existing_json(
             training_loss=_dict_value(payload.get("training_loss")),
             language_modeling=_dict_value(payload.get("language_modeling")),
             next_observation=_dict_value(payload.get("next_observation")),
-            symbolic_to_natural=_dict_value(payload.get("symbolic_to_natural")),
             source_path=source_path,
         )
     if "loss_history" in payload and "initial_train_loss" in payload:

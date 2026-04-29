@@ -33,7 +33,6 @@ class RunSummaryTest(unittest.TestCase):
             ),
             training_loss={"final_loss": 2.0, "best_loss": 1.75},
             language_modeling={"final_eval_perplexity": 12.0},
-            symbolic_to_natural={"status": "evaluated"},
             elapsed_seconds=1.25,
         )
 
@@ -46,7 +45,7 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["metrics"]["language_modeling"]["final_eval_perplexity"], 12.0)
         self.assertEqual(payload["metrics"]["training_loss"]["final_step_loss"], 2.0)
         self.assertEqual(payload["metrics"]["training_loss"]["best_step_loss"], 1.75)
-        self.assertEqual(payload["metrics"]["symbolic_to_natural"]["status"], "evaluated")
+        self.assertNotIn("symbolic_to_natural", payload["metrics"])
 
     def test_normalizes_current_experiment_json(self) -> None:
         payload = normalize_existing_json(
@@ -57,7 +56,6 @@ class RunSummaryTest(unittest.TestCase):
                 "training_loss": {"final_loss": 2.0},
                 "language_modeling": {"final_eval_perplexity": 10.0},
                 "next_observation": {"status": "skipped"},
-                "symbolic_to_natural": {"status": "skipped"},
             },
             source_path="summary.json",
         )
@@ -65,7 +63,7 @@ class RunSummaryTest(unittest.TestCase):
         self.assertEqual(payload["kind"], "current_experiment")
         self.assertEqual(payload["source"]["path"], "summary.json")
         self.assertEqual(payload["metrics"]["training_loss"]["final_loss"], 2.0)
-        self.assertEqual(payload["metrics"]["symbolic_to_natural"]["status"], "skipped")
+        self.assertNotIn("symbolic_to_natural", payload["metrics"])
 
     def test_normalizes_loss_history_json_with_language_metrics(self) -> None:
         payload = normalize_existing_json(
@@ -148,7 +146,6 @@ class RunSummaryTest(unittest.TestCase):
                         run_id="first-run",
                         training_loss={"final_loss": 4.0, "loss_reduction_ratio": 0.2},
                         language_modeling={"final_eval_loss": 3.0, "final_eval_perplexity": 10.0},
-                        symbolic_to_natural={"after": {"top1_accuracy": 0.25}},
                     )
                 ),
                 encoding="utf-8",
@@ -160,7 +157,6 @@ class RunSummaryTest(unittest.TestCase):
                         run_id="second-run",
                         training_loss={"final_loss": 3.0, "loss_reduction_ratio": 0.3},
                         language_modeling={"final_eval_loss": 2.5, "final_eval_perplexity": 8.0},
-                        symbolic_to_natural={"after": {"top1_accuracy": 0.5}},
                     )
                 ),
                 encoding="utf-8",
@@ -176,8 +172,20 @@ class RunSummaryTest(unittest.TestCase):
             3.0,
         )
         self.assertEqual(
-            payload["runs"][1]["values"]["metrics.symbolic_to_natural.after.top1_accuracy"],
-            0.5,
+            payload["metrics"],
+            [
+                "metrics.language_modeling.final_eval_loss",
+                "metrics.language_modeling.final_eval_perplexity",
+                "metrics.language_modeling.final_train_loss",
+                "metrics.training_loss.final_loss",
+                "metrics.training_loss.final_step_loss",
+                "metrics.training_loss.best_loss",
+                "metrics.training_loss.best_step_loss",
+                "metrics.training_loss.loss_reduction",
+                "metrics.training_loss.loss_reduction_ratio",
+                "metrics.next_observation.after.top1_accuracy",
+                "elapsed_seconds",
+            ],
         )
 
     def test_compare_json_outputs_includes_corpus_config(self) -> None:
