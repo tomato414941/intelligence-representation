@@ -6,12 +6,17 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.fashion_mnist_vit import (
+    FashionMNISTExample,
     ImageClassificationConfig,
     PatchTransformerClassifier,
+    fashion_mnist_examples_from_signals,
+    fashion_mnist_label_continuation_sequence,
     image_label_tensors,
+    image_label_tensors_from_examples,
     train_fashion_mnist_classifier,
 )
 from intrep.signal_io import load_signals_jsonl
+from intrep.byte_tokenizer import ByteTokenizer
 
 
 class FashionMNISTViTTest(unittest.TestCase):
@@ -20,12 +25,41 @@ class FashionMNISTViTTest(unittest.TestCase):
             path = Path(directory) / "fashion.jsonl"
             _write_image_label_events(path, Path(directory) / "images")
 
-            images, labels = image_label_tensors(load_signals_jsonl(path))
+            events = load_signals_jsonl(path)
+            examples = fashion_mnist_examples_from_signals(events)
+            images, labels = image_label_tensors_from_examples(examples)
 
+        self.assertEqual(len(examples), 2)
+        self.assertIsInstance(examples[0], FashionMNISTExample)
+        self.assertEqual(examples[0].label_text, "Ankle boot")
         self.assertEqual(images.shape, torch.Size([2, 2, 2]))
         self.assertEqual(labels.tolist(), [9, 0])
         self.assertEqual(float(images[0, 0, 0]), 0.0)
         self.assertEqual(float(images[0, 0, 1]), 1.0)
+
+    def test_signal_tensor_adapter_still_supports_legacy_signal_pairs(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "fashion.jsonl"
+            _write_image_label_events(path, Path(directory) / "images")
+
+            images, labels = image_label_tensors(load_signals_jsonl(path))
+
+        self.assertEqual(images.shape, torch.Size([2, 2, 2]))
+        self.assertEqual(labels.tolist(), [9, 0])
+
+    def test_label_continuation_sequence_masks_loss_to_label_tokens(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_path = Path(directory) / "a.pgm"
+            image_path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
+            example = FashionMNISTExample(image_path=image_path, label_id=9)
+            tokenizer = ByteTokenizer()
+
+            sequence = fashion_mnist_label_continuation_sequence(example, tokenizer)
+
+        label_length = len(tokenizer.encode("Ankle boot"))
+        self.assertEqual(len(sequence.token_ids), len(sequence.loss_mask or ()))
+        self.assertEqual(sum(sequence.loss_mask or ()), label_length)
+        self.assertEqual(sequence.loss_mask[-label_length:], (True,) * label_length)
 
     def test_patch_transformer_classifier_outputs_class_logits(self) -> None:
         model = PatchTransformerClassifier(

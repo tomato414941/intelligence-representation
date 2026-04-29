@@ -14,6 +14,17 @@ from intrep.gpt_model import GPT_MODEL_PRESETS
 from intrep.gpt_training import resolve_training_device
 from intrep.image_io import read_portable_image
 from intrep.signals import PayloadRef, Signal
+from intrep.token_sequence import TokenSequence, token_sequence_from_ids
+
+
+@dataclass(frozen=True)
+class FashionMNISTExample:
+    image_path: Path
+    label_id: int
+
+    @property
+    def label_text(self) -> str:
+        return _label_name(self.label_id)
 
 
 @dataclass(frozen=True)
@@ -177,28 +188,64 @@ def train_fashion_mnist_classifier(
 
 
 def image_label_tensors(events: list[Signal]) -> tuple[torch.Tensor, torch.Tensor]:
+    return image_label_tensors_from_examples(fashion_mnist_examples_from_signals(events))
+
+
+def image_label_tensors_from_examples(
+    examples: list[FashionMNISTExample],
+) -> tuple[torch.Tensor, torch.Tensor]:
     images: list[np.ndarray] = []
     labels: list[int] = []
-    pending_image: np.ndarray | None = None
-    for event in events:
-        if event.channel == "image":
-            if not isinstance(event.payload, PayloadRef):
-                raise ValueError("image events require payload_ref")
-            pending_image = _read_grayscale_image(event.payload)
-        elif event.channel == "label":
-            if pending_image is None:
-                raise ValueError("label event must follow an image event")
-            images.append(pending_image)
-            labels.append(_parse_label_id(event))
-            pending_image = None
+    for example in examples:
+        images.append(_read_image_path(example.image_path))
+        labels.append(example.label_id)
     if not images:
-        raise ValueError("events must contain image/label pairs")
+        raise ValueError("examples must not be empty")
     first_shape = images[0].shape
     if any(image.shape != first_shape for image in images):
         raise ValueError("all images must have the same shape")
     image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
     label_tensor = torch.tensor(labels, dtype=torch.long)
     return image_tensor, label_tensor
+
+
+def fashion_mnist_examples_from_signals(events: list[Signal]) -> list[FashionMNISTExample]:
+    examples: list[FashionMNISTExample] = []
+    pending_image_path: Path | None = None
+    for event in events:
+        if event.channel == "image":
+            if not isinstance(event.payload, PayloadRef):
+                raise ValueError("image events require payload_ref")
+            pending_image_path = _payload_ref_path(event.payload)
+        elif event.channel == "label":
+            if pending_image_path is None:
+                raise ValueError("label event must follow an image event")
+            examples.append(
+                FashionMNISTExample(
+                    image_path=pending_image_path,
+                    label_id=_parse_label_id(event),
+                )
+            )
+            pending_image_path = None
+    if not examples:
+        raise ValueError("events must contain image/label pairs")
+    return examples
+
+
+def fashion_mnist_label_continuation_sequence(
+    example: FashionMNISTExample,
+    tokenizer: object,
+    *,
+    prompt: str = "Class:",
+) -> TokenSequence:
+    prompt_ids = tokenizer.encode(prompt)
+    label_ids = tokenizer.encode(example.label_text)
+    if not label_ids:
+        raise ValueError("label text must encode to at least one token")
+    image_ids = _image_placeholder_token_ids(example.image_path)
+    token_ids = [*image_ids, *prompt_ids, *label_ids]
+    loss_mask = [False] * (len(image_ids) + len(prompt_ids)) + [True] * len(label_ids)
+    return token_sequence_from_ids(token_ids, loss_mask=loss_mask)
 
 
 def write_metrics(path: str | Path, metrics: ImageClassificationMetrics) -> None:
@@ -211,10 +258,18 @@ def _patchify(images: torch.Tensor, patch_size: int) -> torch.Tensor:
 
 
 def _read_grayscale_image(payload_ref: PayloadRef) -> np.ndarray:
+    return _read_image_path(_payload_ref_path(payload_ref))
+
+
+def _payload_ref_path(payload_ref: PayloadRef) -> Path:
     parsed = urlparse(payload_ref.uri)
     if parsed.scheme != "file":
         raise ValueError("Fashion-MNIST classifier supports file:// image payload refs only")
-    pixels = read_portable_image(parsed.path)
+    return Path(parsed.path)
+
+
+def _read_image_path(path: Path) -> np.ndarray:
+    pixels = read_portable_image(path)
     if pixels.ndim == 2:
         return pixels
     if pixels.ndim == 3 and pixels.shape[2] == 3:
@@ -230,6 +285,17 @@ def _parse_label_id(event: Signal) -> int:
     if not 0 <= label_id < len(FASHION_MNIST_LABELS):
         raise ValueError(f"Fashion-MNIST label id out of range: {label_id}")
     return label_id
+
+
+def _label_name(label_id: int) -> str:
+    if not 0 <= label_id < len(FASHION_MNIST_LABELS):
+        raise ValueError(f"Fashion-MNIST label id out of range: {label_id}")
+    return FASHION_MNIST_LABELS[label_id]
+
+
+def _image_placeholder_token_ids(path: Path) -> list[int]:
+    pixels = _read_image_path(path)
+    return [int(value) for value in pixels.reshape(-1).tolist()]
 
 
 def _validate_config(config: ImageClassificationConfig) -> None:
