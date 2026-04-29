@@ -23,7 +23,7 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
             captured_eval_count = len(eval_examples or [])
             return ImageClassificationMetrics(
                 target="label",
-                rendering="image-patches",
+                input_representation="image-patches",
                 train_case_count=1,
                 eval_case_count=1,
                 train_initial_loss=2.0,
@@ -99,9 +99,9 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
         self.assertIn("target=label", output.getvalue())
-        self.assertIn("rendering=image-patches", output.getvalue())
+        self.assertIn("input_representation=image-patches", output.getvalue())
         self.assertEqual(payload["target"], "label")
-        self.assertEqual(payload["rendering"], "image-patches")
+        self.assertEqual(payload["input_representation"], "image-patches")
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
 

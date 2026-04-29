@@ -175,7 +175,7 @@ class FashionMNISTViTTest(unittest.TestCase):
             )
 
         self.assertEqual(metrics.target, "label")
-        self.assertEqual(metrics.rendering, "image-patches")
+        self.assertEqual(metrics.input_representation, "image-patches")
         self.assertEqual(metrics.train_case_count, 2)
         self.assertEqual(metrics.eval_case_count, 2)
         self.assertIsNotNone(metrics.eval_accuracy)

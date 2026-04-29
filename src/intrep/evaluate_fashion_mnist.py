@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> None:
     print("intrep fashion-mnist vit")
     print(
         f"target={metrics.target}"
-        f" rendering={metrics.rendering}"
+        f" input_representation={metrics.input_representation}"
         f" train_cases={metrics.train_case_count}"
         f" eval_cases={metrics.eval_case_count}"
         f" train_initial_loss={metrics.train_initial_loss:.4f}"

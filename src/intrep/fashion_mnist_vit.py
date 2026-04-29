@@ -58,7 +58,7 @@ class ImageClassificationConfig:
 @dataclass(frozen=True)
 class ImageClassificationMetrics:
     target: str
-    rendering: str
+    input_representation: str
     train_case_count: int
     eval_case_count: int
     train_initial_loss: float
@@ -72,7 +72,7 @@ class ImageClassificationMetrics:
     def to_dict(self) -> dict[str, object]:
         return {
             "target": self.target,
-            "rendering": self.rendering,
+            "input_representation": self.input_representation,
             "train_case_count": self.train_case_count,
             "eval_case_count": self.eval_case_count,
             "train_initial_loss": self.train_initial_loss,
@@ -256,7 +256,7 @@ def train_fashion_mnist_classifier(
         eval_count = int(eval_labels.numel())
     return ImageClassificationMetrics(
         target="label",
-        rendering="image-patches",
+        input_representation="image-patches",
         train_case_count=int(train_labels.numel()),
         eval_case_count=eval_count,
         train_initial_loss=initial_loss,
