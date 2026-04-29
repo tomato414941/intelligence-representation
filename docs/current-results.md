@@ -2,16 +2,15 @@
 
 ## Role
 
-This document records the current project conclusion and points to the detailed
-experiment notes. It is not the implementation map, command reference, or full
-run log.
+This document records the current project conclusion. Historical experiment
+details remain in the numbered experiment notes and under `docs/legacy/`.
 
 Use these documents for details:
 
 - [README](../README.md): project map and common commands
-- [Evaluation](evaluation.md): evaluation concepts and CLI shape
-- [Experiment 001](experiment-001.md): first hard-negative Signal future-prediction run
-- [Experiment 002](experiment-002.md): 100x data and rendering-context investigation
+- [Evaluation](evaluation.md): evaluation concepts
+- [Experiment 001](experiment-001.md): retired Signal future-prediction run
+- [Experiment 002](experiment-002.md): retired rendering-context investigation
 - [Experiment 003](experiment-003.md): natural language held-out loss smoke check
 
 ## Current Position
@@ -19,10 +18,13 @@ Use these documents for details:
 The project has not produced a predictive token machine, a latent world model,
 or robust action-conditioned future prediction.
 
-The current milestone is narrower:
+The active milestone is narrower:
 
 ```text
-a small Signal stream GPT scaffold with target-position future-prediction evaluation
+raw examples
+  -> modality-specific tokenizer / encoder / adapter
+  -> TokenSequence or hidden sequence
+  -> shared predictive model components
 ```
 
 The conceptual center remains:
@@ -31,249 +33,98 @@ The conceptual center remains:
 A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-World modeling is one evaluation surface inside that broader frame. It asks
-whether observation/action history can predict future observations or
-consequences.
+World modeling is one evaluation surface inside that broader frame. It should
+be evaluated through prediction of future observations or consequences, not by
+next-token loss alone.
 
 ## Current Evidence
 
-What is currently supported:
+Currently supported:
 
 ```text
-The old Signal stream path can represent several experimental labels, but it is
-now treated as a transitional path rather than the growth direction.
-
-A small decoder-only GPT can reduce next-token loss on the available smoke and
-generated text streams.
-
-The same training path can reduce held-out loss on a small natural-language-like
-toy corpus.
-
-Generated hard-negative signal environment data can be produced at 100x the
-Experiment 001 scale.
-
-FuturePredictionCase ranking can target consequence events with same-channel
-hard-negative distractors.
+decoder-only GPT training utilities
+byte-level and simple byte-pair text tokenization
+TokenSequence with optional loss masks
+Fashion-MNIST image-choice raw examples
+ImagePatchAdapter -> SharedTransformerCore -> ClassificationHead
+grid-world action-conditioned smoke data
+run summary aggregation and comparison
 ```
 
-What is not yet supported:
+Not yet supported:
 
 ```text
-held-out action-conditioned ranking improvement
-robust context-conditioned consequence discrimination
+large-scale multimodal token learning
+image-to-text continuation training
+shared text/image training through one core
+held-out action-conditioned future prediction improvement
 latent predictive state
 belief update
 memory read/write learning
-large-scale multimodal token learning
 planning or control
 ```
 
 Next-token loss reduction remains only a smoke signal. It is not evidence that
 a predictive token machine or world model has been learned.
 
-## Experiment Reading
+## Historical Reading
 
-### Experiment 001
+The retired Signal experiments showed that a small byte-level GPT can reduce
+loss on rendered streams, but did not show robust action-conditioned future
+prediction. They also exposed that representation and rendering choices can
+hide the relevant prefix from a short-context scorer.
 
-Experiment 001 generated two hard-negative signal environment slices:
+Those results should be read as negative or diagnostic evidence for the retired
+path, not as the current implementation direction.
 
-```text
-same_history_different_action
-same_action_different_context
-```
-
-The short run reduced next-token loss but did not improve hard-negative
-future-prediction ranking.
-
-Original reading:
-
-```text
-The byte-level signal-tag GPT scaffold learned local stream statistics, but did
-not show action/context-conditioned consequence discrimination.
-```
-
-Updated caveat:
-
-```text
-The run used full signal rendering. With context_length = 64, the rendered
-tags were long enough that consequence payload could be scored after the
-observation/action prefix had fallen out of the model window.
-```
-
-So Experiment 001 remains a negative measured result, but it is not a clean
-modeling failure. It also exposed an evaluation rendering problem.
-
-### Experiment 002
-
-Experiment 002 scaled the generated hard-negative Signal data to:
-
-```text
-per condition:
-  train_cases = 8000
-  eval_cases = 3200
-  explicit_negative_rate = 0.0
-```
-
-It also separated future-prediction ranking rendering into:
-
-```text
-signal:
-  full Signal tag rendering, treated as a low-priority experiment
-
-payload:
-  rendered event payloads only, better for the current short context length
-  in the text/byte-tokenizer evaluation path
-```
-
-The key finding:
-
-```text
-signal rendering can hide the relevant observation/action prefix from the
-scorer under context_length = 64.
-```
-
-Small 100x probes with `rendering=payload` removed the exact zero-margin
-artifact, but did not produce top-1 ranking improvement:
-
-```text
-same_history_different_action:
-  before_top1_accuracy: 0.5000
-  after_top1_accuracy: 0.5000
-  before_margin: -0.0025
-  after_margin: 0.0013
-
-same_action_different_context:
-  before_top1_accuracy: 0.5000
-  after_top1_accuracy: 0.5000
-  before_margin: -0.0032
-  after_margin: -0.0246
-```
-
-Current reading:
-
-```text
-Data scale alone has not produced a clean ranking improvement in the small CPU
-probe.
-
-Payload rendering is the better diagnostic for the current context length.
-
-The next experiments should keep the hard-negative evaluation fixed and vary
-only the factors that affect whether the model can see and use the relevant
-prefix.
-```
-
-### Experiment 003
-
-Experiment 003 tested the current byte-level small GPT on a toy natural language
-corpus:
-
-```text
-train documents = 80
-eval documents = 24
-train byte tokens = 11839
-eval byte tokens = 3605
-max_steps = 100
-```
-
-Held-out eval loss decreased substantially:
+Experiment 003 showed that the training path and small Transformer can reduce
+held-out loss on a small natural-language-like corpus:
 
 ```text
 initial_eval_loss: 5.6550
 final_eval_loss: 2.3727
 ```
 
-Current reading:
+This supports only the narrow claim that the small training stack can learn
+local text-like patterns in a smoke setting.
+
+## Image Path
+
+The current image path is wired end to end:
 
 ```text
-The training path and small Transformer can learn local natural-language-like
-patterns. Hard-negative world-stream ranking failures should therefore be
-investigated as task/rendering/context/scoring/model-capacity issues, not as
-evidence that the model cannot learn at all.
+Fashion-MNIST IDX
+  -> image-choice JSONL
+  -> local PGM files
+  -> ImageChoiceExample
+  -> image patch embedding
+  -> SharedTransformerCore
+  -> ClassificationHead
 ```
 
-## Historical RunPod Sweep
+This is still a classification-head baseline. The next direction is to connect
+image inputs and label text to continuation scoring or token-level supervision,
+without reintroducing a generic raw-data envelope.
 
-A historical RunPod sweep on `main` at commit `b2d8e03` used CUDA, seed `7`,
-`max_steps = 40`, and `distractor_policy = same_entity`.
+## Tokenizer Direction
 
-The generated environment slices showed next-token loss reduction:
+The text tokenizer work should attach to raw text examples. It should not depend
+on the retired Signal text path.
 
-```text
-generated_seen:
-  final_eval_loss: 5.714 -> 2.870
-  next_observation_accuracy: 0.000 -> 0.000
-
-generated_held_out_object:
-  final_eval_loss: 5.733 -> 3.252
-  next_observation_accuracy: 0.000 -> 0.000
-
-generated_held_out_container:
-  final_eval_loss: 5.716 -> 3.335
-  next_observation_accuracy: 0.000 -> 0.000
-
-generated_held_out_location:
-  final_eval_loss: 5.728 -> 3.468
-  next_observation_accuracy: 0.000 -> 0.000
-```
-
-This historical run supports only the narrow statement that the small byte-level
-GPT reduced continuation loss on generated text streams. It did not show
-improved action-conditioned next-observation prediction.
+The current tokenizer is intentionally not production-grade. It keeps byte
+fallback and supports simple byte-pair merges so tokenization can be compared
+without adding external tokenizer state or dependencies.
 
 ## Next Pressure
-
-Next work should not add new semantic taxonomies or fixed state schemas.
 
 The next useful pressure is:
 
 ```text
-rendering = payload
-context_length
-max_steps
-model size
-train-set versus held-out ranking
-eval case count once scoring cost is acceptable
+image-choice continuation scoring
+text raw-example training path
+shared core tests across image and text adapters
+clear separation between tokenizer, adapter, core, and head
 ```
 
-## Fashion-MNIST Image Path
-
-The first image smoke path is wired end to end, but it is still a transitional
-classification-head path:
-
-```text
-Fashion-MNIST IDX
-  -> local PGM files
-  -> image references
-  -> image patch embedding
-  -> Transformer encoder
-  -> classification head
-```
-
-The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
-future-prediction CLI remains focused on the legacy text-rendered Signal path.
-The next direction is not to grow the classification head path, but to convert
-image inputs and label text into a shared token-sequence / continuation-ranking
-form.
-
-The future-prediction evaluation path trains from rendered Signal streams
-directly. It remains useful as a smoke test while the project moves toward
-`TokenSequence` as the common learning input.
-
-The immediate experimental question is:
-
-```text
-Can the small decoder-only predictor improve hard-negative consequence ranking
-when the relevant observation/action prefix is actually visible to the scorer?
-```
-
-Signal JSONL growth paths have been retired from the active package. New work
-should use raw examples that are converted to token or hidden sequences.
-
-## Tokenizer Direction
-
-The text tokenizer work should attach to raw text examples rather than the
-retired Signal text CLI.
-
-This is intentionally not a production tokenizer. It keeps byte fallback and
-learns simple byte-pair merges from the current training corpus so tokenization
-can be compared without adding external tokenizer state or dependencies.
+Do not add new semantic taxonomies or fixed state schemas unless a concrete
+training or evaluation path forces them.

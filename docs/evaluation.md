@@ -118,9 +118,8 @@ non-language grid observation corpus construction
 JSONL file corpus loading and growth
 decoder-only GPT training behavior
 loss reduction in short runs
-symbolic-to-natural environment-text correspondence evaluation
 mixed next-observation ranking evaluation
-support benchmark clarity
+image-choice classification or continuation evaluation
 ```
 
 Avoid adding broad schemas, ontology categories, or new experiment files unless the benchmark exposes a repeated need for them.
