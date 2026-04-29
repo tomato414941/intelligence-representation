@@ -278,7 +278,7 @@ Prefer:
 ```text
 task-specific raw examples
 modality-specific input layers
-TokenSequence for text or other discrete pre-embedding inputs
+token IDs for text or other discrete pre-embedding inputs
 input embedding sequence as the shared model input boundary
 hidden states as Transformer outputs
 loss masks for separating context from supervised answer tokens

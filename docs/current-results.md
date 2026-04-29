@@ -45,7 +45,7 @@ Currently supported:
 ```text
 causal text model training utilities
 byte-level and simple byte-pair text tokenization
-TokenSequence with optional loss masks for text inputs
+token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 grid-world action-conditioned smoke data

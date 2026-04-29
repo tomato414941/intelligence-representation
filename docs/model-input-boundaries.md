@@ -113,18 +113,17 @@ hidden states:
   contextual vectors after the Transformer core
 ```
 
-## TokenSequence
+## Token IDs and Loss Masks
 
-`TokenSequence` is a discrete pre-embedding sequence.
+Token IDs are discrete pre-embedding units.
 
 ```text
-TokenSequence:
-  token_ids
-  optional loss_mask
+token_ids
+optional loss_mask
 ```
 
-It is useful for text and other naturally discrete inputs or objectives. It is
-not the universal cross-modal representation.
+They are useful for text and other naturally discrete inputs or objectives.
+They are not the universal cross-modal representation.
 
 `loss_mask` marks which token positions contribute to a training loss. For
 plain language modeling, every next-token position may be trainable. For a
