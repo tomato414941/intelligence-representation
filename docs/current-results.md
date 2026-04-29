@@ -52,6 +52,7 @@ image-conditioned text candidate scoring
 image-choice scoring evaluation
 image-conditioned text example training smoke loop
 staged image classification, text modeling, and image-text training smoke path
+Phase 3 CLI smoke path with image-text choice accuracy metrics
 grid-world action-conditioned smoke data
 run summary aggregation and comparison
 ```
@@ -60,8 +61,7 @@ Not yet supported:
 
 ```text
 large-scale multimodal token learning
-image-to-text continuation training
-shared text/image training through one core
+large-scale image-to-text continuation training
 held-out action-conditioned future prediction improvement
 latent predictive state
 belief update

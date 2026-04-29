@@ -54,6 +54,9 @@ class TrainingPhasesTest(unittest.TestCase):
         self.assertGreater(result.language_modeling.result.token_count, 0)
         self.assertEqual(result.image_text.case_count, 1)
         self.assertGreater(result.image_text.initial_loss, result.image_text.final_loss)
+        self.assertEqual(result.image_text_choice.case_count, 1)
+        self.assertEqual(result.image_text_choice.accuracy, 1.0)
+        self.assertEqual(result.image_text_choice.predicted_indices, (1,))
 
 
 if __name__ == "__main__":

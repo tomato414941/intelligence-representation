@@ -16,6 +16,7 @@ from intrep.image_text_training import (
     image_text_examples_from_choices,
     train_image_text_examples,
 )
+from intrep.image_text_evaluation import ImageTextChoiceMetrics, evaluate_image_text_choices
 from intrep.language_modeling_training import (
     LanguageModelingTrainingArtifacts,
     LanguageModelingTrainingConfig,
@@ -30,6 +31,7 @@ class ImageTextTrainingPhasesResult:
     image_classification: ImageClassificationTrainingResult
     language_modeling: LanguageModelingTrainingArtifacts
     image_text: ImageTextTrainingResult
+    image_text_choice: ImageTextChoiceMetrics
 
 
 def run_image_text_training_phases(
@@ -75,10 +77,18 @@ def run_image_text_training_phases(
         prompt=prompt,
         config=image_text_config,
     )
+    image_text_choice = evaluate_image_text_choices(
+        examples=image_examples,
+        image_input_layer=image_result.model.image_input_layer,
+        text_model=text_artifacts.model,
+        tokenizer=text_artifacts.tokenizer,
+        prompt=prompt,
+    )
     return ImageTextTrainingPhasesResult(
         image_classification=image_result,
         language_modeling=text_artifacts,
         image_text=image_text_result,
+        image_text_choice=image_text_choice,
     )
 
 
