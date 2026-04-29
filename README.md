@@ -5,11 +5,10 @@ This repository explores representation for intelligence through an installable,
 The current center is not a hand-designed semantic database. It is a predictive token machine scaffold:
 
 ```text
-Signal streams
-  -> optional signal-tag rendering for low-priority byte-tokenizer experiments
-  -> decoder-only GPT-style prediction
-  -> next-token / future-token training
-  -> FuturePredictionCase ranking over dataset-defined target channels
+raw text / image / audio / label-like data
+  -> modality-specific tokenization / encoding
+  -> TokenSequence
+  -> shared next-token / continuation prediction
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -24,13 +23,16 @@ The conceptual center is:
 A predictive token machine for language, perception, action, memory, and belief.
 ```
 
-The broader hypothesis is that multimodal Signal streams can support a learned general-purpose predictive computation substrate. In that framing, a world model is not the whole project. It is the part of a predictive token machine that predicts observations, actions, and environment transitions.
+The broader hypothesis is that text, image, audio, action, and outcome data can
+be converted into token or embedding sequences that share a predictive learning
+form. In that framing, a world model is not the whole project. It is one
+evaluation surface for predicting action-conditioned futures.
 
 The main v1 direction is:
 
 ```text
-Can a small untrained decoder-only GPT learn useful future prediction behavior
-from Signal streams without turning experimental labels into a fixed ontology?
+Can text, image, audio, and action-conditioned data be converted into a common
+token-sequence prediction form without adding unused schema fields?
 ```
 
 Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over action-conditioned signal streams.
@@ -39,8 +41,9 @@ This does not use OpenAI API or a pretrained chat model. It uses the successful 
 
 Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
-The active abstraction for new experiments is `Signal` streams, with `FuturePredictionCase` used for target-position-aware evaluation.
-Signal handling is split by responsibility: `signal_io` reads and writes Signal JSONL, and `signal_rendering` renders text training streams.
+The active direction for new experiments is raw examples that are easy to
+tokenize, then `TokenSequence` training. Signal JSONL and signal-tag rendering
+remain transitional surfaces for existing experiments only.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 
@@ -78,6 +81,7 @@ src/intrep/torch_sequence.py
 src/intrep/tiny_transformer.py
 src/intrep/byte_tokenizer.py
 src/intrep/text_tokenizer.py
+src/intrep/token_sequence.py
 src/intrep/language_modeling_metrics.py
 src/intrep/generated_environment_signal_corpus.py
 src/intrep/signals.py
@@ -107,6 +111,7 @@ src/intrep/update_loop.py
 Read these first:
 
 - [Predictive Token Machine](docs/predictive-token-machine.md)
+- [Token Sequence Direction](docs/token-sequence-direction.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
@@ -144,6 +149,7 @@ same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion
 tool / memory / belief as future task areas, not current core channels or hand-built schemas
+TokenSequence as the common learning input, not Signal JSONL
 existing symbolic benchmarks as support, not the main path
 ```
 
@@ -156,25 +162,16 @@ uv sync
 uv run python -m unittest
 ```
 
-## Run Demo
-
-```sh
-uv run python -m intrep.demo
-```
-
 The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
 
-## Train Signal Text
+## Train Text Smoke
 
 ```sh
 uv run python -m intrep.train_signal_text --train-path path/to/signals.jsonl --max-steps 20
 ```
 
-This trains the text-payload Signal path. Image `payload_ref` records are handled
-by image-specific entry points such as `intrep.evaluate_fashion_mnist`, not by
-the text trainer.
-
-Signal JSONL corpora are the intended path for real corpus growth.
+This is a transitional text-payload Signal path kept for existing experiments.
+New work should prefer raw examples that can be converted into `TokenSequence`.
 
 For GPU hosts such as RunPod, `intrep.train_signal_text` supports `--device auto|cpu|cuda`
 and final checkpoint writing with `--checkpoint-path`. See `docs/runpod.md`.

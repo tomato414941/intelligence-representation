@@ -6,6 +6,7 @@
 実装方針の正本は次の文書に置く。
 
 - [Predictive Token Machine](predictive-token-machine.md)
+- [Token Sequence Direction](token-sequence-direction.md)
 - [Signal and Symbol](signal-and-symbol.md)
 - [World Model Centering](world-model.md)
 - [Bitter Lesson Correction](bitter-lesson.md)
@@ -35,10 +36,10 @@ A predictive token machine for language, perception, action, memory, and belief.
 優先するもの:
 
 ```text
-Observation / Action / Consequence を含む signal streams
-薄い channel / payload 境界
+token を作りやすい raw examples
+TokenSequence を共通学習入力にする
 next-token training as a smoke objective
-target-position-aware future prediction evaluation
+continuation / future-token evaluation
 held-out hard-negative ranking
 loss reduction と modeling evidence の分離
 ```
@@ -50,12 +51,13 @@ handcrafted ontology
 fixed Semantic State DB
 manual belief / conflict taxonomy
 large schema design before repeated experimental pressure
+generic Signal JSONL growth path
 loss reduction alone as a world-model claim
 ```
 
 ## Signal
 
-このプロジェクトでの `Signal` は、Predictive Token Machine に流す薄い入力・出力単位である。
+このプロジェクトでの `Signal` は、過去の実験で使っている薄い入力・出力単位である。
 人間に例えるなら、感覚器官や身体や道具から入ってくる時系列入力に近い。
 
 ```text
@@ -66,6 +68,8 @@ Signal:
 
 `Signal` は手設計された意味オブジェクトではない。
 モデルが条件づけたり予測したりするための、最小限の envelope として扱う。
+ただし、新しい本線では `Signal` を成長させず、raw example から
+`TokenSequence` を作る方向へ寄せる。
 
 ## Channel
 

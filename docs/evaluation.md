@@ -15,8 +15,9 @@ In that broader frame, world modeling is a core evaluation surface, not the whol
 The main v1 engineering question is:
 
 ```text
-Can an untrained decoder-only GPT consume signal streams and improve
-target-channel future prediction after a short next-token training run?
+Can raw text/image/action-conditioned examples be converted into token
+sequences that improve continuation or future-token prediction after a short
+training run?
 ```
 
 Average next-token loss reduction remains a smoke question, not a predictive-token-machine or world-model claim. The training objective can be next-token prediction, but the evaluation target for world-model-oriented claims must be action-conditioned future prediction.
@@ -25,7 +26,7 @@ Use this distinction:
 
 ```text
 training objective:
-  next-token prediction over Signal streams
+  next-token prediction over TokenSequence
 
 training smoke metric:
   average next-token loss reduction
@@ -34,11 +35,10 @@ world-model-oriented metric:
   held-out action-conditioned next-observation / future-token prediction
 ```
 
-In this question, the generated corpus is only the smoke corpus. It verifies the
-Signal training and evaluation path without requiring external data. The real
-corpus growth path is Signal JSONL files passed to the training CLI. Signal
-JSONL records keep `channel` and exactly one of text `payload` or non-text
-`payload_ref`; legacy `role` / `modality` / `content` records are not accepted.
+In this question, generated corpora are smoke corpora. Existing Signal JSONL
+checks verify the transitional training and evaluation path. They are not the
+future corpus growth path. New datasets should keep raw examples close to their
+source and convert them to `TokenSequence` at training or evaluation time.
 
 Signal JSONL text payload:
 

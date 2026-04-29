@@ -31,11 +31,11 @@ A predictive token machine for language, perception, action, memory, and belief.
 このプロジェクトの核は、手設計の意味DBでも、retrieval-first memory systemでもない。
 
 ```text
-Signal streams
+raw examples
   ↓
-thin channel/payload boundaries
+modality-specific tokenization / encoding
   ↓
-typed token rendering
+TokenSequence
   ↓
 small decoder-only Transformer predictor
   ↓
@@ -149,9 +149,9 @@ SocialModel
 現在の実験ループは retrieval loop ではない。
 
 ```text
-Generate or collect Signal streams
+Generate or collect raw examples
   ↓
-Render into a model-visible token stream
+Tokenize or encode into TokenSequence
   ↓
 Train a small decoder-only predictor
   ↓
@@ -192,8 +192,8 @@ support:
 この文書の修正方針は次である。
 
 ```text
-保存するのは typed observations / events
-固定するのは薄い channel/payload boundary
+保存するのは token を作りやすい raw examples
+固定するのは TokenSequence と必要な tokenizer / encoder interface
 中心に置くのは learned predictor
 評価するのは target-position future prediction
 抽象化はモデルと評価圧に任せる

@@ -127,21 +127,19 @@ training objective:
 すべてをtoken streamにすることは、構造を捨てることではない。
 自然言語も一次元のtoken streamだが、その中には文法、照応、時間、因果、目的、信念、社会関係が含まれる。
 
-このプロジェクトでの `Signal` は、token stream に入る前の薄い単位である。
-感覚器・行動器・tool・内部状態から来る入力や出力を、channel と payload だけで包む。
-重要なのは、`Signal` は意味DBのレコードではなく、モデルが条件づけたり予測したりする stream 単位だという点である。
+このプロジェクトで今後中心に置くのは、token stream に入る前の汎用
+Signal envelope ではなく、token を作りやすい raw example と、
+そこから作る `TokenSequence` である。
 
-このプロジェクトで積極的に入れてよいのは、主に薄いstream構造である。
+このプロジェクトで積極的に固定してよいのは、主に tokenization と
+evaluation に実際に使う薄い構造である。
 
 ```text
-modality
-time
-role
-boundary
-agent
-source
-prediction target
-action / observationの区別
+raw source
+tokenizer / encoder
+token sequence boundary
+loss mask
+evaluation candidate set
 ```
 
 これは過剰なontologyではない。
@@ -210,11 +208,11 @@ reward / error tokenizer:
 
 ```text
 byte-level text tokenizer
+TokenSequence scaffold
 small decoder-only GPT
-Signal text / environment / image corpus paths
-Signal envelope, with signal-tag rendering only as a low-priority byte-tokenizer experiment
-signal JSONL input path
-FuturePredictionCase evaluation directly over Signal streams
+transitional Signal text / environment / image corpus paths
+signal-tag rendering only as a low-priority legacy byte-tokenizer experiment
+FuturePredictionCase evaluation over the transitional Signal path
 train_signal_text / evaluate_future_prediction CLI entry points
 generated train/eval slices
 RunPod execution path

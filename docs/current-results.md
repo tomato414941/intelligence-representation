@@ -41,8 +41,8 @@ consequences.
 What is currently supported:
 
 ```text
-Signal streams can represent observations, actions, consequences, tool
-events, prediction errors, and belief/memory-like records.
+The old Signal stream path can represent several experimental labels, but it is
+now treated as a transitional path rather than the growth direction.
 
 A small decoder-only GPT can reduce next-token loss on the available smoke and
 generated text streams.
@@ -258,30 +258,29 @@ train-set versus held-out ranking
 eval case count once scoring cost is acceptable
 ```
 
-## Fashion-MNIST Image Signals
+## Fashion-MNIST Image Path
 
-The first image-signal smoke path is now wired end to end:
+The first image smoke path is wired end to end, but it is still a transitional
+classification-head path:
 
 ```text
 Fashion-MNIST IDX
   -> local PGM files
-  -> image Signal payload_ref
+  -> image references
   -> image patch embedding
   -> Transformer encoder
   -> classification head
 ```
 
 The task-specific entry point is `intrep.evaluate_fashion_mnist`; the generic
-future-prediction CLI remains focused on text-rendered Signal streams.
-It now uses the normal image path: patchify, learned patch embedding, learned
-position embedding, Transformer encoder, and a classification head. The older
-`image-tokens` text rendering path has been removed.
+future-prediction CLI remains focused on the legacy text-rendered Signal path.
+The next direction is not to grow the classification head path, but to convert
+image inputs and label text into a shared token-sequence / continuation-ranking
+form.
 
 The future-prediction evaluation path trains from rendered Signal streams
-directly. The legacy mixed-document bridge has been removed from the main code
-path.
-Signal infrastructure is now split so new code can depend on the narrow module
-it needs: `signal_io` or `signal_rendering`.
+directly. It remains useful as a smoke test while the project moves toward
+`TokenSequence` as the common learning input.
 
 The immediate experimental question is:
 
@@ -290,8 +289,8 @@ Can the small decoder-only predictor improve hard-negative consequence ranking
 when the relevant observation/action prefix is actually visible to the scorer?
 ```
 
-Only after that should the project consider broader tokenizer, corpus, memory,
-or architecture changes.
+Next work should retire Signal JSONL growth paths in favor of raw examples that
+are converted to token sequences.
 
 ## Tokenizer Direction
 

@@ -1,7 +1,8 @@
 # RunPod Training Notes
 
-This project can train the Signal text prototype on CPU by default or on a CUDA GPU
-when running on a RunPod container with PyTorch CUDA support.
+This project can still train the transitional Signal text prototype on CPU by
+default or on a CUDA GPU when running on a RunPod container with PyTorch CUDA
+support.
 
 ## Device Selection
 
@@ -53,4 +54,5 @@ machines.
 ## Future Prediction Evaluation
 
 Use `intrep.evaluate_future_prediction` for generated observation/action
-future-prediction checks.
+future-prediction checks. This is a legacy smoke path while new work moves
+toward raw examples converted to `TokenSequence`.
