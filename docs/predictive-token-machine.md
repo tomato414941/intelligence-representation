@@ -9,13 +9,15 @@ A predictive token machine for language, perception, action, memory, and belief.
 このプロジェクトの上位概念は、`world model` より広い。
 
 目指しているものは、単に世界状態を予測するモデルではない。
-自然言語、観測、行動、映像、音声、状態、信念、記憶、報酬、誤差、tool useをsignal streamに落とし、Transformer / attentionによる予測計算を通じて、汎用的な知的計算を実現できるかを調べる。
+自然言語、観測、行動、映像、音声、状態、信念、記憶、報酬、誤差、tool useを、
+それぞれの raw example から token sequence または hidden sequence に変換し、
+Transformer / attentionによる予測計算を通じて、汎用的な知的計算を実現できるかを調べる。
 
 この上位仮説を、この文書では `Predictive Token Machine` と呼ぶ。
 
 ```text
 Predictive Token Machine:
-  signal / multimodal token stream上で、
+  multimodal token / hidden sequence上で、
   予測・生成・変換・行動選択・観測統合・信念更新・記憶操作を行う
   学習可能な汎用token計算機
 ```
@@ -37,7 +39,7 @@ world model:
 
 Predictive Token Machine:
   text, vision, audio, action, state, belief, memory, reward, error, tool useを含む
-  signal / multimodal token streamに対する汎用予測・生成・変換計算機
+  multimodal token / hidden sequenceに対する汎用予測・生成・変換計算機
 ```
 
 この整理では、world modelは全体ではなく一部である。
@@ -73,7 +75,8 @@ Reward / Error Model:
   報酬、失敗、誤差、修正、更新信号をtokenとして扱う機能
 ```
 
-これらを別々のsymbolic systemとして手設計するのではなく、共通のsignal streamと予測学習の上に載せる。
+これらを別々のsymbolic systemとして手設計するのではなく、
+raw exampleから作る系列表現と予測学習の上に載せる。
 
 ## 基本演算
 
@@ -103,7 +106,7 @@ toolを呼ぶ
 
 ```text
 training objective:
-  signal / multimodal token stream上のnext-token / future-token prediction
+  token / hidden sequence上のnext-token / future-token prediction
 ```
 
 しかし、評価では全token平均lossだけを見ない。
@@ -128,8 +131,8 @@ training objective:
 自然言語も一次元のtoken streamだが、その中には文法、照応、時間、因果、目的、信念、社会関係が含まれる。
 
 このプロジェクトで今後中心に置くのは、token stream に入る前の汎用
-Signal envelope ではなく、token を作りやすい raw example と、
-そこから作る `TokenSequence` である。
+envelope schema ではなく、token / hidden sequence を作りやすい raw example と、
+それを変換する tokenizer / encoder / adapter である。
 
 このプロジェクトで積極的に固定してよいのは、主に tokenization と
 evaluation に実際に使う薄い構造である。
@@ -199,20 +202,19 @@ reward / error tokenizer:
 新しいtokenizerを追加することは、新しい感覚器や行動器を追加することに近い。
 ただし、追加すれば即座に使えるわけではなく、既存token空間との対応、embedding、自然言語概念とのalignment、行動や観測との因果関係を学習する必要がある。
 
-## 現在の実装位置
+## 現在の位置づけ
 
 現在のリポジトリは、`Predictive Token Machine` を実現済みではない。
-まだ小さなscaffoldである。
+実装状態の詳細は README と [Current Results](current-results.md) に置く。
 
-現時点であるものは次である。
+現在の実験基盤は、次の形へ寄せている。
 
 ```text
-byte-level text tokenizer
-TokenSequence scaffold
-small decoder-only GPT
-image-choice raw example corpus path
-Fashion-MNIST image adapter / shared Transformer core / classification head
-generated train/eval slices
+raw examples
+  -> tokenizer / encoder / adapter
+  -> TokenSequence or hidden sequence
+  -> shared predictive model components
+  -> task-specific evaluation
 ```
 
 現時点でまだ示していないものは次である。
@@ -230,7 +232,8 @@ planning or control
 ```
 
 したがって、今の実験結果は `Predictive Token Machine` の証拠ではない。
-それに向かうための小さな signal stream scaffold ができてきた、という位置づけで扱う。
+それに向かうために、入力側の形式を無理に共通化せず、
+共有できる予測計算へ接続するための最小実験を進めている段階である。
 
 ## まとめ
 
