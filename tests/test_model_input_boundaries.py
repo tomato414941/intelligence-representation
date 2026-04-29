@@ -5,6 +5,7 @@ import torch
 from intrep.fashion_mnist_vit import ImagePatchInputLayer
 from intrep.gpt_model import CausalTextModel, build_gpt_config
 from intrep.model_input import concatenate_input_embedding_sequences
+from intrep.token_scoring import next_token_loss
 from intrep.transformer_core import SharedTransformerCore
 
 
@@ -130,6 +131,37 @@ class ModelInputBoundariesTest(unittest.TestCase):
         self.assertEqual(combined.shape, torch.Size([1, 6, embedding_dim]))
         self.assertEqual(hidden.shape, torch.Size([1, 6, embedding_dim]))
         self.assertEqual(logits.shape, torch.Size([1, 6, vocab_size]))
+
+    def test_image_conditioned_text_logits_can_be_scored_with_loss_mask(self) -> None:
+        embedding_dim = 8
+        vocab_size = 16
+        text_model = CausalTextModel(
+            build_gpt_config(
+                preset="tiny",
+                vocab_size=vocab_size,
+                context_length=8,
+                embedding_dim=embedding_dim,
+            )
+        )
+        image_input = ImagePatchInputLayer(
+            image_size=(4, 4),
+            patch_size=2,
+            embedding_dim=embedding_dim,
+        )
+
+        image_embeddings = image_input(torch.zeros((1, 4, 4), dtype=torch.float32))
+        text_token_ids = torch.tensor([[1, 2, 3]], dtype=torch.long)
+        text_embeddings = text_model.embed_tokens(text_token_ids)
+        combined = concatenate_input_embedding_sequences(image_embeddings, text_embeddings)
+        hidden = text_model.encode_embeddings(combined, causal=True)
+        logits = text_model.token_logits(hidden)
+        target_token_ids = torch.tensor([[0, 0, 0, 0, 1, 2, 3]], dtype=torch.long)
+        loss_mask = torch.tensor([[False, False, False, False, False, False, True]], dtype=torch.bool)
+
+        loss = next_token_loss(logits, target_token_ids, loss_mask=loss_mask)
+
+        self.assertEqual(loss.ndim, 0)
+        self.assertTrue(torch.isfinite(loss))
 
     def test_concatenate_input_embedding_sequences_validates_boundaries(self) -> None:
         embeddings = torch.zeros((1, 2, 8), dtype=torch.float32)

@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from intrep.byte_tokenizer import ByteTokenizer
+from intrep.token_scoring import next_token_losses
 
 
 ContinuationScorer = Callable[[Any, ByteTokenizer, str, str], float]
@@ -25,7 +26,6 @@ def torch_next_token_continuation_losses(
     continuations: Sequence[str],
 ) -> list[float]:
     import torch
-    import torch.nn.functional as F
 
     prefix_ids = tokenizer.encode(prefix)
     if not prefix_ids:
@@ -64,8 +64,26 @@ def torch_next_token_continuation_losses(
             for length, windows in windows_by_length.items():
                 input_ids = torch.tensor([window for _index, window in windows], dtype=torch.long, device=device)
                 targets = torch.tensor(targets_by_length[length], dtype=torch.long, device=device)
-                logits = model(input_ids)[:, -1, :]
-                losses = F.cross_entropy(logits, targets, reduction="none")
+                scoring_token_ids = torch.cat([input_ids, targets.unsqueeze(1)], dim=1)
+                model_logits = model(input_ids)
+                scoring_logits = torch.cat(
+                    [
+                        model_logits,
+                        torch.zeros(
+                            (input_ids.size(0), 1, model_logits.size(2)),
+                            dtype=model_logits.dtype,
+                            device=device,
+                        ),
+                    ],
+                    dim=1,
+                )
+                loss_mask = torch.zeros_like(scoring_token_ids, dtype=torch.bool)
+                loss_mask[:, -1] = True
+                losses = next_token_losses(
+                    scoring_logits,
+                    scoring_token_ids,
+                    loss_mask=loss_mask,
+                )
                 for (continuation_index, _window), loss in zip(windows, losses, strict=True):
                     total_losses[continuation_index] += float(loss.item())
                     total_counts[continuation_index] += 1
