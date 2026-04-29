@@ -210,12 +210,9 @@ reward / error tokenizer:
 byte-level text tokenizer
 TokenSequence scaffold
 small decoder-only GPT
-transitional Signal text / environment / image corpus paths
-signal-tag rendering only as a low-priority legacy byte-tokenizer experiment
-FuturePredictionCase evaluation over the transitional Signal path
-train_signal_text / evaluate_future_prediction CLI entry points
+image-choice raw example corpus path
+Fashion-MNIST image adapter / shared Transformer core / classification head
 generated train/eval slices
-RunPod execution path
 ```
 
 現時点でまだ示していないものは次である。

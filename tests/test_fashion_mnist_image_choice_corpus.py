@@ -1,24 +1,22 @@
 import gzip
 import io
+import json
 import struct
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from urllib.parse import urlparse
 
-from intrep.fashion_mnist_signal_corpus import (
+from intrep.fashion_mnist_image_choice_corpus import (
     main,
     read_idx_images,
     read_idx_labels,
-    write_fashion_mnist_signal_jsonl,
+    write_fashion_mnist_image_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
-from intrep.signal_io import load_signals_jsonl_v2
-from intrep.signals import PayloadRef
 
 
-class FashionMNISTSignalCorpusTest(unittest.TestCase):
+class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
     def test_reads_idx_images_and_labels(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -34,7 +32,7 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
         self.assertEqual(images[0].tolist(), [[0, 255], [128, 64]])
         self.assertEqual(labels.tolist(), [9])
 
-    def test_writes_signal_jsonl_and_pgm_images(self) -> None:
+    def test_writes_image_choice_jsonl_and_pgm_images(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             images_path = root / "images.idx3-ubyte.gz"
@@ -50,7 +48,7 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
             )
             _write_idx_labels(labels_path, [9, 0])
 
-            selection = write_fashion_mnist_signal_jsonl(
+            selection = write_fashion_mnist_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -58,16 +56,14 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
                 split="train",
                 limit=1,
             )
-            loaded = load_signals_jsonl_v2(output_path)
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
 
         self.assertEqual(selection.image_count, 1)
-        self.assertEqual([event.channel for event in loaded], ["image", "label"])
-        self.assertIsInstance(loaded[0].payload, PayloadRef)
-        assert isinstance(loaded[0].payload, PayloadRef)
-        self.assertEqual(loaded[0].payload.media_type, "image/x-portable-graymap")
-        self.assertEqual(loaded[1].payload, "9:Ankle boot")
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["choices"][9], "Ankle boot")
+        self.assertEqual(loaded[0]["answer_index"], 9)
 
-    def test_generated_payload_ref_can_be_loaded_as_image(self) -> None:
+    def test_generated_image_path_can_be_loaded_as_image(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             images_path = root / "images.idx3-ubyte.gz"
@@ -77,15 +73,14 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [5])
 
-            write_fashion_mnist_signal_jsonl(
+            write_fashion_mnist_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
                 image_output_dir=image_output_dir,
             )
-            image_signal = load_signals_jsonl_v2(output_path)[0]
-            assert isinstance(image_signal.payload, PayloadRef)
-            image_path = Path(urlparse(image_signal.payload.uri).path)
+            record = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+            image_path = Path(record["image_path"])
             pixels = read_portable_image(image_path)
 
         self.assertEqual(pixels.tolist(), [[0, 255], [128, 64]])
@@ -99,14 +94,14 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
             _write_idx_labels(labels_path, [1, 2])
 
             with self.assertRaisesRegex(ValueError, "counts must match"):
-                write_fashion_mnist_signal_jsonl(
+                write_fashion_mnist_image_choice_jsonl(
                     images_path=images_path,
                     labels_path=labels_path,
                     output_path=root / "fashion.jsonl",
                     image_output_dir=root / "images",
                 )
 
-    def test_cli_writes_signal_jsonl(self) -> None:
+    def test_cli_writes_image_choice_jsonl(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -135,10 +130,11 @@ class FashionMNISTSignalCorpusTest(unittest.TestCase):
                     ]
                 )
 
-            loaded = load_signals_jsonl_v2(output_path)
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
 
-        self.assertEqual([event.channel for event in loaded], ["image", "label"])
-        self.assertIn("intrep fashion-mnist signal corpus", output.getvalue())
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["answer_index"], 3)
+        self.assertIn("intrep fashion-mnist image-choice corpus", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 
 

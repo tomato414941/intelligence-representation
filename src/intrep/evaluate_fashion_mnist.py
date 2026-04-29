@@ -5,10 +5,10 @@ from pathlib import Path
 
 from intrep.fashion_mnist_vit import (
     ImageClassificationConfig,
+    load_image_choice_examples_jsonl,
     train_fashion_mnist_classifier,
     write_metrics,
 )
-from intrep.signal_io import load_signals_jsonl
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,11 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    train_events = load_signals_jsonl(args.train_path)
-    eval_events = load_signals_jsonl(args.eval_path) if args.eval_path is not None else None
+    train_examples = load_image_choice_examples_jsonl(args.train_path)
+    eval_examples = load_image_choice_examples_jsonl(args.eval_path) if args.eval_path is not None else None
     metrics = train_fashion_mnist_classifier(
-        train_events=train_events,
-        eval_events=eval_events,
+        train_examples=train_examples,
+        eval_examples=eval_examples,
         config=ImageClassificationConfig(
             patch_size=args.image_patch_size,
             max_steps=args.max_steps,
@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> None:
         write_metrics(args.metrics_path, metrics)
     print("intrep fashion-mnist vit")
     print(
-        f"target_channel={metrics.target_channel}"
+        f"target={metrics.target}"
         f" rendering={metrics.rendering}"
         f" train_cases={metrics.train_case_count}"
         f" eval_cases={metrics.eval_case_count}"

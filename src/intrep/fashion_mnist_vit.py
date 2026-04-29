@@ -3,28 +3,46 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse
 
 import numpy as np
 import torch
 from torch import nn
 
-from intrep.fashion_mnist_signal_corpus import FASHION_MNIST_LABELS
 from intrep.gpt_model import GPT_MODEL_PRESETS
 from intrep.gpt_training import resolve_training_device
 from intrep.image_io import read_portable_image
-from intrep.signals import PayloadRef, Signal
 from intrep.token_sequence import TokenSequence, token_sequence_from_ids
 
 
+FASHION_MNIST_LABELS = (
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot",
+)
+
+
 @dataclass(frozen=True)
-class FashionMNISTExample:
+class ImageChoiceExample:
     image_path: Path
-    label_id: int
+    choices: tuple[str, ...]
+    answer_index: int
+
+    def __post_init__(self) -> None:
+        if not self.choices:
+            raise ValueError("choices must not be empty")
+        if not 0 <= self.answer_index < len(self.choices):
+            raise ValueError("answer_index out of range")
 
     @property
-    def label_text(self) -> str:
-        return _label_name(self.label_id)
+    def answer_text(self) -> str:
+        return self.choices[self.answer_index]
 
 
 @dataclass(frozen=True)
@@ -40,7 +58,7 @@ class ImageClassificationConfig:
 
 @dataclass(frozen=True)
 class ImageClassificationMetrics:
-    target_channel: str
+    target: str
     rendering: str
     train_case_count: int
     eval_case_count: int
@@ -54,7 +72,7 @@ class ImageClassificationMetrics:
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "target_channel": self.target_channel,
+            "target": self.target,
             "rendering": self.rendering,
             "train_case_count": self.train_case_count,
             "eval_case_count": self.eval_case_count,
@@ -176,19 +194,19 @@ class PatchTransformerClassifier(nn.Module):
 
 def train_fashion_mnist_classifier(
     *,
-    train_events: list[Signal],
-    eval_events: list[Signal] | None = None,
+    train_examples: list[ImageChoiceExample],
+    eval_examples: list[ImageChoiceExample] | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationMetrics:
     training_config = config or ImageClassificationConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)  # type: ignore[arg-type]
-    train_images, train_labels = image_label_tensors(train_events)
+    train_images, train_labels = image_label_tensors_from_examples(train_examples)
     eval_images: torch.Tensor | None = None
     eval_labels: torch.Tensor | None = None
-    if eval_events is not None:
-        eval_images, eval_labels = image_label_tensors(eval_events)
+    if eval_examples is not None:
+        eval_images, eval_labels = image_label_tensors_from_examples(eval_examples)
         if tuple(eval_images.shape[1:]) != tuple(train_images.shape[1:]):
             raise ValueError("eval images must have the same shape as train images")
 
@@ -230,7 +248,7 @@ def train_fashion_mnist_classifier(
         eval_accuracy = _accuracy(model, eval_images, eval_labels)
         eval_count = int(eval_labels.numel())
     return ImageClassificationMetrics(
-        target_channel="label",
+        target="label",
         rendering="image-patches",
         train_case_count=int(train_labels.numel()),
         eval_case_count=eval_count,
@@ -244,18 +262,14 @@ def train_fashion_mnist_classifier(
     )
 
 
-def image_label_tensors(events: list[Signal]) -> tuple[torch.Tensor, torch.Tensor]:
-    return image_label_tensors_from_examples(fashion_mnist_examples_from_signals(events))
-
-
 def image_label_tensors_from_examples(
-    examples: list[FashionMNISTExample],
+    examples: list[ImageChoiceExample],
 ) -> tuple[torch.Tensor, torch.Tensor]:
     images: list[np.ndarray] = []
     labels: list[int] = []
     for example in examples:
         images.append(_read_image_path(example.image_path))
-        labels.append(example.label_id)
+        labels.append(example.answer_index)
     if not images:
         raise ValueError("examples must not be empty")
     first_shape = images[0].shape
@@ -266,37 +280,75 @@ def image_label_tensors_from_examples(
     return image_tensor, label_tensor
 
 
-def fashion_mnist_examples_from_signals(events: list[Signal]) -> list[FashionMNISTExample]:
-    examples: list[FashionMNISTExample] = []
-    pending_image_path: Path | None = None
-    for event in events:
-        if event.channel == "image":
-            if not isinstance(event.payload, PayloadRef):
-                raise ValueError("image events require payload_ref")
-            pending_image_path = _payload_ref_path(event.payload)
-        elif event.channel == "label":
-            if pending_image_path is None:
-                raise ValueError("label event must follow an image event")
-            examples.append(
-                FashionMNISTExample(
-                    image_path=pending_image_path,
-                    label_id=_parse_label_id(event),
-                )
-            )
-            pending_image_path = None
+def load_image_choice_examples_jsonl(path: str | Path) -> list[ImageChoiceExample]:
+    examples: list[ImageChoiceExample] = []
+    for line_number, line in enumerate(
+        Path(path).read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Invalid image-choice JSONL at line {line_number}: {error.msg}") from error
+        examples.append(image_choice_example_from_record(record, line_number=line_number))
     if not examples:
-        raise ValueError("events must contain image/label pairs")
+        raise ValueError("image-choice JSONL must contain at least one example")
     return examples
 
 
+def image_choice_example_from_record(record: object, *, line_number: int) -> ImageChoiceExample:
+    if not isinstance(record, dict):
+        raise ValueError(f"Invalid image-choice JSONL at line {line_number}: expected object")
+    required = {"image_path", "choices", "answer_index"}
+    missing = required - record.keys()
+    if missing:
+        fields = ", ".join(sorted(missing))
+        raise ValueError(f"Invalid image-choice JSONL at line {line_number}: missing fields: {fields}")
+    extra = set(record.keys()) - required
+    if extra:
+        fields = ", ".join(sorted(extra))
+        raise ValueError(f"Invalid image-choice JSONL at line {line_number}: unsupported fields: {fields}")
+    image_path = record["image_path"]
+    choices = record["choices"]
+    answer_index = record["answer_index"]
+    if not isinstance(image_path, str) or not image_path:
+        raise ValueError(
+            f"Invalid image-choice JSONL at line {line_number}: image_path must be a string"
+        )
+    if not isinstance(choices, list) or not all(isinstance(choice, str) for choice in choices):
+        raise ValueError(
+            f"Invalid image-choice JSONL at line {line_number}: choices must be a list of strings"
+        )
+    if not isinstance(answer_index, int):
+        raise ValueError(f"Invalid image-choice JSONL at line {line_number}: answer_index must be an integer")
+    try:
+        return ImageChoiceExample(
+            image_path=Path(image_path),
+            choices=tuple(choices),
+            answer_index=answer_index,
+        )
+    except ValueError as error:
+        raise ValueError(f"Invalid image-choice JSONL at line {line_number}: {error}") from error
+
+
+def image_choice_example_to_record(example: ImageChoiceExample) -> dict[str, object]:
+    return {
+        "image_path": str(example.image_path),
+        "choices": list(example.choices),
+        "answer_index": example.answer_index,
+    }
+
+
 def fashion_mnist_label_continuation_sequence(
-    example: FashionMNISTExample,
+    example: ImageChoiceExample,
     tokenizer: object,
     *,
     prompt: str = "Class:",
 ) -> TokenSequence:
     prompt_ids = tokenizer.encode(prompt)
-    label_ids = tokenizer.encode(example.label_text)
+    label_ids = tokenizer.encode(example.answer_text)
     if not label_ids:
         raise ValueError("label text must encode to at least one token")
     image_ids = _image_placeholder_token_ids(example.image_path)
@@ -314,17 +366,6 @@ def _patchify(images: torch.Tensor, patch_size: int) -> torch.Tensor:
     return patches.contiguous().view(images.size(0), -1, patch_size * patch_size)
 
 
-def _read_grayscale_image(payload_ref: PayloadRef) -> np.ndarray:
-    return _read_image_path(_payload_ref_path(payload_ref))
-
-
-def _payload_ref_path(payload_ref: PayloadRef) -> Path:
-    parsed = urlparse(payload_ref.uri)
-    if parsed.scheme != "file":
-        raise ValueError("Fashion-MNIST classifier supports file:// image payload refs only")
-    return Path(parsed.path)
-
-
 def _read_image_path(path: Path) -> np.ndarray:
     pixels = read_portable_image(path)
     if pixels.ndim == 2:
@@ -332,22 +373,6 @@ def _read_image_path(path: Path) -> np.ndarray:
     if pixels.ndim == 3 and pixels.shape[2] == 3:
         return np.rint(pixels.mean(axis=2)).astype(np.uint8)
     raise ValueError("image payload must be grayscale or RGB")
-
-
-def _parse_label_id(event: Signal) -> int:
-    if not isinstance(event.payload, str):
-        raise ValueError("label event requires text payload")
-    label_text = event.payload.split(":", 1)[0]
-    label_id = int(label_text)
-    if not 0 <= label_id < len(FASHION_MNIST_LABELS):
-        raise ValueError(f"Fashion-MNIST label id out of range: {label_id}")
-    return label_id
-
-
-def _label_name(label_id: int) -> str:
-    if not 0 <= label_id < len(FASHION_MNIST_LABELS):
-        raise ValueError(f"Fashion-MNIST label id out of range: {label_id}")
-    return FASHION_MNIST_LABELS[label_id]
 
 
 def _image_placeholder_token_ids(path: Path) -> list[int]:

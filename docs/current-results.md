@@ -13,7 +13,6 @@ Use these documents for details:
 - [Experiment 001](experiment-001.md): first hard-negative Signal future-prediction run
 - [Experiment 002](experiment-002.md): 100x data and rendering-context investigation
 - [Experiment 003](experiment-003.md): natural language held-out loss smoke check
-- [RunPod Training Notes](runpod.md): GPU execution notes
 
 ## Current Position
 
@@ -289,21 +288,13 @@ Can the small decoder-only predictor improve hard-negative consequence ranking
 when the relevant observation/action prefix is actually visible to the scorer?
 ```
 
-Next work should retire Signal JSONL growth paths in favor of raw examples that
-are converted to token sequences.
+Signal JSONL growth paths have been retired from the active package. New work
+should use raw examples that are converted to token or hidden sequences.
 
 ## Tokenizer Direction
 
-The default GPT path remains byte-level for stable smoke tests. A small
-corpus-trained byte-pair tokenizer is now available through `intrep.train_signal_text`
-for GPT-like tokenization probes:
-
-```sh
-uv run python -m intrep.train_signal_text \
-  --train-path path/to/signals.jsonl \
-  --tokenizer byte-pair \
-  --tokenizer-vocab-size 512
-```
+The text tokenizer work should attach to raw text examples rather than the
+retired Signal text CLI.
 
 This is intentionally not a production tokenizer. It keeps byte fallback and
 learns simple byte-pair merges from the current training corpus so tokenization

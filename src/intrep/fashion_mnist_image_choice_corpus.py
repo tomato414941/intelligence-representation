@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
-import hashlib
+import json
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,32 +10,21 @@ from typing import Sequence
 
 import numpy as np
 
-from intrep.signal_io import write_signals_jsonl_v2
-from intrep.signals import PayloadRef, Signal
-
-
-FASHION_MNIST_LABELS = (
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot",
+from intrep.fashion_mnist_vit import (
+    FASHION_MNIST_LABELS,
+    ImageChoiceExample,
+    image_choice_example_to_record,
 )
 
 
 @dataclass(frozen=True)
 class FashionMNISTSelection:
-    events: list[Signal]
+    examples: list[ImageChoiceExample]
     image_count: int
     output_dir: Path
 
 
-def write_fashion_mnist_signal_jsonl(
+def write_fashion_mnist_image_choice_jsonl(
     *,
     images_path: str | Path,
     labels_path: str | Path,
@@ -55,33 +44,25 @@ def write_fashion_mnist_signal_jsonl(
     output_dir = Path(image_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    events: list[Signal] = []
+    examples: list[ImageChoiceExample] = []
     for index in range(count):
         label_id = int(labels[index])
-        label_name = _label_name(label_id)
         image_path = output_dir / f"{split}_{index:06d}.pgm"
         write_pgm(image_path, images[index])
-        image_bytes = image_path.read_bytes()
-        events.extend(
-            [
-                Signal(
-                    channel="image",
-                    payload=PayloadRef(
-                        uri=image_path.resolve().as_uri(),
-                        media_type="image/x-portable-graymap",
-                        sha256=hashlib.sha256(image_bytes).hexdigest(),
-                        size_bytes=len(image_bytes),
-                    ),
-                ),
-                Signal(
-                    channel="label",
-                    payload=f"{label_id}:{label_name}",
-                ),
-            ]
+        examples.append(
+            ImageChoiceExample(
+                image_path=image_path.resolve(),
+                choices=FASHION_MNIST_LABELS,
+                answer_index=label_id,
+            )
         )
 
-    write_signals_jsonl_v2(output_path, events)
-    return FashionMNISTSelection(events=events, image_count=count, output_dir=output_dir)
+    lines = [
+        json.dumps(image_choice_example_to_record(example), ensure_ascii=False)
+        for example in examples
+    ]
+    Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return FashionMNISTSelection(examples=examples, image_count=count, output_dir=output_dir)
 
 
 def read_idx_images(path: str | Path) -> np.ndarray:
@@ -128,25 +109,19 @@ def _read_maybe_gzip(path: str | Path) -> bytes:
     return source.read_bytes()
 
 
-def _label_name(label_id: int) -> str:
-    if not 0 <= label_id < len(FASHION_MNIST_LABELS):
-        raise ValueError(f"Fashion-MNIST label id out of range: {label_id}")
-    return FASHION_MNIST_LABELS[label_id]
-
-
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert local Fashion-MNIST IDX files into Signal JSONL with image payload_ref records."
+        description="Convert local Fashion-MNIST IDX files into image-choice JSONL records."
     )
     parser.add_argument("--images-path", required=True, help="Path to Fashion-MNIST images IDX or IDX gzip.")
     parser.add_argument("--labels-path", required=True, help="Path to Fashion-MNIST labels IDX or IDX gzip.")
-    parser.add_argument("--output-path", required=True, help="Path for output Signal JSONL.")
+    parser.add_argument("--output-path", required=True, help="Path for output image-choice JSONL.")
     parser.add_argument("--image-output-dir", required=True, help="Directory for extracted PGM images.")
     parser.add_argument("--split", default="train", help="Split label used in generated image filenames.")
     parser.add_argument("--limit", type=int, help="Optional maximum number of examples to convert.")
     args = parser.parse_args(argv)
 
-    selection = write_fashion_mnist_signal_jsonl(
+    selection = write_fashion_mnist_image_choice_jsonl(
         images_path=args.images_path,
         labels_path=args.labels_path,
         output_path=args.output_path,
@@ -154,9 +129,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         split=args.split,
         limit=args.limit,
     )
-    print("intrep fashion-mnist signal corpus")
+    print("intrep fashion-mnist image-choice corpus")
     print(f"images={selection.image_count}")
-    print(f"events={len(selection.events)}")
+    print(f"examples={len(selection.examples)}")
     print(f"output_path={args.output_path}")
     print(f"image_output_dir={selection.output_dir}")
 

@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from intrep import evaluate_fashion_mnist
-from intrep.fashion_mnist_vit import ImageClassificationMetrics
+from intrep.fashion_mnist_vit import FASHION_MNIST_LABELS, ImageClassificationMetrics
 
 
 class EvaluateFashionMNISTCLITest(unittest.TestCase):
@@ -16,13 +16,13 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
         captured_train_count = 0
         captured_eval_count = 0
 
-        def fake_train_fashion_mnist_classifier(*, train_events, eval_events=None, config):
+        def fake_train_fashion_mnist_classifier(*, train_examples, eval_examples=None, config):
             nonlocal captured_config, captured_train_count, captured_eval_count
             captured_config = config
-            captured_train_count = len(train_events)
-            captured_eval_count = len(eval_events or [])
+            captured_train_count = len(train_examples)
+            captured_eval_count = len(eval_examples or [])
             return ImageClassificationMetrics(
-                target_channel="label",
+                target="label",
                 rendering="image-patches",
                 train_case_count=1,
                 eval_case_count=1,
@@ -61,8 +61,8 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
 
         self.assertIsNotNone(captured_config)
         assert captured_config is not None
-        self.assertEqual(captured_train_count, 4)
-        self.assertEqual(captured_eval_count, 4)
+        self.assertEqual(captured_train_count, 2)
+        self.assertEqual(captured_eval_count, 2)
         self.assertEqual(captured_config.patch_size, 4)
         self.assertEqual(captured_config.model_preset, "tiny")
         self.assertEqual(captured_config.max_steps, 20)
@@ -98,9 +98,9 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-        self.assertIn("target_channel=label", output.getvalue())
+        self.assertIn("target=label", output.getvalue())
         self.assertIn("rendering=image-patches", output.getvalue())
-        self.assertEqual(payload["target_channel"], "label")
+        self.assertEqual(payload["target"], "label")
         self.assertEqual(payload["rendering"], "image-patches")
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
@@ -114,21 +114,15 @@ def _write_image_label_events(path: Path, image_dir: Path, prefix: str) -> None:
     image_b.write_bytes(b"P5\n2 1\n255\n" + bytes([255, 0]))
     rows = [
         {
-            "channel": "image",
-            "payload_ref": {
-                "uri": image_a.as_uri(),
-                "media_type": "image/x-portable-graymap",
-            },
+            "image_path": str(image_a),
+            "choices": list(FASHION_MNIST_LABELS),
+            "answer_index": 9,
         },
-        {"channel": "label", "payload": "9:Ankle boot"},
         {
-            "channel": "image",
-            "payload_ref": {
-                "uri": image_b.as_uri(),
-                "media_type": "image/x-portable-graymap",
-            },
+            "image_path": str(image_b),
+            "choices": list(FASHION_MNIST_LABELS),
+            "answer_index": 0,
         },
-        {"channel": "label", "payload": "0:T-shirt/top"},
     ]
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
 

@@ -10,8 +10,8 @@ raw text / image / audio / label-like data
   -> shared prediction objective
 ```
 
-The common layer is not Signal JSONL. The common layer is the token sequence
-that training consumes.
+The common layer is not Signal JSONL. The Signal path is retired. The common
+layer is the token sequence that training consumes.
 
 Input and output adapters may stay modality- or task-specific. The part to
 share is the Transformer core that consumes hidden sequences.
@@ -27,12 +27,12 @@ For Fashion-MNIST this means the classification-head baseline can coexist with
 the token-continuation direction:
 
 ```text
-image path + label id
+ImageChoiceExample(image_path, choices, answer_index)
   -> ImagePatchAdapter
   -> SharedTransformerCore
   -> ClassificationHead
 
-image path + label text
+ImageChoiceExample(image_path, choices, answer_index)
   -> image/text token or embedding adapters
   -> SharedTransformerCore
   -> text-token continuation scoring
@@ -77,9 +77,10 @@ Raw persisted data should stay close to the source and task.
 text:
   text
 
-image classification:
-  image path or reference
-  label text or label id
+image choice:
+  image_path
+  choices
+  answer_index
 
 audio:
   audio path or reference
@@ -90,8 +91,8 @@ Do not add generic `channel`, `role`, `kind`, or `target` fields just to make
 unrelated tasks look uniform. Add structure only when a tokenizer, encoder,
 training objective, or evaluator actually uses it.
 
-## Legacy Direction
+## Retired Direction
 
-Signal JSONL and signal-tag rendering are transitional experiment surfaces.
-They should not receive new feature work unless needed to retire an existing
-experiment safely.
+Signal JSONL and signal-tag rendering are retired from the active package. The
+reserved `Signal` class remains only to prevent the old abstraction from being
+reintroduced accidentally.

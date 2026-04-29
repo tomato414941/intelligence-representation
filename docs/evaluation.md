@@ -35,115 +35,34 @@ world-model-oriented metric:
   held-out action-conditioned next-observation / future-token prediction
 ```
 
-In this question, generated corpora are smoke corpora. Existing Signal JSONL
-checks verify the transitional training and evaluation path. They are not the
-future corpus growth path. New datasets should keep raw examples close to their
-source and convert them to `TokenSequence` at training or evaluation time.
+In this question, generated corpora are smoke corpora. New datasets should keep
+raw examples close to their source and convert them to `TokenSequence` or hidden
+sequences at training or evaluation time.
 
-Signal JSONL text payload:
+The old Signal JSONL and `FuturePredictionCase` evaluation line has been
+retired from `src/intrep`. Historical notes remain under older experiment docs,
+but new evaluation code should not use a generic channel envelope.
 
-```json
-{"channel":"action","payload":"{\"name\":\"open_box\",\"arguments\":{\"box\":\"red\"}}"}
-```
-
-Signal JSONL reference payload:
-
-```json
-{"channel":"image","payload_ref":{"uri":"dataset://images/frame-1.png","media_type":"image/png","sha256":"...","size_bytes":12345}}
-```
-
-`payload` and `payload_ref` are mutually exclusive. `payload_ref` may represent non-text signals such as images that should become training targets or conditioning inputs. The current byte-tokenizer training and ranking path consumes text `payload` only because no channel-specific loader or encoder is wired in yet, so it explicitly rejects `payload_ref`.
-
-The active signal evaluation unit is `FuturePredictionCase`:
-
-```text
-prefix_events:
-  signals such as OBSERVATION + ACTION or TOOL_CALL
-
-positive_event:
-  the correct CONSEQUENCE / TOOL_RESULT / PREDICTION_ERROR
-
-negative_events:
-  same-channel, same-modality hard negatives
-```
-
-The general CLI for this path is:
+Fashion-MNIST image-choice smoke data can be converted from local IDX files into
+raw image-choice JSONL:
 
 ```sh
-uv run python -m intrep.evaluate_future_prediction \
-  --train-path train.signals.jsonl \
-  --eval-path eval.signals.jsonl \
-  --target-channel consequence \
-  --condition same_modality_negative
-```
-
-The generated environment signal corpus builder creates train/eval `Signal` JSONL for hard-negative consequence ranking:
-
-```sh
-uv run python -m intrep.generated_environment_signal_corpus \
-  --train-output train.signals.jsonl \
-  --eval-output eval.signals.jsonl \
-  --eval-slice same_history_different_action \
-  --train-size 100 \
-  --eval-size 40 \
-  --seed 7
-```
-
-Use `same_history_different_action` to keep the observation fixed while changing the action, and `same_action_different_context` to keep the action fixed while changing the observation. Both generated slices create paired Signal triples so the intended hard-negative contrast is present in the same-channel consequence distractor set. The older generated slices, such as `generated_strict_noisy`, remain available for compatibility and broader smoke coverage.
-
-Those generated files can then be evaluated directly:
-
-```sh
-uv run python -m intrep.evaluate_future_prediction \
-  --train-path train.signals.jsonl \
-  --eval-path eval.signals.jsonl \
-  --target-channel consequence \
-  --condition same_history_different_action \
-  --rendering payload
-```
-
-Future-prediction ranking has two rendering modes:
-
-```text
-signal:
-  full Signal tag rendering; a low-priority experiment for explicitly testing
-  long signal-tag streams
-
-payload:
-  event text payloads only; the current text/byte-tokenizer scoring path is the
-  preferred diagnostic for short-context
-  action/context-conditioned consequence ranking
-```
-
-Use `--rendering payload` when testing whether a short-context model can use
-the relevant observation/action prefix for hard-negative consequence ranking.
-Full signal rendering can make the tags long enough that the consequence
-payload is scored after the causal prefix has fallen out of the model window.
-That makes it a poor default diagnostic for `context_length = 64` consequence
-ranking unless the experiment is explicitly about full signal-tag streams. See
-[Experiment 002](experiment-002.md).
-
-Fashion-MNIST image-label smoke data can be converted from local IDX files into
-Signal JSONL:
-
-```sh
-uv run python -m intrep.fashion_mnist_signal_corpus \
+uv run python -m intrep.fashion_mnist_image_choice_corpus \
   --images-path train-images-idx3-ubyte.gz \
   --labels-path train-labels-idx1-ubyte.gz \
-  --output-path fashion-train.signals.jsonl \
+  --output-path fashion-train.jsonl \
   --image-output-dir fashion-images/train \
   --limit 1000
 ```
 
 The current image path keeps image handling separate from the text tokenizer:
-local `file://` image payload refs are loaded as grayscale tensors, patchified,
-embedded, passed through a Transformer encoder, and evaluated with a
-classification head:
+local image paths are loaded as grayscale tensors, patchified, embedded, passed
+through a Transformer encoder, and evaluated with a classification head:
 
 ```sh
 uv run python -m intrep.evaluate_fashion_mnist \
-  --train-path fashion-train.signals.jsonl \
-  --eval-path fashion-eval.signals.jsonl \
+  --train-path fashion-train.jsonl \
+  --eval-path fashion-eval.jsonl \
   --image-patch-size 4 \
   --max-steps 100
 ```
@@ -214,9 +133,6 @@ tests/test_gpt_training.py:
 
 tests/test_pair_ranking.py:
   checks next-token continuation loss helpers
-
-tests/test_future_prediction_ranking.py:
-  checks target-channel future prediction ranking and payload-only rendering
 
 tests/test_learned_transition_predictor.py:
   checks generated action-conditioned examples and learned predictor behavior
