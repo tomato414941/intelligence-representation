@@ -9,7 +9,7 @@ Signal streams
   -> optional signal-tag rendering for low-priority byte-tokenizer experiments
   -> decoder-only GPT-style prediction
   -> next-token / future-token training
-  -> FuturePredictionCase ranking for text and action-conditioned consequence targets
+  -> FuturePredictionCase ranking over dataset-defined target channels
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -30,11 +30,10 @@ The main v1 direction is:
 
 ```text
 Can a small untrained decoder-only GPT learn useful future prediction behavior
-from signal streams where text, observation, action, and consequence records
-share one sequence-learning substrate?
+from Signal streams without turning experimental labels into a fixed ontology?
 ```
 
-Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over signal observation/action/consequence streams.
+Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over action-conditioned signal streams.
 
 This does not use OpenAI API or a pretrained chat model. It uses the successful GPT/Transformer learning pattern directly: initialize a small decoder-only Transformer and train it on project-owned mixed data.
 

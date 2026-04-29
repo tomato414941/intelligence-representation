@@ -61,7 +61,7 @@ loss reduction alone as a world-model claim
 ```text
 Signal:
   channel と payload だけを持つ
-  現行実験では text / observation / action / consequence を主に使う
+  channel 値はデータセットと評価が決める実用ラベルであり、コード上の固定分類ではない
 ```
 
 `Signal` は手設計された意味オブジェクトではない。
@@ -83,18 +83,12 @@ payload = tokenizer / encoder に渡される可変長の実データ
 ただし現在の byte-tokenizer training path には channel-specific loader / encoder がまだ接続されていないため、`payload_ref` はそこで明示的に拒否する。
 ```
 
-現在の `channel` 値はレビュー対象であり、確定した分類体系ではない。
-core channel として固定しているわけではなく、実験に必要な境界だけを
-最小限に使う。
+現時点では core channel list をコードに持たない。
+`text`, `image`, `action`, `observation`, `consequence` のような語は、
+固定 ontology ではなく、データセット生成・encoder 選択・評価 target 指定のための
+ローカルなラベルとして扱う。
 
-| channel | 現在の扱い | レビュー観点 |
-| --- | --- | --- |
-| `text` | reference success case として維持 | 自然言語以外の text-like payload とどう分けるか |
-| `observation` | 実験ラベルとして維持、ただし広すぎるのでレビュー対象 | image / audio / text observation へ寄せるべきか |
-| `action` | 強い channel 候補として維持 | tool/API call や motor-like control をどう表すか |
-| `consequence` | future prediction 評価の target として使用 | observation / result / state change と分ける粒度 |
-
-core channel から外しているもの:
+特に次の語は、扱いたい対象ではあっても固定 channel として先に作り込まない。
 
 ```text
 tool_call / tool_result:

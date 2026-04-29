@@ -5,12 +5,6 @@ from typing import TypeAlias
 from urllib.parse import urlparse
 
 
-TEXT_CHANNEL = "text"
-OBSERVATION_CHANNEL = "observation"
-ACTION_CHANNEL = "action"
-CONSEQUENCE_CHANNEL = "consequence"
-
-
 @dataclass(frozen=True)
 class PayloadRef:
     uri: str
