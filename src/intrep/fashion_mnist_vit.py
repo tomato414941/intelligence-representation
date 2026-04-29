@@ -188,8 +188,16 @@ class PatchTransformerClassifier(nn.Module):
         )
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        encoded = self.core(self.image_adapter(images))
-        return self.classification_head(encoded)
+        return self.classify_embeddings(self.encode_images(images))
+
+    def embed_images(self, images: torch.Tensor) -> torch.Tensor:
+        return self.image_adapter(images)
+
+    def encode_images(self, images: torch.Tensor) -> torch.Tensor:
+        return self.core(self.embed_images(images))
+
+    def classify_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
+        return self.classification_head(embeddings)
 
 
 def train_fashion_mnist_classifier(
