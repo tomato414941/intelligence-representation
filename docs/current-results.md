@@ -49,6 +49,7 @@ token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 image-conditioned text candidate scoring
+image-choice scoring evaluation
 grid-world action-conditioned smoke data
 run summary aggregation and comparison
 ```
