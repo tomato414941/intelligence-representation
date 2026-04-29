@@ -11,6 +11,7 @@ from torch import nn
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents, render_corpus
+from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
 GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
@@ -26,6 +27,9 @@ class GPTTrainingConfig:
     seed: int = 7
     device: GPTTrainingDevice = "cpu"
     checkpoint_path: Path | None = None
+    tokenizer: TextTokenizerKind = "byte"
+    tokenizer_vocab_size: int = 512
+    tokenizer_min_pair_count: int = 2
 
 
 @dataclass(frozen=True)
@@ -85,7 +89,7 @@ class GPTTrainingResult:
 class GPTTrainingArtifacts:
     result: GPTTrainingResult
     model: DecoderOnlyGPT
-    tokenizer: ByteTokenizer
+    tokenizer: object
 
 
 def train_mixed_gpt(
@@ -112,11 +116,16 @@ def train_mixed_gpt_with_artifacts(
     _validate_training_config(config)
     torch.manual_seed(config.seed)
     device = resolve_training_device(config.device)
-    tokenizer = ByteTokenizer()
     corpus_documents = documents if documents is not None else default_mixed_documents()
     if not corpus_documents:
         raise ValueError("documents must not be empty")
     corpus = render_corpus(corpus_documents)
+    tokenizer = build_text_tokenizer(
+        corpus,
+        kind=config.tokenizer,
+        vocab_size=config.tokenizer_vocab_size,
+        min_pair_count=config.tokenizer_min_pair_count,
+    )
     token_ids = tokenizer.encode(corpus)
     inputs, targets = language_model_batches(
         token_ids=token_ids,
@@ -145,7 +154,7 @@ def train_mixed_gpt_with_artifacts(
         context_length=config.context_length,
     )
     if gpt_config.vocab_size != tokenizer.vocab_size:
-        raise ValueError("model_config.vocab_size must match the byte tokenizer vocab size")
+        raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
     if gpt_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
     model = DecoderOnlyGPT(gpt_config).to(device)
@@ -275,6 +284,12 @@ def _validate_training_config(config: GPTTrainingConfig) -> None:
         raise ValueError("learning_rate must be positive")
     if config.device not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be one of: auto, cpu, cuda")
+    if config.tokenizer not in ("byte", "byte-pair"):
+        raise ValueError("tokenizer must be one of: byte, byte-pair")
+    if config.tokenizer_vocab_size <= 0:
+        raise ValueError("tokenizer_vocab_size must be positive")
+    if config.tokenizer_min_pair_count <= 0:
+        raise ValueError("tokenizer_min_pair_count must be positive")
 
 
 def language_model_batches(

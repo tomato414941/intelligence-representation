@@ -305,3 +305,19 @@ when the relevant observation/action prefix is actually visible to the scorer?
 
 Only after that should the project consider broader tokenizer, corpus, memory,
 or architecture changes.
+
+## Tokenizer Direction
+
+The default GPT path remains byte-level for stable smoke tests. A small
+corpus-trained byte-pair tokenizer is now available through `intrep.train_gpt`
+for GPT-like tokenization probes:
+
+```sh
+uv run python -m intrep.train_gpt \
+  --tokenizer byte-pair \
+  --tokenizer-vocab-size 512
+```
+
+This is intentionally not a production tokenizer. It keeps byte fallback and
+learns simple byte-pair merges from the current training corpus so tokenization
+can be compared without adding external tokenizer state or dependencies.

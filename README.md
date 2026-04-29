@@ -199,3 +199,13 @@ For GPU hosts such as RunPod, `intrep.train_gpt` supports `--device auto|cpu|cud
 and final checkpoint writing with `--checkpoint-path`. See `docs/runpod.md`.
 
 Public or internet-sourced corpora should enter through the same JSONL shape. Keep fetching, licensing review, filtering, and provenance capture outside the training architecture until a repeated experiment proves a new repo-level component is needed.
+
+The default text tokenizer remains byte-level for reproducibility. A small
+corpus-trained byte-pair tokenizer is available for GPT-like tokenization smoke
+checks without adding an external tokenizer dependency:
+
+```sh
+uv run python -m intrep.train_gpt \
+  --tokenizer byte-pair \
+  --tokenizer-vocab-size 512
+```

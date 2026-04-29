@@ -138,6 +138,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--context-length", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--batch-stride", type=int)
+    parser.add_argument("--tokenizer", choices=("byte", "byte-pair"), default="byte")
+    parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
+    parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
     parser.add_argument(
         "--device",
         choices=("auto", "cpu", "cuda"),
@@ -262,11 +265,15 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         batch_stride=args.batch_stride,
         device=args.device,
         checkpoint_path=args.checkpoint_path,
+        tokenizer=args.tokenizer,
+        tokenizer_vocab_size=args.tokenizer_vocab_size,
+        tokenizer_min_pair_count=args.tokenizer_min_pair_count,
     )
+    tokenizer_vocab_size = 257 if args.tokenizer == "byte" else args.tokenizer_vocab_size
     try:
         model_config = build_gpt_config(
             preset=args.model_preset,
-            vocab_size=ByteTokenizer.vocab_size,
+            vocab_size=tokenizer_vocab_size,
             context_length=args.context_length,
             embedding_dim=args.embedding_dim,
             num_heads=args.num_heads,
@@ -297,6 +304,8 @@ def main(argv: list[str] | None = None, document_loader: DocumentLoader | None =
         f" final_loss={result.final_loss:.4f}"
         f" corpus_format={args.corpus_format}"
         f" render_format={args.render_format}"
+        f" tokenizer={args.tokenizer}"
+        f" tokenizer_vocab_size={model_config.vocab_size}"
         f" eval_split={eval_split}"
         f" generalization_eval={str(generalization_eval).lower()}"
         f" train_avg_initial={result.initial_train_loss:.4f}"
