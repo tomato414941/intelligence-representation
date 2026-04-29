@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from dataclasses import asdict
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from intrep.text_tokenizer import TextTokenizerKind
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a causal text model on a text corpus.")
-    parser.add_argument("--corpus-path", type=Path, required=True)
+    parser.add_argument("--corpus-path", type=Path, action="append", required=True)
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--checkpoint-path", type=Path)
     parser.add_argument("--eval-ratio", type=float, default=0.1)
@@ -32,14 +33,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tokenizer", choices=("byte", "byte-pair"), default="byte")
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
+    parser.add_argument("--eval-batch-limit", type=int, default=64)
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    train_text, eval_text = split_text_corpus(
-        args.corpus_path.read_text(encoding="utf-8"),
+    train_text, eval_text = read_split_text_corpora(
+        args.corpus_path,
         eval_ratio=args.eval_ratio,
+        seed=args.seed,
     )
     training_config = LanguageModelingTrainingConfig(
         context_length=args.context_length,
@@ -53,6 +56,7 @@ def main(argv: list[str] | None = None) -> None:
         tokenizer=args.tokenizer,
         tokenizer_vocab_size=args.tokenizer_vocab_size,
         tokenizer_min_pair_count=args.tokenizer_min_pair_count,
+        eval_batch_limit=args.eval_batch_limit,
     )
     artifacts = train_language_modeling_with_artifacts(
         train_examples=(LanguageModelingExample(train_text),),
@@ -66,7 +70,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     payload = {
         "schema_version": "intrep.language_model_run.v1",
-        "corpus_path": str(args.corpus_path),
+        "corpus_paths": [str(path) for path in args.corpus_path],
         "train_char_count": len(train_text),
         "eval_char_count": len(eval_text),
         "model_preset": args.model_preset,
@@ -86,6 +90,48 @@ def main(argv: list[str] | None = None) -> None:
         f" initial_eval_loss={artifacts.result.initial_eval_loss:.4f}"
         f" final_eval_loss={artifacts.result.final_eval_loss:.4f}"
     )
+
+
+def read_split_text_corpora(
+    corpus_paths: list[Path],
+    *,
+    eval_ratio: float,
+    seed: int,
+) -> tuple[str, str]:
+    if not corpus_paths:
+        raise ValueError("at least one corpus path is required")
+    train_texts = []
+    eval_texts = []
+    for path in corpus_paths:
+        text = path.read_text(encoding="utf-8")
+        if not text:
+            raise ValueError(f"corpus must not be empty: {path}")
+        train_text, eval_text = split_text_corpus(text, eval_ratio=eval_ratio)
+        train_texts.append(train_text.strip())
+        eval_texts.append(eval_text.strip())
+    randomizer = random.Random(seed)
+    randomizer.shuffle(train_texts)
+    randomizer.shuffle(eval_texts)
+    return join_text_documents(train_texts), join_text_documents(eval_texts)
+
+
+def read_text_corpora(corpus_paths: list[Path], *, seed: int) -> str:
+    if not corpus_paths:
+        raise ValueError("at least one corpus path is required")
+    texts = []
+    for path in corpus_paths:
+        text = path.read_text(encoding="utf-8")
+        if not text:
+            raise ValueError(f"corpus must not be empty: {path}")
+        texts.append(text.strip())
+    random.Random(seed).shuffle(texts)
+    return join_text_documents(texts)
+
+
+def join_text_documents(texts: list[str]) -> str:
+    if not texts:
+        raise ValueError("at least one text document is required")
+    return "\n<|endoftext|>\n".join(texts) + "\n"
 
 
 def split_text_corpus(text: str, *, eval_ratio: float) -> tuple[str, str]:

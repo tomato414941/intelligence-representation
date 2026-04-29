@@ -35,6 +35,7 @@ class LanguageModelingTrainingConfig:
     tokenizer: TextTokenizerKind = "byte"
     tokenizer_vocab_size: int = 512
     tokenizer_min_pair_count: int = 2
+    eval_batch_limit: int | None = 64
 
 
 @dataclass(frozen=True)
@@ -180,8 +181,20 @@ def _train_text_corpus_with_artifacts(
     initial_loss: float | None = None
     final_loss = 0.0
     loss_history: list[float] = []
-    initial_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
-    initial_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
+    initial_train_loss = _evaluate_loss(
+        model,
+        loss_fn,
+        inputs,
+        targets,
+        batch_limit=config.eval_batch_limit,
+    )
+    initial_eval_loss = _evaluate_loss(
+        model,
+        loss_fn,
+        eval_inputs,
+        eval_targets,
+        batch_limit=config.eval_batch_limit,
+    )
 
     model.train()
     for step in range(config.max_steps):
@@ -198,8 +211,20 @@ def _train_text_corpus_with_artifacts(
         loss.backward()
         optimizer.step()
 
-    final_train_loss = _evaluate_loss(model, loss_fn, inputs, targets)
-    final_eval_loss = _evaluate_loss(model, loss_fn, eval_inputs, eval_targets)
+    final_train_loss = _evaluate_loss(
+        model,
+        loss_fn,
+        inputs,
+        targets,
+        batch_limit=config.eval_batch_limit,
+    )
+    final_eval_loss = _evaluate_loss(
+        model,
+        loss_fn,
+        eval_inputs,
+        eval_targets,
+        batch_limit=config.eval_batch_limit,
+    )
     generalization_eval = eval_corpus is not None
     warnings = ()
     if not generalization_eval:
@@ -274,6 +299,8 @@ def _evaluate_loss(
     loss_fn: nn.CrossEntropyLoss,
     inputs: torch.Tensor | None,
     targets: torch.Tensor | None,
+    *,
+    batch_limit: int | None = None,
 ) -> float | None:
     if inputs is None or targets is None:
         return None
@@ -281,14 +308,19 @@ def _evaluate_loss(
     was_training = model.training
     model.eval()
     total_loss = 0.0
+    batch_count = inputs.size(0) if batch_limit is None else min(inputs.size(0), batch_limit)
     with torch.no_grad():
-        for batch_inputs, batch_targets in zip(inputs, targets, strict=True):
+        for batch_inputs, batch_targets in zip(
+            inputs[:batch_count],
+            targets[:batch_count],
+            strict=True,
+        ):
             logits = model(batch_inputs)
             loss = loss_fn(logits.reshape(-1, logits.size(-1)), batch_targets.reshape(-1))
             total_loss += float(loss.item())
     if was_training:
         model.train()
-    return total_loss / inputs.size(0)
+    return total_loss / batch_count
 
 
 def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
@@ -310,6 +342,8 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("tokenizer_vocab_size must be positive")
     if config.tokenizer_min_pair_count <= 0:
         raise ValueError("tokenizer_min_pair_count must be positive")
+    if config.eval_batch_limit is not None and config.eval_batch_limit <= 0:
+        raise ValueError("eval_batch_limit must be positive")
 
 
 def _validate_initial_model_config(model: CausalTextModel, config: CausalTextConfig) -> None:

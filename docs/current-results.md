@@ -97,6 +97,24 @@ eval loss: 6.4169 -> 3.9908
 eval perplexity: 54.10
 ```
 
+Mixed text corpus training now accepts multiple `--corpus-path` values. Each
+corpus is split into train/eval before the splits are shuffled and joined with
+an end-of-text separator:
+
+```text
+corpora: Tiny Shakespeare sample, WikiText-2 sample, TinyStories sample
+model: tiny causal text model
+tokenizer: byte-level BPE, vocab 512
+train/eval split: per corpus, 90/10
+steps: 20
+train tokens: 26087
+eval loss: 6.4250 -> 6.2498
+```
+
+This is an integration check, not a quality result. Larger mixed text runs
+exposed that the current eager window materialization and naive byte-pair
+training are too slow for larger corpora on CPU.
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.

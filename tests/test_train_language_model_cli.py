@@ -46,10 +46,47 @@ class TrainLanguageModelCLITest(unittest.TestCase):
         self.assertIn("intrep train language model", output.getvalue())
         self.assertTrue(checkpoint_exists)
         self.assertEqual(payload["schema_version"], "intrep.language_model_run.v1")
+        self.assertEqual(payload["corpus_paths"], [str(corpus_path)])
         self.assertEqual(payload["metrics"]["eval_split"], "held_out")
         self.assertTrue(payload["metrics"]["generalization_eval"])
         self.assertGreater(payload["train_char_count"], payload["eval_char_count"])
         self.assertGreater(payload["result"]["token_count"], 0)
+
+    def test_reads_multiple_text_corpora_with_separator(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            alpha_path = root / "alpha.txt"
+            beta_path = root / "beta.txt"
+            alpha_path.write_text("alpha alpha", encoding="utf-8")
+            beta_path.write_text("beta beta", encoding="utf-8")
+
+            corpus = train_language_model.read_text_corpora(
+                [alpha_path, beta_path],
+                seed=1,
+            )
+
+        self.assertIn("alpha alpha", corpus)
+        self.assertIn("beta beta", corpus)
+        self.assertIn("<|endoftext|>", corpus)
+
+    def test_reads_multiple_text_corpora_with_per_corpus_eval_split(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            alpha_path = root / "alpha.txt"
+            beta_path = root / "beta.txt"
+            alpha_path.write_text("a" * 10, encoding="utf-8")
+            beta_path.write_text("b" * 10, encoding="utf-8")
+
+            train_text, eval_text = train_language_model.read_split_text_corpora(
+                [alpha_path, beta_path],
+                eval_ratio=0.2,
+                seed=1,
+            )
+
+        self.assertEqual(train_text.count("a"), 8)
+        self.assertEqual(train_text.count("b"), 8)
+        self.assertEqual(eval_text.count("a"), 2)
+        self.assertEqual(eval_text.count("b"), 2)
 
     def test_split_text_corpus_rejects_empty_text(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
