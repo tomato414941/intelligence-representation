@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from intrep.gpt_training import GPTTrainingConfig
+from intrep.legacy_mixed_bridge import (
+    load_corpus_jsonl_as_mixed_documents,
+    mixed_documents_to_signals,
+    signals_to_mixed_documents,
+)
 from intrep.mixed_corpus import MixedDocument, default_mixed_documents
 from intrep.next_observation_ranking import DISTRACTOR_POLICIES
 
@@ -24,10 +29,6 @@ class CorpusSelection:
 
 
 def _load_file_documents(path: str | Path) -> list[MixedDocument]:
-    try:
-        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
-    except ImportError as error:
-        raise RuntimeError("file-backed corpus loading is not available in this build") from error
     return load_corpus_jsonl_as_mixed_documents(path)
 
 
@@ -120,8 +121,6 @@ def _load_documents(
     render_format: str,
 ) -> list[MixedDocument]:
     if not custom_loader:
-        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
-
         return load_corpus_jsonl_as_mixed_documents(
             path,
             corpus_format=corpus_format,
@@ -132,7 +131,6 @@ def _load_documents(
         return documents
     if render_format not in ("signal-tags", "typed-tags", "image-tokens"):
         raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
-    from intrep.signal_corpus import mixed_documents_to_signals, signals_to_mixed_documents
 
     return signals_to_mixed_documents(mixed_documents_to_signals(documents))
 

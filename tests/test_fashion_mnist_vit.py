@@ -11,7 +11,7 @@ from intrep.fashion_mnist_vit import (
     image_label_tensors,
     train_fashion_mnist_classifier,
 )
-from intrep.signal_corpus import load_signals_jsonl
+from intrep.signal_io import load_signals_jsonl
 
 
 class FashionMNISTViTTest(unittest.TestCase):

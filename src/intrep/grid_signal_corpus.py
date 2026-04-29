@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from intrep.grid_corpus import default_grid_documents
 from intrep.mixed_corpus import MixedDocument
 from intrep.signals import Signal
-from intrep.signal_corpus import mixed_document_to_signal
+from intrep.legacy_mixed_bridge import mixed_document_to_signal
 
 
 def default_grid_signals() -> list[Signal]:

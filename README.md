@@ -41,6 +41,7 @@ This does not use OpenAI API or a pretrained chat model. It uses the successful 
 Next-token loss reduction is a training smoke signal, not evidence that a predictive token machine or world model has been learned. World-model-oriented claims require action-conditioned future prediction checks such as held-out next-observation ranking.
 
 `MixedDocument` remains as a legacy smoke/bridge format so existing demos and tests keep working. The active abstraction for new experiments is `Signal` streams, with `FuturePredictionCase` used for target-position-aware evaluation.
+Signal handling is split by responsibility: `signal_io` reads and writes Signal JSONL, `signal_rendering` renders text training streams, and `legacy_mixed_bridge` contains the MixedDocument compatibility path.
 
 The old benchmark still compares rule, frequency, state-aware, sequence-feature, and tiny Transformer predictors over symbolic world-model tokens. It remains useful as a regression and contrast, but it is no longer the main project path.
 

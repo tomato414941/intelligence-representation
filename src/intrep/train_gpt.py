@@ -10,6 +10,11 @@ from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import GPT_MODEL_PRESETS, build_gpt_config, gpt_config_to_dict
 from intrep.gpt_training import GPTTrainingConfig, train_mixed_gpt
 from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
+from intrep.legacy_mixed_bridge import (
+    load_corpus_jsonl_as_mixed_documents,
+    mixed_documents_to_signals,
+    signals_to_mixed_documents,
+)
 from intrep.mixed_corpus import MixedDocument
 from intrep.run_summary import build_run_summary, write_json
 
@@ -18,10 +23,6 @@ DocumentLoader = Callable[[str | Path], list[MixedDocument]]
 
 
 def _load_file_documents(path: str | Path) -> list[MixedDocument]:
-    try:
-        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
-    except ImportError as error:
-        raise RuntimeError("file-backed corpus loading is not available in this build") from error
     return load_corpus_jsonl_as_mixed_documents(path)
 
 
@@ -183,8 +184,6 @@ def _load_documents(
     image_channel_bins: int,
 ) -> list[MixedDocument]:
     if not custom_loader:
-        from intrep.signal_corpus import load_corpus_jsonl_as_mixed_documents
-
         return load_corpus_jsonl_as_mixed_documents(
             path,
             corpus_format=corpus_format,
@@ -197,7 +196,6 @@ def _load_documents(
         return documents
     if render_format not in ("signal-tags", "typed-tags", "image-tokens"):
         raise ValueError("render_format must be plain, signal-tags, typed-tags, or image-tokens")
-    from intrep.signal_corpus import mixed_documents_to_signals, signals_to_mixed_documents
 
     return signals_to_mixed_documents(
         mixed_documents_to_signals(documents),

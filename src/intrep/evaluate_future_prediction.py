@@ -16,11 +16,8 @@ from intrep.future_prediction_ranking import (
 )
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
 from intrep.gpt_training import GPTTrainingConfig, train_rendered_gpt_with_artifacts
-from intrep.signal_corpus import (
-    load_signals_jsonl,
-    reject_payload_refs,
-    render_signals_for_training,
-)
+from intrep.signal_io import load_signals_jsonl, reject_payload_refs
+from intrep.signal_rendering import render_signals_for_training
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -10,7 +10,7 @@ from typing import Sequence
 
 import numpy as np
 
-from intrep.signal_corpus import write_signals_jsonl_v2
+from intrep.signal_io import write_signals_jsonl_v2
 from intrep.signals import PayloadRef, Signal
 
 

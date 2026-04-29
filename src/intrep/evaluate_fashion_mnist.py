@@ -8,7 +8,7 @@ from intrep.fashion_mnist_vit import (
     train_fashion_mnist_classifier,
     write_metrics,
 )
-from intrep.signal_corpus import load_signals_jsonl
+from intrep.signal_io import load_signals_jsonl
 
 
 def build_parser() -> argparse.ArgumentParser:

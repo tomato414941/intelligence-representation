@@ -281,6 +281,8 @@ experiment; it is no longer the Fashion-MNIST mainline.
 The future-prediction evaluation path trains from rendered Signal streams
 directly. `MixedDocument` remains available for legacy corpora and older demos,
 but it is no longer on this main evaluation path.
+Signal infrastructure is now split so new code can depend on the narrow module
+it needs: `signal_io`, `signal_rendering`, or `legacy_mixed_bridge`.
 
 The immediate experimental question is:
 

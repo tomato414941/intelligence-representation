@@ -13,7 +13,7 @@ from intrep.fashion_mnist_signal_corpus import (
     write_fashion_mnist_signal_jsonl,
 )
 from intrep.image_tokenizer import ImagePatchTokenizer
-from intrep.signal_corpus import load_signals_jsonl_v2
+from intrep.signal_io import load_signals_jsonl_v2
 from intrep.signals import PayloadRef
 
 

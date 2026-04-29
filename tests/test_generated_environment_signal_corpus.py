@@ -9,7 +9,7 @@ from intrep.generated_environment_signal_corpus import (
     generated_environment_train_eval_events,
     write_generated_environment_signal_jsonl,
 )
-from intrep.signal_corpus import load_signals_jsonl_v2
+from intrep.signal_io import load_signals_jsonl_v2
 
 
 class GeneratedEnvironmentSignalCorpusTest(unittest.TestCase):

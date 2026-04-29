@@ -14,7 +14,7 @@ from intrep.transition_data import (
     split_strict_generated_examples,
     strict_generated_examples,
 )
-from intrep.signal_corpus import write_signals_jsonl_v2
+from intrep.signal_io import write_signals_jsonl_v2
 from intrep.signals import Signal
 from intrep.types import Action, Fact
 
