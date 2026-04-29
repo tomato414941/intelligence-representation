@@ -7,9 +7,8 @@ from intrep.causal_text_model import CausalTextConfig
 from intrep.fashion_mnist_vit import (
     ImageChoiceExample,
     ImageClassificationConfig,
-    ImageClassificationMetrics,
-    ImagePatchInputLayer,
-    train_fashion_mnist_classifier,
+    ImageClassificationTrainingResult,
+    train_fashion_mnist_classifier_with_result,
 )
 from intrep.image_text_training import (
     ImageTextTrainingConfig,
@@ -28,7 +27,7 @@ from intrep.text_examples import LanguageModelingExample
 
 @dataclass(frozen=True)
 class ImageTextTrainingPhasesResult:
-    image_classification: ImageClassificationMetrics
+    image_classification: ImageClassificationTrainingResult
     language_modeling: LanguageModelingTrainingArtifacts
     image_text: ImageTextTrainingResult
 
@@ -49,7 +48,7 @@ def run_image_text_training_phases(
 
     image_config = image_classification_config or ImageClassificationConfig()
     text_config = language_modeling_config or LanguageModelingTrainingConfig()
-    image_metrics = train_fashion_mnist_classifier(
+    image_result = train_fashion_mnist_classifier_with_result(
         train_examples=list(image_examples),
         config=image_config,
     )
@@ -62,21 +61,20 @@ def run_image_text_training_phases(
             **_core_shape(),
         ),
     )
-    image_input_layer = ImagePatchInputLayer(
-        image_size=_image_size(image_examples[0]),
-        patch_size=image_config.patch_size,
-        embedding_dim=text_artifacts.model.config.embedding_dim,
+    _validate_embedding_dim(
+        image_result.model.image_input_layer.patch_embedding.out_features,
+        text_artifacts.model.config.embedding_dim,
     )
     image_text_result = train_image_text_examples(
         examples=image_text_examples_from_choices(image_examples),
-        image_input_layer=image_input_layer,
+        image_input_layer=image_result.model.image_input_layer,
         text_model=text_artifacts.model,
         tokenizer=text_artifacts.tokenizer,
         prompt=prompt,
         config=image_text_config,
     )
     return ImageTextTrainingPhasesResult(
-        image_classification=image_metrics,
+        image_classification=image_result,
         language_modeling=text_artifacts,
         image_text=image_text_result,
     )
@@ -99,8 +97,6 @@ def _core_shape() -> dict[str, int | float]:
     }
 
 
-def _image_size(example: ImageChoiceExample) -> tuple[int, int]:
-    from intrep.image_io import read_portable_image
-
-    pixels = read_portable_image(example.image_path)
-    return (int(pixels.shape[0]), int(pixels.shape[1]))
+def _validate_embedding_dim(image_embedding_dim: int, text_embedding_dim: int) -> None:
+    if image_embedding_dim != text_embedding_dim:
+        raise ValueError("image classifier and text model embedding dimensions must match")

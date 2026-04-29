@@ -86,6 +86,12 @@ class ImageClassificationMetrics:
         }
 
 
+@dataclass(frozen=True)
+class ImageClassificationTrainingResult:
+    metrics: ImageClassificationMetrics
+    model: "PatchTransformerClassifier"
+
+
 class ImagePatchInputLayer(nn.Module):
     def __init__(
         self,
@@ -179,6 +185,19 @@ def train_fashion_mnist_classifier(
     eval_examples: list[ImageChoiceExample] | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationMetrics:
+    return train_fashion_mnist_classifier_with_result(
+        train_examples=train_examples,
+        eval_examples=eval_examples,
+        config=config,
+    ).metrics
+
+
+def train_fashion_mnist_classifier_with_result(
+    *,
+    train_examples: list[ImageChoiceExample],
+    eval_examples: list[ImageChoiceExample] | None = None,
+    config: ImageClassificationConfig | None = None,
+) -> ImageClassificationTrainingResult:
     training_config = config or ImageClassificationConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
@@ -228,7 +247,7 @@ def train_fashion_mnist_classifier(
     if eval_images is not None and eval_labels is not None:
         eval_accuracy = _accuracy(model, eval_images, eval_labels)
         eval_count = int(eval_labels.numel())
-    return ImageClassificationMetrics(
+    metrics = ImageClassificationMetrics(
         target="label",
         input_representation="image-patches",
         train_case_count=int(train_labels.numel()),
@@ -241,6 +260,7 @@ def train_fashion_mnist_classifier(
         max_steps=training_config.max_steps,
         model_preset=training_config.model_preset,
     )
+    return ImageClassificationTrainingResult(metrics=metrics, model=model)
 
 
 def image_label_tensors_from_examples(

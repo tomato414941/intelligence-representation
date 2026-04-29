@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.fashion_mnist_vit import ImageChoiceExample
+from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer
 from intrep.image_text_training import ImageTextTrainingConfig
 from intrep.language_modeling_training import LanguageModelingTrainingConfig
 from intrep.text_examples import LanguageModelingExample
@@ -46,7 +46,11 @@ class TrainingPhasesTest(unittest.TestCase):
                 prompt="?",
             )
 
-        self.assertEqual(result.image_classification.train_case_count, 1)
+        self.assertEqual(result.image_classification.metrics.train_case_count, 1)
+        self.assertIsInstance(
+            result.image_classification.model.image_input_layer,
+            ImagePatchInputLayer,
+        )
         self.assertGreater(result.language_modeling.result.token_count, 0)
         self.assertEqual(result.image_text.case_count, 1)
         self.assertGreater(result.image_text.initial_loss, result.image_text.final_loss)

@@ -15,6 +15,7 @@ from intrep.fashion_mnist_vit import (
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
     train_fashion_mnist_classifier,
+    train_fashion_mnist_classifier_with_result,
 )
 from intrep.transformer_core import SharedTransformerCore
 
@@ -179,6 +180,30 @@ class FashionMNISTViTTest(unittest.TestCase):
         self.assertEqual(metrics.train_case_count, 2)
         self.assertEqual(metrics.eval_case_count, 2)
         self.assertIsNotNone(metrics.eval_accuracy)
+
+    def test_trains_small_classifier_with_result(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "fashion.jsonl"
+            _write_image_choice_examples(path, Path(directory) / "images")
+            examples = load_image_choice_examples_jsonl(path)
+
+            result = train_fashion_mnist_classifier_with_result(
+                train_examples=examples,
+                eval_examples=examples,
+                config=ImageClassificationConfig(
+                    patch_size=1,
+                    max_steps=1,
+                    batch_size=2,
+                    learning_rate=0.003,
+                    seed=7,
+                    model_preset="tiny",
+                    device="cpu",
+                ),
+            )
+
+        self.assertEqual(result.metrics.train_case_count, 2)
+        self.assertIsInstance(result.model, PatchTransformerClassifier)
+        self.assertIsInstance(result.model.image_input_layer, ImagePatchInputLayer)
 
 
 def _write_image_choice_examples(path: Path, image_dir: Path) -> None:
