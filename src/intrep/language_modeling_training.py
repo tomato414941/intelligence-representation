@@ -11,7 +11,7 @@ from torch import nn
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
+from intrep.text_tokenizer import TextTokenizer, TextTokenizerKind, build_text_tokenizer
 
 LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class LanguageModelingTrainingResult:
 class LanguageModelingTrainingArtifacts:
     result: LanguageModelingTrainingResult
     model: CausalTextModel
-    tokenizer: object
+    tokenizer: TextTokenizer
 
 
 def train_language_modeling_with_artifacts(

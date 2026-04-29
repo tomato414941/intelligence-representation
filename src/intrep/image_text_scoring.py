@@ -1,21 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
 
 import torch
 
 from intrep.causal_text_model import CausalTextModel
 from intrep.fashion_mnist_vit import ImagePatchInputLayer
 from intrep.model_input import concatenate_input_embedding_sequences
+from intrep.text_tokenizer import TextTokenizer
 from intrep.token_scoring import next_token_loss
-
-
-class TextTokenizer(Protocol):
-    vocab_size: int
-
-    def encode(self, text: str) -> list[int]:
-        ...
 
 
 def score_image_text_candidates(

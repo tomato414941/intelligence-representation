@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 from intrep.causal_text_model import CausalTextModel
 from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer, image_label_tensors_from_examples
-from intrep.image_text_scoring import TextTokenizer, score_image_text_candidates
+from intrep.image_text_scoring import score_image_text_candidates
+from intrep.text_tokenizer import TextTokenizer
 
 
 @dataclass(frozen=True)

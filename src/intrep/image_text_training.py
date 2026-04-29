@@ -10,7 +10,7 @@ import torch
 from intrep.causal_text_model import CausalTextModel
 from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer
 from intrep.image_io import read_portable_image
-from intrep.image_text_scoring import TextTokenizer
+from intrep.text_tokenizer import TextTokenizer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.token_scoring import next_token_loss
 

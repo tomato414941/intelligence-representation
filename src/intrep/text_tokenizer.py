@@ -2,12 +2,19 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
 
 from intrep.byte_tokenizer import ByteTokenizer
 
 
 TextTokenizerKind = Literal["byte", "byte-pair"]
+
+
+class TextTokenizer(Protocol):
+    vocab_size: int
+
+    def encode(self, text: str) -> list[int]:
+        ...
 
 
 @dataclass(frozen=True)
