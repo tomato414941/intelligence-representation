@@ -6,29 +6,12 @@ from typing import Any
 import torch
 from torch import nn
 
+from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.transformer_core import SharedTransformerCore
 
 
-GPT_MODEL_PRESETS: dict[str, dict[str, int | float]] = {
-    "tiny": {
-        "embedding_dim": 8,
-        "num_heads": 2,
-        "hidden_dim": 16,
-        "num_layers": 1,
-        "dropout": 0.0,
-    },
-    "small": {
-        "embedding_dim": 32,
-        "num_heads": 4,
-        "hidden_dim": 64,
-        "num_layers": 1,
-        "dropout": 0.0,
-    },
-}
-
-
 @dataclass(frozen=True)
-class GPTConfig:
+class CausalTextConfig:
     vocab_size: int
     context_length: int = 64
     embedding_dim: int = 32
@@ -38,7 +21,7 @@ class GPTConfig:
     dropout: float = 0.0
 
 
-def build_gpt_config(
+def build_causal_text_config(
     *,
     preset: str = "small",
     vocab_size: int,
@@ -48,10 +31,10 @@ def build_gpt_config(
     hidden_dim: int | None = None,
     num_layers: int | None = None,
     dropout: float | None = None,
-) -> GPTConfig:
-    if preset not in GPT_MODEL_PRESETS:
+) -> CausalTextConfig:
+    if preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {preset}")
-    preset_values = GPT_MODEL_PRESETS[preset]
+    preset_values = TRANSFORMER_CORE_PRESETS[preset]
     values: dict[str, Any] = {
         "vocab_size": vocab_size,
         "context_length": context_length,
@@ -63,12 +46,12 @@ def build_gpt_config(
         "num_layers": num_layers if num_layers is not None else preset_values["num_layers"],
         "dropout": dropout if dropout is not None else preset_values["dropout"],
     }
-    config = GPTConfig(**values)
-    validate_gpt_config(config)
+    config = CausalTextConfig(**values)
+    validate_causal_text_config(config)
     return config
 
 
-def validate_gpt_config(config: GPTConfig) -> None:
+def validate_causal_text_config(config: CausalTextConfig) -> None:
     if config.vocab_size <= 0:
         raise ValueError("vocab_size must be positive")
     if config.context_length <= 0:
@@ -87,7 +70,7 @@ def validate_gpt_config(config: GPTConfig) -> None:
         raise ValueError("embedding_dim must be divisible by num_heads")
 
 
-def gpt_config_to_dict(config: GPTConfig) -> dict[str, int | float]:
+def causal_text_config_to_dict(config: CausalTextConfig) -> dict[str, int | float]:
     return {
         "vocab_size": config.vocab_size,
         "context_length": config.context_length,
@@ -111,9 +94,9 @@ class TokenOutputHead(nn.Module):
 
 
 class CausalTextModel(nn.Module):
-    def __init__(self, config: GPTConfig) -> None:
+    def __init__(self, config: CausalTextConfig) -> None:
         super().__init__()
-        validate_gpt_config(config)
+        validate_causal_text_config(config)
         self.config = config
         self.token_embedding = nn.Embedding(config.vocab_size, config.embedding_dim)
         self.position_embedding = nn.Embedding(config.context_length, config.embedding_dim)
@@ -152,7 +135,7 @@ class CausalTextModel(nn.Module):
         return self.token_output(hidden)
 
 
-def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
+def _validate_token_ids(token_ids: torch.Tensor, config: CausalTextConfig) -> None:
     if token_ids.ndim != 2:
         raise ValueError("token_ids must be a rank-2 tensor with shape [batch, sequence]")
     if token_ids.dtype != torch.long:
@@ -167,7 +150,7 @@ def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:
         raise ValueError("token_ids values must be in the model vocabulary range")
 
 
-def _validate_embeddings(embeddings: torch.Tensor, config: GPTConfig) -> None:
+def _validate_embeddings(embeddings: torch.Tensor, config: CausalTextConfig) -> None:
     if embeddings.ndim != 3:
         raise ValueError("embeddings must have shape [batch, sequence, hidden]")
     if not torch.is_floating_point(embeddings):
@@ -180,7 +163,7 @@ def _validate_embeddings(embeddings: torch.Tensor, config: GPTConfig) -> None:
         raise ValueError("embeddings must not be empty")
 
 
-def _validate_hidden_states(hidden: torch.Tensor, config: GPTConfig) -> None:
+def _validate_hidden_states(hidden: torch.Tensor, config: CausalTextConfig) -> None:
     if hidden.ndim != 3:
         raise ValueError("hidden states must have shape [batch, sequence, hidden]")
     if not torch.is_floating_point(hidden):

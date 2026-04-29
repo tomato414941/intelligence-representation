@@ -7,8 +7,8 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from intrep.gpt_model import build_gpt_config
-from intrep.gpt_training import GPTTrainingConfig
+from intrep.causal_text_model import build_causal_text_config
+from intrep.language_modeling_training import LanguageModelingTrainingConfig
 from intrep.run_summary import (
     RUN_COMPARISON_SCHEMA,
     aggregate_json_outputs,
@@ -25,8 +25,8 @@ class RunSummaryTest(unittest.TestCase):
             kind="current_experiment",
             run_id="run-1",
             corpus={"train": {"label": "train.jsonl"}},
-            training_config=GPTTrainingConfig(max_steps=3),
-            model_config=build_gpt_config(
+            training_config=LanguageModelingTrainingConfig(max_steps=3),
+            model_config=build_causal_text_config(
                 preset="tiny",
                 vocab_size=256,
                 context_length=64,
@@ -81,7 +81,7 @@ class RunSummaryTest(unittest.TestCase):
             }
         )
 
-        self.assertEqual(payload["kind"], "train_gpt_loss_history")
+        self.assertEqual(payload["kind"], "train_language_modeling_loss_history")
         self.assertAlmostEqual(
             payload["metrics"]["language_modeling"]["final_train_perplexity"],
             7.38905609893065,
@@ -201,7 +201,7 @@ class RunSummaryTest(unittest.TestCase):
                             "eval": {"label": "generated_held_out_container"},
                             "eval_slice": "generated_held_out_container",
                         },
-                        training_config=GPTTrainingConfig(max_steps=3, seed=11),
+                        training_config=LanguageModelingTrainingConfig(max_steps=3, seed=11),
                     )
                 ),
                 encoding="utf-8",

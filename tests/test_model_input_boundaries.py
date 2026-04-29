@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from intrep.fashion_mnist_vit import ImagePatchInputLayer
-from intrep.gpt_model import CausalTextModel, build_gpt_config
+from intrep.causal_text_model import CausalTextModel, build_causal_text_config
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.token_scoring import next_token_loss
 from intrep.transformer_core import SharedTransformerCore
@@ -19,7 +19,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
             num_layers=1,
         )
         text_model = CausalTextModel(
-            build_gpt_config(
+            build_causal_text_config(
                 preset="tiny",
                 vocab_size=16,
                 context_length=8,
@@ -80,7 +80,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
             num_layers=1,
         )
         text_model = CausalTextModel(
-            build_gpt_config(
+            build_causal_text_config(
                 preset="tiny",
                 vocab_size=16,
                 context_length=8,
@@ -109,7 +109,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
         embedding_dim = 8
         vocab_size = 16
         text_model = CausalTextModel(
-            build_gpt_config(
+            build_causal_text_config(
                 preset="tiny",
                 vocab_size=vocab_size,
                 context_length=8,
@@ -136,7 +136,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
         embedding_dim = 8
         vocab_size = 16
         text_model = CausalTextModel(
-            build_gpt_config(
+            build_causal_text_config(
                 preset="tiny",
                 vocab_size=vocab_size,
                 context_length=8,

@@ -8,9 +8,9 @@ import numpy as np
 import torch
 from torch import nn
 
-from intrep.gpt_model import GPT_MODEL_PRESETS
-from intrep.gpt_training import resolve_training_device
+from intrep.language_modeling_training import resolve_training_device
 from intrep.image_io import read_portable_image
+from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.transformer_core import SharedTransformerCore
 
 
@@ -191,7 +191,7 @@ def train_fashion_mnist_classifier(
         if tuple(eval_images.shape[1:]) != tuple(train_images.shape[1:]):
             raise ValueError("eval images must have the same shape as train images")
 
-    preset = GPT_MODEL_PRESETS[training_config.model_preset]
+    preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = PatchTransformerClassifier(
         image_size=(int(train_images.shape[1]), int(train_images.shape[2])),
         patch_size=training_config.patch_size,
@@ -349,7 +349,7 @@ def _validate_config(config: ImageClassificationConfig) -> None:
         raise ValueError("batch_size must be positive")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
-    if config.model_preset not in GPT_MODEL_PRESETS:
+    if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
 
 

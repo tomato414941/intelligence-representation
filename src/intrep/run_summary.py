@@ -9,8 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
-from intrep.gpt_model import GPTConfig, gpt_config_to_dict
-from intrep.gpt_training import GPTTrainingConfig
+from intrep.causal_text_model import CausalTextConfig, causal_text_config_to_dict
+from intrep.language_modeling_training import LanguageModelingTrainingConfig
 from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
 
 
@@ -37,7 +37,7 @@ def new_run_id() -> str:
     return f"{timestamp}-{uuid4().hex[:8]}"
 
 
-def training_config_to_dict(config: GPTTrainingConfig | dict[str, object] | None) -> dict[str, object] | None:
+def training_config_to_dict(config: LanguageModelingTrainingConfig | dict[str, object] | None) -> dict[str, object] | None:
     if config is None:
         return None
     if isinstance(config, dict):
@@ -56,12 +56,12 @@ def training_config_to_dict(config: GPTTrainingConfig | dict[str, object] | None
     return payload
 
 
-def model_config_to_dict(config: GPTConfig | dict[str, object] | None) -> dict[str, object] | None:
+def model_config_to_dict(config: CausalTextConfig | dict[str, object] | None) -> dict[str, object] | None:
     if config is None:
         return None
     if isinstance(config, dict):
         return dict(config)
-    return gpt_config_to_dict(config)
+    return causal_text_config_to_dict(config)
 
 
 def build_run_summary(
@@ -69,8 +69,8 @@ def build_run_summary(
     kind: str,
     run_id: str | None = None,
     corpus: dict[str, object] | None = None,
-    training_config: GPTTrainingConfig | dict[str, object] | None = None,
-    model_config: GPTConfig | dict[str, object] | None = None,
+    training_config: LanguageModelingTrainingConfig | dict[str, object] | None = None,
+    model_config: CausalTextConfig | dict[str, object] | None = None,
     training_loss: dict[str, object] | None = None,
     language_modeling: dict[str, object] | None = None,
     next_observation: dict[str, object] | None = None,
@@ -121,7 +121,7 @@ def normalize_existing_json(
             SimpleNamespace(**payload)
         )
         return build_run_summary(
-            kind="train_gpt_loss_history",
+            kind="train_language_modeling_loss_history",
             training_config={
                 "batch_stride": payload.get("batch_stride"),
                 "steps": payload.get("steps"),

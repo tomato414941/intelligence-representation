@@ -4,13 +4,13 @@ import unittest
 
 import torch
 
-from intrep.gpt_model import CausalTextModel, TokenOutputHead, build_gpt_config
+from intrep.causal_text_model import CausalTextModel, TokenOutputHead, build_causal_text_config
 from intrep.transformer_core import SharedTransformerCore
 
 
-class GPTModelConfigTest(unittest.TestCase):
+class CausalTextModelConfigTest(unittest.TestCase):
     def test_small_preset_matches_current_default_shape(self) -> None:
-        config = build_gpt_config(preset="small", vocab_size=256, context_length=64)
+        config = build_causal_text_config(preset="small", vocab_size=256, context_length=64)
 
         self.assertEqual(config.embedding_dim, 32)
         self.assertEqual(config.num_heads, 4)
@@ -19,7 +19,7 @@ class GPTModelConfigTest(unittest.TestCase):
         self.assertEqual(config.dropout, 0.0)
 
     def test_tiny_preset_uses_lightweight_shape(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=256, context_length=32)
+        config = build_causal_text_config(preset="tiny", vocab_size=256, context_length=32)
 
         self.assertEqual(config.context_length, 32)
         self.assertEqual(config.embedding_dim, 8)
@@ -27,7 +27,7 @@ class GPTModelConfigTest(unittest.TestCase):
         self.assertEqual(config.hidden_dim, 16)
 
     def test_overrides_take_precedence_over_preset(self) -> None:
-        config = build_gpt_config(
+        config = build_causal_text_config(
             preset="tiny",
             vocab_size=256,
             context_length=16,
@@ -46,13 +46,13 @@ class GPTModelConfigTest(unittest.TestCase):
 
     def test_validates_model_shape(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown model preset"):
-            build_gpt_config(preset="missing", vocab_size=256, context_length=8)
+            build_causal_text_config(preset="missing", vocab_size=256, context_length=8)
         with self.assertRaisesRegex(ValueError, "embedding_dim must be positive"):
-            build_gpt_config(preset="small", vocab_size=256, context_length=8, embedding_dim=0)
+            build_causal_text_config(preset="small", vocab_size=256, context_length=8, embedding_dim=0)
         with self.assertRaisesRegex(ValueError, "dropout"):
-            build_gpt_config(preset="small", vocab_size=256, context_length=8, dropout=1.0)
+            build_causal_text_config(preset="small", vocab_size=256, context_length=8, dropout=1.0)
         with self.assertRaisesRegex(ValueError, "embedding_dim must be divisible by num_heads"):
-            build_gpt_config(
+            build_causal_text_config(
                 preset="small",
                 vocab_size=256,
                 context_length=8,
@@ -61,7 +61,7 @@ class GPTModelConfigTest(unittest.TestCase):
             )
 
     def test_forward_validates_token_ids(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
 
         with self.assertRaisesRegex(ValueError, "rank-2"):
@@ -74,7 +74,7 @@ class GPTModelConfigTest(unittest.TestCase):
             model(torch.tensor([[1, 8]], dtype=torch.long))
 
     def test_model_exposes_input_embedding_sequence_path(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
         token_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
 
@@ -85,13 +85,13 @@ class GPTModelConfigTest(unittest.TestCase):
         self.assertEqual(encoded.shape, torch.Size([1, 4, config.embedding_dim]))
 
     def test_model_uses_shared_transformer_core(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
 
         self.assertIsInstance(model.core, SharedTransformerCore)
 
     def test_model_exposes_token_output_head(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
         hidden = torch.zeros((1, 4, config.embedding_dim), dtype=torch.float32)
 
@@ -101,7 +101,7 @@ class GPTModelConfigTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([1, 4, config.vocab_size]))
 
     def test_encode_embeddings_validates_input_embedding_sequence_shape(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
 
         with self.assertRaisesRegex(ValueError, "shape"):
@@ -114,7 +114,7 @@ class GPTModelConfigTest(unittest.TestCase):
             model.encode_embeddings(torch.zeros((1, 4, config.embedding_dim + 1)))
 
     def test_token_logits_validates_hidden_states(self) -> None:
-        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        config = build_causal_text_config(preset="tiny", vocab_size=8, context_length=4)
         model = CausalTextModel(config)
 
         with self.assertRaisesRegex(ValueError, "shape"):

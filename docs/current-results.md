@@ -70,7 +70,7 @@ a predictive representation system or world model has been learned.
 
 ## Historical Reading
 
-The retired Signal experiments showed that a small byte-level GPT can reduce
+The retired Signal experiments showed that a small byte-level causal text model can reduce
 loss on rendered streams, but did not show robust action-conditioned future
 prediction. They also exposed that representation and rendering choices can
 hide the relevant prefix from a short-context scorer.

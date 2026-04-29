@@ -5,19 +5,19 @@ from pathlib import Path
 import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.gpt_model import CausalTextModel, GPTConfig
-from intrep.gpt_training import (
-    GPTTrainingArtifacts,
-    GPTTrainingConfig,
+from intrep.causal_text_model import CausalTextModel, CausalTextConfig
+from intrep.language_modeling_training import (
+    LanguageModelingTrainingArtifacts,
+    LanguageModelingTrainingConfig,
     language_model_batches,
     resolve_training_device,
-    train_language_modeling_gpt_with_artifacts,
-    _train_text_corpus_gpt_with_artifacts,
+    train_language_modeling_with_artifacts,
+    _train_text_corpus_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
 
 
-class GPTTrainingTest(unittest.TestCase):
+class LanguageModelingTrainingTest(unittest.TestCase):
     def test_language_model_batches_shift_targets_by_one_token(self) -> None:
         token_ids = list(range(20))
 
@@ -52,7 +52,7 @@ class GPTTrainingTest(unittest.TestCase):
             language_model_batches([1, 2, 3], context_length=1, batch_size=0)
 
     def test_language_model_batches_logs_window_summary(self) -> None:
-        with self.assertLogs("intrep.gpt_training", level="DEBUG") as logs:
+        with self.assertLogs("intrep.language_modeling_training", level="DEBUG") as logs:
             language_model_batches(list(range(20)), context_length=4, batch_size=3)
 
         self.assertIn("window_count=", logs.output[0])
@@ -60,7 +60,7 @@ class GPTTrainingTest(unittest.TestCase):
 
     def test_causal_text_model_forward_returns_token_logits(self) -> None:
         model = CausalTextModel(
-            GPTConfig(
+            CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -75,16 +75,16 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([2, 8, ByteTokenizer.vocab_size]))
 
     def test_training_runs_on_text_corpus_and_reduces_loss(self) -> None:
-        artifacts = _train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_with_artifacts(
             corpus="alpha beta gamma alpha beta gamma alpha beta gamma " * 4,
-            training_config=GPTTrainingConfig(
+            training_config=LanguageModelingTrainingConfig(
                 context_length=32,
                 batch_size=4,
                 max_steps=12,
                 learning_rate=0.01,
                 seed=11,
             ),
-            model_config=GPTConfig(
+            model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=32,
                 embedding_dim=16,
@@ -119,20 +119,20 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.device, "cpu")
 
     def test_training_runs_on_language_modeling_examples(self) -> None:
-        artifacts = train_language_modeling_gpt_with_artifacts(
+        artifacts = train_language_modeling_with_artifacts(
             train_examples=(
                 LanguageModelingExample("alpha beta gamma alpha beta gamma"),
                 LanguageModelingExample("alpha beta gamma alpha beta gamma"),
             ),
             eval_examples=(LanguageModelingExample("delta epsilon zeta delta epsilon zeta"),),
-            training_config=GPTTrainingConfig(
+            training_config=LanguageModelingTrainingConfig(
                 context_length=8,
                 batch_size=2,
                 max_steps=2,
                 learning_rate=0.005,
                 seed=23,
             ),
-            model_config=GPTConfig(
+            model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -141,7 +141,7 @@ class GPTTrainingTest(unittest.TestCase):
             ),
         )
 
-        self.assertIsInstance(artifacts, GPTTrainingArtifacts)
+        self.assertIsInstance(artifacts, LanguageModelingTrainingArtifacts)
         self.assertEqual(artifacts.result.eval_split, "held_out")
         self.assertTrue(artifacts.result.generalization_eval)
         self.assertGreater(artifacts.result.token_count, 0)
@@ -157,11 +157,11 @@ class GPTTrainingTest(unittest.TestCase):
 
     def test_training_writes_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            checkpoint_path = Path(temp_dir) / "checkpoints" / "gpt.pt"
+            checkpoint_path = Path(temp_dir) / "checkpoints" / "causal-text.pt"
             with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
-                artifacts = _train_text_corpus_gpt_with_artifacts(
+                artifacts = _train_text_corpus_with_artifacts(
                     corpus="one two three one two three one two three",
-                    training_config=GPTTrainingConfig(
+                    training_config=LanguageModelingTrainingConfig(
                         context_length=8,
                         batch_size=2,
                         max_steps=2,
@@ -170,7 +170,7 @@ class GPTTrainingTest(unittest.TestCase):
                         device="auto",
                         checkpoint_path=checkpoint_path,
                     ),
-                    model_config=GPTConfig(
+                    model_config=CausalTextConfig(
                         vocab_size=ByteTokenizer.vocab_size,
                         context_length=8,
                         embedding_dim=16,
@@ -180,7 +180,7 @@ class GPTTrainingTest(unittest.TestCase):
                 )
             payload = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
-        self.assertEqual(payload["schema_version"], "intrep.gpt_checkpoint.v1")
+        self.assertEqual(payload["schema_version"], "intrep.causal_text_checkpoint.v1")
         self.assertEqual(payload["model_config"]["context_length"], 8)
         self.assertEqual(payload["training_config"]["device"], "auto")
         self.assertEqual(payload["training_config"]["checkpoint_path"], str(checkpoint_path))
@@ -192,17 +192,17 @@ class GPTTrainingTest(unittest.TestCase):
         )
 
     def test_training_reports_held_out_eval_loss(self) -> None:
-        artifacts = _train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_with_artifacts(
             corpus="alpha beta gamma alpha beta gamma alpha beta gamma",
             eval_corpus="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
-            training_config=GPTTrainingConfig(
+            training_config=LanguageModelingTrainingConfig(
                 context_length=8,
                 batch_size=2,
                 max_steps=3,
                 learning_rate=0.005,
                 seed=13,
             ),
-            model_config=GPTConfig(
+            model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -222,16 +222,16 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.warnings, ())
 
     def test_training_with_artifacts_returns_model_tokenizer_and_result(self) -> None:
-        artifacts = _train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_with_artifacts(
             corpus="red green blue red green blue red green blue",
-            training_config=GPTTrainingConfig(
+            training_config=LanguageModelingTrainingConfig(
                 context_length=8,
                 batch_size=2,
                 max_steps=2,
                 learning_rate=0.005,
                 seed=17,
             ),
-            model_config=GPTConfig(
+            model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -240,7 +240,7 @@ class GPTTrainingTest(unittest.TestCase):
             ),
         )
 
-        self.assertIsInstance(artifacts, GPTTrainingArtifacts)
+        self.assertIsInstance(artifacts, LanguageModelingTrainingArtifacts)
         self.assertIsInstance(artifacts.result.steps, int)
         self.assertEqual(artifacts.result.steps, 2)
         self.assertIsInstance(artifacts.model, CausalTextModel)
@@ -258,34 +258,34 @@ class GPTTrainingTest(unittest.TestCase):
 
     def test_rejects_empty_corpus(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
-            _train_text_corpus_gpt_with_artifacts(corpus="")
+            _train_text_corpus_with_artifacts(corpus="")
 
     def test_rejects_empty_eval_corpus(self) -> None:
         with self.assertRaisesRegex(ValueError, "eval_corpus must not be empty"):
-            _train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_with_artifacts(
                 corpus="abc abc abc abc abc",
                 eval_corpus="",
-                training_config=GPTTrainingConfig(context_length=4),
+                training_config=LanguageModelingTrainingConfig(context_length=4),
             )
 
     def test_rejects_invalid_training_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
-            _train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_with_artifacts(
                 corpus="abc",
-                training_config=GPTTrainingConfig(batch_size=0),
+                training_config=LanguageModelingTrainingConfig(batch_size=0),
             )
         with self.assertRaisesRegex(ValueError, "batch_stride must be positive"):
-            _train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_with_artifacts(
                 corpus="abc",
-                training_config=GPTTrainingConfig(batch_stride=0),
+                training_config=LanguageModelingTrainingConfig(batch_stride=0),
             )
 
     def test_rejects_model_config_mismatch(self) -> None:
         with self.assertRaisesRegex(ValueError, "context_length must match"):
-            _train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_with_artifacts(
                 corpus="abc abc abc abc abc",
-                training_config=GPTTrainingConfig(context_length=16),
-                model_config=GPTConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
+                training_config=LanguageModelingTrainingConfig(context_length=16),
+                model_config=CausalTextConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
             )
 
 

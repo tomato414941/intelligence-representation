@@ -9,23 +9,23 @@ import torch
 from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.gpt_model import CausalTextModel, GPTConfig, gpt_config_to_dict
+from intrep.causal_text_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
 from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
-GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
+LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class GPTTrainingConfig:
+class LanguageModelingTrainingConfig:
     context_length: int = 64
     batch_stride: int | None = None
     batch_size: int = 8
     max_steps: int = 20
     learning_rate: float = 0.003
     seed: int = 7
-    device: GPTTrainingDevice = "cpu"
+    device: LanguageModelingTrainingDevice = "cpu"
     checkpoint_path: Path | None = None
     tokenizer: TextTokenizerKind = "byte"
     tokenizer_vocab_size: int = 512
@@ -33,7 +33,7 @@ class GPTTrainingConfig:
 
 
 @dataclass(frozen=True)
-class GPTTrainingResult:
+class LanguageModelingTrainingResult:
     initial_loss: float
     final_loss: float
     steps: int
@@ -86,20 +86,20 @@ class GPTTrainingResult:
 
 
 @dataclass(frozen=True)
-class GPTTrainingArtifacts:
-    result: GPTTrainingResult
+class LanguageModelingTrainingArtifacts:
+    result: LanguageModelingTrainingResult
     model: CausalTextModel
     tokenizer: object
 
 
-def train_language_modeling_gpt_with_artifacts(
+def train_language_modeling_with_artifacts(
     *,
     train_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
-    training_config: GPTTrainingConfig | None = None,
-    model_config: GPTConfig | None = None,
+    training_config: LanguageModelingTrainingConfig | None = None,
+    model_config: CausalTextConfig | None = None,
     eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
-) -> GPTTrainingArtifacts:
-    return _train_text_corpus_gpt_with_artifacts(
+) -> LanguageModelingTrainingArtifacts:
+    return _train_text_corpus_with_artifacts(
         corpus=language_modeling_corpus_from_examples(train_examples),
         training_config=training_config,
         model_config=model_config,
@@ -107,14 +107,14 @@ def train_language_modeling_gpt_with_artifacts(
     )
 
 
-def _train_text_corpus_gpt_with_artifacts(
+def _train_text_corpus_with_artifacts(
     *,
     corpus: str,
-    training_config: GPTTrainingConfig | None = None,
-    model_config: GPTConfig | None = None,
+    training_config: LanguageModelingTrainingConfig | None = None,
+    model_config: CausalTextConfig | None = None,
     eval_corpus: str | None = None,
-) -> GPTTrainingArtifacts:
-    config = training_config or GPTTrainingConfig()
+) -> LanguageModelingTrainingArtifacts:
+    config = training_config or LanguageModelingTrainingConfig()
     _validate_training_config(config)
     torch.manual_seed(config.seed)
     device = resolve_training_device(config.device)
@@ -149,15 +149,15 @@ def _train_text_corpus_gpt_with_artifacts(
         )
         eval_inputs = eval_inputs.to(device)
         eval_targets = eval_targets.to(device)
-    gpt_config = model_config or GPTConfig(
+    causal_text_config = model_config or CausalTextConfig(
         vocab_size=tokenizer.vocab_size,
         context_length=config.context_length,
     )
-    if gpt_config.vocab_size != tokenizer.vocab_size:
+    if causal_text_config.vocab_size != tokenizer.vocab_size:
         raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
-    if gpt_config.context_length != config.context_length:
+    if causal_text_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = CausalTextModel(gpt_config).to(device)
+    model = CausalTextModel(causal_text_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
@@ -190,7 +190,7 @@ def _train_text_corpus_gpt_with_artifacts(
             "No held-out eval corpus was provided; reported evaluation is train-split only and is not a generalization estimate.",
         )
 
-    result = GPTTrainingResult(
+    result = LanguageModelingTrainingResult(
         initial_loss=initial_loss if initial_loss is not None else 0.0,
         final_loss=final_loss,
         steps=config.max_steps,
@@ -206,17 +206,17 @@ def _train_text_corpus_gpt_with_artifacts(
         device=str(device),
     )
     if config.checkpoint_path is not None:
-        save_gpt_checkpoint(
+        save_causal_text_checkpoint(
             path=config.checkpoint_path,
             model=model,
-            model_config=gpt_config,
+            model_config=causal_text_config,
             training_config=config,
             result=result,
         )
-    return GPTTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
+    return LanguageModelingTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
 
 
-def resolve_training_device(requested_device: GPTTrainingDevice) -> torch.device:
+def resolve_training_device(requested_device: LanguageModelingTrainingDevice) -> torch.device:
     if requested_device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if requested_device == "cuda" and not torch.cuda.is_available():
@@ -224,25 +224,25 @@ def resolve_training_device(requested_device: GPTTrainingDevice) -> torch.device
     return torch.device(requested_device)
 
 
-def save_gpt_checkpoint(
+def save_causal_text_checkpoint(
     *,
     path: Path,
     model: CausalTextModel,
-    model_config: GPTConfig,
-    training_config: GPTTrainingConfig,
-    result: GPTTrainingResult,
+    model_config: CausalTextConfig,
+    training_config: LanguageModelingTrainingConfig,
+    result: LanguageModelingTrainingResult,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     training_payload = asdict(training_config)
     if training_config.checkpoint_path is not None:
         training_payload["checkpoint_path"] = str(training_config.checkpoint_path)
     payload = {
-        "schema_version": "intrep.gpt_checkpoint.v1",
+        "schema_version": "intrep.causal_text_checkpoint.v1",
         "model_state_dict": {
             name: tensor.detach().cpu()
             for name, tensor in model.state_dict().items()
         },
-        "model_config": gpt_config_to_dict(model_config),
+        "model_config": causal_text_config_to_dict(model_config),
         "training_config": training_payload,
         "result": asdict(result),
     }
@@ -271,7 +271,7 @@ def _evaluate_loss(
     return total_loss / inputs.size(0)
 
 
-def _validate_training_config(config: GPTTrainingConfig) -> None:
+def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
     if config.context_length <= 0:
         raise ValueError("context_length must be positive")
     if config.batch_stride is not None and config.batch_stride <= 0:
