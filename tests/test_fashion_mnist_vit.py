@@ -108,7 +108,7 @@ class FashionMNISTViTTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(logits, manual_logits))
 
-    def test_patch_transformer_classifier_exposes_hidden_sequence_path(self) -> None:
+    def test_patch_transformer_classifier_exposes_input_embedding_sequence_path(self) -> None:
         model = PatchTransformerClassifier(
             image_size=(4, 4),
             patch_size=2,
@@ -128,7 +128,7 @@ class FashionMNISTViTTest(unittest.TestCase):
         self.assertEqual(encoded.shape, torch.Size([3, 4, 8]))
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
-    def test_image_patch_adapter_outputs_hidden_sequence(self) -> None:
+    def test_image_patch_adapter_outputs_input_embedding_sequence(self) -> None:
         adapter = ImagePatchAdapter(image_size=(4, 4), patch_size=2, embedding_dim=8)
 
         embeddings = adapter(torch.zeros((3, 4, 4), dtype=torch.float32))

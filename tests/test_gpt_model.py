@@ -72,7 +72,7 @@ class GPTModelConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "vocabulary range"):
             model(torch.tensor([[1, 8]], dtype=torch.long))
 
-    def test_model_exposes_hidden_sequence_path(self) -> None:
+    def test_model_exposes_input_embedding_sequence_path(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
         model = DecoderOnlyGPT(config)
         token_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
@@ -83,7 +83,7 @@ class GPTModelConfigTest(unittest.TestCase):
         self.assertEqual(embeddings.shape, torch.Size([1, 4, config.embedding_dim]))
         self.assertEqual(encoded.shape, torch.Size([1, 4, config.embedding_dim]))
 
-    def test_encode_embeddings_validates_hidden_sequence_shape(self) -> None:
+    def test_encode_embeddings_validates_input_embedding_sequence_shape(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
         model = DecoderOnlyGPT(config)
 
