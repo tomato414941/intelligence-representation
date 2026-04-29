@@ -68,6 +68,76 @@ class ImageClassificationMetrics:
         }
 
 
+class ImagePatchAdapter(nn.Module):
+    def __init__(
+        self,
+        *,
+        image_size: tuple[int, int],
+        patch_size: int,
+        embedding_dim: int,
+    ) -> None:
+        super().__init__()
+        height, width = image_size
+        if patch_size <= 0:
+            raise ValueError("patch_size must be positive")
+        if height % patch_size != 0 or width % patch_size != 0:
+            raise ValueError("image dimensions must be divisible by patch_size")
+        patch_dim = patch_size * patch_size
+        patch_count = (height // patch_size) * (width // patch_size)
+        self.image_size = image_size
+        self.patch_size = patch_size
+        self.patch_embedding = nn.Linear(patch_dim, embedding_dim)
+        self.position_embedding = nn.Embedding(patch_count, embedding_dim)
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        if images.ndim != 3:
+            raise ValueError("images must have shape [batch, height, width]")
+        if tuple(images.shape[1:]) != self.image_size:
+            raise ValueError("images do not match adapter image_size")
+        patches = _patchify(images, self.patch_size)
+        positions = torch.arange(patches.size(1), device=images.device).unsqueeze(0)
+        return self.patch_embedding(patches) + self.position_embedding(positions)
+
+
+class SharedTransformerCore(nn.Module):
+    def __init__(
+        self,
+        *,
+        embedding_dim: int,
+        num_heads: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim,
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        if embeddings.ndim != 3:
+            raise ValueError("embeddings must have shape [batch, sequence, hidden]")
+        return self.encoder(embeddings)
+
+
+class ClassificationHead(nn.Module):
+    def __init__(self, *, embedding_dim: int, num_classes: int) -> None:
+        super().__init__()
+        self.output = nn.Linear(embedding_dim, num_classes)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3:
+            raise ValueError("hidden states must have shape [batch, sequence, hidden]")
+        pooled = hidden.mean(dim=1)
+        return self.output(pooled)
+
+
 class PatchTransformerClassifier(nn.Module):
     def __init__(
         self,
@@ -82,39 +152,26 @@ class PatchTransformerClassifier(nn.Module):
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
-        height, width = image_size
-        if patch_size <= 0:
-            raise ValueError("patch_size must be positive")
-        if height % patch_size != 0 or width % patch_size != 0:
-            raise ValueError("image dimensions must be divisible by patch_size")
-        patch_dim = patch_size * patch_size
-        patch_count = (height // patch_size) * (width // patch_size)
-        self.image_size = image_size
-        self.patch_size = patch_size
-        self.patch_embedding = nn.Linear(patch_dim, embedding_dim)
-        self.position_embedding = nn.Embedding(patch_count, embedding_dim)
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_dim,
-            nhead=num_heads,
-            dim_feedforward=hidden_dim,
-            dropout=dropout,
-            activation="gelu",
-            batch_first=True,
+        self.image_adapter = ImagePatchAdapter(
+            image_size=image_size,
+            patch_size=patch_size,
+            embedding_dim=embedding_dim,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.output = nn.Linear(embedding_dim, num_classes)
+        self.core = SharedTransformerCore(
+            embedding_dim=embedding_dim,
+            num_heads=num_heads,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        self.classification_head = ClassificationHead(
+            embedding_dim=embedding_dim,
+            num_classes=num_classes,
+        )
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        if images.ndim != 3:
-            raise ValueError("images must have shape [batch, height, width]")
-        if tuple(images.shape[1:]) != self.image_size:
-            raise ValueError("images do not match model image_size")
-        patches = _patchify(images, self.patch_size)
-        positions = torch.arange(patches.size(1), device=images.device).unsqueeze(0)
-        hidden = self.patch_embedding(patches) + self.position_embedding(positions)
-        encoded = self.encoder(hidden)
-        pooled = encoded.mean(dim=1)
-        return self.output(pooled)
+        encoded = self.core(self.image_adapter(images))
+        return self.classification_head(encoded)
 
 
 def train_fashion_mnist_classifier(

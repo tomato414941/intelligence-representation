@@ -13,6 +13,31 @@ raw text / image / audio / label-like data
 The common layer is not Signal JSONL. The common layer is the token sequence
 that training consumes.
 
+Input and output adapters may stay modality- or task-specific. The part to
+share is the Transformer core that consumes hidden sequences.
+
+```text
+input adapter
+  -> shared hidden sequence
+  -> shared Transformer core
+  -> output adapter / head
+```
+
+For Fashion-MNIST this means the classification-head baseline can coexist with
+the token-continuation direction:
+
+```text
+image path + label id
+  -> ImagePatchAdapter
+  -> SharedTransformerCore
+  -> ClassificationHead
+
+image path + label text
+  -> image/text token or embedding adapters
+  -> SharedTransformerCore
+  -> text-token continuation scoring
+```
+
 ## Core Shape
 
 ```text
