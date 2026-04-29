@@ -16,7 +16,10 @@
 
 ## Current Concept
 
-AIにとって自然な意味表現は、人間が先に固定した意味DBではなく、観測・行動・結果・記憶・信念・誤差・tool useを含む signal stream として扱う。
+AIにとって自然な意味表現は、人間が先に固定した意味DBではなく、
+受け取る・生成する・予測する bounded signal の流れとして扱う。
+記憶、信念、誤差、tool use は重要な対象だが、現時点では固定 channel
+として先に作り込まない。
 
 このプロジェクトの中心は次である。
 
@@ -58,7 +61,7 @@ loss reduction alone as a world-model claim
 ```text
 Signal:
   channel と payload だけを持つ
-  text, observation, action, consequence, tool result, memory, belief, error などの単位
+  現行実験では text / observation / action / consequence を主に使う
 ```
 
 `Signal` は手設計された意味オブジェクトではない。
@@ -81,21 +84,25 @@ payload = tokenizer / encoder に渡される可変長の実データ
 ```
 
 現在の `channel` 値はレビュー対象であり、確定した分類体系ではない。
+core channel として固定しているわけではなく、実験に必要な境界だけを
+最小限に使う。
 
-| channel | 暫定的な意味 | レビュー観点 |
+| channel | 現在の扱い | レビュー観点 |
 | --- | --- | --- |
-| `text` | 自然言語やコードなど、主にテキストとして扱う信号 | `observation` の text modality と分けるべきか |
-| `observation` | 外界、環境、ユーザー、tool 出力などから得た観測 | 広すぎるなら後で細分化する |
-| `action` | agent / system が外界や tool に対して行う操作 | tool call と統合すべきか |
-| `consequence` | action や状態変化の後に生じた結果・次状態 | observation と分ける粒度 |
-| `prediction` | モデルやシステムが明示的に出した予測 | 通常生成と分けるべきか |
-| `prediction_error` | 予測と観測・結果の差分、失敗、修正信号 | reward / error と統合すべきか |
-| `state` | 環境状態、内部状態、集約状態などの状態表現 | observation / belief との境界 |
-| `belief` | 不確実性を含む仮説、推定、信念状態 | state と分ける必要性 |
-| `memory` | 記憶として保存・参照される情報単位 | retrieval record に寄りすぎていないか |
-| `reward` | 成功、失敗、評価、強化信号 | prediction_error と分ける必要性 |
-| `tool_call` | tool や外部関数への呼び出し | action の一種として扱うべきか |
-| `tool_result` | tool call の返り値や実行結果 | observation の一種として扱うべきか |
+| `text` | reference success case として維持 | 自然言語以外の text-like payload とどう分けるか |
+| `observation` | 実験ラベルとして維持、ただし広すぎるのでレビュー対象 | image / audio / text observation へ寄せるべきか |
+| `action` | 強い channel 候補として維持 | tool/API call や motor-like control をどう表すか |
+| `consequence` | future prediction 評価の target として使用 | observation / result / state change と分ける粒度 |
+
+core channel から外しているもの:
+
+```text
+tool_call / tool_result:
+  当面は action や observation/consequence の特殊例として扱う
+
+prediction_error / state / belief / memory / reward:
+  重要な対象だが、現時点では channel として固定しない
+```
 
 ## Observation First
 

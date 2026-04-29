@@ -9,7 +9,7 @@ Signal streams
   -> optional signal-tag rendering for low-priority byte-tokenizer experiments
   -> decoder-only GPT-style prediction
   -> next-token / future-token training
-  -> FuturePredictionCase ranking for language / world / tool / memory / belief targets
+  -> FuturePredictionCase ranking for text and action-conditioned consequence targets
 ```
 
 The active implementation is `src/intrep`. Historical experiments are kept under `legacy/` for reference only.
@@ -30,8 +30,8 @@ The main v1 direction is:
 
 ```text
 Can a small untrained decoder-only GPT learn useful future prediction behavior
-from signal streams where text, observations, actions, consequences, tool
-results, errors, and belief-like records share one sequence-learning substrate?
+from signal streams where text, observation, action, and consequence records
+share one sequence-learning substrate?
 ```
 
 Natural language modeling and world modeling are not treated as opposing architectures here. A natural language model is one special case of an autoregressive predictor over human text streams. A world-model-like trajectory model is another special case over signal observation/action/consequence streams.
@@ -144,7 +144,7 @@ for same-history/different-action and same-action/different-context checks
 same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion
-tool / memory / belief streams as future evaluation targets, not hand-built schemas
+tool / memory / belief as future task areas, not current core channels or hand-built schemas
 existing symbolic benchmarks as support, not the main path
 ```
 

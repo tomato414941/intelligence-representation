@@ -9,31 +9,7 @@ TEXT_CHANNEL = "text"
 OBSERVATION_CHANNEL = "observation"
 ACTION_CHANNEL = "action"
 CONSEQUENCE_CHANNEL = "consequence"
-PREDICTION_CHANNEL = "prediction"
-PREDICTION_ERROR_CHANNEL = "prediction_error"
-STATE_CHANNEL = "state"
-BELIEF_CHANNEL = "belief"
-MEMORY_CHANNEL = "memory"
-REWARD_CHANNEL = "reward"
-TOOL_CALL_CHANNEL = "tool_call"
-TOOL_RESULT_CHANNEL = "tool_result"
 
-SIGNAL_CHANNELS = frozenset(
-    {
-        TEXT_CHANNEL,
-        OBSERVATION_CHANNEL,
-        ACTION_CHANNEL,
-        CONSEQUENCE_CHANNEL,
-        PREDICTION_CHANNEL,
-        PREDICTION_ERROR_CHANNEL,
-        STATE_CHANNEL,
-        BELIEF_CHANNEL,
-        MEMORY_CHANNEL,
-        REWARD_CHANNEL,
-        TOOL_CALL_CHANNEL,
-        TOOL_RESULT_CHANNEL,
-    }
-)
 
 @dataclass(frozen=True)
 class PayloadRef:
