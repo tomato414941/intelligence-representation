@@ -99,7 +99,7 @@ def train_language_modeling_gpt_with_artifacts(
     model_config: GPTConfig | None = None,
     eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
 ) -> GPTTrainingArtifacts:
-    return train_text_corpus_gpt_with_artifacts(
+    return _train_text_corpus_gpt_with_artifacts(
         corpus=language_modeling_corpus_from_examples(train_examples),
         training_config=training_config,
         model_config=model_config,
@@ -107,7 +107,7 @@ def train_language_modeling_gpt_with_artifacts(
     )
 
 
-def train_text_corpus_gpt_with_artifacts(
+def _train_text_corpus_gpt_with_artifacts(
     *,
     corpus: str,
     training_config: GPTTrainingConfig | None = None,

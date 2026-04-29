@@ -12,7 +12,7 @@ from intrep.gpt_training import (
     language_model_batches,
     resolve_training_device,
     train_language_modeling_gpt_with_artifacts,
-    train_text_corpus_gpt_with_artifacts,
+    _train_text_corpus_gpt_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
 
@@ -75,7 +75,7 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([2, 8, ByteTokenizer.vocab_size]))
 
     def test_training_runs_on_text_corpus_and_reduces_loss(self) -> None:
-        artifacts = train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_gpt_with_artifacts(
             corpus="alpha beta gamma alpha beta gamma alpha beta gamma " * 4,
             training_config=GPTTrainingConfig(
                 context_length=32,
@@ -159,7 +159,7 @@ class GPTTrainingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             checkpoint_path = Path(temp_dir) / "checkpoints" / "gpt.pt"
             with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
-                artifacts = train_text_corpus_gpt_with_artifacts(
+                artifacts = _train_text_corpus_gpt_with_artifacts(
                     corpus="one two three one two three one two three",
                     training_config=GPTTrainingConfig(
                         context_length=8,
@@ -192,7 +192,7 @@ class GPTTrainingTest(unittest.TestCase):
         )
 
     def test_training_reports_held_out_eval_loss(self) -> None:
-        artifacts = train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_gpt_with_artifacts(
             corpus="alpha beta gamma alpha beta gamma alpha beta gamma",
             eval_corpus="delta epsilon zeta delta epsilon zeta delta epsilon zeta",
             training_config=GPTTrainingConfig(
@@ -222,7 +222,7 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertEqual(result.warnings, ())
 
     def test_training_with_artifacts_returns_model_tokenizer_and_result(self) -> None:
-        artifacts = train_text_corpus_gpt_with_artifacts(
+        artifacts = _train_text_corpus_gpt_with_artifacts(
             corpus="red green blue red green blue red green blue",
             training_config=GPTTrainingConfig(
                 context_length=8,
@@ -258,11 +258,11 @@ class GPTTrainingTest(unittest.TestCase):
 
     def test_rejects_empty_corpus(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
-            train_text_corpus_gpt_with_artifacts(corpus="")
+            _train_text_corpus_gpt_with_artifacts(corpus="")
 
     def test_rejects_empty_eval_corpus(self) -> None:
         with self.assertRaisesRegex(ValueError, "eval_corpus must not be empty"):
-            train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_gpt_with_artifacts(
                 corpus="abc abc abc abc abc",
                 eval_corpus="",
                 training_config=GPTTrainingConfig(context_length=4),
@@ -270,19 +270,19 @@ class GPTTrainingTest(unittest.TestCase):
 
     def test_rejects_invalid_training_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "batch_size must be positive"):
-            train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_gpt_with_artifacts(
                 corpus="abc",
                 training_config=GPTTrainingConfig(batch_size=0),
             )
         with self.assertRaisesRegex(ValueError, "batch_stride must be positive"):
-            train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_gpt_with_artifacts(
                 corpus="abc",
                 training_config=GPTTrainingConfig(batch_stride=0),
             )
 
     def test_rejects_model_config_mismatch(self) -> None:
         with self.assertRaisesRegex(ValueError, "context_length must match"):
-            train_text_corpus_gpt_with_artifacts(
+            _train_text_corpus_gpt_with_artifacts(
                 corpus="abc abc abc abc abc",
                 training_config=GPTTrainingConfig(context_length=16),
                 model_config=GPTConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
