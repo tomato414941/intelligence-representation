@@ -95,8 +95,8 @@ src/intrep/future_prediction_cases.py
 src/intrep/future_prediction_ranking.py
 src/intrep/gpt_model.py
 src/intrep/gpt_training.py
+src/intrep/train_signal_text.py
 src/intrep/train_gpt.py
-src/intrep/train_ptm.py
 src/intrep/symbolic_to_natural_evaluation.py
 src/intrep/next_observation_cases.py
 src/intrep/next_observation_ranking.py
@@ -179,13 +179,17 @@ uv run python -m intrep.demo
 
 The demo now runs the mixed-GPT mainline on the built-in smoke corpus. The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
 
-## Train Mixed GPT
+## Train Signal Text
 
 ```sh
-uv run python -m intrep.train_gpt --max-steps 20
+uv run python -m intrep.train_signal_text --train-path path/to/signals.jsonl --max-steps 20
 ```
 
-With no corpus flags, this uses the built-in smoke corpus only.
+This trains the text-payload Signal path. Image `payload_ref` records are handled
+by image-specific entry points such as `intrep.evaluate_fashion_mnist`, not by
+the text trainer.
+
+## Legacy Mixed GPT
 
 To train the current byte-tokenizer path from a legacy mixed-document JSONL
 corpus with records containing `id`, `modality`, and text `content`:

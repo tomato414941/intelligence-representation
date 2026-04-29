@@ -215,7 +215,7 @@ mixed text / environment / grid / log-like corpus
 Signal envelope, with signal-tag rendering only as a low-priority byte-tokenizer experiment
 signal JSONL input path with legacy MixedDocument compatibility
 FuturePredictionCase evaluation directly over Signal streams
-train_ptm / evaluate_future_prediction CLI entry points
+train_signal_text / evaluate_future_prediction CLI entry points
 symbolic-to-natural ranking
 action-conditioned next-observation ranking
 generated train/eval slices
