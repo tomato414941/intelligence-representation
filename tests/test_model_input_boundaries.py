@@ -57,6 +57,19 @@ class ModelInputBoundariesTest(unittest.TestCase):
         self.assertIsNotNone(embeddings.grad)
         self.assertEqual(embeddings.grad.shape, embeddings.shape)
 
+    def test_shared_core_supports_causal_encoding(self) -> None:
+        core = SharedTransformerCore(
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+        )
+        embeddings = torch.zeros((1, 4, 8), dtype=torch.float32)
+
+        hidden = core(embeddings, causal=True)
+
+        self.assertEqual(hidden.shape, torch.Size([1, 4, 8]))
+
     def test_image_and_text_embeddings_can_be_concatenated_for_one_core_pass(self) -> None:
         embedding_dim = 8
         core = SharedTransformerCore(

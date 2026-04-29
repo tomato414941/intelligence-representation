@@ -5,6 +5,7 @@ import unittest
 import torch
 
 from intrep.gpt_model import DecoderOnlyGPT, build_gpt_config
+from intrep.transformer_core import SharedTransformerCore
 
 
 class GPTModelConfigTest(unittest.TestCase):
@@ -82,6 +83,12 @@ class GPTModelConfigTest(unittest.TestCase):
 
         self.assertEqual(embeddings.shape, torch.Size([1, 4, config.embedding_dim]))
         self.assertEqual(encoded.shape, torch.Size([1, 4, config.embedding_dim]))
+
+    def test_model_uses_shared_transformer_core(self) -> None:
+        config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)
+        model = DecoderOnlyGPT(config)
+
+        self.assertIsInstance(model.core, SharedTransformerCore)
 
     def test_encode_embeddings_validates_input_embedding_sequence_shape(self) -> None:
         config = build_gpt_config(preset="tiny", vocab_size=8, context_length=4)

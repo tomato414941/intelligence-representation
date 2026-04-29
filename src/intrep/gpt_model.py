@@ -6,6 +6,8 @@ from typing import Any
 import torch
 from torch import nn
 
+from intrep.transformer_core import SharedTransformerCore
+
 
 GPT_MODEL_PRESETS: dict[str, dict[str, int | float]] = {
     "tiny": {
@@ -104,15 +106,13 @@ class DecoderOnlyGPT(nn.Module):
         self.config = config
         self.token_embedding = nn.Embedding(config.vocab_size, config.embedding_dim)
         self.position_embedding = nn.Embedding(config.context_length, config.embedding_dim)
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=config.embedding_dim,
-            nhead=config.num_heads,
-            dim_feedforward=config.hidden_dim,
+        self.core = SharedTransformerCore(
+            embedding_dim=config.embedding_dim,
+            num_heads=config.num_heads,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
             dropout=config.dropout,
-            activation="gelu",
-            batch_first=True,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=config.num_layers)
         self.output = nn.Linear(config.embedding_dim, config.vocab_size)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
@@ -131,12 +131,7 @@ class DecoderOnlyGPT(nn.Module):
 
     def encode_embeddings(self, embeddings: torch.Tensor, *, causal: bool = True) -> torch.Tensor:
         _validate_embeddings(embeddings, self.config)
-        length = embeddings.size(1)
-        mask = torch.triu(
-            torch.ones(length, length, device=embeddings.device, dtype=torch.bool),
-            diagonal=1,
-        ) if causal else None
-        return self.encoder(embeddings, mask=mask)
+        return self.core(embeddings, causal=causal)
 
 
 def _validate_token_ids(token_ids: torch.Tensor, config: GPTConfig) -> None:

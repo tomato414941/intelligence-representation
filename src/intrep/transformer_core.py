@@ -25,7 +25,12 @@ class SharedTransformerCore(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
-    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+    def forward(self, embeddings: torch.Tensor, *, causal: bool = False) -> torch.Tensor:
         if embeddings.ndim != 3:
             raise ValueError("embeddings must have shape [batch, sequence, hidden]")
-        return self.encoder(embeddings)
+        length = embeddings.size(1)
+        mask = torch.triu(
+            torch.ones(length, length, device=embeddings.device, dtype=torch.bool),
+            diagonal=1,
+        ) if causal else None
+        return self.encoder(embeddings, mask=mask)
