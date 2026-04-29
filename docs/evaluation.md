@@ -67,8 +67,6 @@ uv run python -m intrep.evaluate_fashion_mnist \
   --max-steps 100
 ```
 
-The old symbolic benchmark should remain available as a support check. It exposes when a predictor succeeds by memorizing seen patterns, when it must use current state relations, and when unsupported is the correct output. It is not the main corpus and should not drive a broad taxonomy.
-
 Past semantic-memory, retrieval, conflict, and state-taxonomy tests are historical sketches. They now live under `legacy/tests/`.
 
 ## Metrics
@@ -83,35 +81,13 @@ final loss
 loss history / best loss
 train corpus average loss
 held-out eval corpus loss
-symbolic-to-natural pair ranking accuracy and margin
 mixed next-observation ranking accuracy and margin
 builtin-grid loss reduction smoke check
 ```
 
-The support symbolic benchmark tracks:
-
-```text
-prediction accuracy
-unsupported rate
-condition-level accuracy
-training size before / after update
-update success
-```
-
-Human-readable Fact / Action structures are evaluation artifacts. They are not claimed to be the final architecture.
-
 ## Current Tests
 
 ```text
-tests/test_benchmark.py:
-  checks rule baseline vs frequency predictor vs state-aware predictor,
-  condition-level failures,
-  generated distribution slices,
-  and prediction-error update success
-
-tests/test_generated_distribution.py:
-  checks fixed generated train/test slices and non-overlap
-
 tests/test_byte_tokenizer.py:
   checks byte-level round-trip for Japanese, English, code, and logs
 
@@ -124,12 +100,6 @@ tests/test_gpt_training.py:
 
 tests/test_pair_ranking.py:
   checks next-token continuation loss helpers
-
-tests/test_learned_transition_predictor.py:
-  checks generated action-conditioned examples and learned predictor behavior
-
-tests/test_prediction_error_update_loop.py:
-  checks unsupported -> update -> correct behavior
 
 tests/test_demo.py:
   checks the package demo runs the mixed-GPT mainline smoke path

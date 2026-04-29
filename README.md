@@ -15,8 +15,6 @@ The active implementation is `src/intrep`. Historical experiments are kept under
 
 ## Current Position
 
-The repository still includes the earlier toy symbolic prediction benchmark, but that is now a support surface rather than the main direction.
-
 The conceptual center is:
 
 ```text
@@ -46,10 +44,6 @@ tokenize, then `TokenSequence` training. The old Signal JSONL path has been
 retired from `src/intrep`; the reserved `Signal` class remains only to block
 accidental reuse of that abstraction.
 
-The old benchmark still compares rule, frequency, and state-aware predictors
-over symbolic world-model examples. It remains useful as a regression and
-contrast, but it is no longer the main project path.
-
 ## Project Map
 
 ```text
@@ -72,11 +66,6 @@ docs/legacy/
 Current implementation surface:
 
 ```text
-src/intrep/types.py
-src/intrep/dataset.py
-src/intrep/environment.py
-src/intrep/predictors.py
-src/intrep/evaluation.py
 src/intrep/byte_tokenizer.py
 src/intrep/text_tokenizer.py
 src/intrep/token_sequence.py
@@ -91,9 +80,6 @@ src/intrep/fashion_mnist_vit.py
 src/intrep/image_io.py
 src/intrep/pair_ranking.py
 src/intrep/run_summary.py
-src/intrep/benchmark.py
-src/intrep/transition_data.py
-src/intrep/update_loop.py
 ```
 
 ## Canonical Docs
@@ -129,15 +115,10 @@ task-specific raw examples before tokenization
 small decoder-only GPT training runs
 byte/char-level tokenization before tokenizer optimization
 natural language as important data, not the whole world
-environment episodes in symbolic and natural-language renderings
-generated environment train/eval slices selected through the evaluation CLI
-for same-history/different-action and same-action/different-context checks
-same-modality hard distractors for next-observation ranking by default
 loss curves as smoke signals
 action-conditioned next-observation evaluation before architecture expansion
 tool / memory / belief as future task areas, not current core channels or hand-built schemas
 TokenSequence as the common learning input, not raw JSONL envelopes
-existing symbolic benchmarks as support, not the main path
 ```
 
 Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless an experiment repeatedly forces them.
@@ -148,8 +129,6 @@ Avoid adding new broad taxonomies, fixed schemas, or semantic dataclasses unless
 uv sync
 uv run python -m unittest
 ```
-
-The older symbolic benchmark remains available through `intrep.benchmark.run_benchmark()` for regression and contrast, but it is support rather than the main corpus or main direction.
 
 ## Image Choice Smoke
 

@@ -224,23 +224,6 @@ This historical run supports only the narrow statement that the small byte-level
 GPT reduced continuation loss on generated text streams. It did not show
 improved action-conditioned next-observation prediction.
 
-## Support Benchmark
-
-The old symbolic benchmark remains useful as a regression and contrast, but it
-is not the main project path.
-
-It shows:
-
-```text
-rule baselines are brittle
-frequency predictors memorize seen transitions
-state-aware predictors can fix specific held-out symbolic cases
-prediction-error update can make one unsupported case predictable
-```
-
-Do not read the symbolic benchmark as evidence for the PTM hypothesis. It is a
-support surface for regression and contrast.
-
 ## Next Pressure
 
 Next work should not add new semantic taxonomies or fixed state schemas.
