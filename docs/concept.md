@@ -10,7 +10,7 @@
 - [Predictive Representation System](predictive-representation-system.md)
 - [Model Input Boundaries](model-input-boundaries.md)
 - [Learning and Execution](learning-and-execution.md)
-- [Signal and Symbol](signal-and-symbol.md)
+- [Representation, Signal, and Symbol](signal-and-symbol.md)
 - [World Model Centering](world-model.md)
 - [Bitter Lesson Correction](bitter-lesson.md)
 - [Evaluation](evaluation.md)
