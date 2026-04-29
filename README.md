@@ -11,14 +11,14 @@ A predictive token machine for language, perception, action, memory, and belief.
 
 The project does not aim to build a hand-designed semantic database. The current
 direction is to keep source examples close to their original form, convert them
-through task-appropriate tokenizers, encoders, or adapters, and connect them to
-shared predictive computation where useful.
+through task-appropriate input layers, and connect them to shared predictive
+computation where useful.
 
 ```text
 raw examples
-  -> tokenizer / encoder / adapter
-  -> token or hidden sequence
-  -> shared predictive model components
+  -> modality-specific input layers
+  -> input embedding sequence
+  -> shared Transformer core
   -> task-specific evaluation
 ```
 
@@ -51,7 +51,8 @@ Read these first:
 
 - [Concept](docs/concept.md)
 - [Predictive Token Machine](docs/predictive-token-machine.md)
-- [Token Sequence Direction](docs/token-sequence-direction.md)
+- [Model Input Boundaries](docs/model-input-boundaries.md)
+- [Learning and Execution](docs/learning-and-execution.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
@@ -67,7 +68,7 @@ Prefer:
 
 ```text
 raw examples before premature schemas
-task-specific tokenizers / encoders / adapters
+task-specific input layers
 shared predictive computation where it is actually useful
 loss curves as smoke metrics
 task and future-prediction metrics for stronger claims

@@ -8,7 +8,8 @@
 詳細は次の文書に置く。
 
 - [Predictive Token Machine](predictive-token-machine.md)
-- [Token Sequence Direction](token-sequence-direction.md)
+- [Model Input Boundaries](model-input-boundaries.md)
+- [Learning and Execution](learning-and-execution.md)
 - [Signal and Symbol](signal-and-symbol.md)
 - [World Model Centering](world-model.md)
 - [Bitter Lesson Correction](bitter-lesson.md)
@@ -39,19 +40,19 @@ Predictive Token Machine の中核的な評価面に位置づける。
 学習可能な入力と出力の列として扱える。
 
 重要なのは、最初から人間が意味カテゴリを固定することではない。
-元データを tokenizer / encoder / adapter が扱いやすい形で保持し、
-そこから予測学習に使える系列へ変換することである。
+元データを入力層が扱いやすい形で保持し、
+そこからモデル入力に使える embedding sequence へ変換することである。
 
 ```text
 raw examples
-  -> tokenizer / encoder / adapter
-  -> token or hidden sequence
-  -> shared predictive model
+  -> modality-specific input layers
+  -> input embedding sequence
+  -> shared Transformer core
 ```
 
 この形なら、テキスト、画像、音声、行動、選択分類、自由記述応答を、
 同じ中間の予測計算へ接続しやすい。
-ただし、入力側と出力側の adapter まで無理に同一化する必要はない。
+ただし、入力層、出力層、学習目的まで無理に同一化する必要はない。
 
 ## 設計原則
 
@@ -59,8 +60,8 @@ raw examples
 
 ```text
 raw examples close to their source
-simple tokenizer / encoder boundaries
-TokenSequence or hidden sequence as learning input
+simple input-layer boundaries
+input embedding sequences as shared model input
 next-token or future-token training as smoke objectives
 held-out continuation / ranking / task evaluation
 loss reduction and modeling evidence kept separate
