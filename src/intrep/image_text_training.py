@@ -2,14 +2,27 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
+import numpy as np
 import torch
 
 from intrep.causal_text_model import CausalTextModel
-from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer, image_label_tensors_from_examples
+from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer
+from intrep.image_io import read_portable_image
 from intrep.image_text_scoring import TextTokenizer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.token_scoring import next_token_loss
+
+
+@dataclass(frozen=True)
+class ImageTextExample:
+    image_path: Path
+    answer_text: str
+
+    def __post_init__(self) -> None:
+        if not self.answer_text:
+            raise ValueError("answer_text must not be empty")
 
 
 @dataclass(frozen=True)
@@ -28,9 +41,9 @@ class ImageTextTrainingResult:
     loss_history: tuple[float, ...]
 
 
-def train_image_text_choices(
+def train_image_text_examples(
     *,
-    examples: Sequence[ImageChoiceExample],
+    examples: Sequence[ImageTextExample],
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
     tokenizer: TextTokenizer,
@@ -50,9 +63,8 @@ def train_image_text_choices(
     if tokenizer.vocab_size != text_model.config.vocab_size:
         raise ValueError("tokenizer vocab size must match text model vocab size")
 
-    images, labels = image_label_tensors_from_examples(list(examples))
+    images = image_tensors_from_text_examples(examples)
     images = images.to(device)
-    labels = labels.to(device)
     optimizer = torch.optim.AdamW(
         list(image_input_layer.parameters()) + list(text_model.parameters()),
         lr=training_config.learning_rate,
@@ -61,7 +73,6 @@ def train_image_text_choices(
     initial_loss = _mean_loss(
         examples=examples,
         images=images,
-        labels=labels,
         image_input_layer=image_input_layer,
         text_model=text_model,
         tokenizer=tokenizer,
@@ -77,7 +88,6 @@ def train_image_text_choices(
         loss = _example_loss(
             example=examples[index],
             image=images[index],
-            label=labels[index],
             image_input_layer=image_input_layer,
             text_model=text_model,
             tokenizer=tokenizer,
@@ -90,7 +100,6 @@ def train_image_text_choices(
     final_loss = _mean_loss(
         examples=examples,
         images=images,
-        labels=labels,
         image_input_layer=image_input_layer,
         text_model=text_model,
         tokenizer=tokenizer,
@@ -105,11 +114,31 @@ def train_image_text_choices(
     )
 
 
+def image_text_examples_from_choices(
+    examples: Sequence[ImageChoiceExample],
+) -> list[ImageTextExample]:
+    return [
+        ImageTextExample(image_path=example.image_path, answer_text=example.answer_text)
+        for example in examples
+    ]
+
+
+def image_tensors_from_text_examples(examples: Sequence[ImageTextExample]) -> torch.Tensor:
+    images: list[np.ndarray] = []
+    for example in examples:
+        images.append(_read_image_path(example.image_path))
+    if not images:
+        raise ValueError("examples must not be empty")
+    first_shape = images[0].shape
+    if any(image.shape != first_shape for image in images):
+        raise ValueError("all images must have the same shape")
+    return torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
+
+
 def _mean_loss(
     *,
-    examples: Sequence[ImageChoiceExample],
+    examples: Sequence[ImageTextExample],
     images: torch.Tensor,
-    labels: torch.Tensor,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
     tokenizer: TextTokenizer,
@@ -125,13 +154,12 @@ def _mean_loss(
                 _example_loss(
                     example=example,
                     image=image,
-                    label=label,
                     image_input_layer=image_input_layer,
                     text_model=text_model,
                     tokenizer=tokenizer,
                     prompt=prompt,
                 )
-                for example, image, label in zip(examples, images, labels, strict=True)
+                for example, image in zip(examples, images, strict=True)
             ]
             return float(torch.stack(losses).mean().item())
     finally:
@@ -143,17 +171,13 @@ def _mean_loss(
 
 def _example_loss(
     *,
-    example: ImageChoiceExample,
+    example: ImageTextExample,
     image: torch.Tensor,
-    label: torch.Tensor,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
     tokenizer: TextTokenizer,
     prompt: str,
 ) -> torch.Tensor:
-    answer_index = int(label.item())
-    if answer_index != example.answer_index:
-        raise ValueError("label tensor does not match example answer_index")
     prompt_ids = tokenizer.encode(prompt)
     answer_ids = tokenizer.encode(example.answer_text)
     if not prompt_ids:
@@ -194,3 +218,12 @@ def _validate_training_config(config: ImageTextTrainingConfig) -> None:
         raise ValueError("max_steps must be non-negative")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
+
+
+def _read_image_path(path: Path) -> np.ndarray:
+    pixels = read_portable_image(path)
+    if pixels.ndim == 2:
+        return pixels
+    if pixels.ndim == 3 and pixels.shape[2] == 3:
+        return np.rint(pixels.mean(axis=2)).astype(np.uint8)
+    raise ValueError("image payload must be grayscale or RGB")
