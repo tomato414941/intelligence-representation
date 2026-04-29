@@ -10,6 +10,7 @@ from torch import nn
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.gpt_model import DecoderOnlyGPT, GPTConfig, gpt_config_to_dict
+from intrep.text_examples import RawTextExample, text_corpus_from_examples
 from intrep.text_tokenizer import TextTokenizerKind, build_text_tokenizer
 
 GPTTrainingDevice = Literal["auto", "cpu", "cuda"]
@@ -89,6 +90,21 @@ class GPTTrainingArtifacts:
     result: GPTTrainingResult
     model: DecoderOnlyGPT
     tokenizer: object
+
+
+def train_raw_text_gpt_with_artifacts(
+    *,
+    train_examples: list[RawTextExample] | tuple[RawTextExample, ...],
+    training_config: GPTTrainingConfig | None = None,
+    model_config: GPTConfig | None = None,
+    eval_examples: list[RawTextExample] | tuple[RawTextExample, ...] | None = None,
+) -> GPTTrainingArtifacts:
+    return train_rendered_gpt_with_artifacts(
+        corpus=text_corpus_from_examples(train_examples),
+        training_config=training_config,
+        model_config=model_config,
+        eval_corpus=text_corpus_from_examples(eval_examples) if eval_examples is not None else None,
+    )
 
 
 def train_rendered_gpt_with_artifacts(

@@ -11,8 +11,10 @@ from intrep.gpt_training import (
     GPTTrainingConfig,
     language_model_batches,
     resolve_training_device,
+    train_raw_text_gpt_with_artifacts,
     train_rendered_gpt_with_artifacts,
 )
+from intrep.text_examples import RawTextExample
 
 
 class GPTTrainingTest(unittest.TestCase):
@@ -115,6 +117,34 @@ class GPTTrainingTest(unittest.TestCase):
         self.assertFalse(result.generalization_eval)
         self.assertTrue(result.warnings)
         self.assertEqual(result.device, "cpu")
+
+    def test_training_runs_on_raw_text_examples(self) -> None:
+        artifacts = train_raw_text_gpt_with_artifacts(
+            train_examples=(
+                RawTextExample("alpha beta gamma alpha beta gamma"),
+                RawTextExample("alpha beta gamma alpha beta gamma"),
+            ),
+            eval_examples=(RawTextExample("delta epsilon zeta delta epsilon zeta"),),
+            training_config=GPTTrainingConfig(
+                context_length=8,
+                batch_size=2,
+                max_steps=2,
+                learning_rate=0.005,
+                seed=23,
+            ),
+            model_config=GPTConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=8,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            ),
+        )
+
+        self.assertIsInstance(artifacts, GPTTrainingArtifacts)
+        self.assertEqual(artifacts.result.eval_split, "held_out")
+        self.assertTrue(artifacts.result.generalization_eval)
+        self.assertGreater(artifacts.result.token_count, 0)
 
     def test_resolve_training_device_auto_prefers_cuda_when_available(self) -> None:
         with unittest.mock.patch.object(torch.cuda, "is_available", return_value=True):
