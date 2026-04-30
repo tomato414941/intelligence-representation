@@ -3,9 +3,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep.image_classification import FASHION_MNIST_LABELS, ImageChoiceExample
+from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.text_image_shared_core_training import (
     TextImageSharedCoreTrainingConfig,
-    TextImageSharedCoreModel,
     train_text_image_shared_core_with_result,
 )
 
@@ -32,7 +32,7 @@ class TextImageSharedCoreTrainingTest(unittest.TestCase):
                 ),
             )
 
-        self.assertIsInstance(result.model, TextImageSharedCoreModel)
+        self.assertIsInstance(result.model, SharedMultimodalModel)
         self.assertTrue(result.metrics.shared_core)
         self.assertEqual(result.metrics.image_train_case_count, 2)
         self.assertEqual(result.metrics.image_eval_case_count, 2)
