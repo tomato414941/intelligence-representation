@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Temporary validation path for shared-core multitask training.
+
+This module intentionally covers only text language modeling plus image
+classification. Once the shared-core approach is proven enough, replace this
+task-specific path with the main multitask training path or delete it.
+"""
+
 from dataclasses import dataclass
 
 import torch
