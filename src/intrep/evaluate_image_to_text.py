@@ -6,7 +6,7 @@ from pathlib import Path
 from intrep.image_classification import load_image_choice_examples_jsonl
 from intrep.image_to_text_training import (
     ImageToTextTrainingConfig,
-    train_image_to_text_labels,
+    train_image_to_text_labels_with_result,
     write_metrics,
 )
 
@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--choice-eval-limit", type=int, default=200)
     parser.add_argument("--metrics-path", type=Path)
     return parser
 
@@ -32,7 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     train_examples = load_image_choice_examples_jsonl(args.train_path)
     eval_examples = load_image_choice_examples_jsonl(args.eval_path) if args.eval_path is not None else None
-    metrics = train_image_to_text_labels(
+    result = train_image_to_text_labels_with_result(
         train_examples=train_examples,
         eval_examples=eval_examples,
         config=ImageToTextTrainingConfig(
@@ -43,8 +44,10 @@ def main(argv: list[str] | None = None) -> None:
             seed=args.seed,
             model_preset=args.model_preset,
             device=args.device,
+            choice_eval_limit=args.choice_eval_limit,
         ),
     )
+    metrics = result.metrics
     if args.metrics_path is not None:
         write_metrics(args.metrics_path, metrics)
     print("intrep image to text")
@@ -57,6 +60,10 @@ def main(argv: list[str] | None = None) -> None:
         f" train_initial_loss={metrics.train_initial_loss:.4f}"
         f" train_final_loss={metrics.train_final_loss:.4f}"
         f" eval_final_loss={metrics.eval_final_loss if metrics.eval_final_loss is not None else 'none'}"
+        f" train_choice_accuracy={metrics.train_choice_accuracy if metrics.train_choice_accuracy is not None else 'none'}"
+        f" train_choice_cases={metrics.train_choice_case_count}"
+        f" eval_choice_accuracy={metrics.eval_choice_accuracy if metrics.eval_choice_accuracy is not None else 'none'}"
+        f" eval_choice_cases={metrics.eval_choice_case_count}"
     )
 
 

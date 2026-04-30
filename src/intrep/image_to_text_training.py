@@ -9,6 +9,7 @@ import torch
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
 from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer, image_label_tensors_from_examples
+from intrep.image_conditioned_text_evaluation import evaluate_image_conditioned_text_choices
 from intrep.language_modeling_training import resolve_training_device
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
@@ -25,6 +26,7 @@ class ImageToTextTrainingConfig:
     seed: int = 7
     model_preset: str = "tiny"
     device: str = "auto"
+    choice_eval_limit: int | None = 200
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,10 @@ class ImageToTextMetrics:
     train_final_loss: float
     eval_initial_loss: float | None
     eval_final_loss: float | None
+    train_choice_case_count: int
+    eval_choice_case_count: int
+    train_choice_accuracy: float | None
+    eval_choice_accuracy: float | None
     patch_size: int
     max_steps: int
     model_preset: str
@@ -53,10 +59,22 @@ class ImageToTextMetrics:
             "train_final_loss": self.train_final_loss,
             "eval_initial_loss": self.eval_initial_loss,
             "eval_final_loss": self.eval_final_loss,
+            "train_choice_case_count": self.train_choice_case_count,
+            "eval_choice_case_count": self.eval_choice_case_count,
+            "train_choice_accuracy": self.train_choice_accuracy,
+            "eval_choice_accuracy": self.eval_choice_accuracy,
             "image_patch_size": self.patch_size,
             "max_steps": self.max_steps,
             "model_preset": self.model_preset,
         }
+
+
+@dataclass(frozen=True)
+class ImageToTextTrainingResult:
+    metrics: ImageToTextMetrics
+    image_input_layer: ImagePatchInputLayer
+    text_model: CausalTextModel
+    tokenizer: TextTokenizer
 
 
 def train_image_to_text_labels(
@@ -66,6 +84,21 @@ def train_image_to_text_labels(
     config: ImageToTextTrainingConfig | None = None,
     tokenizer: TextTokenizer | None = None,
 ) -> ImageToTextMetrics:
+    return train_image_to_text_labels_with_result(
+        train_examples=train_examples,
+        eval_examples=eval_examples,
+        config=config,
+        tokenizer=tokenizer,
+    ).metrics
+
+
+def train_image_to_text_labels_with_result(
+    *,
+    train_examples: list[ImageChoiceExample],
+    eval_examples: list[ImageChoiceExample] | None = None,
+    config: ImageToTextTrainingConfig | None = None,
+    tokenizer: TextTokenizer | None = None,
+) -> ImageToTextTrainingResult:
     training_config = config or ImageToTextTrainingConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
@@ -165,7 +198,25 @@ def train_image_to_text_labels(
             token_mask=eval_token_mask,
         )
         eval_count = len(eval_examples or [])
-    return ImageToTextMetrics(
+    train_choice_examples = _choice_eval_examples(train_examples, training_config.choice_eval_limit)
+    eval_choice_examples = _choice_eval_examples(eval_examples or [], training_config.choice_eval_limit)
+    train_choice_accuracy = evaluate_image_conditioned_text_choices(
+        examples=train_choice_examples,
+        image_input_layer=image_input_layer,
+        text_model=text_model,
+        tokenizer=text_tokenizer,
+        prompt="",
+    ).accuracy
+    eval_choice_accuracy = None
+    if eval_choice_examples:
+        eval_choice_accuracy = evaluate_image_conditioned_text_choices(
+            examples=eval_choice_examples,
+            image_input_layer=image_input_layer,
+            text_model=text_model,
+            tokenizer=text_tokenizer,
+            prompt="",
+        ).accuracy
+    metrics = ImageToTextMetrics(
         target="answer_text",
         input_representation="image-patches",
         output_representation="text-tokens",
@@ -175,9 +226,19 @@ def train_image_to_text_labels(
         train_final_loss=train_final_loss,
         eval_initial_loss=eval_initial_loss,
         eval_final_loss=eval_final_loss,
+        train_choice_case_count=len(train_choice_examples),
+        eval_choice_case_count=len(eval_choice_examples),
+        train_choice_accuracy=train_choice_accuracy,
+        eval_choice_accuracy=eval_choice_accuracy,
         patch_size=training_config.patch_size,
         max_steps=training_config.max_steps,
         model_preset=training_config.model_preset,
+    )
+    return ImageToTextTrainingResult(
+        metrics=metrics,
+        image_input_layer=image_input_layer,
+        text_model=text_model,
+        tokenizer=text_tokenizer,
     )
 
 
@@ -259,6 +320,14 @@ def _validate_config(config: ImageToTextTrainingConfig) -> None:
         raise ValueError("learning_rate must be positive")
     if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
+    if config.choice_eval_limit is not None and config.choice_eval_limit <= 0:
+        raise ValueError("choice_eval_limit must be positive")
+
+
+def _choice_eval_examples(examples: list[ImageChoiceExample], limit: int | None) -> list[ImageChoiceExample]:
+    if limit is None:
+        return examples
+    return examples[:limit]
 
 
 def write_metrics(path: str | Path, metrics: ImageToTextMetrics) -> None:

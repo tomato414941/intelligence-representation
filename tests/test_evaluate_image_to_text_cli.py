@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from intrep import evaluate_image_to_text
-from intrep.image_to_text_training import ImageToTextMetrics
+from intrep.image_to_text_training import ImageToTextMetrics, ImageToTextTrainingResult
 
 
 class EvaluateImageToTextCLITest(unittest.TestCase):
@@ -15,11 +15,11 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
         captured_config = None
         captured_train_count = 0
 
-        def fake_train_image_to_text_labels(*, train_examples, eval_examples=None, config):
+        def fake_train_image_to_text_labels_with_result(*, train_examples, eval_examples=None, config):
             nonlocal captured_config, captured_train_count
             captured_config = config
             captured_train_count = len(train_examples)
-            return ImageToTextMetrics(
+            metrics = ImageToTextMetrics(
                 target="answer_text",
                 input_representation="image-patches",
                 output_representation="text-tokens",
@@ -29,9 +29,19 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
                 train_final_loss=1.0,
                 eval_initial_loss=None,
                 eval_final_loss=None,
+                train_choice_case_count=1,
+                eval_choice_case_count=0,
+                train_choice_accuracy=0.5,
+                eval_choice_accuracy=None,
                 patch_size=config.patch_size,
                 max_steps=config.max_steps,
                 model_preset=config.model_preset,
+            )
+            return ImageToTextTrainingResult(
+                metrics=metrics,
+                image_input_layer=None,
+                text_model=None,
+                tokenizer=None,
             )
 
         with TemporaryDirectory() as directory:
@@ -42,8 +52,8 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
 
             with patch.object(
                 evaluate_image_to_text,
-                "train_image_to_text_labels",
-                fake_train_image_to_text_labels,
+                "train_image_to_text_labels_with_result",
+                fake_train_image_to_text_labels_with_result,
             ):
                 evaluate_image_to_text.main(
                     [
@@ -59,6 +69,7 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
         self.assertEqual(captured_train_count, 2)
         self.assertEqual(captured_config.patch_size, 4)
         self.assertEqual(captured_config.model_preset, "tiny")
+        self.assertEqual(captured_config.choice_eval_limit, 200)
 
     def test_runs_small_image_to_text_smoke(self) -> None:
         output = io.StringIO()
@@ -90,6 +101,7 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
         self.assertEqual(payload["target"], "answer_text")
         self.assertEqual(payload["output_representation"], "text-tokens")
         self.assertEqual(payload["train_case_count"], 2)
+        self.assertIn("train_choice_accuracy", payload)
 
 
 def _write_image_choice_examples(path: Path, image_dir: Path) -> None:

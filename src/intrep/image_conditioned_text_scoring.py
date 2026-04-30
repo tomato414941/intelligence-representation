@@ -68,8 +68,6 @@ def _score_image_conditioned_text_candidate(
 ) -> float:
     prompt_ids = tokenizer.encode(prompt)
     candidate_ids = tokenizer.encode(candidate)
-    if not prompt_ids:
-        raise ValueError("prompt must encode to at least one token")
     if not candidate_ids:
         raise ValueError("candidate must encode to at least one token")
     if tokenizer.vocab_size != text_model.config.vocab_size:
@@ -121,6 +119,8 @@ def _score_image_conditioned_text_candidate(
 def _image_batch(image: torch.Tensor) -> torch.Tensor:
     if image.ndim == 2:
         return image.unsqueeze(0)
+    if image.ndim == 3 and image.size(-1) in (1, 3):
+        return image.unsqueeze(0)
     if image.ndim == 3 and image.size(0) == 1:
         return image
-    raise ValueError("image must have shape [height, width] or [1, height, width]")
+    raise ValueError("image must have shape [height, width], [height, width, channels], or [1, height, width]")
