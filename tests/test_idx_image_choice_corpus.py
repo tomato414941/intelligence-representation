@@ -7,16 +7,16 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.fashion_mnist_image_choice_corpus import (
+from intrep.idx_image_choice_corpus import (
     main,
     read_idx_images,
     read_idx_labels,
-    write_fashion_mnist_image_choice_jsonl,
+    write_idx_image_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
 
 
-class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
+class IDXImageChoiceCorpusTest(unittest.TestCase):
     def test_reads_idx_images_and_labels(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -48,7 +48,7 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
             )
             _write_idx_labels(labels_path, [9, 0])
 
-            selection = write_fashion_mnist_image_choice_jsonl(
+            selection = write_idx_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -73,7 +73,7 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [7])
 
-            write_fashion_mnist_image_choice_jsonl(
+            write_idx_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -95,7 +95,7 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [5])
 
-            write_fashion_mnist_image_choice_jsonl(
+            write_idx_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -116,7 +116,7 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
             _write_idx_labels(labels_path, [1, 2])
 
             with self.assertRaisesRegex(ValueError, "counts must match"):
-                write_fashion_mnist_image_choice_jsonl(
+                write_idx_image_choice_jsonl(
                     images_path=images_path,
                     labels_path=labels_path,
                     output_path=root / "fashion.jsonl",

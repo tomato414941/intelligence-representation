@@ -204,20 +204,20 @@ class PatchTransformerClassifier(nn.Module):
         return self.classification_head(embeddings)
 
 
-def train_fashion_mnist_classifier(
+def train_image_classifier(
     *,
     train_examples: list[ImageChoiceExample],
     eval_examples: list[ImageChoiceExample] | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationMetrics:
-    return train_fashion_mnist_classifier_with_result(
+    return train_image_classifier_with_result(
         train_examples=train_examples,
         eval_examples=eval_examples,
         config=config,
     ).metrics
 
 
-def train_fashion_mnist_classifier_with_result(
+def train_image_classifier_with_result(
     *,
     train_examples: list[ImageChoiceExample],
     eval_examples: list[ImageChoiceExample] | None = None,

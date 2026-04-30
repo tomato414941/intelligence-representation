@@ -102,8 +102,8 @@ uv run python -m intrep.train_language_model \
   --checkpoint-path runs/text.pt
 ```
 
-Fashion-MNIST-style image classification uses image patch embeddings, the
-shared Transformer core, and a classification head:
+Image classification uses image patch embeddings, the shared Transformer core,
+and a classification head:
 
 ```sh
 uv run python -m intrep.cifar10_image_choice_corpus \
@@ -111,7 +111,7 @@ uv run python -m intrep.cifar10_image_choice_corpus \
   --output-path runs/cifar10-train.jsonl \
   --image-output-dir runs/cifar10-train-images
 
-uv run python -m intrep.evaluate_fashion_mnist \
+uv run python -m intrep.evaluate_image_classification \
   --train-path runs/cifar10-train.jsonl \
   --metrics-path runs/cifar10.json
 ```

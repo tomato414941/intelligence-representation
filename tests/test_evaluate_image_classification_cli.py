@@ -6,17 +6,17 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from intrep import evaluate_fashion_mnist
+from intrep import evaluate_image_classification
 from intrep.image_classification import FASHION_MNIST_LABELS, ImageClassificationMetrics
 
 
-class EvaluateFashionMNISTCLITest(unittest.TestCase):
-    def test_builds_fashion_mnist_image_classification_config(self) -> None:
+class EvaluateImageClassificationCLITest(unittest.TestCase):
+    def test_builds_image_classification_config(self) -> None:
         captured_config = None
         captured_train_count = 0
         captured_eval_count = 0
 
-        def fake_train_fashion_mnist_classifier(*, train_examples, eval_examples=None, config):
+        def fake_train_image_classifier(*, train_examples, eval_examples=None, config):
             nonlocal captured_config, captured_train_count, captured_eval_count
             captured_config = config
             captured_train_count = len(train_examples)
@@ -44,11 +44,11 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
             with patch.object(
-                evaluate_fashion_mnist,
-                "train_fashion_mnist_classifier",
-                fake_train_fashion_mnist_classifier,
+                evaluate_image_classification,
+                "train_image_classifier",
+                fake_train_image_classifier,
             ):
-                evaluate_fashion_mnist.main(
+                evaluate_image_classification.main(
                     [
                         "--train-path",
                         str(train_path),
@@ -79,7 +79,7 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
             with redirect_stdout(output):
-                evaluate_fashion_mnist.main(
+                evaluate_image_classification.main(
                     [
                         "--train-path",
                         str(train_path),

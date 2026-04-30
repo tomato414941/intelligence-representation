@@ -8,7 +8,7 @@ import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
-from intrep.fashion_mnist_image_choice_corpus import write_fashion_mnist_image_choice_jsonl
+from intrep.idx_image_choice_corpus import write_idx_image_choice_jsonl
 from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer, load_image_choice_examples_jsonl
 from intrep.image_conditioned_text_evaluation import evaluate_image_conditioned_text_choices
 
@@ -59,7 +59,7 @@ class ImageConditionedTextEvaluationTest(unittest.TestCase):
         self.assertEqual(len(metrics.losses[0]), 2)
         self.assertEqual(metrics.to_dict()["predicted_indices"], [1])
 
-    def test_evaluates_generated_fashion_mnist_image_choice_jsonl(self) -> None:
+    def test_evaluates_generated_idx_image_choice_jsonl(self) -> None:
         tokenizer = ByteTokenizer()
         image_input = ImagePatchInputLayer(
             image_size=(2, 2),
@@ -82,7 +82,7 @@ class ImageConditionedTextEvaluationTest(unittest.TestCase):
             examples_path = root / "fashion.jsonl"
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [9])
-            write_fashion_mnist_image_choice_jsonl(
+            write_idx_image_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=examples_path,

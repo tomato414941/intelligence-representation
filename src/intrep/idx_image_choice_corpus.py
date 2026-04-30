@@ -19,13 +19,13 @@ from intrep.image_classification import (
 
 
 @dataclass(frozen=True)
-class FashionMNISTSelection:
+class IDXImageChoiceSelection:
     examples: list[ImageChoiceExample]
     image_count: int
     output_dir: Path
 
 
-def write_fashion_mnist_image_choice_jsonl(
+def write_idx_image_choice_jsonl(
     *,
     images_path: str | Path,
     labels_path: str | Path,
@@ -34,11 +34,11 @@ def write_fashion_mnist_image_choice_jsonl(
     split: str = "train",
     limit: int | None = None,
     label_names: Sequence[str] = FASHION_MNIST_LABELS,
-) -> FashionMNISTSelection:
+) -> IDXImageChoiceSelection:
     images = read_idx_images(images_path)
     labels = read_idx_labels(labels_path)
     if len(images) != len(labels):
-        raise ValueError("Fashion-MNIST image and label counts must match")
+        raise ValueError("IDX image and label counts must match")
     if limit is not None and limit < 0:
         raise ValueError("limit must be non-negative")
     if not label_names:
@@ -68,7 +68,7 @@ def write_fashion_mnist_image_choice_jsonl(
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    return FashionMNISTSelection(examples=examples, image_count=count, output_dir=output_dir)
+    return IDXImageChoiceSelection(examples=examples, image_count=count, output_dir=output_dir)
 
 
 def read_idx_images(path: str | Path) -> np.ndarray:
@@ -117,10 +117,10 @@ def _read_maybe_gzip(path: str | Path) -> bytes:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert local Fashion-MNIST IDX files into image-choice JSONL records."
+        description="Convert local IDX image and label files into image-choice JSONL records."
     )
-    parser.add_argument("--images-path", required=True, help="Path to Fashion-MNIST images IDX or IDX gzip.")
-    parser.add_argument("--labels-path", required=True, help="Path to Fashion-MNIST labels IDX or IDX gzip.")
+    parser.add_argument("--images-path", required=True, help="Path to images IDX or IDX gzip.")
+    parser.add_argument("--labels-path", required=True, help="Path to labels IDX or IDX gzip.")
     parser.add_argument("--output-path", required=True, help="Path for output image-choice JSONL.")
     parser.add_argument("--image-output-dir", required=True, help="Directory for extracted PGM images.")
     parser.add_argument("--split", default="train", help="Split label used in generated image filenames.")
@@ -133,7 +133,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    selection = write_fashion_mnist_image_choice_jsonl(
+    selection = write_idx_image_choice_jsonl(
         images_path=args.images_path,
         labels_path=args.labels_path,
         output_path=args.output_path,

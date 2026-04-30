@@ -16,8 +16,8 @@ from intrep.image_classification import (
     PatchTransformerClassifier,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
-    train_fashion_mnist_classifier,
-    train_fashion_mnist_classifier_with_result,
+    train_image_classifier,
+    train_image_classifier_with_result,
 )
 from intrep.transformer_core import SharedTransformerCore
 
@@ -134,7 +134,7 @@ class ImageClassificationTest(unittest.TestCase):
                 ImageChoiceExample(image_path=image_b, choices=MNIST_LABELS, answer_index=0),
             ]
 
-            result = train_fashion_mnist_classifier_with_result(
+            result = train_image_classifier_with_result(
                 train_examples=examples,
                 config=ImageClassificationConfig(
                     patch_size=1,
@@ -161,7 +161,7 @@ class ImageClassificationTest(unittest.TestCase):
             ]
 
             with self.assertRaisesRegex(ValueError, "same choices"):
-                train_fashion_mnist_classifier_with_result(
+                train_image_classifier_with_result(
                     train_examples=examples,
                     config=ImageClassificationConfig(
                         patch_size=1,
@@ -245,7 +245,7 @@ class ImageClassificationTest(unittest.TestCase):
             _write_image_choice_examples(path, Path(directory) / "images")
             examples = load_image_choice_examples_jsonl(path)
 
-            metrics = train_fashion_mnist_classifier(
+            metrics = train_image_classifier(
                 train_examples=examples,
                 eval_examples=examples,
                 config=ImageClassificationConfig(
@@ -271,7 +271,7 @@ class ImageClassificationTest(unittest.TestCase):
             _write_image_choice_examples(path, Path(directory) / "images")
             examples = load_image_choice_examples_jsonl(path)
 
-            result = train_fashion_mnist_classifier_with_result(
+            result = train_image_classifier_with_result(
                 train_examples=examples,
                 eval_examples=examples,
                 config=ImageClassificationConfig(

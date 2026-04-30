@@ -6,7 +6,7 @@ from pathlib import Path
 from intrep.image_classification import (
     ImageClassificationConfig,
     load_image_choice_examples_jsonl,
-    train_fashion_mnist_classifier,
+    train_image_classifier,
     write_metrics,
 )
 
@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     train_examples = load_image_choice_examples_jsonl(args.train_path)
     eval_examples = load_image_choice_examples_jsonl(args.eval_path) if args.eval_path is not None else None
-    metrics = train_fashion_mnist_classifier(
+    metrics = train_image_classifier(
         train_examples=train_examples,
         eval_examples=eval_examples,
         config=ImageClassificationConfig(

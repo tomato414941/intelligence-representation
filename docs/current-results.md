@@ -241,7 +241,7 @@ local text-like patterns in a smoke setting.
 The current Fashion-MNIST image classification path is wired end to end:
 
 ```text
-Fashion-MNIST IDX
+IDX image dataset
   -> image-choice JSONL
   -> local PGM files
   -> ImageChoiceExample
