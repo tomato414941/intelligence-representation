@@ -195,6 +195,24 @@ eval loss: 7.7803 -> 4.1420
 eval perplexity: 2392.99 -> 62.93
 ```
 
+Increasing the same main byte-pair tokenizer to vocab 8192 works, but does not
+improve the 1000-step CPU run yet:
+
+```text
+tokenizer: byte-pair, vocab 8192
+corpora: Tiny Shakespeare, WikiText-2 raw train, TinyStories sample
+sample size: about 17MB total
+model: small causal text model
+steps: 1000
+train tokens: 3939335
+eval loss: 9.1603 -> 4.2991
+eval perplexity: 9495.50 -> 73.64
+```
+
+The larger vocabulary reduces token count, but it also increases output-layer
+cost and starts from a harder softmax. Under this run budget, vocab 2048 remains
+the better baseline.
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.
