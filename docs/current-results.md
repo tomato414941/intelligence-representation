@@ -250,6 +250,18 @@ Fashion-MNIST IDX
   -> ClassificationHead
 ```
 
+The current tiny preset learns a 5,000-example Fashion-MNIST subset on CPU:
+
+```text
+train_examples: 5000
+eval_examples: 1000
+max_steps: 2000
+train_initial_loss: 2.3432
+train_final_loss: 0.5871
+train_accuracy: 0.7888
+eval_accuracy: 0.7700
+```
+
 The image-conditioned text scoring path is separate:
 
 ```text
