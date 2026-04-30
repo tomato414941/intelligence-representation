@@ -6,6 +6,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+import torch
+
 from intrep import evaluate_image_to_text
 from intrep.image_to_text_training import ImageToTextMetrics, ImageToTextTrainingResult
 
@@ -42,6 +44,8 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
                 image_input_layer=None,
                 text_model=None,
                 tokenizer=None,
+                image_shape=(2, 2),
+                config=config,
             )
 
         with TemporaryDirectory() as directory:
@@ -102,6 +106,39 @@ class EvaluateImageToTextCLITest(unittest.TestCase):
         self.assertEqual(payload["output_representation"], "text-tokens")
         self.assertEqual(payload["train_case_count"], 2)
         self.assertIn("train_choice_accuracy", payload)
+
+    def test_writes_checkpoint(self) -> None:
+        output = io.StringIO()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train.jsonl"
+            checkpoint_path = root / "model.pt"
+            _write_image_choice_examples(train_path, root / "images")
+
+            with redirect_stdout(output):
+                evaluate_image_to_text.main(
+                    [
+                        "--train-path",
+                        str(train_path),
+                        "--max-steps",
+                        "1",
+                        "--batch-size",
+                        "2",
+                        "--image-patch-size",
+                        "1",
+                        "--checkpoint-path",
+                        str(checkpoint_path),
+                    ]
+                )
+
+            checkpoint = torch.load(checkpoint_path, map_location="cpu")
+
+        self.assertEqual(checkpoint["schema_version"], "intrep.model_checkpoint.v1")
+        self.assertEqual(checkpoint["task"], "image-to-text")
+        self.assertIn("image_input_layer", checkpoint)
+        self.assertIn("text_model", checkpoint)
+        self.assertEqual(checkpoint["tokenizer"]["kind"], "byte")
+        self.assertEqual(checkpoint["metrics"]["target"], "answer_text")
 
 
 def _write_image_choice_examples(path: Path, image_dir: Path) -> None:

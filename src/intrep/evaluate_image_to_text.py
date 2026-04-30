@@ -6,6 +6,7 @@ from pathlib import Path
 from intrep.image_classification import load_image_choice_examples_jsonl
 from intrep.image_to_text_training import (
     ImageToTextTrainingConfig,
+    save_image_to_text_checkpoint,
     train_image_to_text_labels_with_result,
     write_metrics,
 )
@@ -26,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--choice-eval-limit", type=int, default=200)
     parser.add_argument("--metrics-path", type=Path)
+    parser.add_argument("--checkpoint-path", type=Path)
     return parser
 
 
@@ -50,6 +52,8 @@ def main(argv: list[str] | None = None) -> None:
     metrics = result.metrics
     if args.metrics_path is not None:
         write_metrics(args.metrics_path, metrics)
+    if args.checkpoint_path is not None:
+        save_image_to_text_checkpoint(args.checkpoint_path, result)
     print("intrep image to text")
     print(
         f"target={metrics.target}"

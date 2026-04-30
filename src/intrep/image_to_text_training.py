@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from intrep.image_conditioned_text_evaluation import evaluate_image_conditioned_
 from intrep.language_modeling_training import resolve_training_device
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.text_tokenizer import TextTokenizer
+from intrep.text_tokenizer import TextTokenizer, text_tokenizer_to_payload
 from intrep.token_scoring import next_token_loss
 
 
@@ -75,6 +75,8 @@ class ImageToTextTrainingResult:
     image_input_layer: ImagePatchInputLayer
     text_model: CausalTextModel
     tokenizer: TextTokenizer
+    image_shape: tuple[int, ...]
+    config: ImageToTextTrainingConfig
 
 
 def train_image_to_text_labels(
@@ -239,6 +241,8 @@ def train_image_to_text_labels_with_result(
         image_input_layer=image_input_layer,
         text_model=text_model,
         tokenizer=text_tokenizer,
+        image_shape=tuple(int(value) for value in train_images.shape[1:]),
+        config=training_config,
     )
 
 
@@ -332,3 +336,21 @@ def _choice_eval_examples(examples: list[ImageChoiceExample], limit: int | None)
 
 def write_metrics(path: str | Path, metrics: ImageToTextMetrics) -> None:
     Path(path).write_text(json.dumps(metrics.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def save_image_to_text_checkpoint(path: str | Path, result: ImageToTextTrainingResult) -> None:
+    checkpoint_path = Path(path)
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "schema_version": "intrep.model_checkpoint.v1",
+            "task": "image-to-text",
+            "image_input_layer": result.image_input_layer.state_dict(),
+            "text_model": result.text_model.state_dict(),
+            "tokenizer": text_tokenizer_to_payload(result.tokenizer),
+            "config": asdict(result.config),
+            "metrics": result.metrics.to_dict(),
+            "image_shape": result.image_shape,
+        },
+        checkpoint_path,
+    )
