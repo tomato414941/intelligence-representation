@@ -10,7 +10,7 @@ from typing import Sequence
 
 import numpy as np
 
-from intrep.fashion_mnist_vit import (
+from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
     image_choice_example_to_record,

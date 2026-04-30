@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.fashion_mnist_vit import (
+from intrep.image_classification import (
     ClassificationHead,
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
@@ -20,7 +20,7 @@ from intrep.fashion_mnist_vit import (
 from intrep.transformer_core import SharedTransformerCore
 
 
-class FashionMNISTViTTest(unittest.TestCase):
+class ImageClassificationTest(unittest.TestCase):
     def test_loads_image_choice_examples_jsonl(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "fashion.jsonl"

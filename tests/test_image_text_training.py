@@ -4,7 +4,7 @@ from pathlib import Path
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
-from intrep.fashion_mnist_vit import ImageChoiceExample, ImagePatchInputLayer
+from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer
 from intrep.image_text_evaluation import evaluate_image_text_choices
 from intrep.image_text_training import (
     ImageTextExample,

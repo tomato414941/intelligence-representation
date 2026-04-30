@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from intrep.fashion_mnist_vit import (
+from intrep.image_classification import (
     ImageClassificationConfig,
     load_image_choice_examples_jsonl,
     train_fashion_mnist_classifier,

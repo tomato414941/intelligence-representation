@@ -4,7 +4,7 @@ import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
-from intrep.fashion_mnist_vit import ImagePatchInputLayer
+from intrep.image_classification import ImagePatchInputLayer
 from intrep.image_text_scoring import (
     choose_image_text_candidate,
     score_image_text_candidates,

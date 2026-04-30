@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from intrep import evaluate_fashion_mnist
-from intrep.fashion_mnist_vit import FASHION_MNIST_LABELS, ImageClassificationMetrics
+from intrep.image_classification import FASHION_MNIST_LABELS, ImageClassificationMetrics
 
 
 class EvaluateFashionMNISTCLITest(unittest.TestCase):
