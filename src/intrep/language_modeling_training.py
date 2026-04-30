@@ -33,7 +33,7 @@ class LanguageModelingTrainingConfig:
     seed: int = 7
     device: LanguageModelingTrainingDevice = "cpu"
     checkpoint_path: Path | None = None
-    tokenizer: TextTokenizerKind = "byte"
+    tokenizer: TextTokenizerKind = "byte-pair"
     tokenizer_vocab_size: int = 512
     tokenizer_min_pair_count: int = 2
     eval_batch_limit: int | None = 64

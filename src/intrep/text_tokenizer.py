@@ -89,7 +89,7 @@ class BytePairTokenizer:
 def build_text_tokenizer(
     text: str,
     *,
-    kind: TextTokenizerKind = "byte",
+    kind: TextTokenizerKind = "byte-pair",
     vocab_size: int = 512,
     min_pair_count: int = 2,
 ) -> TextTokenizer:

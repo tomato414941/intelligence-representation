@@ -13,7 +13,7 @@ from intrep.fashion_mnist_vit import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Evaluate Fashion-MNIST image classification with a patch Transformer."
+        description="Evaluate Fashion-MNIST image classification with image patch embeddings and the shared Transformer core."
     )
     parser.add_argument("--train-path", type=Path, required=True)
     parser.add_argument("--eval-path", type=Path)
@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     if args.metrics_path is not None:
         write_metrics(args.metrics_path, metrics)
-    print("intrep fashion-mnist vit")
+    print("intrep fashion-mnist image classification")
     print(
         f"target={metrics.target}"
         f" input_representation={metrics.input_representation}"

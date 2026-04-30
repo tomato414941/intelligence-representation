@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> None:
             learning_rate=args.learning_rate,
             seed=args.seed,
             device=args.device,
+            tokenizer="byte",
         ),
         image_text_config=ImageTextTrainingConfig(
             max_steps=args.image_text_max_steps,

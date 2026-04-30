@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_language_model
-from intrep.text_tokenizer import save_text_tokenizer, train_simple_byte_pair_tokenizer
+from intrep.text_tokenizer import save_text_tokenizer, train_byte_pair_tokenizer
 
 
 class TrainLanguageModelCLITest(unittest.TestCase):
@@ -17,7 +17,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             corpus_path = root / "corpus.txt"
             metrics_path = root / "metrics.json"
             checkpoint_path = root / "checkpoint.pt"
-            corpus_path.write_text("first citizen speaks\nsecond citizen replies\n" * 20, encoding="utf-8")
+            corpus_path.write_text("first citizen speaks\nsecond citizen replies\n" * 80, encoding="utf-8")
 
             with redirect_stdout(output):
                 train_language_model.main(
@@ -96,7 +96,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             tokenizer_path = root / "tokenizer.json"
             metrics_path = root / "metrics.json"
             corpus_path.write_text("red green blue red green blue\n" * 20, encoding="utf-8")
-            tokenizer = train_simple_byte_pair_tokenizer(corpus_path.read_text(encoding="utf-8"), vocab_size=260)
+            tokenizer = train_byte_pair_tokenizer(corpus_path.read_text(encoding="utf-8"), vocab_size=270)
             save_text_tokenizer(tokenizer_path, tokenizer)
 
             train_language_model.main(
@@ -120,10 +120,11 @@ class TrainLanguageModelCLITest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(payload["training_config"]["tokenizer"], "byte")
+        self.assertEqual(payload["training_config"]["tokenizer"], "byte-pair")
         self.assertEqual(payload["tokenizer"]["source"], str(tokenizer_path))
-        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "simple-byte-pair")
-        self.assertEqual(payload["tokenizer"]["payload"]["vocab_size"], 260)
+        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "byte-pair")
+        self.assertGreaterEqual(payload["tokenizer"]["payload"]["vocab_size"], 267)
+        self.assertLessEqual(payload["tokenizer"]["payload"]["vocab_size"], 270)
         self.assertGreater(payload["result"]["token_count"], 0)
 
     def test_trains_with_byte_pair_tokenizer(self) -> None:

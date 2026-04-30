@@ -19,7 +19,7 @@ raw examples
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
-  -> task-specific evaluation
+  -> task-specific output layer
 ```
 
 World modeling is one evaluation surface inside this broader frame. It concerns
@@ -89,4 +89,25 @@ large architectural expansions before evaluation pressure exists
 ```sh
 uv sync
 uv run python -m unittest
+```
+
+## Current Training Entrypoints
+
+Text language modeling uses the main byte-pair tokenizer by default:
+
+```sh
+uv run python -m intrep.train_language_model \
+  --corpus-path data/external/tiny-shakespeare.txt \
+  --metrics-path runs/text.json \
+  --checkpoint-path runs/text.pt
+```
+
+Fashion-MNIST-style image classification uses image patch embeddings, the
+shared Transformer core, and a classification head:
+
+```sh
+uv run python -m intrep.evaluate_fashion_mnist \
+  --train-path runs/fashion-train.jsonl \
+  --eval-path runs/fashion-eval.jsonl \
+  --metrics-path runs/fashion.json
 ```

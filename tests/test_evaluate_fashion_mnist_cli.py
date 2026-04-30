@@ -99,6 +99,7 @@ class EvaluateFashionMNISTCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
         self.assertIn("target=label", output.getvalue())
+        self.assertIn("intrep fashion-mnist image classification", output.getvalue())
         self.assertIn("input_representation=image-patches", output.getvalue())
         self.assertEqual(payload["target"], "label")
         self.assertEqual(payload["input_representation"], "image-patches")

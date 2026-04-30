@@ -76,6 +76,17 @@ image
   -> input embedding sequence
 ```
 
+The current Fashion-MNIST classification path uses this concrete form:
+
+```text
+image-choice JSONL
+  -> local PGM image
+  -> ImagePatchInputLayer
+  -> input embedding sequence
+  -> SharedTransformerCore
+  -> ClassificationHead
+```
+
 Other modalities can use their own input layers. A full text, image, audio, or
 video encoder may include both input layers and a Transformer or CNN body. This
 document names the boundary explicitly because `encoder` is often used at

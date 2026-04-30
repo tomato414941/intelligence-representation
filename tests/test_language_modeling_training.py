@@ -102,6 +102,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=12,
                 learning_rate=0.01,
                 seed=11,
+                tokenizer="byte",
             ),
             model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
@@ -150,6 +151,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=2,
                 learning_rate=0.005,
                 seed=23,
+                tokenizer="byte",
             ),
             model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
@@ -188,6 +190,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                         seed=19,
                         device="auto",
                         checkpoint_path=checkpoint_path,
+                        tokenizer="byte",
                     ),
                     model_config=CausalTextConfig(
                         vocab_size=ByteTokenizer.vocab_size,
@@ -250,6 +253,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=3,
                 learning_rate=0.005,
                 seed=13,
+                tokenizer="byte",
             ),
             model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
@@ -279,6 +283,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=2,
                 learning_rate=0.005,
                 seed=17,
+                tokenizer="byte",
             ),
             model_config=CausalTextConfig(
                 vocab_size=ByteTokenizer.vocab_size,
@@ -316,6 +321,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=1,
                 learning_rate=0.005,
                 seed=17,
+                tokenizer="byte",
             ),
             model_config=CausalTextConfig(
                 vocab_size=260,
@@ -349,6 +355,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 max_steps=1,
                 learning_rate=0.005,
                 seed=17,
+                tokenizer="byte",
             ),
             model_config=initial_model.config,
             initial_model=initial_model,
@@ -384,8 +391,8 @@ class LanguageModelingTrainingTest(unittest.TestCase):
     def test_rejects_model_config_mismatch(self) -> None:
         with self.assertRaisesRegex(ValueError, "context_length must match"):
             _train_text_corpus_with_artifacts(
-                corpus="abc abc abc abc abc",
-                training_config=LanguageModelingTrainingConfig(context_length=16),
+                corpus="abc abc abc abc abc abc abc abc abc abc",
+                training_config=LanguageModelingTrainingConfig(context_length=16, tokenizer="byte"),
                 model_config=CausalTextConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
             )
 

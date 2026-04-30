@@ -44,7 +44,8 @@ Currently supported:
 
 ```text
 causal text model training utilities
-byte-level and byte-pair text tokenization
+byte-pair text tokenization as the main text path
+byte-level text tokenization as a small fallback baseline
 Tiny Shakespeare language modeling run with held-out evaluation
 Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
@@ -238,24 +239,33 @@ final_eval_loss: 2.3727
 This supports only the narrow claim that the small training stack can learn
 local text-like patterns in a smoke setting.
 
-## Image Path
+## Image Paths
 
-The current image path is wired end to end:
+The current Fashion-MNIST image classification path is wired end to end:
 
 ```text
 Fashion-MNIST IDX
   -> image-choice JSONL
   -> local PGM files
   -> ImageChoiceExample
-  -> ImageTextExample for text supervision
   -> image patch embedding
   -> SharedTransformerCore
   -> ClassificationHead
 ```
 
-This is still a classification-head baseline. The next direction is to connect
-image inputs and label text to continuation scoring or token-level supervision,
-without reintroducing a generic raw-data envelope.
+The image-conditioned text path is separate:
+
+```text
+ImageChoiceExample
+  -> ImageTextExample for text supervision
+  -> image patch embedding + text embeddings
+  -> SharedTransformerCore
+  -> TokenOutputHead or candidate scoring
+```
+
+The classification path is still the simplest image baseline. The next
+direction is to connect image inputs and label text to continuation scoring or
+token-level supervision, without reintroducing a generic raw-data envelope.
 
 ## Tokenizer Direction
 

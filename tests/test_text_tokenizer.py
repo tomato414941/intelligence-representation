@@ -17,7 +17,12 @@ from intrep.text_tokenizer import (
 
 
 class TextTokenizerTest(unittest.TestCase):
-    def test_build_text_tokenizer_keeps_byte_default(self) -> None:
+    def test_build_text_tokenizer_uses_byte_pair_default(self) -> None:
+        tokenizer = build_text_tokenizer("hello hello", vocab_size=270)
+
+        self.assertIsInstance(tokenizer, BytePairTokenizer)
+
+    def test_build_text_tokenizer_can_build_byte_baseline(self) -> None:
         tokenizer = build_text_tokenizer("hello", kind="byte")
 
         self.assertIsInstance(tokenizer, ByteTokenizer)

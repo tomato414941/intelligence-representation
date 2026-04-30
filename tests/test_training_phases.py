@@ -37,6 +37,7 @@ class TrainingPhasesTest(unittest.TestCase):
                     max_steps=2,
                     learning_rate=0.01,
                     seed=11,
+                    tokenizer="byte",
                 ),
                 image_text_config=ImageTextTrainingConfig(
                     max_steps=10,
