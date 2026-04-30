@@ -8,7 +8,7 @@ from intrep.causal_text_model import CausalTextModel
 from intrep.image_classification import ImagePatchInputLayer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.text_tokenizer import TextTokenizer
-from intrep.token_scoring import next_token_loss
+from intrep.token_scoring import next_token_losses
 
 
 def score_image_conditioned_text_candidates(
@@ -20,21 +20,16 @@ def score_image_conditioned_text_candidates(
     prompt: str,
     candidates: Sequence[str],
 ) -> list[float]:
-    candidate_losses: list[float] = []
-    for candidate in candidates:
-        candidate_losses.append(
-            _score_image_conditioned_text_candidate(
-                image_input_layer=image_input_layer,
-                text_model=text_model,
-                tokenizer=tokenizer,
-                image=image,
-                prompt=prompt,
-                candidate=candidate,
-            )
-        )
-    if not candidate_losses:
+    if not candidates:
         raise ValueError("candidates must not be empty")
-    return candidate_losses
+    return _score_image_conditioned_text_candidate_batch(
+        image_input_layer=image_input_layer,
+        text_model=text_model,
+        tokenizer=tokenizer,
+        image=image,
+        prompt=prompt,
+        candidates=candidates,
+    )
 
 
 def choose_image_conditioned_text_candidate(
@@ -57,18 +52,18 @@ def choose_image_conditioned_text_candidate(
     return min(range(len(losses)), key=losses.__getitem__)
 
 
-def _score_image_conditioned_text_candidate(
+def _score_image_conditioned_text_candidate_batch(
     *,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
     tokenizer: TextTokenizer,
     image: torch.Tensor,
     prompt: str,
-    candidate: str,
-) -> float:
+    candidates: Sequence[str],
+) -> list[float]:
     prompt_ids = tokenizer.encode(prompt)
-    candidate_ids = tokenizer.encode(candidate)
-    if not candidate_ids:
+    candidate_id_rows = [tokenizer.encode(candidate) for candidate in candidates]
+    if any(not row for row in candidate_id_rows):
         raise ValueError("candidate must encode to at least one token")
     if tokenizer.vocab_size != text_model.config.vocab_size:
         raise ValueError("tokenizer vocab size must match text model vocab size")
@@ -84,8 +79,11 @@ def _score_image_conditioned_text_candidate(
             if image_device != device:
                 raise ValueError("image input layer and text model must be on the same device")
             image_batch = _image_batch(image).to(device)
-            image_embeddings = image_input_layer(image_batch)
-            text_ids = torch.tensor([prompt_ids + candidate_ids], dtype=torch.long, device=device)
+            image_embeddings = image_input_layer(image_batch).expand(len(candidates), -1, -1)
+            text_id_rows = [prompt_ids + row for row in candidate_id_rows]
+            max_text_length = max(len(row) for row in text_id_rows)
+            padded_rows = [row + [0] * (max_text_length - len(row)) for row in text_id_rows]
+            text_ids = torch.tensor(padded_rows, dtype=torch.long, device=device)
             text_embeddings = text_model.embed_tokens(
                 text_ids,
                 position_offset=image_embeddings.size(1),
@@ -98,17 +96,18 @@ def _score_image_conditioned_text_candidate(
             logits = text_model.token_logits(hidden)
 
             target_token_ids = torch.zeros(
-                (1, combined_embeddings.size(1)),
+                (len(candidates), combined_embeddings.size(1)),
                 dtype=torch.long,
                 device=device,
             )
             text_start = image_embeddings.size(1)
-            text_end = text_start + text_ids.size(1)
-            target_token_ids[:, text_start:text_end] = text_ids
+            target_token_ids[:, text_start : text_start + text_ids.size(1)] = text_ids
             loss_mask = torch.zeros_like(target_token_ids, dtype=torch.bool)
-            candidate_start = text_start + len(prompt_ids)
-            loss_mask[:, candidate_start:text_end] = True
-            return float(next_token_loss(logits, target_token_ids, loss_mask=loss_mask).item())
+            for row_index, candidate_ids in enumerate(candidate_id_rows):
+                candidate_start = text_start + len(prompt_ids)
+                candidate_end = candidate_start + len(candidate_ids)
+                loss_mask[row_index, candidate_start:candidate_end] = True
+            return [float(loss.item()) for loss in next_token_losses(logits, target_token_ids, loss_mask=loss_mask)]
     finally:
         if text_was_training:
             text_model.train()
