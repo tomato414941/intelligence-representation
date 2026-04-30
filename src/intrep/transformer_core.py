@@ -29,6 +29,9 @@ class SharedTransformerCore(nn.Module):
         if embeddings.ndim != 3:
             raise ValueError("embeddings must have shape [batch, sequence, hidden]")
         length = embeddings.size(1)
+        # This boolean covers only the current bidirectional/causal cases.
+        # Replace it with an explicit attention mask or pattern when prefix or
+        # padding behavior becomes part of the main path.
         mask = torch.triu(
             torch.ones(length, length, device=embeddings.device, dtype=torch.bool),
             diagonal=1,
