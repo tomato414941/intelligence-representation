@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.image_classification import (
+    CIFAR10_LABELS,
     ClassificationHead,
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
@@ -90,6 +91,37 @@ class ImageClassificationTest(unittest.TestCase):
         logits = model(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
+
+    def test_patch_transformer_classifier_accepts_rgb_images(self) -> None:
+        model = PatchTransformerClassifier(
+            image_size=(4, 4),
+            patch_size=2,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+            num_classes=10,
+            channel_count=3,
+        )
+
+        logits = model(torch.zeros((3, 4, 4, 3), dtype=torch.float32))
+
+        self.assertEqual(logits.shape, torch.Size([3, 10]))
+
+    def test_image_label_tensors_from_examples_preserves_rgb_images(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_path = Path(directory) / "a.ppm"
+            image_path.write_bytes(b"P6\n2 1\n255\n" + bytes([255, 0, 0, 0, 255, 0]))
+            examples = [
+                ImageChoiceExample(image_path=image_path, choices=CIFAR10_LABELS, answer_index=3),
+            ]
+
+            images, labels = image_label_tensors_from_examples(examples)
+
+        self.assertEqual(images.shape, torch.Size([1, 1, 2, 3]))
+        self.assertEqual(labels.tolist(), [3])
+        self.assertAlmostEqual(float(images[0, 0, 0, 0]), 1.0)
+        self.assertAlmostEqual(float(images[0, 0, 1, 1]), 1.0)
 
     def test_training_uses_example_choice_count_for_output_classes(self) -> None:
         with TemporaryDirectory() as directory:

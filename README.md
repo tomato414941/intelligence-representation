@@ -106,8 +106,12 @@ Fashion-MNIST-style image classification uses image patch embeddings, the
 shared Transformer core, and a classification head:
 
 ```sh
+uv run python -m intrep.cifar10_image_choice_corpus \
+  --batch-path data/cifar-10-batches-py/data_batch_1 \
+  --output-path runs/cifar10-train.jsonl \
+  --image-output-dir runs/cifar10-train-images
+
 uv run python -m intrep.evaluate_fashion_mnist \
-  --train-path runs/fashion-train.jsonl \
-  --eval-path runs/fashion-eval.jsonl \
-  --metrics-path runs/fashion.json
+  --train-path runs/cifar10-train.jsonl \
+  --metrics-path runs/cifar10.json
 ```

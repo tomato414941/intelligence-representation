@@ -29,6 +29,19 @@ FASHION_MNIST_LABELS = (
 
 MNIST_LABELS = tuple(str(index) for index in range(10))
 
+CIFAR10_LABELS = (
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
+)
+
 
 @dataclass(frozen=True)
 class ImageChoiceExample:
@@ -101,25 +114,33 @@ class ImagePatchInputLayer(nn.Module):
         image_size: tuple[int, int],
         patch_size: int,
         embedding_dim: int,
+        channel_count: int = 1,
     ) -> None:
         super().__init__()
         height, width = image_size
         if patch_size <= 0:
             raise ValueError("patch_size must be positive")
+        if channel_count <= 0:
+            raise ValueError("channel_count must be positive")
         if height % patch_size != 0 or width % patch_size != 0:
             raise ValueError("image dimensions must be divisible by patch_size")
-        patch_dim = patch_size * patch_size
+        patch_dim = patch_size * patch_size * channel_count
         patch_count = (height // patch_size) * (width // patch_size)
         self.image_size = image_size
+        self.channel_count = channel_count
         self.patch_size = patch_size
         self.patch_embedding = nn.Linear(patch_dim, embedding_dim)
         self.position_embedding = nn.Embedding(patch_count, embedding_dim)
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        if images.ndim != 3:
-            raise ValueError("images must have shape [batch, height, width]")
+        if images.ndim not in (3, 4):
+            raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
         if tuple(images.shape[1:]) != self.image_size:
-            raise ValueError("images do not match input layer image_size")
+            if images.ndim == 3 or tuple(images.shape[1:3]) != self.image_size:
+                raise ValueError("images do not match input layer image_size")
+        channel_count = 1 if images.ndim == 3 else int(images.shape[3])
+        if channel_count != self.channel_count:
+            raise ValueError("images do not match input layer channel_count")
         patches = _patchify(images, self.patch_size)
         positions = torch.arange(patches.size(1), device=images.device).unsqueeze(0)
         return self.patch_embedding(patches) + self.position_embedding(positions)
@@ -148,6 +169,7 @@ class PatchTransformerClassifier(nn.Module):
         hidden_dim: int,
         num_layers: int,
         num_classes: int,
+        channel_count: int = 1,
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
@@ -155,6 +177,7 @@ class PatchTransformerClassifier(nn.Module):
             image_size=image_size,
             patch_size=patch_size,
             embedding_dim=embedding_dim,
+            channel_count=channel_count,
         )
         self.core = SharedTransformerCore(
             embedding_dim=embedding_dim,
@@ -223,6 +246,7 @@ def train_fashion_mnist_classifier_with_result(
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
         num_classes=_class_count_from_examples(train_examples),
+        channel_count=_channel_count_from_images(train_images),
     ).to(device)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
@@ -370,8 +394,14 @@ def write_metrics(path: str | Path, metrics: ImageClassificationMetrics) -> None
 
 
 def _patchify(images: torch.Tensor, patch_size: int) -> torch.Tensor:
-    patches = images.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size)
-    return patches.contiguous().view(images.size(0), -1, patch_size * patch_size)
+    if images.ndim == 3:
+        patches = images.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size)
+        return patches.contiguous().view(images.size(0), -1, patch_size * patch_size)
+    if images.ndim == 4:
+        patches = images.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size)
+        patches = patches.permute(0, 1, 2, 4, 5, 3)
+        return patches.contiguous().view(images.size(0), -1, patch_size * patch_size * images.size(3))
+    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
 
 
 def _read_image_path(path: Path) -> np.ndarray:
@@ -379,8 +409,16 @@ def _read_image_path(path: Path) -> np.ndarray:
     if pixels.ndim == 2:
         return pixels
     if pixels.ndim == 3 and pixels.shape[2] == 3:
-        return np.rint(pixels.mean(axis=2)).astype(np.uint8)
+        return pixels
     raise ValueError("image payload must be grayscale or RGB")
+
+
+def _channel_count_from_images(images: torch.Tensor) -> int:
+    if images.ndim == 3:
+        return 1
+    if images.ndim == 4:
+        return int(images.shape[3])
+    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
 
 
 def _validate_config(config: ImageClassificationConfig) -> None:

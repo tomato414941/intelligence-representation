@@ -275,6 +275,19 @@ train_accuracy: 0.8574
 eval_accuracy: 0.8000
 ```
 
+CIFAR-10 can also be converted into the same image-choice JSONL shape from local
+python batch files:
+
+```text
+CIFAR-10 python batch
+  -> image-choice JSONL
+  -> local PPM files
+  -> ImageChoiceExample
+  -> image patch embedding
+  -> SharedTransformerCore
+  -> ClassificationHead
+```
+
 The image-conditioned text scoring path is separate:
 
 ```text
