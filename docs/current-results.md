@@ -343,6 +343,23 @@ The classification path is still the simplest image baseline. The image-to-text
 path is now the first direct bridge from image inputs to token outputs, without
 reintroducing a generic raw-data envelope.
 
+The same image-to-text path also learns above chance on CIFAR-10, but remains
+weaker than the CIFAR-10 classification-head baseline under the same tiny CPU
+run budget:
+
+```text
+train_examples: 5000
+eval_examples: 1000
+max_steps: 1000
+train_initial_loss: 5.7123
+train_final_loss: 0.5146
+eval_final_loss: 0.5199
+train_choice_examples: 200
+eval_choice_examples: 200
+train_choice_accuracy: 0.225
+eval_choice_accuracy: 0.185
+```
+
 ## Tokenizer Direction
 
 The text tokenizer work should attach to raw text examples. It should not depend
