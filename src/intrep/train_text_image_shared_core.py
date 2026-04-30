@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""CLI for the temporary text-plus-image shared-core validation path."""
+
 import argparse
 import json
 from pathlib import Path
