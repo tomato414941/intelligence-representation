@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import torch
 
@@ -24,6 +25,27 @@ class SharedMultimodalModelTest(unittest.TestCase):
 
         self.assertEqual(text_logits.shape, torch.Size([2, 8, 32]))
         self.assertEqual(image_logits.shape, torch.Size([2, 10]))
+
+    def test_text_and_image_paths_use_the_same_core_with_task_masking(self) -> None:
+        model = SharedMultimodalModel(
+            vocab_size=32,
+            text_context_length=8,
+            image_size=(4, 4),
+            patch_size=2,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+            num_classes=10,
+        )
+
+        with patch.object(model.core, "forward", wraps=model.core.forward) as forward:
+            model.text_logits(torch.zeros((2, 8), dtype=torch.long))
+            model.image_logits(torch.zeros((2, 4, 4), dtype=torch.float32))
+
+        self.assertEqual(forward.call_count, 2)
+        self.assertIs(forward.call_args_list[0].kwargs["causal"], True)
+        self.assertIs(forward.call_args_list[1].kwargs["causal"], False)
 
 
 if __name__ == "__main__":
