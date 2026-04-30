@@ -53,6 +53,7 @@ Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 image-conditioned text candidate scoring
 image-choice scoring evaluation
+image-to-text label training with candidate-choice accuracy
 grid-world action-conditioned smoke data
 ```
 
@@ -322,7 +323,8 @@ ImageChoiceExample
 ```
 
 The tiny preset learns a 5,000-example Fashion-MNIST image-to-text subset on
-CPU:
+CPU. Candidate-choice accuracy scores the trained token-output path by passing
+the image plus all label candidates and selecting the lowest continuation loss:
 
 ```text
 train_examples: 5000
@@ -331,6 +333,10 @@ max_steps: 1000
 train_initial_loss: 5.6635
 train_final_loss: 0.1884
 eval_final_loss: 0.1863
+train_choice_examples: 200
+eval_choice_examples: 200
+train_choice_accuracy: 0.615
+eval_choice_accuracy: 0.665
 ```
 
 The classification path is still the simplest image baseline. The image-to-text
