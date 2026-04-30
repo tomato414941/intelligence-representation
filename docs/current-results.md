@@ -311,9 +311,31 @@ ImageChoiceExample
   -> candidate continuation loss
 ```
 
-The classification path is still the simplest image baseline. The next
-direction is to connect image inputs and label text to continuation scoring,
-without reintroducing a generic raw-data envelope.
+The image-to-text label output path trains token loss directly against the
+answer text instead of using a classification head:
+
+```text
+ImageChoiceExample
+  -> image patch embedding + answer text token embeddings
+  -> SharedTransformerCore
+  -> token output loss on answer text tokens
+```
+
+The tiny preset learns a 5,000-example Fashion-MNIST image-to-text subset on
+CPU:
+
+```text
+train_examples: 5000
+eval_examples: 1000
+max_steps: 1000
+train_initial_loss: 5.6635
+train_final_loss: 0.1884
+eval_final_loss: 0.1863
+```
+
+The classification path is still the simplest image baseline. The image-to-text
+path is now the first direct bridge from image inputs to token outputs, without
+reintroducing a generic raw-data envelope.
 
 ## Tokenizer Direction
 

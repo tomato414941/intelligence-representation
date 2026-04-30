@@ -115,3 +115,13 @@ uv run python -m intrep.evaluate_image_classification \
   --train-path runs/cifar10-train.jsonl \
   --metrics-path runs/cifar10.json
 ```
+
+Image-conditioned text label output uses the same image patch embeddings with a
+token output objective:
+
+```sh
+uv run python -m intrep.evaluate_image_to_text \
+  --train-path runs/fashion-train.jsonl \
+  --eval-path runs/fashion-eval.jsonl \
+  --metrics-path runs/fashion-image-to-text.json
+```
