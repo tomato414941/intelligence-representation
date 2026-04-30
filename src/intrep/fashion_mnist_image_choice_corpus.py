@@ -13,6 +13,7 @@ import numpy as np
 from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
+    MNIST_LABELS,
     image_choice_example_to_record,
 )
 
@@ -32,6 +33,7 @@ def write_fashion_mnist_image_choice_jsonl(
     image_output_dir: str | Path,
     split: str = "train",
     limit: int | None = None,
+    label_names: Sequence[str] = FASHION_MNIST_LABELS,
 ) -> FashionMNISTSelection:
     images = read_idx_images(images_path)
     labels = read_idx_labels(labels_path)
@@ -39,6 +41,8 @@ def write_fashion_mnist_image_choice_jsonl(
         raise ValueError("Fashion-MNIST image and label counts must match")
     if limit is not None and limit < 0:
         raise ValueError("limit must be non-negative")
+    if not label_names:
+        raise ValueError("label_names must not be empty")
 
     count = len(images) if limit is None else min(limit, len(images))
     output_dir = Path(image_output_dir)
@@ -47,12 +51,14 @@ def write_fashion_mnist_image_choice_jsonl(
     examples: list[ImageChoiceExample] = []
     for index in range(count):
         label_id = int(labels[index])
+        if not 0 <= label_id < len(label_names):
+            raise ValueError("label id is out of range for label_names")
         image_path = output_dir / f"{split}_{index:06d}.pgm"
         write_pgm(image_path, images[index])
         examples.append(
             ImageChoiceExample(
                 image_path=image_path.resolve(),
-                choices=FASHION_MNIST_LABELS,
+                choices=tuple(label_names),
                 answer_index=label_id,
             )
         )
@@ -119,6 +125,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--image-output-dir", required=True, help="Directory for extracted PGM images.")
     parser.add_argument("--split", default="train", help="Split label used in generated image filenames.")
     parser.add_argument("--limit", type=int, help="Optional maximum number of examples to convert.")
+    parser.add_argument(
+        "--label-set",
+        choices=("fashion-mnist", "mnist"),
+        default="fashion-mnist",
+        help="Label names to attach to the generated choices.",
+    )
     args = parser.parse_args(argv)
 
     selection = write_fashion_mnist_image_choice_jsonl(
@@ -128,12 +140,22 @@ def main(argv: Sequence[str] | None = None) -> None:
         image_output_dir=args.image_output_dir,
         split=args.split,
         limit=args.limit,
+        label_names=_label_names(args.label_set),
     )
-    print("intrep fashion-mnist image-choice corpus")
+    print("intrep image-choice corpus")
+    print(f"label_set={args.label_set}")
     print(f"images={selection.image_count}")
     print(f"examples={len(selection.examples)}")
     print(f"output_path={args.output_path}")
     print(f"image_output_dir={selection.output_dir}")
+
+
+def _label_names(label_set: str) -> tuple[str, ...]:
+    if label_set == "fashion-mnist":
+        return FASHION_MNIST_LABELS
+    if label_set == "mnist":
+        return MNIST_LABELS
+    raise ValueError(f"unknown label set: {label_set}")
 
 
 if __name__ == "__main__":

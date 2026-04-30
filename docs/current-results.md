@@ -262,6 +262,19 @@ train_accuracy: 0.7888
 eval_accuracy: 0.7700
 ```
 
+The same image classification path also learns a 5,000-example MNIST subset on
+CPU by using digit label choices:
+
+```text
+train_examples: 5000
+eval_examples: 1000
+max_steps: 2000
+train_initial_loss: 2.3495
+train_final_loss: 0.4515
+train_accuracy: 0.8574
+eval_accuracy: 0.8000
+```
+
 The image-conditioned text scoring path is separate:
 
 ```text

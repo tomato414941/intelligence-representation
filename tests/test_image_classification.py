@@ -11,6 +11,7 @@ from intrep.image_classification import (
     ImageChoiceExample,
     ImageClassificationConfig,
     ImagePatchInputLayer,
+    MNIST_LABELS,
     PatchTransformerClassifier,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
@@ -89,6 +90,57 @@ class ImageClassificationTest(unittest.TestCase):
         logits = model(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
+
+    def test_training_uses_example_choice_count_for_output_classes(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_a = Path(directory) / "a.pgm"
+            image_b = Path(directory) / "b.pgm"
+            image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
+            image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
+            examples = [
+                ImageChoiceExample(image_path=image_a, choices=MNIST_LABELS, answer_index=7),
+                ImageChoiceExample(image_path=image_b, choices=MNIST_LABELS, answer_index=0),
+            ]
+
+            result = train_fashion_mnist_classifier_with_result(
+                train_examples=examples,
+                config=ImageClassificationConfig(
+                    patch_size=1,
+                    max_steps=0,
+                    batch_size=2,
+                    learning_rate=0.003,
+                    seed=7,
+                    model_preset="tiny",
+                    device="cpu",
+                ),
+            )
+
+        self.assertEqual(result.model.classification_head.output.out_features, len(MNIST_LABELS))
+
+    def test_training_rejects_mixed_choice_sets(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_a = Path(directory) / "a.pgm"
+            image_b = Path(directory) / "b.pgm"
+            image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
+            image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
+            examples = [
+                ImageChoiceExample(image_path=image_a, choices=MNIST_LABELS, answer_index=7),
+                ImageChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=0),
+            ]
+
+            with self.assertRaisesRegex(ValueError, "same choices"):
+                train_fashion_mnist_classifier_with_result(
+                    train_examples=examples,
+                    config=ImageClassificationConfig(
+                        patch_size=1,
+                        max_steps=0,
+                        batch_size=2,
+                        learning_rate=0.003,
+                        seed=7,
+                        model_preset="tiny",
+                        device="cpu",
+                    ),
+                )
 
     def test_patch_transformer_classifier_composes_input_layer_core_and_head(self) -> None:
         model = PatchTransformerClassifier(

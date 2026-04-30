@@ -27,6 +27,8 @@ FASHION_MNIST_LABELS = (
     "Ankle boot",
 )
 
+MNIST_LABELS = tuple(str(index) for index in range(10))
+
 
 @dataclass(frozen=True)
 class ImageChoiceExample:
@@ -209,6 +211,7 @@ def train_fashion_mnist_classifier_with_result(
         eval_images, eval_labels = image_label_tensors_from_examples(eval_examples)
         if tuple(eval_images.shape[1:]) != tuple(train_images.shape[1:]):
             raise ValueError("eval images must have the same shape as train images")
+        _validate_choice_set(train_examples, eval_examples)
 
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = PatchTransformerClassifier(
@@ -219,7 +222,7 @@ def train_fashion_mnist_classifier_with_result(
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        num_classes=len(FASHION_MNIST_LABELS),
+        num_classes=_class_count_from_examples(train_examples),
     ).to(device)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
@@ -279,6 +282,26 @@ def image_label_tensors_from_examples(
     image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
     label_tensor = torch.tensor(labels, dtype=torch.long)
     return image_tensor, label_tensor
+
+
+def _class_count_from_examples(examples: list[ImageChoiceExample]) -> int:
+    if not examples:
+        raise ValueError("examples must not be empty")
+    choices = examples[0].choices
+    for example in examples:
+        if example.choices != choices:
+            raise ValueError("all examples must use the same choices")
+    return len(choices)
+
+
+def _validate_choice_set(
+    train_examples: list[ImageChoiceExample],
+    eval_examples: list[ImageChoiceExample],
+) -> None:
+    train_choices = train_examples[0].choices
+    for example in eval_examples:
+        if example.choices != train_choices:
+            raise ValueError("eval examples must use the same choices as train examples")
 
 
 def load_image_choice_examples_jsonl(path: str | Path) -> list[ImageChoiceExample]:

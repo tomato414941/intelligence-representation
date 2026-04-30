@@ -63,6 +63,28 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
         self.assertEqual(loaded[0]["choices"][9], "Ankle boot")
         self.assertEqual(loaded[0]["answer_index"], 9)
 
+    def test_writes_mnist_digit_choices(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            images_path = root / "images.idx3-ubyte.gz"
+            labels_path = root / "labels.idx1-ubyte.gz"
+            output_path = root / "mnist.jsonl"
+            image_output_dir = root / "images"
+            _write_idx_images(images_path, [[[0, 255], [128, 64]]])
+            _write_idx_labels(labels_path, [7])
+
+            write_fashion_mnist_image_choice_jsonl(
+                images_path=images_path,
+                labels_path=labels_path,
+                output_path=output_path,
+                image_output_dir=image_output_dir,
+                label_names=tuple(str(index) for index in range(10)),
+            )
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(loaded[0]["choices"], [str(index) for index in range(10)])
+        self.assertEqual(loaded[0]["answer_index"], 7)
+
     def test_generated_image_path_can_be_loaded_as_image(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -127,6 +149,8 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
                         "test",
                         "--limit",
                         "1",
+                        "--label-set",
+                        "mnist",
                     ]
                 )
 
@@ -134,7 +158,9 @@ class FashionMNISTImageChoiceCorpusTest(unittest.TestCase):
 
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["answer_index"], 3)
-        self.assertIn("intrep fashion-mnist image-choice corpus", output.getvalue())
+        self.assertEqual(loaded[0]["choices"], [str(index) for index in range(10)])
+        self.assertIn("intrep image-choice corpus", output.getvalue())
+        self.assertIn("label_set=mnist", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 
 
