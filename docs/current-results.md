@@ -153,6 +153,19 @@ train tokens: 267036
 eval loss: 6.4150 -> 5.1430
 ```
 
+The same path has been run on a larger mixed text corpus using a fixed saved
+byte-level BPE tokenizer:
+
+```text
+tokenizer: saved byte-level BPE, vocab 512
+corpora: Tiny Shakespeare, WikiText-2 sample, TinyStories sample
+sample size: Tiny Shakespeare full text, about 1MB each for WikiText-2 and TinyStories
+model: tiny causal text model
+steps: 1000
+train tokens: 1402456
+eval loss: 6.3833 -> 4.4446
+```
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.

@@ -13,7 +13,7 @@ from intrep.language_modeling_training import (
     train_language_modeling_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import TextTokenizerKind, load_text_tokenizer
+from intrep.text_tokenizer import TextTokenizerKind, load_text_tokenizer, text_tokenizer_to_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -82,6 +82,10 @@ def main(argv: list[str] | None = None) -> None:
         "eval_char_count": len(eval_text),
         "model_preset": args.model_preset,
         "training_config": _training_config_payload(training_config),
+        "tokenizer": {
+            "source": str(args.tokenizer_path) if args.tokenizer_path is not None else "trained",
+            "payload": text_tokenizer_to_payload(artifacts.tokenizer),
+        },
         "result": asdict(artifacts.result),
         "metrics": language_modeling_metrics_from_training_result(artifacts.result),
     }

@@ -121,6 +121,9 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
         self.assertEqual(payload["training_config"]["tokenizer"], "byte")
+        self.assertEqual(payload["tokenizer"]["source"], str(tokenizer_path))
+        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "byte-pair")
+        self.assertEqual(payload["tokenizer"]["payload"]["vocab_size"], 260)
         self.assertGreater(payload["result"]["token_count"], 0)
 
     def test_split_text_corpus_rejects_empty_text(self) -> None:
