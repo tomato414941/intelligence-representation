@@ -11,7 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train and save a text tokenizer.")
     parser.add_argument("--corpus-path", type=Path, action="append", required=True)
     parser.add_argument("--tokenizer-path", type=Path, required=True)
-    parser.add_argument("--tokenizer", choices=("byte", "byte-pair", "hf-byte-pair"), default="hf-byte-pair")
+    parser.add_argument("--tokenizer", choices=("byte", "byte-pair", "simple-byte-pair"), default="byte-pair")
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
     parser.add_argument("--seed", type=int, default=7)

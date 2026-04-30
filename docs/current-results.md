@@ -44,7 +44,7 @@ Currently supported:
 
 ```text
 causal text model training utilities
-byte-level and simple byte-pair text tokenization
+byte-level and byte-pair text tokenization
 Tiny Shakespeare language modeling run with held-out evaluation
 Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
@@ -111,8 +111,8 @@ eval loss: 6.4250 -> 6.2498
 ```
 
 This is an integration check, not a quality result. Larger mixed text runs
-exposed that the current eager window materialization and naive byte-pair
-training are too slow for larger corpora on CPU.
+exposed that the older eager window materialization and naive simple byte-pair
+training were too slow for larger corpora on CPU.
 
 The text language-model training loop now uses a PyTorch `Dataset` and
 `DataLoader` for token windows instead of materializing every window into a
@@ -166,9 +166,9 @@ train tokens: 1402456
 eval loss: 6.3833 -> 4.4446
 ```
 
-The text tokenizer path now also supports Hugging Face `tokenizers` byte-level
+The main byte-pair tokenizer path now uses Hugging Face `tokenizers` byte-level
 BPE. This keeps tokenizer training out of the project's custom Python code and
-removes the previous naive-BPE bottleneck:
+removes the previous naive simple-BPE bottleneck:
 
 ```text
 tokenizer: Hugging Face byte-level BPE, vocab 512
@@ -179,6 +179,20 @@ model: tiny causal text model
 steps: 100
 train tokens: 7490793
 eval loss: 6.4698 -> 5.3470
+```
+
+The same mixed text path improves when the model preset is increased from
+`tiny` to `small`:
+
+```text
+tokenizer: byte-pair, vocab 2048
+corpora: Tiny Shakespeare, WikiText-2 raw train, TinyStories sample
+sample size: about 17MB total
+model: small causal text model
+steps: 1000
+train tokens: 5047211
+eval loss: 7.7803 -> 4.1420
+eval perplexity: 2392.99 -> 62.93
 ```
 
 Next-token loss reduction is evidence for language-model training, but it is
@@ -230,9 +244,8 @@ without reintroducing a generic raw-data envelope.
 The text tokenizer work should attach to raw text examples. It should not depend
 on the retired Signal text path.
 
-The current tokenizer is intentionally not production-grade. It keeps byte
-fallback and supports simple byte-pair merges so tokenization can be compared
-without adding external tokenizer state or dependencies.
+The main byte-pair tokenizer uses the external `tokenizers` library. The
+simple byte-pair tokenizer remains only as a small internal baseline.
 
 ## Next Pressure
 

@@ -9,7 +9,7 @@ import torch
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextConfig, CausalTextModel
 from intrep.generate_text import generate_text_from_checkpoint, main
-from intrep.text_tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
+from intrep.text_tokenizer import train_simple_byte_pair_tokenizer, text_tokenizer_to_payload
 
 
 class GenerateTextCLITest(unittest.TestCase):
@@ -55,7 +55,7 @@ class GenerateTextCLITest(unittest.TestCase):
     def test_generates_text_from_byte_pair_checkpoint(self) -> None:
         with TemporaryDirectory() as directory:
             checkpoint_path = Path(directory) / "checkpoint.pt"
-            tokenizer = train_byte_pair_tokenizer("hello hello", vocab_size=260)
+            tokenizer = train_simple_byte_pair_tokenizer("hello hello", vocab_size=260)
             _write_checkpoint(
                 checkpoint_path,
                 vocab_size=tokenizer.vocab_size,

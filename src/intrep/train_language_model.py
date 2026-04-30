@@ -35,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
-    parser.add_argument("--tokenizer", choices=("byte", "byte-pair", "hf-byte-pair"), default="byte")
+    parser.add_argument("--tokenizer", choices=("byte", "byte-pair", "simple-byte-pair"), default="byte")
     parser.add_argument("--tokenizer-path", type=Path)
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
@@ -172,7 +172,7 @@ def _vocab_size(tokenizer: TextTokenizerKind, tokenizer_vocab_size: int) -> int:
 def _tokenizer_override(args: argparse.Namespace, train_text: str):
     if args.tokenizer_path is not None:
         return load_text_tokenizer(args.tokenizer_path)
-    if args.tokenizer == "hf-byte-pair":
+    if args.tokenizer == "byte-pair":
         return build_text_tokenizer(
             train_text,
             kind=args.tokenizer,

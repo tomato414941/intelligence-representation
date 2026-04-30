@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_language_model
-from intrep.text_tokenizer import save_text_tokenizer, train_byte_pair_tokenizer
+from intrep.text_tokenizer import save_text_tokenizer, train_simple_byte_pair_tokenizer
 
 
 class TrainLanguageModelCLITest(unittest.TestCase):
@@ -96,7 +96,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             tokenizer_path = root / "tokenizer.json"
             metrics_path = root / "metrics.json"
             corpus_path.write_text("red green blue red green blue\n" * 20, encoding="utf-8")
-            tokenizer = train_byte_pair_tokenizer(corpus_path.read_text(encoding="utf-8"), vocab_size=260)
+            tokenizer = train_simple_byte_pair_tokenizer(corpus_path.read_text(encoding="utf-8"), vocab_size=260)
             save_text_tokenizer(tokenizer_path, tokenizer)
 
             train_language_model.main(
@@ -122,11 +122,11 @@ class TrainLanguageModelCLITest(unittest.TestCase):
 
         self.assertEqual(payload["training_config"]["tokenizer"], "byte")
         self.assertEqual(payload["tokenizer"]["source"], str(tokenizer_path))
-        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "byte-pair")
+        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "simple-byte-pair")
         self.assertEqual(payload["tokenizer"]["payload"]["vocab_size"], 260)
         self.assertGreater(payload["result"]["token_count"], 0)
 
-    def test_trains_with_huggingface_byte_pair_tokenizer(self) -> None:
+    def test_trains_with_byte_pair_tokenizer(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             corpus_path = root / "corpus.txt"
@@ -140,7 +140,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
                     "--metrics-path",
                     str(metrics_path),
                     "--tokenizer",
-                    "hf-byte-pair",
+                    "byte-pair",
                     "--tokenizer-vocab-size",
                     "270",
                     "--context-length",
@@ -157,7 +157,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
         self.assertEqual(payload["tokenizer"]["source"], "trained")
-        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "hf-byte-pair")
+        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "byte-pair")
         self.assertGreater(payload["result"]["token_count"], 0)
 
     def test_split_text_corpus_rejects_empty_text(self) -> None:

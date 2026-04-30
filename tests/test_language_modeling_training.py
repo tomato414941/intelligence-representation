@@ -16,7 +16,7 @@ from intrep.language_modeling_training import (
     _train_text_corpus_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import train_byte_pair_tokenizer
+from intrep.text_tokenizer import train_simple_byte_pair_tokenizer
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):
@@ -238,7 +238,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
 
         self.assertEqual(payload["tokenizer"]["kind"], "byte-pair")
         self.assertEqual(payload["tokenizer"]["vocab_size"], 260)
-        self.assertTrue(payload["tokenizer"]["merges"])
+        self.assertTrue(payload["tokenizer"]["tokenizer_json"])
 
     def test_training_reports_held_out_eval_loss(self) -> None:
         artifacts = _train_text_corpus_with_artifacts(
@@ -306,7 +306,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
 
     def test_training_can_reuse_pretrained_tokenizer(self) -> None:
-        tokenizer = train_byte_pair_tokenizer("red green blue red green blue", vocab_size=260)
+        tokenizer = train_simple_byte_pair_tokenizer("red green blue red green blue", vocab_size=260)
 
         artifacts = _train_text_corpus_with_artifacts(
             corpus="red green blue red green blue red green blue",

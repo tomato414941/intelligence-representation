@@ -5,11 +5,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_text_tokenizer
-from intrep.text_tokenizer import BytePairTokenizer, HuggingFaceBytePairTokenizer, load_text_tokenizer
+from intrep.text_tokenizer import BytePairTokenizer, SimpleBytePairTokenizer, load_text_tokenizer
 
 
 class TrainTextTokenizerCLITest(unittest.TestCase):
-    def test_trains_and_saves_byte_pair_tokenizer(self) -> None:
+    def test_trains_and_saves_simple_byte_pair_tokenizer(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -25,7 +25,7 @@ class TrainTextTokenizerCLITest(unittest.TestCase):
                         "--tokenizer-path",
                         str(tokenizer_path),
                         "--tokenizer",
-                        "byte-pair",
+                        "simple-byte-pair",
                         "--tokenizer-vocab-size",
                         "260",
                     ]
@@ -34,11 +34,11 @@ class TrainTextTokenizerCLITest(unittest.TestCase):
             tokenizer = load_text_tokenizer(tokenizer_path)
 
         self.assertIn("intrep train text tokenizer", output.getvalue())
-        self.assertIsInstance(tokenizer, BytePairTokenizer)
+        self.assertIsInstance(tokenizer, SimpleBytePairTokenizer)
         self.assertEqual(tokenizer.vocab_size, 260)
         self.assertEqual(tokenizer.decode(tokenizer.encode("hello world")), "hello world")
 
-    def test_trains_and_saves_huggingface_byte_pair_tokenizer_by_default(self) -> None:
+    def test_trains_and_saves_byte_pair_tokenizer_by_default(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -60,8 +60,8 @@ class TrainTextTokenizerCLITest(unittest.TestCase):
 
             tokenizer = load_text_tokenizer(tokenizer_path)
 
-        self.assertIn("tokenizer=hf-byte-pair", output.getvalue())
-        self.assertIsInstance(tokenizer, HuggingFaceBytePairTokenizer)
+        self.assertIn("tokenizer=byte-pair", output.getvalue())
+        self.assertIsInstance(tokenizer, BytePairTokenizer)
         self.assertGreaterEqual(tokenizer.vocab_size, 267)
         self.assertLessEqual(tokenizer.vocab_size, 270)
         self.assertEqual(tokenizer.decode(tokenizer.encode("hello unseen")), "hello unseen")
