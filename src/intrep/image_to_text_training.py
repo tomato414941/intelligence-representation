@@ -7,13 +7,21 @@ from pathlib import Path
 import torch
 
 from intrep.byte_tokenizer import ByteTokenizer
-from intrep.causal_text_model import CausalTextModel, build_causal_text_config
+from intrep.causal_text_model import (
+    CausalTextConfig,
+    CausalTextModel,
+    build_causal_text_config,
+    causal_text_config_to_dict,
+)
 from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer, image_label_tensors_from_examples
-from intrep.image_conditioned_text_evaluation import evaluate_image_conditioned_text_choices
+from intrep.image_conditioned_text_evaluation import (
+    ImageConditionedTextChoiceMetrics,
+    evaluate_image_conditioned_text_choices,
+)
 from intrep.language_modeling_training import resolve_training_device
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.text_tokenizer import TextTokenizer, text_tokenizer_to_payload
+from intrep.text_tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 from intrep.token_scoring import next_token_loss
 
 
@@ -77,6 +85,15 @@ class ImageToTextTrainingResult:
     tokenizer: TextTokenizer
     image_shape: tuple[int, ...]
     config: ImageToTextTrainingConfig
+
+
+@dataclass(frozen=True)
+class ImageToTextCheckpoint:
+    image_input_layer: ImagePatchInputLayer
+    text_model: CausalTextModel
+    tokenizer: TextTokenizer
+    image_shape: tuple[int, ...]
+    metrics: dict[str, object]
 
 
 def train_image_to_text_labels(
@@ -349,8 +366,82 @@ def save_image_to_text_checkpoint(path: str | Path, result: ImageToTextTrainingR
             "text_model": result.text_model.state_dict(),
             "tokenizer": text_tokenizer_to_payload(result.tokenizer),
             "config": asdict(result.config),
+            "model_config": causal_text_config_to_dict(result.text_model.config),
             "metrics": result.metrics.to_dict(),
             "image_shape": result.image_shape,
         },
         checkpoint_path,
     )
+
+
+def load_image_to_text_checkpoint(path: str | Path, *, device: str = "auto") -> ImageToTextCheckpoint:
+    resolved_device = resolve_training_device(device)  # type: ignore[arg-type]
+    payload = torch.load(Path(path), map_location=resolved_device, weights_only=False)
+    if payload.get("schema_version") != "intrep.model_checkpoint.v1":
+        raise ValueError("unsupported checkpoint schema")
+    if payload.get("task") != "image-to-text":
+        raise ValueError("checkpoint task must be image-to-text")
+
+    tokenizer_payload = payload.get("tokenizer")
+    if not isinstance(tokenizer_payload, dict):
+        raise ValueError("checkpoint requires tokenizer payload")
+    tokenizer = text_tokenizer_from_payload(tokenizer_payload)
+
+    model_config_payload = payload.get("model_config")
+    if not isinstance(model_config_payload, dict):
+        raise ValueError("checkpoint requires model_config")
+    text_config = CausalTextConfig(**model_config_payload)
+    if text_config.vocab_size != tokenizer.vocab_size:
+        raise ValueError("checkpoint tokenizer vocab size does not match model vocab size")
+    text_model = CausalTextModel(text_config).to(resolved_device)
+    text_model.load_state_dict(payload["text_model"])
+
+    config_payload = payload.get("config")
+    if not isinstance(config_payload, dict):
+        raise ValueError("checkpoint requires training config")
+    image_shape = _image_shape_from_payload(payload.get("image_shape"))
+    image_input_layer = ImagePatchInputLayer(
+        image_size=(image_shape[0], image_shape[1]),
+        patch_size=int(config_payload["patch_size"]),
+        embedding_dim=text_config.embedding_dim,
+        channel_count=1 if len(image_shape) == 2 else image_shape[2],
+    ).to(resolved_device)
+    image_input_layer.load_state_dict(payload["image_input_layer"])
+
+    metrics = payload.get("metrics")
+    if not isinstance(metrics, dict):
+        metrics = {}
+    return ImageToTextCheckpoint(
+        image_input_layer=image_input_layer,
+        text_model=text_model,
+        tokenizer=tokenizer,
+        image_shape=image_shape,
+        metrics=metrics,
+    )
+
+
+def evaluate_image_to_text_checkpoint(
+    *,
+    checkpoint_path: str | Path,
+    examples: list[ImageChoiceExample],
+    prompt: str = "",
+    device: str = "auto",
+) -> ImageConditionedTextChoiceMetrics:
+    checkpoint = load_image_to_text_checkpoint(checkpoint_path, device=device)
+    return evaluate_image_conditioned_text_choices(
+        examples=examples,
+        image_input_layer=checkpoint.image_input_layer,
+        text_model=checkpoint.text_model,
+        tokenizer=checkpoint.tokenizer,
+        prompt=prompt,
+    )
+
+
+def _image_shape_from_payload(payload: object) -> tuple[int, ...]:
+    if (
+        isinstance(payload, (list, tuple))
+        and len(payload) in (2, 3)
+        and all(isinstance(value, int) for value in payload)
+    ):
+        return tuple(payload)
+    raise ValueError("checkpoint requires image_shape")
