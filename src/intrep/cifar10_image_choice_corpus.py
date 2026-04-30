@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import pickle
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -72,7 +73,9 @@ def write_cifar10_image_choice_jsonl(
 
 def read_cifar10_batch(path: str | Path) -> tuple[list[np.ndarray], list[int]]:
     with Path(path).open("rb") as handle:
-        batch = pickle.load(handle, encoding="bytes")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            batch = pickle.load(handle, encoding="bytes")
     if not isinstance(batch, dict):
         raise ValueError("CIFAR-10 batch must be a dictionary")
     data = batch.get(b"data")

@@ -288,6 +288,20 @@ CIFAR-10 python batch
   -> ClassificationHead
 ```
 
+The same tiny preset can learn a 5,000-example CIFAR-10 subset on CPU. CIFAR-10
+is harder than MNIST-style grayscale datasets, but the RGB image path learns
+above chance in a short run:
+
+```text
+train_examples: 5000
+eval_examples: 1000
+max_steps: 1000
+train_initial_loss: 2.3366
+train_final_loss: 1.8463
+train_accuracy: 0.3176
+eval_accuracy: 0.3370
+```
+
 The image-conditioned text scoring path is separate:
 
 ```text

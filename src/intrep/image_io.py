@@ -53,7 +53,9 @@ def _read_ppm_header(data: bytes) -> tuple[tuple[str, str, str, str], int]:
         if start == index:
             raise ValueError("portable image header is incomplete")
         tokens.append(data[start:index].decode("ascii"))
-    index = _skip_ppm_whitespace_and_comments(data, index)
+    if index >= len(data) or data[index] not in b" \t\r\n":
+        raise ValueError("portable image header is incomplete")
+    index += 1
     return (tokens[0], tokens[1], tokens[2], tokens[3]), index
 
 
