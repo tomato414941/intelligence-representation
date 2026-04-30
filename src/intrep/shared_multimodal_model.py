@@ -9,6 +9,13 @@ from intrep.transformer_core import SharedTransformerCore
 
 
 class SharedMultimodalModel(nn.Module):
+    """Shared model shell for text-token and image-patch inputs.
+
+    This is not a universal multimodal model yet. It currently exposes text
+    language-model logits and image classification logits over one shared
+    Transformer core.
+    """
+
     def __init__(
         self,
         *,
