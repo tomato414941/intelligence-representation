@@ -54,8 +54,6 @@ ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 image-conditioned text candidate scoring
 image-choice scoring evaluation
 image-conditioned text example training smoke loop
-staged image classification, text modeling, and image-text training smoke path
-Phase 3 CLI smoke path with image-text choice accuracy metrics
 grid-world action-conditioned smoke data
 ```
 
