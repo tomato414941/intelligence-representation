@@ -5,13 +5,13 @@ import torch
 from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
 from intrep.image_classification import ImagePatchInputLayer
-from intrep.image_text_scoring import (
-    choose_image_text_candidate,
-    score_image_text_candidates,
+from intrep.image_conditioned_text_scoring import (
+    choose_image_conditioned_text_candidate,
+    score_image_conditioned_text_candidates,
 )
 
 
-class ImageTextScoringTest(unittest.TestCase):
+class ImageConditionedTextScoringTest(unittest.TestCase):
     def test_scores_image_conditioned_text_candidates(self) -> None:
         tokenizer = ByteTokenizer()
         image_input = ImagePatchInputLayer(
@@ -28,7 +28,7 @@ class ImageTextScoringTest(unittest.TestCase):
             )
         )
 
-        losses = score_image_text_candidates(
+        losses = score_image_conditioned_text_candidates(
             image_input_layer=image_input,
             text_model=text_model,
             tokenizer=tokenizer,
@@ -40,7 +40,7 @@ class ImageTextScoringTest(unittest.TestCase):
         self.assertEqual(len(losses), 2)
         self.assertTrue(all(loss > 0.0 for loss in losses))
 
-    def test_choose_image_text_candidate_returns_lowest_loss_index(self) -> None:
+    def test_choose_image_conditioned_text_candidate_returns_lowest_loss_index(self) -> None:
         tokenizer = ByteTokenizer()
         image_input = ImagePatchInputLayer(
             image_size=(4, 4),
@@ -62,7 +62,7 @@ class ImageTextScoringTest(unittest.TestCase):
             text_model.token_output.output.bias.zero_()
             text_model.token_output.output.bias[preferred_id] = 10.0
 
-        choice = choose_image_text_candidate(
+        choice = choose_image_conditioned_text_candidate(
             image_input_layer=image_input,
             text_model=text_model,
             tokenizer=tokenizer,
@@ -73,7 +73,7 @@ class ImageTextScoringTest(unittest.TestCase):
 
         self.assertEqual(choice, 1)
 
-    def test_score_image_text_candidates_validates_inputs(self) -> None:
+    def test_score_image_conditioned_text_candidates_validates_inputs(self) -> None:
         tokenizer = ByteTokenizer()
         image_input = ImagePatchInputLayer(
             image_size=(4, 4),
@@ -90,7 +90,7 @@ class ImageTextScoringTest(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(ValueError, "candidates"):
-            score_image_text_candidates(
+            score_image_conditioned_text_candidates(
                 image_input_layer=image_input,
                 text_model=text_model,
                 tokenizer=tokenizer,
@@ -99,7 +99,7 @@ class ImageTextScoringTest(unittest.TestCase):
                 candidates=(),
             )
         with self.assertRaisesRegex(ValueError, "image"):
-            score_image_text_candidates(
+            score_image_conditioned_text_candidates(
                 image_input_layer=image_input,
                 text_model=text_model,
                 tokenizer=tokenizer,

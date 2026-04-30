@@ -53,7 +53,6 @@ Fashion-MNIST image-choice raw examples
 ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
 image-conditioned text candidate scoring
 image-choice scoring evaluation
-image-conditioned text example training smoke loop
 grid-world action-conditioned smoke data
 ```
 
@@ -251,19 +250,18 @@ Fashion-MNIST IDX
   -> ClassificationHead
 ```
 
-The image-conditioned text path is separate:
+The image-conditioned text scoring path is separate:
 
 ```text
 ImageChoiceExample
-  -> ImageTextExample for text supervision
-  -> image patch embedding + text embeddings
+  -> image patch embedding + candidate text embeddings
   -> SharedTransformerCore
-  -> TokenOutputHead or candidate scoring
+  -> candidate continuation loss
 ```
 
 The classification path is still the simplest image baseline. The next
-direction is to connect image inputs and label text to continuation scoring or
-token-level supervision, without reintroducing a generic raw-data envelope.
+direction is to connect image inputs and label text to continuation scoring,
+without reintroducing a generic raw-data envelope.
 
 ## Tokenizer Direction
 

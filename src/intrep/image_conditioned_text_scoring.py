@@ -11,7 +11,7 @@ from intrep.text_tokenizer import TextTokenizer
 from intrep.token_scoring import next_token_loss
 
 
-def score_image_text_candidates(
+def score_image_conditioned_text_candidates(
     *,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
@@ -23,7 +23,7 @@ def score_image_text_candidates(
     candidate_losses: list[float] = []
     for candidate in candidates:
         candidate_losses.append(
-            _score_image_text_candidate(
+            _score_image_conditioned_text_candidate(
                 image_input_layer=image_input_layer,
                 text_model=text_model,
                 tokenizer=tokenizer,
@@ -37,7 +37,7 @@ def score_image_text_candidates(
     return candidate_losses
 
 
-def choose_image_text_candidate(
+def choose_image_conditioned_text_candidate(
     *,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
@@ -46,7 +46,7 @@ def choose_image_text_candidate(
     prompt: str,
     candidates: Sequence[str],
 ) -> int:
-    losses = score_image_text_candidates(
+    losses = score_image_conditioned_text_candidates(
         image_input_layer=image_input_layer,
         text_model=text_model,
         tokenizer=tokenizer,
@@ -57,7 +57,7 @@ def choose_image_text_candidate(
     return min(range(len(losses)), key=losses.__getitem__)
 
 
-def _score_image_text_candidate(
+def _score_image_conditioned_text_candidate(
     *,
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,

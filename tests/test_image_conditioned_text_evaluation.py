@@ -10,11 +10,11 @@ from intrep.byte_tokenizer import ByteTokenizer
 from intrep.causal_text_model import CausalTextModel, build_causal_text_config
 from intrep.fashion_mnist_image_choice_corpus import write_fashion_mnist_image_choice_jsonl
 from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer, load_image_choice_examples_jsonl
-from intrep.image_text_evaluation import evaluate_image_text_choices
+from intrep.image_conditioned_text_evaluation import evaluate_image_conditioned_text_choices
 
 
-class ImageTextEvaluationTest(unittest.TestCase):
-    def test_evaluates_image_text_choice_examples(self) -> None:
+class ImageConditionedTextEvaluationTest(unittest.TestCase):
+    def test_evaluates_image_conditioned_text_choice_examples(self) -> None:
         tokenizer = ByteTokenizer()
         image_input = ImagePatchInputLayer(
             image_size=(4, 4),
@@ -38,7 +38,7 @@ class ImageTextEvaluationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             image_path = Path(temp_dir) / "image.pgm"
             image_path.write_text("P2\n4 4\n255\n" + " ".join(["0"] * 16) + "\n", encoding="ascii")
-            metrics = evaluate_image_text_choices(
+            metrics = evaluate_image_conditioned_text_choices(
                 examples=(
                     ImageChoiceExample(
                         image_path=image_path,
@@ -90,7 +90,7 @@ class ImageTextEvaluationTest(unittest.TestCase):
                 limit=1,
             )
             examples = load_image_choice_examples_jsonl(examples_path)
-            metrics = evaluate_image_text_choices(
+            metrics = evaluate_image_conditioned_text_choices(
                 examples=examples,
                 image_input_layer=image_input,
                 text_model=text_model,

@@ -5,12 +5,12 @@ from dataclasses import dataclass
 
 from intrep.causal_text_model import CausalTextModel
 from intrep.image_classification import ImageChoiceExample, ImagePatchInputLayer, image_label_tensors_from_examples
-from intrep.image_text_scoring import score_image_text_candidates
+from intrep.image_conditioned_text_scoring import score_image_conditioned_text_candidates
 from intrep.text_tokenizer import TextTokenizer
 
 
 @dataclass(frozen=True)
-class ImageTextChoiceMetrics:
+class ImageConditionedTextChoiceMetrics:
     case_count: int
     accuracy: float
     predicted_indices: tuple[int, ...]
@@ -25,21 +25,21 @@ class ImageTextChoiceMetrics:
         }
 
 
-def evaluate_image_text_choices(
+def evaluate_image_conditioned_text_choices(
     *,
     examples: Sequence[ImageChoiceExample],
     image_input_layer: ImagePatchInputLayer,
     text_model: CausalTextModel,
     tokenizer: TextTokenizer,
     prompt: str,
-) -> ImageTextChoiceMetrics:
+) -> ImageConditionedTextChoiceMetrics:
     if not examples:
         raise ValueError("examples must not be empty")
     images, labels = image_label_tensors_from_examples(list(examples))
     predicted_indices: list[int] = []
     loss_rows: list[tuple[float, ...]] = []
     for image, example in zip(images, examples, strict=True):
-        losses = score_image_text_candidates(
+        losses = score_image_conditioned_text_candidates(
             image_input_layer=image_input_layer,
             text_model=text_model,
             tokenizer=tokenizer,
@@ -54,7 +54,7 @@ def evaluate_image_text_choices(
         int(predicted_index == int(label.item()))
         for predicted_index, label in zip(predicted_indices, labels, strict=True)
     )
-    return ImageTextChoiceMetrics(
+    return ImageConditionedTextChoiceMetrics(
         case_count=len(examples),
         accuracy=correct_count / len(examples),
         predicted_indices=tuple(predicted_indices),
