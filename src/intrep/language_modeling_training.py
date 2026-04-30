@@ -409,8 +409,8 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("learning_rate must be positive")
     if config.device not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be one of: auto, cpu, cuda")
-    if config.tokenizer not in ("byte", "byte-pair"):
-        raise ValueError("tokenizer must be one of: byte, byte-pair")
+    if config.tokenizer not in ("byte", "byte-pair", "hf-byte-pair"):
+        raise ValueError("tokenizer must be one of: byte, byte-pair, hf-byte-pair")
     if config.tokenizer_vocab_size <= 0:
         raise ValueError("tokenizer_vocab_size must be positive")
     if config.tokenizer_min_pair_count <= 0:

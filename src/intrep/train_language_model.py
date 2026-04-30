@@ -13,7 +13,12 @@ from intrep.language_modeling_training import (
     train_language_modeling_with_artifacts,
 )
 from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import TextTokenizerKind, load_text_tokenizer, text_tokenizer_to_payload
+from intrep.text_tokenizer import (
+    TextTokenizerKind,
+    build_text_tokenizer,
+    load_text_tokenizer,
+    text_tokenizer_to_payload,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
-    parser.add_argument("--tokenizer", choices=("byte", "byte-pair"), default="byte")
+    parser.add_argument("--tokenizer", choices=("byte", "byte-pair", "hf-byte-pair"), default="byte")
     parser.add_argument("--tokenizer-path", type=Path)
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     parser.add_argument("--tokenizer-min-pair-count", type=int, default=2)
@@ -59,7 +64,7 @@ def main(argv: list[str] | None = None) -> None:
         tokenizer_min_pair_count=args.tokenizer_min_pair_count,
         eval_batch_limit=args.eval_batch_limit,
     )
-    tokenizer = load_text_tokenizer(args.tokenizer_path) if args.tokenizer_path is not None else None
+    tokenizer = _tokenizer_override(args, train_text)
     vocab_size = tokenizer.vocab_size if tokenizer is not None else _vocab_size(
         args.tokenizer,
         args.tokenizer_vocab_size,
@@ -162,6 +167,19 @@ def _vocab_size(tokenizer: TextTokenizerKind, tokenizer_vocab_size: int) -> int:
     if tokenizer == "byte":
         return 257
     return tokenizer_vocab_size
+
+
+def _tokenizer_override(args: argparse.Namespace, train_text: str):
+    if args.tokenizer_path is not None:
+        return load_text_tokenizer(args.tokenizer_path)
+    if args.tokenizer == "hf-byte-pair":
+        return build_text_tokenizer(
+            train_text,
+            kind=args.tokenizer,
+            vocab_size=args.tokenizer_vocab_size,
+            min_pair_count=args.tokenizer_min_pair_count,
+        )
+    return None
 
 
 def _training_config_payload(config: LanguageModelingTrainingConfig) -> dict[str, object]:

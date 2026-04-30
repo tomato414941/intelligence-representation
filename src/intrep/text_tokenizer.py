@@ -2,14 +2,21 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from functools import cached_property
 import json
 from pathlib import Path
 from typing import Literal, Protocol
 
+from tokenizers import Tokenizer
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.trainers import BpeTrainer
+
 from intrep.byte_tokenizer import ByteTokenizer
 
 
-TextTokenizerKind = Literal["byte", "byte-pair"]
+TextTokenizerKind = Literal["byte", "byte-pair", "hf-byte-pair"]
 
 
 class TextTokenizer(Protocol):
@@ -60,6 +67,25 @@ class BytePairTokenizer:
         return (*self._expand_token(left), *self._expand_token(right))
 
 
+@dataclass(frozen=True)
+class HuggingFaceBytePairTokenizer:
+    tokenizer_json: str
+
+    @property
+    def vocab_size(self) -> int:
+        return self._tokenizer.get_vocab_size()
+
+    def encode(self, text: str) -> list[int]:
+        return self._tokenizer.encode(text).ids
+
+    def decode(self, token_ids: list[int]) -> str:
+        return self._tokenizer.decode(token_ids)
+
+    @cached_property
+    def _tokenizer(self) -> Tokenizer:
+        return Tokenizer.from_str(self.tokenizer_json)
+
+
 def build_text_tokenizer(
     text: str,
     *,
@@ -75,7 +101,9 @@ def build_text_tokenizer(
             vocab_size=vocab_size,
             min_pair_count=min_pair_count,
         )
-    raise ValueError("tokenizer must be one of: byte, byte-pair")
+    if kind == "hf-byte-pair":
+        return train_huggingface_byte_pair_tokenizer(text, vocab_size=vocab_size)
+    raise ValueError("tokenizer must be one of: byte, byte-pair, hf-byte-pair")
 
 
 def text_tokenizer_to_payload(tokenizer: TextTokenizer) -> dict[str, object]:
@@ -86,6 +114,12 @@ def text_tokenizer_to_payload(tokenizer: TextTokenizer) -> dict[str, object]:
             "kind": "byte-pair",
             "vocab_size": tokenizer.vocab_size,
             "merges": [list(pair) for pair in tokenizer.merges],
+        }
+    if isinstance(tokenizer, HuggingFaceBytePairTokenizer):
+        return {
+            "kind": "hf-byte-pair",
+            "tokenizer_json": tokenizer.tokenizer_json,
+            "vocab_size": tokenizer.vocab_size,
         }
     raise TypeError(f"unsupported tokenizer type: {type(tokenizer).__name__}")
 
@@ -104,6 +138,11 @@ def text_tokenizer_from_payload(payload: dict[str, object] | None) -> TextTokeni
             merges=tuple(_merge_pair_from_payload(pair) for pair in merges),
             configured_vocab_size=int(payload["vocab_size"]),
         )
+    if kind == "hf-byte-pair":
+        tokenizer_json = payload.get("tokenizer_json")
+        if not isinstance(tokenizer_json, str):
+            raise ValueError("hf-byte-pair tokenizer payload requires tokenizer_json")
+        return HuggingFaceBytePairTokenizer(tokenizer_json=tokenizer_json)
     raise ValueError("unsupported tokenizer kind")
 
 
@@ -151,6 +190,25 @@ def train_byte_pair_tokenizer(
         token_ids = _apply_merge(token_ids, pair, merged_id)
         merges.append(pair)
     return BytePairTokenizer(merges=tuple(merges), configured_vocab_size=vocab_size)
+
+
+def train_huggingface_byte_pair_tokenizer(
+    text: str,
+    *,
+    vocab_size: int = 512,
+) -> HuggingFaceBytePairTokenizer:
+    if vocab_size <= len(ByteLevel.alphabet()) + 3:
+        raise ValueError("hf-byte-pair vocab_size must include the byte alphabet and special tokens")
+    tokenizer = Tokenizer(BPE(unk_token="<unk>"))
+    tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
+    tokenizer.decoder = ByteLevelDecoder()
+    trainer = BpeTrainer(
+        vocab_size=vocab_size,
+        special_tokens=["<pad>", "<unk>", "<|endoftext|>"],
+        initial_alphabet=ByteLevel.alphabet(),
+    )
+    tokenizer.train_from_iterator([text], trainer=trainer)
+    return HuggingFaceBytePairTokenizer(tokenizer_json=tokenizer.to_str())
 
 
 def _merge_pair_from_payload(pair: object) -> tuple[int, int]:

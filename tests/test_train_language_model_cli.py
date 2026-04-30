@@ -126,6 +126,40 @@ class TrainLanguageModelCLITest(unittest.TestCase):
         self.assertEqual(payload["tokenizer"]["payload"]["vocab_size"], 260)
         self.assertGreater(payload["result"]["token_count"], 0)
 
+    def test_trains_with_huggingface_byte_pair_tokenizer(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            corpus_path = root / "corpus.txt"
+            metrics_path = root / "metrics.json"
+            corpus_path.write_text("red green blue red green blue\n" * 20, encoding="utf-8")
+
+            train_language_model.main(
+                [
+                    "--corpus-path",
+                    str(corpus_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--tokenizer",
+                    "hf-byte-pair",
+                    "--tokenizer-vocab-size",
+                    "270",
+                    "--context-length",
+                    "8",
+                    "--batch-size",
+                    "2",
+                    "--max-steps",
+                    "1",
+                    "--device",
+                    "cpu",
+                ]
+            )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["tokenizer"]["source"], "trained")
+        self.assertEqual(payload["tokenizer"]["payload"]["kind"], "hf-byte-pair")
+        self.assertGreater(payload["result"]["token_count"], 0)
+
     def test_split_text_corpus_rejects_empty_text(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
             train_language_model.split_text_corpus("", eval_ratio=0.1)

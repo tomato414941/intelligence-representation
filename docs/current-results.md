@@ -166,6 +166,21 @@ train tokens: 1402456
 eval loss: 6.3833 -> 4.4446
 ```
 
+The text tokenizer path now also supports Hugging Face `tokenizers` byte-level
+BPE. This keeps tokenizer training out of the project's custom Python code and
+removes the previous naive-BPE bottleneck:
+
+```text
+tokenizer: Hugging Face byte-level BPE, vocab 512
+corpora: Tiny Shakespeare, WikiText-2 raw train, TinyStories sample
+sample size: about 17MB total
+tokenizer training time: about 9 seconds on CPU
+model: tiny causal text model
+steps: 100
+train tokens: 7490793
+eval loss: 6.4698 -> 5.3470
+```
+
 Next-token loss reduction is evidence for language-model training, but it is
 not evidence by itself that a predictive representation system or world model
 has been learned.

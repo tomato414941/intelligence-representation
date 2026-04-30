@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_text_tokenizer
-from intrep.text_tokenizer import BytePairTokenizer, load_text_tokenizer
+from intrep.text_tokenizer import BytePairTokenizer, HuggingFaceBytePairTokenizer, load_text_tokenizer
 
 
 class TrainTextTokenizerCLITest(unittest.TestCase):
@@ -37,6 +37,34 @@ class TrainTextTokenizerCLITest(unittest.TestCase):
         self.assertIsInstance(tokenizer, BytePairTokenizer)
         self.assertEqual(tokenizer.vocab_size, 260)
         self.assertEqual(tokenizer.decode(tokenizer.encode("hello world")), "hello world")
+
+    def test_trains_and_saves_huggingface_byte_pair_tokenizer_by_default(self) -> None:
+        output = io.StringIO()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            corpus_path = root / "corpus.txt"
+            tokenizer_path = root / "tokenizer.json"
+            corpus_path.write_text("hello hello hello world\n" * 8, encoding="utf-8")
+
+            with redirect_stdout(output):
+                train_text_tokenizer.main(
+                    [
+                        "--corpus-path",
+                        str(corpus_path),
+                        "--tokenizer-path",
+                        str(tokenizer_path),
+                        "--tokenizer-vocab-size",
+                        "270",
+                    ]
+                )
+
+            tokenizer = load_text_tokenizer(tokenizer_path)
+
+        self.assertIn("tokenizer=hf-byte-pair", output.getvalue())
+        self.assertIsInstance(tokenizer, HuggingFaceBytePairTokenizer)
+        self.assertGreaterEqual(tokenizer.vocab_size, 267)
+        self.assertLessEqual(tokenizer.vocab_size, 270)
+        self.assertEqual(tokenizer.decode(tokenizer.encode("hello unseen")), "hello unseen")
 
 
 if __name__ == "__main__":
