@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -116,5 +118,16 @@ def _truncate_utf8(payload: bytes, max_bytes: int) -> bytes:
     return payload[:max_bytes].decode("utf-8", errors="ignore").encode("utf-8")
 
 
-if __name__ == "__main__":
+def _run_as_script() -> None:
     main()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Hugging Face streaming over parquet can leave pyarrow finalizers in a bad
+    # state after intentionally stopping early at the byte limit. The corpus has
+    # already been written and flushed, so bypass interpreter shutdown finalizers
+    # for this CLI path only.
+    os._exit(0)
+
+
+if __name__ == "__main__":
+    _run_as_script()
