@@ -22,6 +22,7 @@ class SharedMultimodalModelTest(unittest.TestCase):
         text_logits = model.text_logits(torch.zeros((2, 8), dtype=torch.long))
         candidate_logits = model.image_text_fusion_candidate_logits(
             torch.zeros((2, 4, 4), dtype=torch.float32),
+            torch.ones((1,), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.bool),
         )
@@ -45,6 +46,7 @@ class SharedMultimodalModelTest(unittest.TestCase):
             model.text_logits(torch.zeros((2, 8), dtype=torch.long))
             model.image_text_fusion_candidate_logits(
                 torch.zeros((2, 4, 4), dtype=torch.float32),
+                torch.ones((2,), dtype=torch.long),
                 torch.ones((3, 2), dtype=torch.long),
                 torch.ones((3, 2), dtype=torch.bool),
             )
@@ -52,6 +54,7 @@ class SharedMultimodalModelTest(unittest.TestCase):
         self.assertEqual(forward.call_count, 2)
         self.assertIs(forward.call_args_list[0].kwargs["causal"], True)
         self.assertIs(forward.call_args_list[1].kwargs["causal"], False)
+        self.assertEqual(forward.call_args_list[1].args[0].shape, torch.Size([6, 8, 8]))
 
 
 if __name__ == "__main__":
