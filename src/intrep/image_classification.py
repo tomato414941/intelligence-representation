@@ -406,34 +406,6 @@ def image_classification_examples_from_text_choices(
     ]
 
 
-def load_image_folder_classification_examples(root: str | Path) -> list[ImageClassificationExample]:
-    root_path = Path(root)
-    if not root_path.is_dir():
-        raise ValueError("image folder root must be a directory")
-    class_dirs = sorted(path for path in root_path.iterdir() if path.is_dir())
-    if not class_dirs:
-        raise ValueError("image folder root must contain class directories")
-    label_names = tuple(path.name for path in class_dirs)
-    examples: list[ImageClassificationExample] = []
-    for label_index, class_dir in enumerate(class_dirs):
-        image_paths = sorted(
-            path
-            for path in class_dir.iterdir()
-            if path.is_file() and path.suffix.lower() in {".pgm", ".ppm", ".pnm"}
-        )
-        examples.extend(
-            ImageClassificationExample(
-                image_path=image_path,
-                label_names=label_names,
-                label_index=label_index,
-            )
-            for image_path in image_paths
-        )
-    if not examples:
-        raise ValueError("image folder root must contain portable image files")
-    return examples
-
-
 def load_image_classification_examples_jsonl(path: str | Path) -> list[ImageClassificationExample]:
     examples: list[ImageClassificationExample] = []
     for line_number, line in enumerate(
