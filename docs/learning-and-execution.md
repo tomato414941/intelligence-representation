@@ -74,7 +74,7 @@ Examples:
 
 ```text
 next token logits
-candidate scores
+choice scores
 generated text
 predicted reward or value
 action distribution
