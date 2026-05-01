@@ -178,6 +178,17 @@ uv run python -m intrep.train_image_classification \
   --checkpoint-path runs/cifar10.pt
 ```
 
+The same training command can read torchvision-style ImageFolder datasets:
+
+```sh
+uv run python -m intrep.train_image_classification \
+  --train-image-folder data/images/train \
+  --eval-image-folder data/images/eval \
+  --image-size 224 224 \
+  --metrics-path runs/image-folder.json \
+  --checkpoint-path runs/image-folder.pt
+```
+
 Image-text choice trains a shared multimodal model to score candidate text
 answers:
 
