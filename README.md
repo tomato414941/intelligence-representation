@@ -93,6 +93,27 @@ uv run python -m unittest
 
 ## Current Training Entrypoints
 
+The current prototype supports four single-task training paths:
+
+```text
+text LM
+  text corpus -> token sequence -> causal text model
+
+image classification
+  image -> class label
+
+image-text choice
+  image + candidate texts -> selected candidate
+
+image-text answer
+  image + prompt -> answer tokens
+```
+
+The image-text choice and image-text answer paths are different output forms,
+not a temporary/permanent hierarchy. Choice is useful for matching, retrieval,
+and multiple-choice tasks. Answer is useful for token-generating image/text
+tasks.
+
 Text language modeling uses the main byte-pair tokenizer by default:
 
 ```sh
@@ -113,5 +134,37 @@ uv run python -m intrep.cifar10_image_corpus \
 
 uv run python -m intrep.evaluate_image_classification \
   --train-path runs/cifar10-train.jsonl \
-  --metrics-path runs/cifar10.json
+  --metrics-path runs/cifar10.json \
+  --checkpoint-path runs/cifar10.pt
+```
+
+Image-text choice trains a shared multimodal model to score candidate text
+answers:
+
+```sh
+uv run python -m intrep.train_image_text_choice \
+  --train-path runs/fashion-choice-train.jsonl \
+  --eval-path runs/fashion-choice-eval.jsonl \
+  --prompt "What is this item?" \
+  --metrics-path runs/fashion-choice.json \
+  --checkpoint-path runs/fashion-choice.pt
+```
+
+Image-text answer trains the token output path from image plus prompt to answer
+tokens:
+
+```sh
+uv run python -m intrep.train_image_text_answer \
+  --train-path runs/fashion-answer-train.jsonl \
+  --metrics-path runs/fashion-answer.json \
+  --checkpoint-path runs/fashion-answer.pt
+```
+
+IDX datasets such as MNIST and Fashion-MNIST, and CIFAR-10 python batches, can
+produce these image JSONL forms:
+
+```text
+image-classification JSONL
+image-text-choice JSONL
+image-text-answer JSONL
 ```
