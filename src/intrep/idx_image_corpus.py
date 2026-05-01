@@ -172,11 +172,11 @@ def _read_maybe_gzip(path: str | Path) -> bytes:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert local IDX image and label files into image-choice JSONL records."
+        description="Convert local IDX image and label files into image-classification JSONL records."
     )
     parser.add_argument("--images-path", required=True, help="Path to images IDX or IDX gzip.")
     parser.add_argument("--labels-path", required=True, help="Path to labels IDX or IDX gzip.")
-    parser.add_argument("--output-path", required=True, help="Path for output image-choice JSONL.")
+    parser.add_argument("--output-path", required=True, help="Path for output image-classification JSONL.")
     parser.add_argument("--image-output-dir", required=True, help="Directory for extracted PGM images.")
     parser.add_argument("--split", default="train", help="Split label used in generated image filenames.")
     parser.add_argument("--limit", type=int, help="Optional maximum number of examples to convert.")
@@ -184,11 +184,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--label-set",
         choices=("fashion-mnist", "mnist"),
         default="fashion-mnist",
-        help="Label names to attach to the generated choices.",
+        help="Label names to attach to the generated classification examples.",
     )
     args = parser.parse_args(argv)
 
-    selection = write_idx_image_choice_jsonl(
+    selection = write_idx_image_classification_jsonl(
         images_path=args.images_path,
         labels_path=args.labels_path,
         output_path=args.output_path,
@@ -197,7 +197,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         limit=args.limit,
         label_names=_label_names(args.label_set),
     )
-    print("intrep image-choice corpus")
+    print("intrep idx image corpus")
     print(f"label_set={args.label_set}")
     print(f"images={selection.image_count}")
     print(f"examples={len(selection.examples)}")

@@ -153,7 +153,7 @@ def write_ppm(path: str | Path, pixels: np.ndarray) -> None:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert local CIFAR-10 python batch files into image-choice JSONL records."
+        description="Convert local CIFAR-10 python batch files into image-classification JSONL records."
     )
     parser.add_argument(
         "--batch-path",
@@ -161,20 +161,20 @@ def main(argv: Sequence[str] | None = None) -> None:
         required=True,
         help="Path to a CIFAR-10 python batch file. Repeat for multiple batches.",
     )
-    parser.add_argument("--output-path", required=True, help="Path for output image-choice JSONL.")
+    parser.add_argument("--output-path", required=True, help="Path for output image-classification JSONL.")
     parser.add_argument("--image-output-dir", required=True, help="Directory for extracted PPM images.")
     parser.add_argument("--split", default="train", help="Split label used in generated image filenames.")
     parser.add_argument("--limit", type=int, help="Optional maximum number of examples to convert.")
     args = parser.parse_args(argv)
 
-    selection = write_cifar10_image_choice_jsonl(
+    selection = write_cifar10_image_classification_jsonl(
         batch_paths=args.batch_path,
         output_path=args.output_path,
         image_output_dir=args.image_output_dir,
         split=args.split,
         limit=args.limit,
     )
-    print("intrep cifar10 image-choice corpus")
+    print("intrep cifar10 image corpus")
     print(f"images={selection.image_count}")
     print(f"examples={len(selection.examples)}")
     print(f"output_path={args.output_path}")

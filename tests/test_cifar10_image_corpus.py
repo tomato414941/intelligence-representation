@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
-from intrep.cifar10_image_choice_corpus import (
+from intrep.cifar10_image_corpus import (
     main,
     read_cifar10_batch,
     write_cifar10_image_classification_jsonl,
@@ -17,7 +17,7 @@ from intrep.cifar10_image_choice_corpus import (
 from intrep.image_io import read_portable_image
 
 
-class CIFAR10ImageChoiceCorpusTest(unittest.TestCase):
+class CIFAR10ImageCorpusTest(unittest.TestCase):
     def test_reads_cifar10_batch(self) -> None:
         with TemporaryDirectory() as directory:
             batch_path = Path(directory) / "data_batch_1"
@@ -88,7 +88,7 @@ class CIFAR10ImageChoiceCorpusTest(unittest.TestCase):
                     image_output_dir=root / "images",
                 )
 
-    def test_cli_writes_image_choice_jsonl(self) -> None:
+    def test_cli_writes_image_classification_jsonl(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -116,8 +116,8 @@ class CIFAR10ImageChoiceCorpusTest(unittest.TestCase):
             loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
 
         self.assertEqual(len(loaded), 1)
-        self.assertEqual(loaded[0]["answer_index"], 8)
-        self.assertIn("intrep cifar10 image-choice corpus", output.getvalue())
+        self.assertEqual(loaded[0]["label_index"], 8)
+        self.assertIn("intrep cifar10 image corpus", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 
 
