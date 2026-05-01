@@ -60,6 +60,16 @@ class SharedMultimodalModel(nn.Module):
         embeddings = self.token_embedding(token_ids) + self.text_position_embedding(positions)
         return self.token_output(self.core(embeddings, causal=True))
 
+    def image_text_token_logits(self, images: torch.Tensor, text_token_ids: torch.Tensor) -> torch.Tensor:
+        if text_token_ids.ndim != 2:
+            raise ValueError("text_token_ids must have shape [batch, sequence]")
+        if text_token_ids.size(1) > self.text_context_length:
+            raise ValueError("text_token_ids sequence length must not exceed text_context_length")
+        image_embeddings = self.image_input_layer(images)
+        text_embeddings = self._text_embeddings(text_token_ids)
+        combined = concatenate_input_embedding_sequences(image_embeddings, text_embeddings)
+        return self.token_output(self.core(combined, causal=True))
+
     def image_text_fusion_candidate_logits(
         self,
         images: torch.Tensor,

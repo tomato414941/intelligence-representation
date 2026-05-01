@@ -50,7 +50,9 @@ Tiny Shakespeare language modeling run with held-out evaluation
 Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
-image/text fusion candidate selection
+prompted image/text fusion candidate selection
+mixed text LM plus image/text choice training
+small image/prompt-to-text generation overfit
 grid-world action-conditioned smoke data
 ```
 
@@ -59,6 +61,7 @@ Not yet supported:
 ```text
 large-scale multimodal token learning
 large-scale multimodal generation
+general image-to-text generation
 held-out action-conditioned future prediction improvement
 latent predictive state
 belief update
@@ -300,27 +303,64 @@ train_accuracy: 0.3176
 eval_accuracy: 0.3370
 ```
 
-The current image/text candidate path fuses image patches and candidate text in
-one shared-core pass:
+The current image/text candidate path fuses image patches, prompt text, and
+candidate text in one shared-core pass:
 
 ```text
 ImageChoiceExample
-  -> image patch embeddings + candidate text embeddings
+  -> image patch embeddings + prompt text embeddings + candidate text embeddings
   -> SharedTransformerCore
   -> candidate score
 ```
 
-The tiny preset learns a 5,000-example Fashion-MNIST subset on CPU using this
-fusion path:
+The tiny preset learns a 5,000-example Fashion-MNIST subset on CPU using a
+fixed prompt:
 
 ```text
 train_examples: 5000
 eval_examples: 1000
 max_steps: 1000
-train_initial_loss: 2.3207
-train_final_loss: 0.8336
-train_accuracy: 0.7204
-eval_accuracy: 0.6960
+prompt: What is this item?
+train_initial_loss: 2.3271
+train_final_loss: 0.8679
+train_accuracy: 0.6926
+eval_accuracy: 0.6700
+```
+
+The same path can train with multiple prompt phrasings:
+
+```text
+prompts:
+  What is this item?
+  Choose the best label.
+  Which item is shown?
+max_steps: 1000
+eval_accuracy_by_prompt:
+  What is this item?: 0.6040
+  Choose the best label.: 0.6010
+  Which item is shown?: 0.6180
+```
+
+The shared model can also mix text language modeling and prompted image/text
+choice updates in one optimizer:
+
+```text
+text_initial_loss: 6.4175
+text_final_loss: 4.7697
+image_eval_accuracy: 0.5630
+```
+
+A small image/prompt-to-text generation overfit now works through the same
+shared model token-output path:
+
+```text
+examples: 2
+prompt: answer:
+train_initial_loss: 5.3600
+train_final_loss: 0.0020
+generated_outputs:
+  image_a: A
+  image_b: B
 ```
 
 The standalone image classification path remains only as a baseline. The shared
