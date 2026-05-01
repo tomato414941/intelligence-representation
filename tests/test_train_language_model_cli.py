@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_language_model
+from intrep.text_corpus import read_split_text_corpora, read_text_corpora, split_text_corpus
 from intrep.text_tokenizer import save_text_tokenizer, train_byte_pair_tokenizer
 
 
@@ -61,7 +62,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             alpha_path.write_text("alpha alpha", encoding="utf-8")
             beta_path.write_text("beta beta", encoding="utf-8")
 
-            corpus = train_language_model.read_text_corpora(
+            corpus = read_text_corpora(
                 [alpha_path, beta_path],
                 seed=1,
             )
@@ -78,7 +79,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
             alpha_path.write_text("a" * 10, encoding="utf-8")
             beta_path.write_text("b" * 10, encoding="utf-8")
 
-            train_text, eval_text = train_language_model.read_split_text_corpora(
+            train_text, eval_text = read_split_text_corpora(
                 [alpha_path, beta_path],
                 eval_ratio=0.2,
                 seed=1,
@@ -163,7 +164,7 @@ class TrainLanguageModelCLITest(unittest.TestCase):
 
     def test_split_text_corpus_rejects_empty_text(self) -> None:
         with self.assertRaisesRegex(ValueError, "corpus must not be empty"):
-            train_language_model.split_text_corpus("", eval_ratio=0.1)
+            split_text_corpus("", eval_ratio=0.1)
 
 
 if __name__ == "__main__":
