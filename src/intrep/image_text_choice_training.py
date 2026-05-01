@@ -63,7 +63,7 @@ def train_image_text_choice_model(
     *,
     train_examples: list[ImageChoiceExample],
     eval_examples: list[ImageChoiceExample] | None = None,
-    text_corpus: str = "",
+    tokenizer_corpus: str = "",
     language_modeling_corpus: str | None = None,
     prompt: str = "",
     additional_prompts: tuple[str, ...] = (),
@@ -82,7 +82,7 @@ def train_image_text_choice_model(
         eval_images, eval_labels = None, None
     choices = _choices_from_examples(train_examples)
     prompt_options = (prompt, *additional_prompts)
-    tokenizer_text = "\n".join((text_corpus, language_modeling_corpus or "", *prompt_options, *choices))
+    tokenizer_text = "\n".join((tokenizer_corpus, language_modeling_corpus or "", *prompt_options, *choices))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
         kind="byte-pair",

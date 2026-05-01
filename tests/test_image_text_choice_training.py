@@ -22,7 +22,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
-                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
                 config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
@@ -63,7 +63,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
             examples = _write_examples(Path(directory))
             result = train_image_text_choice_model(
                 train_examples=examples,
-                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
                 config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
@@ -95,7 +95,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
-                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 language_modeling_corpus="alpha beta gamma alpha beta gamma " * 20,
                 prompt="What is this item?",
                 config=ImageTextChoiceTrainingConfig(
@@ -123,7 +123,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
-                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
                 additional_prompts=("Choose the best label.",),
                 config=ImageTextChoiceTrainingConfig(
