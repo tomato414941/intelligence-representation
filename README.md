@@ -41,6 +41,9 @@ tests/
 docs/
   Project concepts, evaluation principles, and current results
 
+docs/experiments/
+  Planned or active experiment notes
+
 docs/legacy/
   Historical notes and retired experiments
 ```
