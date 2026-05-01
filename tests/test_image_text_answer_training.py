@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,6 +9,8 @@ from intrep.image_text_answer_training import (
     ImageTextAnswerExample,
     ImageTextAnswerTrainingConfig,
     generate_image_text_answer,
+    image_text_answer_example_to_record,
+    load_image_text_answer_examples_jsonl,
     train_image_text_answer_model,
 )
 from intrep.shared_multimodal_model import SharedMultimodalModel
@@ -45,6 +48,48 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.train_initial_loss, 0.0)
         self.assertGreater(result.metrics.train_final_loss, 0.0)
         self.assertIsInstance(generated, str)
+
+    def test_loads_image_text_answer_examples_jsonl(self) -> None:
+        with TemporaryDirectory() as directory:
+            examples = _write_examples(Path(directory))
+            path = Path(directory) / "answers.jsonl"
+            path.write_text(
+                "\n".join(json.dumps(image_text_answer_example_to_record(example)) for example in examples) + "\n",
+                encoding="utf-8",
+            )
+
+            loaded = load_image_text_answer_examples_jsonl(path)
+
+        self.assertEqual(len(loaded), 2)
+        self.assertEqual(loaded[0].prompt, "answer: ")
+        self.assertEqual(loaded[0].answer_text, "Ankle boot")
+
+    def test_load_image_text_answer_examples_jsonl_rejects_empty_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "answers.jsonl"
+            path.write_text("", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "must contain at least one example"):
+                load_image_text_answer_examples_jsonl(path)
+
+    def test_load_image_text_answer_examples_jsonl_rejects_unsupported_fields(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "answers.jsonl"
+            path.write_text(
+                json.dumps(
+                    {
+                        "image_path": "a.pgm",
+                        "prompt": "answer: ",
+                        "answer_text": "Ankle boot",
+                        "choices": ["Ankle boot"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsupported fields: choices"):
+                load_image_text_answer_examples_jsonl(path)
 
 
 def _write_examples(root: Path) -> list[ImageTextAnswerExample]:
