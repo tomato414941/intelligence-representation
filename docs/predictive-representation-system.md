@@ -203,7 +203,7 @@ reward / error input layer:
 ## 現在の位置づけ
 
 現在のリポジトリは、`Predictive Representation System` を実現済みではない。
-実装状態の詳細は README と [Current Results](current-results.md) に置く。
+実装状態の詳細は README と [Current Evidence](current-evidence.md) に置く。
 
 現在の実験基盤は、次の形へ寄せている。
 
