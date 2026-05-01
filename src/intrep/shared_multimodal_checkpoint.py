@@ -23,6 +23,7 @@ def load_shared_multimodal_initialization(
     *,
     device: LanguageModelingTrainingDevice = "auto",
 ) -> SharedMultimodalInitialization:
+    """Load weights/tokenizer from any checkpoint using SharedMultimodalModel."""
     resolved_device = resolve_training_device(device)
     checkpoint_path = Path(path)
     payload = torch.load(checkpoint_path, map_location=resolved_device, weights_only=False)
