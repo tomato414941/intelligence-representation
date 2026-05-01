@@ -86,9 +86,20 @@ large architectural expansions before evaluation pressure exists
 
 ## Run Tests
 
+Local development installs PyTorch through the project optional dependency:
+
 ```sh
-uv sync
+./scripts/setup_local.sh
 uv run python -m unittest
+```
+
+On RunPod, use an official PyTorch template and keep its system PyTorch/CUDA
+stack. Do not run `uv sync`, because it may install a PyTorch wheel that does
+not match the host NVIDIA driver.
+
+```sh
+./scripts/setup_runpod.sh
+python -m unittest
 ```
 
 ## Current Training Entrypoints
