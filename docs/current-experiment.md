@@ -28,6 +28,14 @@ while keeping the scope small enough to run and inspect.
 | image | The image run completes on GPU and improves evaluation accuracy over the initial model. |
 | scope | The experiment reuses existing training paths unless a missing dataset adapter is clearly required. |
 
+## First Command
+
+```sh
+python -m intrep.prepare_fineweb_edu_text \
+  --output-path data/external/fineweb_edu_sample.txt \
+  --max-bytes 1000000
+```
+
 ## Non-Goals
 
 | Area | Non-goal |

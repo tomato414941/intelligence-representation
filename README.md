@@ -145,6 +145,15 @@ uv run python -m intrep.train_language_model \
   --checkpoint-path runs/text.pt
 ```
 
+FineWeb-Edu can be sampled into a local text corpus before training. This
+command requires the Hugging Face `datasets` package in the active environment:
+
+```sh
+python -m intrep.prepare_fineweb_edu_text \
+  --output-path data/external/fineweb_edu_sample.txt \
+  --max-bytes 1000000
+```
+
 Image classification uses image patch embeddings, the shared Transformer core,
 and a classification head:
 
