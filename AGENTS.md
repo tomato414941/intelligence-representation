@@ -23,6 +23,7 @@
   their system CUDA-compatible torch instead of replacing it from the project
   environment.
 - Local and CI test environments must install the torch extra before running the
-  full unit test suite: `uv sync --extra torch`.
-- RunPod setup should avoid installing the torch extra unless the selected image
-  does not already provide a compatible PyTorch installation.
+  full unit test suite: `./scripts/setup_local.sh` or `uv sync --extra torch`.
+- RunPod setup must use `./scripts/setup_runpod.sh`. It intentionally avoids
+  `uv sync` and installs the project without dependencies so the template's
+  system PyTorch/CUDA stack is not replaced.
