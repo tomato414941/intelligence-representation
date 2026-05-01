@@ -160,6 +160,10 @@ uv run python -m intrep.train_image_text_answer \
   --checkpoint-path runs/fashion-answer.pt
 ```
 
+Shared multimodal training commands also accept `--init-checkpoint-path` for
+compatible shared multimodal checkpoints. This initializes a new run from model
+weights and tokenizer state, independent of the source task name.
+
 IDX datasets such as MNIST and Fashion-MNIST, and CIFAR-10 python batches, can
 produce these image JSONL forms:
 
