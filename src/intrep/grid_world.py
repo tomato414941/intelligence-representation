@@ -152,6 +152,8 @@ def observation_from_state(
             position = Position(row=row, col=col)
             if position == state.agent:
                 cells.append("*" if reached_goal else "A")
+            elif position == state.goal:
+                cells.append("G")
             elif position in state.walls:
                 cells.append("#")
             else:
@@ -161,7 +163,10 @@ def observation_from_state(
     action_text = "initial" if last_action is None else f"after {last_action}"
     status_text = "blocked" if blocked else "moved"
     goal_text = "reached goal" if reached_goal else "goal not reached"
-    text = f"{action_text}; agent at ({state.agent.row}, {state.agent.col}); {status_text}; {goal_text}"
+    text = (
+        f"{action_text}; agent at ({state.agent.row}, {state.agent.col}); "
+        f"goal at ({state.goal.row}, {state.goal.col}); {status_text}; {goal_text}"
+    )
 
     return GridObservation(
         text=text,

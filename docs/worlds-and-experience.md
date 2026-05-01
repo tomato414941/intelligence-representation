@@ -90,6 +90,10 @@ experience record, training example, and model input separate.
 Grid world is the first action-oriented simulation because it is small,
 deterministic, and easy to render as text, image, tensor, or candidate choices.
 
+The first version uses full observation: the agent, goal, and walls are visible
+in the observation. Partial observation can be added later when memory or
+history use becomes the thing being tested.
+
 The first useful objective is:
 
 ```text

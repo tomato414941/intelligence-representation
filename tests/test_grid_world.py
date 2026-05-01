@@ -30,6 +30,7 @@ class GridWorldTest(unittest.TestCase):
         self.assertTrue(result.observation.reached_goal)
         self.assertEqual(result.observation.grid, (".*.", "..."))
         self.assertIn("after right", result.observation.text)
+        self.assertIn("goal at (0, 1)", result.observation.text)
         self.assertEqual(result.reward, 1.0)
         self.assertTrue(result.terminated)
         self.assertFalse(result.truncated)
@@ -50,9 +51,9 @@ class GridWorldTest(unittest.TestCase):
         self.assertTrue(blocked)
         self.assertTrue(observation.blocked)
         self.assertEqual(observation.agent, Position(row=1, col=0))
-        self.assertEqual(observation.grid, ("...", "A#.", "..."))
+        self.assertEqual(observation.grid, ("...", "A#.", "..G"))
 
-    def test_observation_is_separate_from_hidden_state(self) -> None:
+    def test_observation_is_fully_observed_but_separate_from_hidden_state(self) -> None:
         state = GridWorldState(
             width=4,
             height=3,
@@ -65,9 +66,9 @@ class GridWorldTest(unittest.TestCase):
 
         self.assertIsNot(observation, state)
         self.assertEqual(state.goal, Position(row=2, col=3))
-        self.assertNotIn("G", "".join(observation.grid))
-        self.assertNotIn("(2, 3)", observation.text)
-        self.assertEqual(observation.grid, ("A...", ".#..", "...."))
+        self.assertIn("G", "".join(observation.grid))
+        self.assertIn("goal at (2, 3)", observation.text)
+        self.assertEqual(observation.grid, ("A...", ".#..", "...G"))
 
     def test_generate_grid_world_experience_records_action_conditioned_next_observations(
         self,
