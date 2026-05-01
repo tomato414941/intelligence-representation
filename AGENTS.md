@@ -17,3 +17,12 @@
 ## Verification
 - Run relevant tests or checks after implementation changes.
 - For note-only changes, review formatting and repository status.
+
+## Dependencies
+- PyTorch is an optional dependency so RunPod official PyTorch templates can use
+  their system CUDA-compatible torch instead of replacing it from the project
+  environment.
+- Local and CI test environments must install the torch extra before running the
+  full unit test suite: `uv sync --extra torch`.
+- RunPod setup should avoid installing the torch extra unless the selected image
+  does not already provide a compatible PyTorch installation.
