@@ -172,7 +172,7 @@ uv run python -m intrep.cifar10_image_corpus \
   --output-path runs/cifar10-train.jsonl \
   --image-output-dir runs/cifar10-train-images
 
-uv run python -m intrep.evaluate_image_classification \
+uv run python -m intrep.train_image_classification \
   --train-path runs/cifar10-train.jsonl \
   --metrics-path runs/cifar10.json \
   --checkpoint-path runs/cifar10.pt

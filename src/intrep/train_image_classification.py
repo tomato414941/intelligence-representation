@@ -14,7 +14,7 @@ from intrep.image_classification_checkpoint import save_image_classification_che
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Evaluate image classification with image patch embeddings and the shared Transformer core."
+        description="Train image classification with image patch embeddings and the shared Transformer core."
     )
     parser.add_argument("--train-path", type=Path, required=True)
     parser.add_argument("--eval-path", type=Path)
