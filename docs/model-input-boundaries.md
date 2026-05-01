@@ -37,10 +37,11 @@ image choice:
   choices
   answer_index
 
-image-to-text:
+image/text choice:
   image_path
-  prompt_text
-  answer_text
+  prompt_text when needed
+  choices
+  answer_index
 
 video or audio tasks:
   media path or reference
@@ -76,15 +77,16 @@ image
   -> input embedding sequence
 ```
 
-The current Fashion-MNIST classification path uses this concrete form:
+The current image choice path uses this concrete form:
 
 ```text
 image-choice JSONL
   -> local PGM image
   -> ImagePatchInputLayer
+  -> candidate text tokenizer / embedding layer
   -> input embedding sequence
   -> SharedTransformerCore
-  -> ClassificationHead
+  -> candidate score
 ```
 
 Other modalities can use their own input layers. A full text, image, audio, or

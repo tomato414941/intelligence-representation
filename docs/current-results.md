@@ -50,10 +50,7 @@ Tiny Shakespeare language modeling run with held-out evaluation
 Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
 Fashion-MNIST image-choice raw examples
-ImagePatchInputLayer -> SharedTransformerCore -> ClassificationHead
-image-conditioned text candidate scoring
-image-choice scoring evaluation
-image-to-text label training with candidate-choice accuracy
+image/text fusion candidate selection
 grid-world action-conditioned smoke data
 ```
 
@@ -61,7 +58,7 @@ Not yet supported:
 
 ```text
 large-scale multimodal token learning
-large-scale image-to-text continuation training
+large-scale multimodal generation
 held-out action-conditioned future prediction improvement
 latent predictive state
 belief update
@@ -303,62 +300,31 @@ train_accuracy: 0.3176
 eval_accuracy: 0.3370
 ```
 
-The image-conditioned text scoring path is separate:
+The current image/text candidate path fuses image patches and candidate text in
+one shared-core pass:
 
 ```text
 ImageChoiceExample
-  -> image patch embedding + candidate text embeddings
+  -> image patch embeddings + candidate text embeddings
   -> SharedTransformerCore
-  -> candidate continuation loss
+  -> candidate score
 ```
 
-The image-to-text label output path trains token loss directly against the
-answer text instead of using a classification head:
-
-```text
-ImageChoiceExample
-  -> image patch embedding + answer text token embeddings
-  -> SharedTransformerCore
-  -> token output loss on answer text tokens
-```
-
-The tiny preset learns a 5,000-example Fashion-MNIST image-to-text subset on
-CPU. Candidate-choice accuracy scores the trained token-output path by passing
-the image plus all label candidates and selecting the lowest continuation loss:
+The tiny preset learns a 5,000-example Fashion-MNIST subset on CPU using this
+fusion path:
 
 ```text
 train_examples: 5000
 eval_examples: 1000
 max_steps: 1000
-train_initial_loss: 5.6635
-train_final_loss: 0.1884
-eval_final_loss: 0.1863
-train_choice_examples: 200
-eval_choice_examples: 200
-train_choice_accuracy: 0.615
-eval_choice_accuracy: 0.665
+train_initial_loss: 2.3207
+train_final_loss: 0.8336
+train_accuracy: 0.7204
+eval_accuracy: 0.6960
 ```
 
-The classification path is still the simplest image baseline. The image-to-text
-path is now the first direct bridge from image inputs to token outputs, without
-reintroducing a generic raw-data envelope.
-
-The same image-to-text path also learns above chance on CIFAR-10, but remains
-weaker than the CIFAR-10 classification-head baseline under the same tiny CPU
-run budget:
-
-```text
-train_examples: 5000
-eval_examples: 1000
-max_steps: 1000
-train_initial_loss: 5.7123
-train_final_loss: 0.5146
-eval_final_loss: 0.5199
-train_choice_examples: 200
-eval_choice_examples: 200
-train_choice_accuracy: 0.225
-eval_choice_accuracy: 0.185
-```
+The standalone image classification path remains only as a baseline. The shared
+multimodal model no longer carries a fixed image classification head.
 
 ## Tokenizer Direction
 
@@ -373,7 +339,7 @@ simple byte-pair tokenizer remains only as a small internal baseline.
 The next useful pressure is:
 
 ```text
-image-choice continuation scoring
+image/text candidate selection
 text raw-example training path
 shared core tests across image and text input layers
 clear separation between tokenizer, input layer, core, and head

@@ -135,7 +135,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
         self.assertEqual(hidden.shape, torch.Size([1, 6, embedding_dim]))
         self.assertEqual(logits.shape, torch.Size([1, 6, vocab_size]))
 
-    def test_image_conditioned_text_logits_can_be_scored_with_loss_mask(self) -> None:
+    def test_multimodal_token_logits_can_be_scored_with_loss_mask(self) -> None:
         embedding_dim = 8
         vocab_size = 16
         text_model = CausalTextModel(
