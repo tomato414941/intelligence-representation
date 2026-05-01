@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from dataclasses import dataclass
-from pathlib import Path
 
 import torch
 from torch import nn
@@ -15,11 +13,11 @@ from intrep.language_modeling_training import (
 )
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
-from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
+from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 
 
 @dataclass(frozen=True)
-class ImageTextCandidateTrainingConfig:
+class ImageTextChoiceTrainingConfig:
     text_context_length: int = 16
     image_patch_size: int = 4
     max_steps: int = 1000
@@ -32,7 +30,7 @@ class ImageTextCandidateTrainingConfig:
 
 
 @dataclass(frozen=True)
-class ImageTextCandidateMetrics:
+class ImageTextChoiceMetrics:
     train_case_count: int
     eval_case_count: int
     train_initial_loss: float
@@ -46,31 +44,22 @@ class ImageTextCandidateMetrics:
 
 
 @dataclass(frozen=True)
-class ImageTextCandidateTrainingResult:
-    metrics: ImageTextCandidateMetrics
+class ImageTextChoiceTrainingResult:
+    metrics: ImageTextChoiceMetrics
     model: SharedMultimodalModel
     tokenizer: TextTokenizer
-    config: ImageTextCandidateTrainingConfig
+    config: ImageTextChoiceTrainingConfig
     image_shape: tuple[int, ...]
 
 
 @dataclass(frozen=True)
-class ImageTextCandidateCheckpoint:
-    model: SharedMultimodalModel
-    tokenizer: TextTokenizer
-    config: ImageTextCandidateTrainingConfig
-    image_shape: tuple[int, ...]
-    metrics: dict[str, object]
-
-
-@dataclass(frozen=True)
-class ImageTextCandidateEvalMetrics:
+class ImageTextChoiceEvalMetrics:
     case_count: int
     loss: float
     accuracy: float
 
 
-def train_image_text_candidate_model(
+def train_image_text_choice_model(
     *,
     train_examples: list[ImageChoiceExample],
     eval_examples: list[ImageChoiceExample] | None = None,
@@ -78,10 +67,10 @@ def train_image_text_candidate_model(
     language_modeling_corpus: str | None = None,
     prompt: str = "",
     additional_prompts: tuple[str, ...] = (),
-    config: ImageTextCandidateTrainingConfig | None = None,
+    config: ImageTextChoiceTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
-) -> ImageTextCandidateTrainingResult:
-    training_config = config or ImageTextCandidateTrainingConfig()
+) -> ImageTextChoiceTrainingResult:
+    training_config = config or ImageTextChoiceTrainingConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
@@ -165,7 +154,7 @@ def train_image_text_candidate_model(
             batch_images = train_images.index_select(0, indices)
             batch_labels = train_labels.index_select(0, indices)
             loss = loss_fn(
-                model.image_text_fusion_candidate_logits(
+                model.image_text_choice_logits(
                     batch_images,
                     batch_prompt_token_ids,
                     candidate_token_ids,
@@ -199,8 +188,8 @@ def train_image_text_candidate_model(
     text_final_loss = None
     if text_inputs is not None and text_targets is not None:
         text_final_loss = _text_loss(model, loss_fn, text_inputs, text_targets)
-    return ImageTextCandidateTrainingResult(
-        metrics=ImageTextCandidateMetrics(
+    return ImageTextChoiceTrainingResult(
+        metrics=ImageTextChoiceMetrics(
             train_case_count=int(train_labels.numel()),
             eval_case_count=eval_count,
             train_initial_loss=initial_loss,
@@ -227,13 +216,13 @@ def train_image_text_candidate_model(
     )
 
 
-def evaluate_image_text_candidate_model(
+def evaluate_image_text_choice_model(
     *,
     model: SharedMultimodalModel,
     tokenizer: TextTokenizer,
     examples: list[ImageChoiceExample],
     prompt: str = "",
-) -> ImageTextCandidateEvalMetrics:
+) -> ImageTextChoiceEvalMetrics:
     images, labels = image_label_tensors_from_examples(examples)
     choices = _choices_from_examples(examples)
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
@@ -245,7 +234,7 @@ def evaluate_image_text_candidate_model(
     candidate_token_ids = candidate_token_ids.to(device)
     candidate_token_mask = candidate_token_mask.to(device)
     loss_fn = nn.CrossEntropyLoss()
-    return ImageTextCandidateEvalMetrics(
+    return ImageTextChoiceEvalMetrics(
         case_count=int(labels.numel()),
         loss=_loss(
             model,
@@ -264,66 +253,6 @@ def evaluate_image_text_candidate_model(
             candidate_token_ids,
             candidate_token_mask,
         ),
-    )
-
-
-def save_image_text_candidate_checkpoint(path: str | Path, result: ImageTextCandidateTrainingResult) -> None:
-    checkpoint_path = Path(path)
-    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "schema_version": "intrep.image_text_candidate_checkpoint.v1",
-            "model": result.model.state_dict(),
-            "tokenizer": text_tokenizer_to_payload(result.tokenizer),
-            "config": asdict(result.config),
-            "image_shape": result.image_shape,
-            "metrics": asdict(result.metrics),
-        },
-        checkpoint_path,
-    )
-
-
-def load_image_text_candidate_checkpoint(
-    path: str | Path,
-    *,
-    device: LanguageModelingTrainingDevice = "auto",
-) -> ImageTextCandidateCheckpoint:
-    resolved_device = resolve_training_device(device)
-    payload = torch.load(Path(path), map_location=resolved_device, weights_only=False)
-    if payload.get("schema_version") != "intrep.image_text_candidate_checkpoint.v1":
-        raise ValueError("unsupported image/text candidate checkpoint schema")
-    tokenizer_payload = payload.get("tokenizer")
-    if not isinstance(tokenizer_payload, dict):
-        raise ValueError("checkpoint requires tokenizer payload")
-    tokenizer = text_tokenizer_from_payload(tokenizer_payload)
-    config_payload = payload.get("config")
-    if not isinstance(config_payload, dict):
-        raise ValueError("checkpoint requires config")
-    config = ImageTextCandidateTrainingConfig(**config_payload)
-    image_shape = _image_shape_from_payload(payload.get("image_shape"))
-    preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
-    model = SharedMultimodalModel(
-        vocab_size=tokenizer.vocab_size,
-        text_context_length=config.text_context_length,
-        image_size=(image_shape[0], image_shape[1]),
-        patch_size=config.image_patch_size,
-        embedding_dim=int(preset["embedding_dim"]),
-        num_heads=int(preset["num_heads"]),
-        hidden_dim=int(preset["hidden_dim"]),
-        num_layers=int(preset["num_layers"]),
-        dropout=float(preset["dropout"]),
-        channel_count=1 if len(image_shape) == 2 else image_shape[2],
-    ).to(resolved_device)
-    model.load_state_dict(payload["model"])
-    metrics = payload.get("metrics")
-    if not isinstance(metrics, dict):
-        metrics = {}
-    return ImageTextCandidateCheckpoint(
-        model=model,
-        tokenizer=tokenizer,
-        config=config,
-        image_shape=image_shape,
-        metrics=metrics,
     )
 
 
@@ -388,7 +317,7 @@ def _loss(
     model.eval()
     with torch.no_grad():
         loss = loss_fn(
-            model.image_text_fusion_candidate_logits(
+            model.image_text_choice_logits(
                 images,
                 prompt_token_ids,
                 candidate_token_ids,
@@ -412,7 +341,7 @@ def _accuracy(
     was_training = model.training
     model.eval()
     with torch.no_grad():
-        predictions = model.image_text_fusion_candidate_logits(
+        predictions = model.image_text_choice_logits(
             images,
             prompt_token_ids,
             candidate_token_ids,
@@ -451,7 +380,7 @@ def _channel_count_from_images(images: torch.Tensor) -> int:
     raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
 
 
-def _validate_config(config: ImageTextCandidateTrainingConfig) -> None:
+def _validate_config(config: ImageTextChoiceTrainingConfig) -> None:
     if config.text_context_length <= 0:
         raise ValueError("text_context_length must be positive")
     if config.image_patch_size <= 0:
@@ -468,13 +397,3 @@ def _validate_config(config: ImageTextCandidateTrainingConfig) -> None:
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer_vocab_size <= 0:
         raise ValueError("tokenizer_vocab_size must be positive")
-
-
-def _image_shape_from_payload(payload: object) -> tuple[int, ...]:
-    if (
-        isinstance(payload, (list, tuple))
-        and len(payload) in (2, 3)
-        and all(isinstance(value, int) for value in payload)
-    ):
-        return tuple(payload)
-    raise ValueError("checkpoint requires image_shape")

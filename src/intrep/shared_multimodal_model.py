@@ -13,7 +13,7 @@ class SharedMultimodalModel(nn.Module):
     """Shared model shell for text-token and image-patch inputs.
 
     This is not a universal multimodal model yet. It currently exposes text
-    language-model logits and image-text candidate scores over one shared
+    language-model logits and image-text choice scores over one shared
     Transformer core.
     """
 
@@ -70,7 +70,7 @@ class SharedMultimodalModel(nn.Module):
         combined = concatenate_input_embedding_sequences(image_embeddings, text_embeddings)
         return self.token_output(self.core(combined, causal=True))
 
-    def image_text_fusion_candidate_logits(
+    def image_text_choice_logits(
         self,
         images: torch.Tensor,
         prompt_token_ids: torch.Tensor,

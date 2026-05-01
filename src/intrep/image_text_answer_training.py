@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import torch
 
 from intrep.image_classification import ImageChoiceExample, image_label_tensors_from_examples
-from intrep.image_text_candidate_training import _channel_count_from_images
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
@@ -199,6 +198,14 @@ def _image_batch(image: torch.Tensor) -> torch.Tensor:
     if image.ndim == 3 and image.size(0) == 1:
         return image
     raise ValueError("image must have shape [height, width], [height, width, channels], or [1, height, width]")
+
+
+def _channel_count_from_images(images: torch.Tensor) -> int:
+    if images.ndim == 3:
+        return 1
+    if images.ndim == 4:
+        return int(images.shape[3])
+    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
 
 
 def _validate_config(config: ImageTextAnswerTrainingConfig) -> None:

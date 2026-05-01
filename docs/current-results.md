@@ -303,7 +303,7 @@ train_accuracy: 0.3176
 eval_accuracy: 0.3370
 ```
 
-The current image/text candidate path fuses image patches, prompt text, and
+The current image/text choice path fuses image patches, prompt text, and
 candidate text in one shared-core pass:
 
 ```text
@@ -379,7 +379,7 @@ simple byte-pair tokenizer remains only as a small internal baseline.
 The next useful pressure is:
 
 ```text
-image/text candidate selection
+image/text choice selection
 text raw-example training path
 shared core tests across image and text input layers
 clear separation between tokenizer, input layer, core, and head

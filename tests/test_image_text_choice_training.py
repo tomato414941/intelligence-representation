@@ -5,24 +5,26 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.image_classification import FASHION_MNIST_LABELS, ImageChoiceExample
-from intrep.image_text_candidate_training import (
-    ImageTextCandidateTrainingConfig,
-    evaluate_image_text_candidate_model,
-    load_image_text_candidate_checkpoint,
-    save_image_text_candidate_checkpoint,
-    train_image_text_candidate_model,
+from intrep.image_text_choice_checkpoint import (
+    load_image_text_choice_checkpoint,
+    save_image_text_choice_checkpoint,
+)
+from intrep.image_text_choice_training import (
+    ImageTextChoiceTrainingConfig,
+    evaluate_image_text_choice_model,
+    train_image_text_choice_model,
 )
 from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
-class ImageTextCandidateTrainingTest(unittest.TestCase):
-    def test_trains_image_text_candidate_selector(self) -> None:
+class ImageTextChoiceTrainingTest(unittest.TestCase):
+    def test_trains_image_text_choice_selector(self) -> None:
         with TemporaryDirectory() as directory:
-            result = train_image_text_candidate_model(
+            result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
                 text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
-                config=ImageTextCandidateTrainingConfig(
+                config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
                     image_patch_size=1,
                     max_steps=2,
@@ -35,7 +37,7 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
                 ),
             )
 
-            eval_metrics = evaluate_image_text_candidate_model(
+            eval_metrics = evaluate_image_text_choice_model(
                 model=result.model,
                 tokenizer=result.tokenizer,
                 examples=_write_examples(Path(directory)),
@@ -59,11 +61,11 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
     def test_saves_loads_and_evaluates_checkpoint(self) -> None:
         with TemporaryDirectory() as directory:
             examples = _write_examples(Path(directory))
-            result = train_image_text_candidate_model(
+            result = train_image_text_choice_model(
                 train_examples=examples,
                 text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
-                config=ImageTextCandidateTrainingConfig(
+                config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
                     image_patch_size=1,
                     max_steps=2,
@@ -75,10 +77,10 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
                     tokenizer_vocab_size=270,
                 ),
             )
-            checkpoint_path = Path(directory) / "candidate.pt"
-            save_image_text_candidate_checkpoint(checkpoint_path, result)
-            checkpoint = load_image_text_candidate_checkpoint(checkpoint_path, device="cpu")
-            metrics = evaluate_image_text_candidate_model(
+            checkpoint_path = Path(directory) / "choice.pt"
+            save_image_text_choice_checkpoint(checkpoint_path, result)
+            checkpoint = load_image_text_choice_checkpoint(checkpoint_path, device="cpu")
+            metrics = evaluate_image_text_choice_model(
                 model=checkpoint.model,
                 tokenizer=checkpoint.tokenizer,
                 examples=examples,
@@ -89,14 +91,14 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
         self.assertEqual(metrics.case_count, 2)
         self.assertGreater(metrics.loss, 0.0)
 
-    def test_can_mix_text_lm_and_image_text_candidate_training(self) -> None:
+    def test_can_mix_text_lm_and_image_text_choice_training(self) -> None:
         with TemporaryDirectory() as directory:
-            result = train_image_text_candidate_model(
+            result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
                 text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 language_modeling_corpus="alpha beta gamma alpha beta gamma " * 20,
                 prompt="What is this item?",
-                config=ImageTextCandidateTrainingConfig(
+                config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
                     image_patch_size=1,
                     max_steps=4,
@@ -119,12 +121,12 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
 
     def test_can_train_with_prompt_variations(self) -> None:
         with TemporaryDirectory() as directory:
-            result = train_image_text_candidate_model(
+            result = train_image_text_choice_model(
                 train_examples=_write_examples(Path(directory)),
                 text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 prompt="What is this item?",
                 additional_prompts=("Choose the best label.",),
-                config=ImageTextCandidateTrainingConfig(
+                config=ImageTextChoiceTrainingConfig(
                     text_context_length=32,
                     image_patch_size=1,
                     max_steps=4,
@@ -141,8 +143,8 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
         self.assertGreaterEqual(result.metrics.train_accuracy, 0.0)
 
 
-class SharedMultimodalCandidatePathTest(unittest.TestCase):
-    def test_outputs_fusion_candidate_logits(self) -> None:
+class SharedMultimodalChoicePathTest(unittest.TestCase):
+    def test_outputs_choice_logits(self) -> None:
         model = SharedMultimodalModel(
             vocab_size=32,
             text_context_length=4,
@@ -154,7 +156,7 @@ class SharedMultimodalCandidatePathTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model.image_text_fusion_candidate_logits(
+        logits = model.image_text_choice_logits(
             torch.zeros((2, 4, 4), dtype=torch.float32),
             torch.ones((1,), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.long),
