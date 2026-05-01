@@ -116,13 +116,13 @@ def _write_image_label_events(path: Path, image_dir: Path, prefix: str) -> None:
     rows = [
         {
             "image_path": str(image_a),
-            "choices": list(FASHION_MNIST_LABELS),
-            "answer_index": 9,
+            "label_names": list(FASHION_MNIST_LABELS),
+            "label_index": 9,
         },
         {
             "image_path": str(image_b),
-            "choices": list(FASHION_MNIST_LABELS),
-            "answer_index": 0,
+            "label_names": list(FASHION_MNIST_LABELS),
+            "label_index": 0,
         },
     ]
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")

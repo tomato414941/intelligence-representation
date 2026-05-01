@@ -356,6 +356,71 @@ def image_classification_examples_from_choices(
     ]
 
 
+def load_image_classification_examples_jsonl(path: str | Path) -> list[ImageClassificationExample]:
+    examples: list[ImageClassificationExample] = []
+    for line_number, line in enumerate(
+        Path(path).read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Invalid image-classification JSONL at line {line_number}: {error.msg}") from error
+        examples.append(image_classification_example_from_record(record, line_number=line_number))
+    if not examples:
+        raise ValueError("image-classification JSONL must contain at least one example")
+    return examples
+
+
+def image_classification_example_from_record(
+    record: object,
+    *,
+    line_number: int,
+) -> ImageClassificationExample:
+    if not isinstance(record, dict):
+        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: expected object")
+    required = {"image_path", "label_names", "label_index"}
+    missing = required - record.keys()
+    if missing:
+        fields = ", ".join(sorted(missing))
+        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: missing fields: {fields}")
+    extra = set(record.keys()) - required
+    if extra:
+        fields = ", ".join(sorted(extra))
+        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: unsupported fields: {fields}")
+    image_path = record["image_path"]
+    label_names = record["label_names"]
+    label_index = record["label_index"]
+    if not isinstance(image_path, str) or not image_path:
+        raise ValueError(
+            f"Invalid image-classification JSONL at line {line_number}: image_path must be a string"
+        )
+    if not isinstance(label_names, list) or not all(isinstance(label_name, str) for label_name in label_names):
+        raise ValueError(
+            f"Invalid image-classification JSONL at line {line_number}: label_names must be a list of strings"
+        )
+    if not isinstance(label_index, int):
+        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: label_index must be an integer")
+    try:
+        return ImageClassificationExample(
+            image_path=Path(image_path),
+            label_names=tuple(label_names),
+            label_index=label_index,
+        )
+    except ValueError as error:
+        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: {error}") from error
+
+
+def image_classification_example_to_record(example: ImageClassificationExample) -> dict[str, object]:
+    return {
+        "image_path": str(example.image_path),
+        "label_names": list(example.label_names),
+        "label_index": example.label_index,
+    }
+
+
 def _class_count_from_examples(examples: list[ImageClassificationExample]) -> int:
     if not examples:
         raise ValueError("examples must not be empty")

@@ -16,7 +16,9 @@ from intrep.image_classification import (
     MNIST_LABELS,
     PatchTransformerClassifier,
     image_classification_examples_from_choices,
+    image_classification_example_to_record,
     image_classification_tensors_from_examples,
+    load_image_classification_examples_jsonl,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
     train_image_classifier,
@@ -41,6 +43,33 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(labels.tolist(), [9, 0])
         self.assertEqual(float(images[0, 0, 0]), 0.0)
         self.assertEqual(float(images[0, 0, 1]), 1.0)
+
+    def test_loads_image_classification_examples_jsonl(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_dir = Path(directory) / "images"
+            image_dir.mkdir()
+            image_a = image_dir / "a.pgm"
+            image_b = image_dir / "b.pgm"
+            image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
+            image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
+            examples = [
+                ImageClassificationExample(image_path=image_a, label_names=FASHION_MNIST_LABELS, label_index=9),
+                ImageClassificationExample(image_path=image_b, label_names=FASHION_MNIST_LABELS, label_index=0),
+            ]
+            path = Path(directory) / "classification.jsonl"
+            path.write_text(
+                "\n".join(json.dumps(image_classification_example_to_record(example)) for example in examples) + "\n",
+                encoding="utf-8",
+            )
+
+            loaded = load_image_classification_examples_jsonl(path)
+            images, labels = image_classification_tensors_from_examples(loaded)
+
+        self.assertEqual(len(loaded), 2)
+        self.assertIsInstance(loaded[0], ImageClassificationExample)
+        self.assertEqual(loaded[0].label_text, "Ankle boot")
+        self.assertEqual(images.shape, torch.Size([2, 2, 2]))
+        self.assertEqual(labels.tolist(), [9, 0])
 
     def test_image_label_tensors_from_examples_uses_shared_example_core(self) -> None:
         with TemporaryDirectory() as directory:
