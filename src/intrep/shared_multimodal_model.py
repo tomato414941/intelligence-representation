@@ -4,9 +4,21 @@ import torch
 from torch import nn
 
 from intrep.causal_text_model import TokenOutputHead
-from intrep.image_classification import ImagePatchInputLayer
+from intrep.image_input_layer import ImagePatchInputLayer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.transformer_core import SharedTransformerCore
+
+
+class ClassificationHead(nn.Module):
+    def __init__(self, *, embedding_dim: int, num_classes: int) -> None:
+        super().__init__()
+        self.output = nn.Linear(embedding_dim, num_classes)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3:
+            raise ValueError("hidden states must have shape [batch, sequence, hidden]")
+        pooled = hidden.mean(dim=1)
+        return self.output(pooled)
 
 
 class SharedMultimodalModel(nn.Module):
@@ -29,6 +41,7 @@ class SharedMultimodalModel(nn.Module):
         num_layers: int,
         channel_count: int = 1,
         dropout: float = 0.0,
+        num_classes: int | None = None,
     ) -> None:
         super().__init__()
         self.text_context_length = text_context_length
@@ -49,6 +62,11 @@ class SharedMultimodalModel(nn.Module):
         )
         self.token_output = TokenOutputHead(embedding_dim=embedding_dim, vocab_size=vocab_size)
         self.choice_score_head = nn.Linear(embedding_dim, 1)
+        self.classification_head = (
+            ClassificationHead(embedding_dim=embedding_dim, num_classes=num_classes)
+            if num_classes is not None
+            else None
+        )
 
     def text_logits(self, token_ids: torch.Tensor) -> torch.Tensor:
         if token_ids.ndim != 2:
@@ -68,6 +86,22 @@ class SharedMultimodalModel(nn.Module):
         text_embeddings = self._text_embeddings(text_token_ids)
         combined = concatenate_input_embedding_sequences(image_embeddings, text_embeddings)
         return self.token_output(self.core(combined, causal=True))
+
+    def image_classification_logits(self, images: torch.Tensor) -> torch.Tensor:
+        if self.classification_head is None:
+            raise ValueError("model was created without a classification head")
+        return self.classify_embeddings(self.encode_images(images))
+
+    def embed_images(self, images: torch.Tensor) -> torch.Tensor:
+        return self.image_input_layer(images)
+
+    def encode_images(self, images: torch.Tensor) -> torch.Tensor:
+        return self.core(self.embed_images(images), causal=False)
+
+    def classify_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
+        if self.classification_head is None:
+            raise ValueError("model was created without a classification head")
+        return self.classification_head(embeddings)
 
     def image_text_choice_logits(
         self,

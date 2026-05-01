@@ -164,9 +164,10 @@ Shared multimodal training commands also accept `--init-checkpoint-path` for
 compatible shared multimodal checkpoints. This initializes a new run from model
 weights and tokenizer state, independent of the source task name.
 
-Image classification checkpoints restore `PatchTransformerClassifier` runs.
-They are not accepted as shared multimodal initializers because they do not
-contain text embeddings, tokenizer state, or token output weights.
+Image classification uses the same shared multimodal model shell, with the
+image route, shared Transformer core, and classification head active.
+Its checkpoint restores that route as-is; full multimodal initialization still
+requires compatible text-side state such as tokenizer and token output weights.
 
 IDX datasets such as MNIST and Fashion-MNIST, and CIFAR-10 python batches, can
 produce these image JSONL forms:

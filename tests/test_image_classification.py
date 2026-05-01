@@ -14,7 +14,6 @@ from intrep.image_classification import (
     ImageClassificationConfig,
     ImagePatchInputLayer,
     MNIST_LABELS,
-    PatchTransformerClassifier,
     image_classification_examples_from_text_choices,
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
@@ -24,6 +23,7 @@ from intrep.image_classification import (
     train_image_classifier,
     train_image_classifier_with_result,
 )
+from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.transformer_core import SharedTransformerCore
 
 
@@ -126,8 +126,10 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(labels.tolist(), [1, 2])
         self.assertEqual(examples[0].label_text, "Trouser")
 
-    def test_patch_transformer_classifier_outputs_class_logits(self) -> None:
-        model = PatchTransformerClassifier(
+    def test_shared_multimodal_model_outputs_class_logits(self) -> None:
+        model = SharedMultimodalModel(
+            vocab_size=8,
+            text_context_length=4,
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=8,
@@ -137,12 +139,15 @@ class ImageClassificationTest(unittest.TestCase):
             num_classes=10,
         )
 
-        logits = model(torch.zeros((3, 4, 4), dtype=torch.float32))
+        logits = model.image_classification_logits(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
+        self.assertEqual(model.text_logits(torch.zeros((3, 4), dtype=torch.long)).shape, torch.Size([3, 4, 8]))
 
-    def test_patch_transformer_classifier_accepts_rgb_images(self) -> None:
-        model = PatchTransformerClassifier(
+    def test_shared_multimodal_model_accepts_rgb_images_for_classification(self) -> None:
+        model = SharedMultimodalModel(
+            vocab_size=1,
+            text_context_length=1,
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=8,
@@ -153,7 +158,7 @@ class ImageClassificationTest(unittest.TestCase):
             channel_count=3,
         )
 
-        logits = model(torch.zeros((3, 4, 4, 3), dtype=torch.float32))
+        logits = model.image_classification_logits(torch.zeros((3, 4, 4, 3), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
@@ -172,7 +177,7 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertAlmostEqual(float(images[0, 0, 0, 0]), 1.0)
         self.assertAlmostEqual(float(images[0, 0, 1, 1]), 1.0)
 
-    def test_training_uses_example_choice_count_for_output_classes(self) -> None:
+    def test_training_uses_example_label_count_for_output_classes(self) -> None:
         with TemporaryDirectory() as directory:
             image_a = Path(directory) / "a.pgm"
             image_b = Path(directory) / "b.pgm"
@@ -223,8 +228,10 @@ class ImageClassificationTest(unittest.TestCase):
                     ),
                 )
 
-    def test_patch_transformer_classifier_composes_input_layer_core_and_head(self) -> None:
-        model = PatchTransformerClassifier(
+    def test_shared_multimodal_model_composes_image_route_core_and_classification_head(self) -> None:
+        model = SharedMultimodalModel(
+            vocab_size=1,
+            text_context_length=1,
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=8,
@@ -237,13 +244,15 @@ class ImageClassificationTest(unittest.TestCase):
         images = torch.zeros((3, 4, 4), dtype=torch.float32)
 
         with torch.no_grad():
-            logits = model(images)
+            logits = model.image_classification_logits(images)
             manual_logits = model.classify_embeddings(model.encode_images(images))
 
         self.assertTrue(torch.allclose(logits, manual_logits))
 
-    def test_patch_transformer_classifier_exposes_input_embedding_sequence_path(self) -> None:
-        model = PatchTransformerClassifier(
+    def test_shared_multimodal_model_exposes_image_embedding_sequence_path(self) -> None:
+        model = SharedMultimodalModel(
+            vocab_size=1,
+            text_context_length=1,
             image_size=(4, 4),
             patch_size=2,
             embedding_dim=8,
@@ -335,7 +344,7 @@ class ImageClassificationTest(unittest.TestCase):
             )
 
         self.assertEqual(result.metrics.train_case_count, 2)
-        self.assertIsInstance(result.model, PatchTransformerClassifier)
+        self.assertIsInstance(result.model, SharedMultimodalModel)
         self.assertIsInstance(result.model.image_input_layer, ImagePatchInputLayer)
 
 

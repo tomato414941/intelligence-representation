@@ -8,15 +8,15 @@ import torch
 from intrep.image_classification import (
     ImageClassificationConfig,
     ImageClassificationTrainingResult,
-    PatchTransformerClassifier,
 )
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
+from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
 @dataclass(frozen=True)
 class ImageClassificationCheckpoint:
-    model: PatchTransformerClassifier
+    model: SharedMultimodalModel
     config: ImageClassificationConfig
     image_shape: tuple[int, ...]
     label_names: tuple[str, ...]
@@ -55,7 +55,9 @@ def load_image_classification_checkpoint(
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
     label_names = _label_names_from_payload(payload.get("label_names"))
     preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
-    model = PatchTransformerClassifier(
+    model = SharedMultimodalModel(
+        vocab_size=1,
+        text_context_length=1,
         image_size=(image_shape[0], image_shape[1]),
         patch_size=config.patch_size,
         embedding_dim=int(preset["embedding_dim"]),
@@ -63,8 +65,8 @@ def load_image_classification_checkpoint(
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        num_classes=len(label_names),
         channel_count=1 if len(image_shape) == 2 else image_shape[2],
+        num_classes=len(label_names),
     ).to(resolved_device)
     model.load_state_dict(payload["model"])
     metrics = payload.get("metrics")
