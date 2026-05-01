@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 from intrep.image_input_layer import ImagePatchInputLayer
 from intrep.language_modeling_training import resolve_training_device
@@ -133,6 +134,27 @@ class ImageClassificationTrainingResult:
     label_names: tuple[str, ...]
 
 
+class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(self, examples: list[ImageClassificationExample]) -> None:
+        if not examples:
+            raise ValueError("examples must not be empty")
+        _class_count_from_examples(examples)
+        self.examples = tuple(examples)
+        self.image_shape = tuple(int(value) for value in _image_tensor_from_path(examples[0].image_path).shape)
+        self.channel_count = _channel_count_from_image_shape(self.image_shape)
+
+    def __len__(self) -> int:
+        return len(self.examples)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        example = self.examples[index]
+        image = _image_tensor_from_path(example.image_path)
+        if tuple(image.shape) != self.image_shape:
+            raise ValueError("all images must have the same shape")
+        label = torch.tensor(example.label_index, dtype=torch.long)
+        return image, label
+
+
 def train_image_classifier(
     *,
     train_examples: list[ImageClassificationExample],
@@ -156,34 +178,50 @@ def train_image_classifier_with_result(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)  # type: ignore[arg-type]
-    train_images, train_labels = image_classification_tensors_from_examples(train_examples)
-    eval_images: torch.Tensor | None = None
-    eval_labels: torch.Tensor | None = None
+    train_dataset = ImageClassificationDataset(train_examples)
+    train_loader = _image_classification_data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=True,
+        device=device,
+    )
+    train_eval_loader = _image_classification_data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=False,
+        device=device,
+    )
+    eval_dataset: ImageClassificationDataset | None = None
+    eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
     if eval_examples is not None:
-        eval_images, eval_labels = image_classification_tensors_from_examples(eval_examples)
-        if tuple(eval_images.shape[1:]) != tuple(train_images.shape[1:]):
+        eval_dataset = ImageClassificationDataset(eval_examples)
+        if eval_dataset.image_shape != train_dataset.image_shape:
             raise ValueError("eval images must have the same shape as train images")
         _validate_label_set(train_examples, eval_examples)
+        eval_loader = _image_classification_data_loader(
+            eval_dataset,
+            batch_size=training_config.batch_size,
+            seed=training_config.seed,
+            shuffle=False,
+            device=device,
+        )
 
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = SharedMultimodalModel(
         vocab_size=1,
         text_context_length=1,
-        image_size=(int(train_images.shape[1]), int(train_images.shape[2])),
+        image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
         patch_size=training_config.patch_size,
         embedding_dim=int(preset["embedding_dim"]),
         num_heads=int(preset["num_heads"]),
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        channel_count=_channel_count_from_images(train_images),
+        channel_count=train_dataset.channel_count,
         num_classes=_class_count_from_examples(train_examples),
     ).to(device)
-    train_images = train_images.to(device)
-    train_labels = train_labels.to(device)
-    if eval_images is not None and eval_labels is not None:
-        eval_images = eval_images.to(device)
-        eval_labels = eval_labels.to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = build_adamw(
@@ -197,12 +235,17 @@ def train_image_classifier_with_result(
         warmup_steps=training_config.warmup_steps,
         max_steps=training_config.max_steps,
     )
-    initial_loss = _loss(model, loss_fn, train_images, train_labels)
+    initial_loss = _loss(model, loss_fn, train_eval_loader, device)
+    train_iterator = iter(train_loader)
+    model.train()
     for step in range(training_config.max_steps):
-        start = (step * training_config.batch_size) % len(train_images)
-        indices = (torch.arange(training_config.batch_size, device=device) + start) % len(train_images)
-        batch_images = train_images.index_select(0, indices)
-        batch_labels = train_labels.index_select(0, indices)
+        try:
+            batch_images, batch_labels = next(train_iterator)
+        except StopIteration:
+            train_iterator = iter(train_loader)
+            batch_images, batch_labels = next(train_iterator)
+        batch_images = batch_images.to(device)
+        batch_labels = batch_labels.to(device)
         optimizer.zero_grad(set_to_none=True)
         loss = loss_fn(model.image_classification_logits(batch_images), batch_labels)
         loss.backward()
@@ -210,17 +253,17 @@ def train_image_classifier_with_result(
         optimizer.step()
         scheduler.step()
 
-    final_loss = _loss(model, loss_fn, train_images, train_labels)
-    train_accuracy = _accuracy(model, train_images, train_labels)
+    final_loss = _loss(model, loss_fn, train_eval_loader, device)
+    train_accuracy = _accuracy(model, train_eval_loader, device)
     eval_accuracy = None
     eval_count = 0
-    if eval_images is not None and eval_labels is not None:
-        eval_accuracy = _accuracy(model, eval_images, eval_labels)
-        eval_count = int(eval_labels.numel())
+    if eval_dataset is not None and eval_loader is not None:
+        eval_accuracy = _accuracy(model, eval_loader, device)
+        eval_count = len(eval_dataset)
     metrics = ImageClassificationMetrics(
         target="label",
         input_representation="image-patches",
-        train_case_count=int(train_labels.numel()),
+        train_case_count=len(train_dataset),
         eval_case_count=eval_count,
         train_initial_loss=initial_loss,
         train_final_loss=final_loss,
@@ -234,7 +277,7 @@ def train_image_classifier_with_result(
         metrics=metrics,
         model=model,
         config=training_config,
-        image_shape=tuple(int(value) for value in train_images.shape[1:]),
+        image_shape=train_dataset.image_shape,
         label_names=train_examples[0].label_names,
     )
 
@@ -447,12 +490,36 @@ def _read_image_path(path: Path) -> np.ndarray:
     raise ValueError("image payload must be grayscale or RGB")
 
 
-def _channel_count_from_images(images: torch.Tensor) -> int:
-    if images.ndim == 3:
+def _image_tensor_from_path(path: Path) -> torch.Tensor:
+    image = _read_image_path(path).astype(np.float32) / 255.0
+    return torch.tensor(image, dtype=torch.float32)
+
+
+def _channel_count_from_image_shape(image_shape: tuple[int, ...]) -> int:
+    if len(image_shape) == 2:
         return 1
-    if images.ndim == 4:
-        return int(images.shape[3])
-    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
+    if len(image_shape) == 3:
+        return image_shape[2]
+    raise ValueError("image shape must be [height, width] or [height, width, channels]")
+
+
+def _image_classification_data_loader(
+    dataset: ImageClassificationDataset,
+    *,
+    batch_size: int,
+    seed: int,
+    shuffle: bool,
+    device: torch.device,
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        generator=generator,
+        pin_memory=device.type == "cuda",
+    )
 
 
 def _validate_config(config: ImageClassificationConfig) -> None:
@@ -479,16 +546,41 @@ def _validate_config(config: ImageClassificationConfig) -> None:
 def _loss(
     model: SharedMultimodalModel,
     loss_fn: nn.CrossEntropyLoss,
-    images: torch.Tensor,
-    labels: torch.Tensor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
 ) -> float:
+    was_training = model.training
     model.eval()
+    total_loss = 0.0
+    sample_count = 0
     with torch.no_grad():
-        return float(loss_fn(model.image_classification_logits(images), labels).item())
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            loss = loss_fn(model.image_classification_logits(images), labels)
+            total_loss += float(loss.item()) * int(labels.numel())
+            sample_count += int(labels.numel())
+    if was_training:
+        model.train()
+    return total_loss / sample_count
 
 
-def _accuracy(model: SharedMultimodalModel, images: torch.Tensor, labels: torch.Tensor) -> float:
+def _accuracy(
+    model: SharedMultimodalModel,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
+) -> float:
+    was_training = model.training
     model.eval()
+    correct_count = 0
+    total_count = 0
     with torch.no_grad():
-        predictions = model.image_classification_logits(images).argmax(dim=1)
-    return float((predictions == labels).float().mean().item())
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            predictions = model.image_classification_logits(images).argmax(dim=1)
+            correct_count += int((predictions == labels).sum().item())
+            total_count += int(labels.numel())
+    if was_training:
+        model.train()
+    return correct_count / total_count

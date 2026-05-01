@@ -12,6 +12,7 @@ from intrep.image_classification import (
     ImageTextChoiceExample,
     ImageClassificationExample,
     ImageClassificationConfig,
+    ImageClassificationDataset,
     ImagePatchInputLayer,
     MNIST_LABELS,
     image_classification_examples_from_text_choices,
@@ -125,6 +126,27 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(images.shape, torch.Size([2, 1, 2]))
         self.assertEqual(labels.tolist(), [1, 2])
         self.assertEqual(examples[0].label_text, "Trouser")
+
+    def test_image_classification_dataset_reads_examples_lazily(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_a = Path(directory) / "a.pgm"
+            image_b = Path(directory) / "b.pgm"
+            image_a.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
+            image_b.write_bytes(b"P5\n2 1\n255\n" + bytes([128, 64]))
+            examples = [
+                ImageClassificationExample(image_path=image_a, label_names=FASHION_MNIST_LABELS, label_index=1),
+                ImageClassificationExample(image_path=image_b, label_names=FASHION_MNIST_LABELS, label_index=2),
+            ]
+
+            dataset = ImageClassificationDataset(examples)
+            image, label = dataset[1]
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.image_shape, (1, 2))
+        self.assertEqual(dataset.channel_count, 1)
+        self.assertEqual(image.shape, torch.Size([1, 2]))
+        self.assertEqual(int(label.item()), 2)
+        self.assertAlmostEqual(float(image[0, 0]), 128 / 255)
 
     def test_shared_multimodal_model_outputs_class_logits(self) -> None:
         model = SharedMultimodalModel(
