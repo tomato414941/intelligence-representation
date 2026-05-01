@@ -1,8 +1,7 @@
 # Datasets
 
-This document records the intended role of datasets in this project. It is not
-a downloader guide. Generated corpora, extracted samples, run metrics, and
-checkpoints remain local artifacts unless explicitly versioned.
+This document records datasets that are already supported or under discussion
+for this project. It is not a downloader guide.
 
 ## Supported And Candidate Datasets
 
@@ -19,11 +18,10 @@ checkpoints remain local artifacts unless explicitly versioned.
 | Fashion-MNIST | image | 70k images | supported | A grayscale fashion-product image dataset with 10 classes. |
 | CIFAR-10 | image | 60k images | supported | A color natural-image dataset with 10 classes. |
 
-## Current Policy
+## Notes
 
-| Policy area | Decision |
+| Area | Note |
 | --- | --- |
-| Local artifacts | Downloaded datasets and generated samples stay under local artifact paths such as `data/` or `runs/`. |
-| Large text data | Prefer streaming or fixed-size slices before introducing full-dataset workflows. |
-| Evidence level | Loss reduction on toy data is a smoke signal. Stronger claims require task-specific validation on non-toy data. |
-| Scope control | Add dataset-specific code only when an actual training or evaluation path needs it. |
+| Local artifacts | Downloaded datasets, generated samples, run metrics, and checkpoints are usually local artifacts under paths such as `data/` or `runs/`. |
+| Large text data | Large datasets can be used through streaming or fixed-size slices before deciding whether full local copies are needed. |
+| Evidence level | Tiny or toy datasets are useful for quick checks, but larger or task-specific datasets are needed for stronger evaluation claims. |
