@@ -21,7 +21,6 @@ from intrep.image_classification import (
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
     load_image_classification_examples_jsonl,
-    load_image_folder_classification_examples,
     load_image_text_choice_examples_jsonl,
     image_text_choice_tensors_from_examples,
     train_image_classifier,
@@ -150,27 +149,6 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(image.shape, torch.Size([1, 2]))
         self.assertEqual(int(label.item()), 2)
         self.assertAlmostEqual(float(image[0, 0]), 128 / 255)
-
-    def test_loads_image_folder_classification_examples(self) -> None:
-        with TemporaryDirectory() as directory:
-            root = Path(directory)
-            zebra_dir = root / "zebra"
-            apple_dir = root / "apple"
-            zebra_dir.mkdir()
-            apple_dir.mkdir()
-            (zebra_dir / "z.pgm").write_bytes(b"P5\n1 1\n255\n" + bytes([255]))
-            (apple_dir / "a.pgm").write_bytes(b"P5\n1 1\n255\n" + bytes([0]))
-
-            examples = load_image_folder_classification_examples(root)
-
-        self.assertEqual([example.image_path.name for example in examples], ["a.pgm", "z.pgm"])
-        self.assertEqual(examples[0].label_names, ("apple", "zebra"))
-        self.assertEqual([example.label_index for example in examples], [0, 1])
-
-    def test_image_folder_classification_examples_reject_empty_root(self) -> None:
-        with TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, "class directories"):
-                load_image_folder_classification_examples(directory)
 
     def test_image_folder_classification_dataset_reads_png_images(self) -> None:
         with TemporaryDirectory() as directory:
