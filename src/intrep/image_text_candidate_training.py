@@ -102,7 +102,7 @@ def train_image_text_candidate_model(
         batch_labels = train_labels.index_select(0, indices)
         optimizer.zero_grad(set_to_none=True)
         loss = loss_fn(
-            model.image_text_candidate_logits(batch_images, candidate_token_ids, candidate_token_mask),
+            model.image_text_fusion_candidate_logits(batch_images, candidate_token_ids, candidate_token_mask),
             batch_labels,
         )
         loss.backward()
@@ -151,7 +151,7 @@ def _loss(
     was_training = model.training
     model.eval()
     with torch.no_grad():
-        loss = loss_fn(model.image_text_candidate_logits(images, candidate_token_ids, candidate_token_mask), labels)
+        loss = loss_fn(model.image_text_fusion_candidate_logits(images, candidate_token_ids, candidate_token_mask), labels)
     if was_training:
         model.train()
     return float(loss.item())
@@ -167,7 +167,11 @@ def _accuracy(
     was_training = model.training
     model.eval()
     with torch.no_grad():
-        predictions = model.image_text_candidate_logits(images, candidate_token_ids, candidate_token_mask).argmax(dim=1)
+        predictions = model.image_text_fusion_candidate_logits(
+            images,
+            candidate_token_ids,
+            candidate_token_mask,
+        ).argmax(dim=1)
     if was_training:
         model.train()
     return float((predictions == labels).float().mean().item())
