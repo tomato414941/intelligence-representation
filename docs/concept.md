@@ -16,7 +16,7 @@
 - [Evaluation](evaluation.md)
 
 旧 Semantic State Memory 寄りの背景メモは、現在のコンセプトから切り離して
-[Semantic State Memory Background](legacy/semantic-state-memory-background.md) に移した。
+[Semantic State Memory Background](../legacy/docs/semantic-state-memory-background.md) に移した。
 
 ## 中心仮説
 
