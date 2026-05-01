@@ -63,12 +63,23 @@ class GridObservation:
 
 
 @dataclass(frozen=True)
-class GridTransitionExample:
+class GridStepResult:
+    observation: GridObservation
+    reward: float
+    terminated: bool
+    truncated: bool = False
+    info: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class GridExperienceTransition:
     id: str
-    state_before: GridWorldState
+    observation: GridObservation
     action: GridAction
+    reward: float
     next_observation: GridObservation
-    state_after: GridWorldState
+    terminated: bool
+    truncated: bool = False
     source: str = "grid_world"
 
 
@@ -92,11 +103,12 @@ class GridWorld:
     def observe(self) -> GridObservation:
         return observation_from_state(self._state)
 
-    def step(self, action: GridAction | str) -> GridObservation:
+    def step(self, action: GridAction | str) -> GridStepResult:
         action = coerce_action(action)
         next_state, blocked = transition_state(self._state, action)
         self._state = next_state
-        return observation_from_state(next_state, last_action=action.direction, blocked=blocked)
+        observation = observation_from_state(next_state, last_action=action.direction, blocked=blocked)
+        return step_result_from_observation(observation)
 
 
 def default_grid_world_state() -> GridWorldState:
@@ -161,10 +173,19 @@ def observation_from_state(
     )
 
 
-def generate_grid_world_corpus(
+def step_result_from_observation(observation: GridObservation) -> GridStepResult:
+    reward = 1.0 if observation.reached_goal else -0.1 if observation.blocked else -0.01
+    return GridStepResult(
+        observation=observation,
+        reward=reward,
+        terminated=observation.reached_goal,
+    )
+
+
+def generate_grid_world_experience(
     actions: Sequence[GridAction | str] | None = None,
     initial_state: GridWorldState | None = None,
-) -> list[GridTransitionExample]:
+) -> list[GridExperienceTransition]:
     action_sequence = actions if actions is not None else (
         "right",
         "down",
@@ -180,20 +201,23 @@ def generate_grid_world_corpus(
 
     for index, action_input in enumerate(action_sequence, start=1):
         action = coerce_action(action_input)
-        state_before = state
-        state_after, blocked = transition_state(state_before, action)
+        observation = observation_from_state(state)
+        state_after, blocked = transition_state(state, action)
         next_observation = observation_from_state(
             state_after,
             last_action=action.direction,
             blocked=blocked,
         )
+        step_result = step_result_from_observation(next_observation)
         examples.append(
-            GridTransitionExample(
+            GridExperienceTransition(
                 id=f"grid_case_{index}",
-                state_before=state_before,
+                observation=observation,
                 action=action,
+                reward=step_result.reward,
                 next_observation=next_observation,
-                state_after=state_after,
+                terminated=step_result.terminated,
+                truncated=step_result.truncated,
             )
         )
         state = state_after

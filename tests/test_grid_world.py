@@ -2,10 +2,11 @@ import unittest
 
 from intrep.grid_world import (
     GridAction,
+    GridExperienceTransition,
     GridWorld,
     GridWorldState,
     Position,
-    generate_grid_world_corpus,
+    generate_grid_world_experience,
     observation_from_state,
     transition_state,
 )
@@ -22,13 +23,16 @@ class GridWorldTest(unittest.TestCase):
             )
         )
 
-        observation = world.step("right")
+        result = world.step("right")
 
         self.assertEqual(world.hidden_state.agent, Position(row=0, col=1))
-        self.assertEqual(observation.agent, Position(row=0, col=1))
-        self.assertTrue(observation.reached_goal)
-        self.assertEqual(observation.grid, (".*.", "..."))
-        self.assertIn("after right", observation.text)
+        self.assertEqual(result.observation.agent, Position(row=0, col=1))
+        self.assertTrue(result.observation.reached_goal)
+        self.assertEqual(result.observation.grid, (".*.", "..."))
+        self.assertIn("after right", result.observation.text)
+        self.assertEqual(result.reward, 1.0)
+        self.assertTrue(result.terminated)
+        self.assertFalse(result.truncated)
 
     def test_wall_collision_keeps_hidden_state_and_marks_observation_blocked(self) -> None:
         state = GridWorldState(
@@ -65,7 +69,7 @@ class GridWorldTest(unittest.TestCase):
         self.assertNotIn("(2, 3)", observation.text)
         self.assertEqual(observation.grid, ("A...", ".#..", "...."))
 
-    def test_generate_grid_world_corpus_records_action_conditioned_next_observations(
+    def test_generate_grid_world_experience_records_action_conditioned_next_observations(
         self,
     ) -> None:
         state = GridWorldState(
@@ -76,20 +80,21 @@ class GridWorldTest(unittest.TestCase):
             walls=frozenset({Position(row=1, col=1)}),
         )
 
-        examples = generate_grid_world_corpus(
+        examples = generate_grid_world_experience(
             actions=("right", "down", "right"),
             initial_state=state,
         )
 
+        self.assertIsInstance(examples[0], GridExperienceTransition)
         self.assertEqual(
             [example.action.direction for example in examples],
             ["right", "down", "right"],
         )
-        self.assertEqual(examples[0].state_before.agent, Position(row=0, col=0))
-        self.assertEqual(examples[0].state_after.agent, Position(row=0, col=1))
+        self.assertEqual(examples[0].observation.agent, Position(row=0, col=0))
         self.assertEqual(examples[0].next_observation.agent, Position(row=0, col=1))
         self.assertTrue(examples[1].next_observation.blocked)
-        self.assertEqual(examples[1].state_after.agent, Position(row=0, col=1))
+        self.assertEqual(examples[1].reward, -0.1)
+        self.assertFalse(examples[1].terminated)
         self.assertEqual(examples[2].next_observation.agent, Position(row=0, col=2))
 
 
