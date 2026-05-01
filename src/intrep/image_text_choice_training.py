@@ -69,6 +69,7 @@ def train_image_text_choice_model(
     additional_prompts: tuple[str, ...] = (),
     config: ImageTextChoiceTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
+    initial_model_state_dict: dict[str, torch.Tensor] | None = None,
 ) -> ImageTextChoiceTrainingResult:
     training_config = config or ImageTextChoiceTrainingConfig()
     _validate_config(training_config)
@@ -114,6 +115,8 @@ def train_image_text_choice_model(
         dropout=float(preset["dropout"]),
         channel_count=_channel_count_from_images(train_images),
     ).to(device)
+    if initial_model_state_dict is not None:
+        model.load_state_dict(initial_model_state_dict)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)

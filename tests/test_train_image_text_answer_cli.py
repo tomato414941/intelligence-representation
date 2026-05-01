@@ -124,7 +124,7 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
                         str(metrics_path),
                         "--checkpoint-path",
                         str(checkpoint_path),
-                        "--init-image-text-choice-checkpoint-path",
+                        "--init-checkpoint-path",
                         str(choice_checkpoint_path),
                         "--text-context-length",
                         "32",
@@ -149,7 +149,8 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
             checkpoint = load_image_text_answer_checkpoint(checkpoint_path, device="cpu")
 
-        self.assertEqual(payload["init_image_text_choice_checkpoint_path"], str(choice_checkpoint_path))
+        self.assertEqual(payload["init_checkpoint_path"], str(choice_checkpoint_path))
+        self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_text_choice_checkpoint.v1")
         self.assertEqual(checkpoint.config.text_context_length, 32)
         self.assertIn("train_cases=2", output.getvalue())
 
