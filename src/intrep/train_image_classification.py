@@ -5,6 +5,7 @@ from pathlib import Path
 
 from intrep.image_classification import (
     ImageClassificationConfig,
+    ImageFolderClassificationDataset,
     load_image_classification_examples_jsonl,
     train_image_classifier_with_result,
     write_metrics,
@@ -16,8 +17,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Train image classification with image patch embeddings and the shared Transformer core."
     )
-    parser.add_argument("--train-path", type=Path, required=True)
+    train_input = parser.add_mutually_exclusive_group(required=True)
+    train_input.add_argument("--train-path", type=Path)
+    train_input.add_argument("--train-image-folder", type=Path)
     parser.add_argument("--eval-path", type=Path)
+    parser.add_argument("--eval-image-folder", type=Path)
+    parser.add_argument("--image-size", type=int, nargs=2, metavar=("HEIGHT", "WIDTH"))
     parser.add_argument("--max-steps", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=0.003)
@@ -36,15 +41,26 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    train_examples = load_image_classification_examples_jsonl(args.train_path)
-    eval_examples = (
-        load_image_classification_examples_jsonl(args.eval_path)
-        if args.eval_path is not None
-        else None
-    )
+    if args.eval_path is not None and args.eval_image_folder is not None:
+        raise SystemExit("provide only one of --eval-path or --eval-image-folder")
+    image_size = tuple(args.image_size) if args.image_size is not None else None
+    train_examples = None
+    train_dataset = None
+    if args.train_path is not None:
+        train_examples = load_image_classification_examples_jsonl(args.train_path)
+    else:
+        train_dataset = ImageFolderClassificationDataset(args.train_image_folder, image_size=image_size)
+    eval_examples = None
+    eval_dataset = None
+    if args.eval_path is not None:
+        eval_examples = load_image_classification_examples_jsonl(args.eval_path)
+    elif args.eval_image_folder is not None:
+        eval_dataset = ImageFolderClassificationDataset(args.eval_image_folder, image_size=image_size)
     result = train_image_classifier_with_result(
         train_examples=train_examples,
         eval_examples=eval_examples,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         config=ImageClassificationConfig(
             patch_size=args.image_patch_size,
             max_steps=args.max_steps,
