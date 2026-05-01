@@ -7,6 +7,7 @@ import torch
 from intrep.image_classification import FASHION_MNIST_LABELS, ImageChoiceExample
 from intrep.image_text_candidate_training import (
     ImageTextCandidateTrainingConfig,
+    evaluate_image_text_candidate_model,
     train_image_text_candidate_model,
 )
 from intrep.shared_multimodal_model import SharedMultimodalModel
@@ -32,6 +33,13 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
                 ),
             )
 
+            eval_metrics = evaluate_image_text_candidate_model(
+                model=result.model,
+                tokenizer=result.tokenizer,
+                examples=_write_examples(Path(directory)),
+                prompt="What is this item?",
+            )
+
         self.assertIsInstance(result.model, SharedMultimodalModel)
         self.assertEqual(result.metrics.train_case_count, 2)
         self.assertEqual(result.metrics.max_steps, 2)
@@ -39,6 +47,10 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.train_final_loss, 0.0)
         self.assertGreaterEqual(result.metrics.train_accuracy, 0.0)
         self.assertLessEqual(result.metrics.train_accuracy, 1.0)
+        self.assertEqual(eval_metrics.case_count, 2)
+        self.assertGreater(eval_metrics.loss, 0.0)
+        self.assertGreaterEqual(eval_metrics.accuracy, 0.0)
+        self.assertLessEqual(eval_metrics.accuracy, 1.0)
 
 
 class SharedMultimodalCandidatePathTest(unittest.TestCase):
