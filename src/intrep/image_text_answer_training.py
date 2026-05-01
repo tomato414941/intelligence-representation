@@ -55,6 +55,8 @@ class ImageTextAnswerTrainingResult:
     metrics: ImageTextAnswerMetrics
     model: SharedMultimodalModel
     tokenizer: TextTokenizer
+    config: ImageTextAnswerTrainingConfig
+    image_shape: tuple[int, ...]
 
 
 def train_image_text_answer_model(
@@ -124,6 +126,8 @@ def train_image_text_answer_model(
         ),
         model=model,
         tokenizer=tokenizer,
+        config=training_config,
+        image_shape=tuple(int(value) for value in train_images.shape[1:]),
     )
 
 

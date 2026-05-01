@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from intrep.image_text_answer_checkpoint import load_image_text_answer_checkpoint
 from intrep.image_text_answer_training import ImageTextAnswerExample, image_text_answer_example_to_record
 from intrep.train_image_text_answer import main
 
@@ -20,6 +21,7 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
             image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
             train_path = root / "answers.jsonl"
             metrics_path = root / "metrics.json"
+            checkpoint_path = root / "answer.pt"
             examples = [
                 ImageTextAnswerExample(image_path=image_a, prompt="answer: ", answer_text="black"),
                 ImageTextAnswerExample(image_path=image_b, prompt="answer: ", answer_text="white"),
@@ -36,6 +38,8 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
                         str(train_path),
                         "--metrics-path",
                         str(metrics_path),
+                        "--checkpoint-path",
+                        str(checkpoint_path),
                         "--text-context-length",
                         "16",
                         "--image-patch-size",
@@ -57,9 +61,11 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
                     ]
                 )
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            checkpoint = load_image_text_answer_checkpoint(checkpoint_path, device="cpu")
 
         self.assertEqual(payload["schema_version"], "intrep.image_text_answer_run.v1")
         self.assertEqual(payload["metrics"]["train_case_count"], 2)
+        self.assertEqual(checkpoint.config.text_context_length, 16)
         self.assertIn("intrep image text answer", output.getvalue())
         self.assertIn("train_cases=2", output.getvalue())
 

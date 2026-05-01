@@ -7,7 +7,13 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from intrep import evaluate_image_classification
-from intrep.image_classification import FASHION_MNIST_LABELS, ImageClassificationMetrics
+from intrep.image_classification import (
+    FASHION_MNIST_LABELS,
+    ImageClassificationMetrics,
+    ImageClassificationTrainingResult,
+    PatchTransformerClassifier,
+)
+from intrep.image_classification_checkpoint import load_image_classification_checkpoint
 
 
 class EvaluateImageClassificationCLITest(unittest.TestCase):
@@ -16,12 +22,12 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
         captured_train_count = 0
         captured_eval_count = 0
 
-        def fake_train_image_classifier(*, train_examples, eval_examples=None, config):
+        def fake_train_image_classifier_with_result(*, train_examples, eval_examples=None, config):
             nonlocal captured_config, captured_train_count, captured_eval_count
             captured_config = config
             captured_train_count = len(train_examples)
             captured_eval_count = len(eval_examples or [])
-            return ImageClassificationMetrics(
+            metrics = ImageClassificationMetrics(
                 target="label",
                 input_representation="image-patches",
                 train_case_count=1,
@@ -34,6 +40,22 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
                 max_steps=config.max_steps,
                 model_preset=config.model_preset,
             )
+            model = PatchTransformerClassifier(
+                image_size=(4, 4),
+                patch_size=config.patch_size,
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+                num_classes=len(FASHION_MNIST_LABELS),
+            )
+            return ImageClassificationTrainingResult(
+                metrics=metrics,
+                model=model,
+                config=config,
+                image_shape=(4, 4),
+                label_names=FASHION_MNIST_LABELS,
+            )
 
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -45,8 +67,8 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
 
             with patch.object(
                 evaluate_image_classification,
-                "train_image_classifier",
-                fake_train_image_classifier,
+                "train_image_classifier_with_result",
+                fake_train_image_classifier_with_result,
             ):
                 evaluate_image_classification.main(
                     [
@@ -75,6 +97,7 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             metrics_path = root / "metrics.json"
+            checkpoint_path = root / "classification.pt"
             _write_image_label_events(train_path, root / "train-images", "train")
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
@@ -93,10 +116,13 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
                         "1",
                         "--metrics-path",
                         str(metrics_path),
+                        "--checkpoint-path",
+                        str(checkpoint_path),
                     ]
                 )
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            checkpoint = load_image_classification_checkpoint(checkpoint_path, device="cpu")
 
         self.assertIn("target=label", output.getvalue())
         self.assertIn("intrep image classification", output.getvalue())
@@ -105,6 +131,8 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
         self.assertEqual(payload["input_representation"], "image-patches")
         self.assertEqual(payload["train_case_count"], 2)
         self.assertEqual(payload["eval_case_count"], 2)
+        self.assertEqual(checkpoint.label_names, FASHION_MNIST_LABELS)
+        self.assertEqual(checkpoint.image_shape, (1, 2))
 
 
 def _write_image_label_events(path: Path, image_dir: Path, prefix: str) -> None:

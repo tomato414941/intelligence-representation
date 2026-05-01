@@ -6,9 +6,10 @@ from pathlib import Path
 from intrep.image_classification import (
     ImageClassificationConfig,
     load_image_classification_examples_jsonl,
-    train_image_classifier,
+    train_image_classifier_with_result,
     write_metrics,
 )
+from intrep.image_classification_checkpoint import save_image_classification_checkpoint
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--metrics-path", type=Path)
+    parser.add_argument("--checkpoint-path", type=Path)
     return parser
 
 
@@ -36,7 +38,7 @@ def main(argv: list[str] | None = None) -> None:
         if args.eval_path is not None
         else None
     )
-    metrics = train_image_classifier(
+    result = train_image_classifier_with_result(
         train_examples=train_examples,
         eval_examples=eval_examples,
         config=ImageClassificationConfig(
@@ -49,8 +51,11 @@ def main(argv: list[str] | None = None) -> None:
             device=args.device,
         ),
     )
+    metrics = result.metrics
     if args.metrics_path is not None:
         write_metrics(args.metrics_path, metrics)
+    if args.checkpoint_path is not None:
+        save_image_classification_checkpoint(args.checkpoint_path, result)
     print("intrep image classification")
     print(
         f"target={metrics.target}"
