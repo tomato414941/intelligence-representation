@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.idx_image_choice_corpus import (
+from intrep.idx_image_corpus import (
     main,
     read_idx_images,
     read_idx_labels,
@@ -17,7 +17,7 @@ from intrep.idx_image_choice_corpus import (
 from intrep.image_io import read_portable_image
 
 
-class IDXImageChoiceCorpusTest(unittest.TestCase):
+class IDXImageCorpusTest(unittest.TestCase):
     def test_reads_idx_images_and_labels(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -147,7 +147,7 @@ class IDXImageChoiceCorpusTest(unittest.TestCase):
                     image_output_dir=root / "images",
                 )
 
-    def test_cli_writes_image_choice_jsonl(self) -> None:
+    def test_cli_writes_image_classification_jsonl(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -181,9 +181,9 @@ class IDXImageChoiceCorpusTest(unittest.TestCase):
             loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
 
         self.assertEqual(len(loaded), 1)
-        self.assertEqual(loaded[0]["answer_index"], 3)
-        self.assertEqual(loaded[0]["choices"], [str(index) for index in range(10)])
-        self.assertIn("intrep image-choice corpus", output.getvalue())
+        self.assertEqual(loaded[0]["label_index"], 3)
+        self.assertEqual(loaded[0]["label_names"], [str(index) for index in range(10)])
+        self.assertIn("intrep idx image corpus", output.getvalue())
         self.assertIn("label_set=mnist", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 

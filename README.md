@@ -106,7 +106,7 @@ Image classification uses image patch embeddings, the shared Transformer core,
 and a classification head:
 
 ```sh
-uv run python -m intrep.cifar10_image_choice_corpus \
+uv run python -m intrep.cifar10_image_corpus \
   --batch-path data/cifar-10-batches-py/data_batch_1 \
   --output-path runs/cifar10-train.jsonl \
   --image-output-dir runs/cifar10-train-images
