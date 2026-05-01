@@ -81,7 +81,6 @@ def train_image_text_candidate_model(
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        num_classes=len(choices),
         channel_count=_channel_count_from_images(train_images),
     ).to(device)
     train_images = train_images.to(device)
