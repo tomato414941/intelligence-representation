@@ -21,7 +21,7 @@ from intrep.image_classification import (
 
 
 @dataclass(frozen=True)
-class IDXImageChoiceSelection:
+class IDXImageTextChoiceSelection:
     examples: list[ImageTextChoiceExample]
     image_count: int
     output_dir: Path
@@ -80,7 +80,7 @@ def write_idx_image_classification_jsonl(
     return IDXImageClassificationSelection(examples=examples, image_count=count, output_dir=output_dir)
 
 
-def write_idx_image_choice_jsonl(
+def write_idx_image_text_choice_jsonl(
     *,
     images_path: str | Path,
     labels_path: str | Path,
@@ -89,7 +89,7 @@ def write_idx_image_choice_jsonl(
     split: str = "train",
     limit: int | None = None,
     label_names: Sequence[str] = FASHION_MNIST_LABELS,
-) -> IDXImageChoiceSelection:
+) -> IDXImageTextChoiceSelection:
     images = read_idx_images(images_path)
     labels = read_idx_labels(labels_path)
     if len(images) != len(labels):
@@ -123,7 +123,7 @@ def write_idx_image_choice_jsonl(
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    return IDXImageChoiceSelection(examples=examples, image_count=count, output_dir=output_dir)
+    return IDXImageTextChoiceSelection(examples=examples, image_count=count, output_dir=output_dir)
 
 
 def read_idx_images(path: str | Path) -> np.ndarray:

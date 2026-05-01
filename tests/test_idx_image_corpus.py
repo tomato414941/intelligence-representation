@@ -12,7 +12,7 @@ from intrep.idx_image_corpus import (
     read_idx_images,
     read_idx_labels,
     write_idx_image_classification_jsonl,
-    write_idx_image_choice_jsonl,
+    write_idx_image_text_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
 
@@ -33,7 +33,7 @@ class IDXImageCorpusTest(unittest.TestCase):
         self.assertEqual(images[0].tolist(), [[0, 255], [128, 64]])
         self.assertEqual(labels.tolist(), [9])
 
-    def test_writes_image_choice_jsonl_and_pgm_images(self) -> None:
+    def test_writes_image_text_choice_jsonl_and_pgm_images(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             images_path = root / "images.idx3-ubyte.gz"
@@ -49,7 +49,7 @@ class IDXImageCorpusTest(unittest.TestCase):
             )
             _write_idx_labels(labels_path, [9, 0])
 
-            selection = write_idx_image_choice_jsonl(
+            selection = write_idx_image_text_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -97,7 +97,7 @@ class IDXImageCorpusTest(unittest.TestCase):
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [7])
 
-            write_idx_image_choice_jsonl(
+            write_idx_image_text_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -119,7 +119,7 @@ class IDXImageCorpusTest(unittest.TestCase):
             _write_idx_images(images_path, [[[0, 255], [128, 64]]])
             _write_idx_labels(labels_path, [5])
 
-            write_idx_image_choice_jsonl(
+            write_idx_image_text_choice_jsonl(
                 images_path=images_path,
                 labels_path=labels_path,
                 output_path=output_path,
@@ -140,7 +140,7 @@ class IDXImageCorpusTest(unittest.TestCase):
             _write_idx_labels(labels_path, [1, 2])
 
             with self.assertRaisesRegex(ValueError, "counts must match"):
-                write_idx_image_choice_jsonl(
+                write_idx_image_text_choice_jsonl(
                     images_path=images_path,
                     labels_path=labels_path,
                     output_path=root / "fashion.jsonl",
