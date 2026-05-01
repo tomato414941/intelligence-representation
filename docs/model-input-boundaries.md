@@ -32,7 +32,7 @@ Examples:
 language modeling:
   text
 
-image choice:
+image-text choice:
   image_path
   choices
   answer_index
@@ -77,10 +77,10 @@ image
   -> input embedding sequence
 ```
 
-The current image choice path uses this concrete form:
+The current image-text choice path uses this concrete form:
 
 ```text
-image-choice JSONL
+image-text-choice JSONL
   -> local PGM image
   -> ImagePatchInputLayer
   -> candidate text tokenizer / embedding layer

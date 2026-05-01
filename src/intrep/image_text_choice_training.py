@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from intrep.image_classification import ImageChoiceExample, image_label_tensors_from_examples
+from intrep.image_classification import ImageTextChoiceExample, image_text_choice_tensors_from_examples
 from intrep.language_modeling_training import (
     LanguageModelingTrainingDevice,
     language_model_batches,
@@ -61,8 +61,8 @@ class ImageTextChoiceEvalMetrics:
 
 def train_image_text_choice_model(
     *,
-    train_examples: list[ImageChoiceExample],
-    eval_examples: list[ImageChoiceExample] | None = None,
+    train_examples: list[ImageTextChoiceExample],
+    eval_examples: list[ImageTextChoiceExample] | None = None,
     tokenizer_corpus: str = "",
     language_modeling_corpus: str | None = None,
     prompt: str = "",
@@ -74,10 +74,10 @@ def train_image_text_choice_model(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
-    train_images, train_labels = image_label_tensors_from_examples(train_examples)
+    train_images, train_labels = image_text_choice_tensors_from_examples(train_examples)
     if eval_examples is not None:
         _validate_choice_set(train_examples, eval_examples)
-        eval_images, eval_labels = image_label_tensors_from_examples(eval_examples)
+        eval_images, eval_labels = image_text_choice_tensors_from_examples(eval_examples)
     else:
         eval_images, eval_labels = None, None
     choices = _choices_from_examples(train_examples)
@@ -220,10 +220,10 @@ def evaluate_image_text_choice_model(
     *,
     model: SharedMultimodalModel,
     tokenizer: TextTokenizer,
-    examples: list[ImageChoiceExample],
+    examples: list[ImageTextChoiceExample],
     prompt: str = "",
 ) -> ImageTextChoiceEvalMetrics:
-    images, labels = image_label_tensors_from_examples(examples)
+    images, labels = image_text_choice_tensors_from_examples(examples)
     choices = _choices_from_examples(examples)
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
     choice_token_ids, choice_token_mask = _choice_token_tensors(choices, tokenizer)
@@ -353,8 +353,8 @@ def _accuracy(
 
 
 def _validate_choice_set(
-    train_examples: list[ImageChoiceExample],
-    eval_examples: list[ImageChoiceExample],
+    train_examples: list[ImageTextChoiceExample],
+    eval_examples: list[ImageTextChoiceExample],
 ) -> None:
     choices = train_examples[0].choices
     for example in eval_examples:
@@ -362,7 +362,7 @@ def _validate_choice_set(
             raise ValueError("eval examples must use the same choices as train examples")
 
 
-def _choices_from_examples(examples: list[ImageChoiceExample]) -> tuple[str, ...]:
+def _choices_from_examples(examples: list[ImageTextChoiceExample]) -> tuple[str, ...]:
     if not examples:
         raise ValueError("examples must not be empty")
     choices = examples[0].choices
