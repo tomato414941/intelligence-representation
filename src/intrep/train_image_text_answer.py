@@ -12,11 +12,13 @@ from intrep.image_text_answer_training import (
 )
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
 from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
+from intrep.text_tokenizer import load_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train an image-to-text answer model from image-text-answer JSONL.")
     parser.add_argument("--train-path", type=Path, required=True)
+    parser.add_argument("--tokenizer-path", type=Path)
     parser.add_argument("--tokenizer-corpus-path", type=Path)
     parser.add_argument("--metrics-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path)
@@ -39,11 +41,18 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if args.tokenizer_path is not None and args.tokenizer_corpus_path is not None:
+        raise SystemExit("provide only one of --tokenizer-path or --tokenizer-corpus-path")
     train_examples = load_image_text_answer_examples_jsonl(args.train_path)
     initialization = (
         load_shared_multimodal_initialization(args.init_checkpoint_path, device=args.device)
         if args.init_checkpoint_path is not None
         else None
+    )
+    tokenizer = (
+        load_text_tokenizer(args.tokenizer_path)
+        if args.tokenizer_path is not None
+        else initialization.tokenizer if initialization is not None else None
     )
     result = train_image_text_answer_model(
         train_examples=train_examples,
@@ -63,7 +72,7 @@ def main(argv: list[str] | None = None) -> None:
             device=args.device,
             tokenizer_vocab_size=args.tokenizer_vocab_size,
         ),
-        tokenizer_override=initialization.tokenizer if initialization is not None else None,
+        tokenizer_override=tokenizer,
         initial_model_state_dict=(
             initialization.model_state_dict if initialization is not None else None
         ),
@@ -78,6 +87,7 @@ def main(argv: list[str] | None = None) -> None:
                     "tokenizer_corpus_path": (
                         str(args.tokenizer_corpus_path) if args.tokenizer_corpus_path is not None else None
                     ),
+                    "tokenizer_path": str(args.tokenizer_path) if args.tokenizer_path is not None else None,
                     "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
                     "init_checkpoint_schema": initialization.source_schema if initialization is not None else None,
                     "metrics": asdict(result.metrics),

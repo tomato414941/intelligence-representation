@@ -18,6 +18,7 @@ from intrep.image_classification_checkpoint import save_image_classification_che
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
 from intrep.image_text_answer_training import ImageTextAnswerExample, ImageTextAnswerTrainingConfig, train_image_text_answer_model
 from intrep.image_text_choice_checkpoint import load_image_text_choice_checkpoint
+from intrep.text_tokenizer import build_text_tokenizer, save_text_tokenizer
 from intrep.train_image_text_choice import main
 
 
@@ -217,6 +218,51 @@ class TrainImageTextChoiceCLITest(unittest.TestCase):
         self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_classification_checkpoint.v1")
         self.assertEqual(checkpoint.config.text_context_length, 32)
         self.assertIn("train_cases=2", output.getvalue())
+
+    def test_uses_saved_text_tokenizer(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "choices.jsonl"
+            metrics_path = root / "metrics.json"
+            checkpoint_path = root / "choice.pt"
+            tokenizer_path = root / "tokenizer.json"
+            _write_examples(train_path, root)
+            tokenizer = build_text_tokenizer(
+                "T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                kind="byte-pair",
+                vocab_size=270,
+            )
+            save_text_tokenizer(tokenizer_path, tokenizer)
+
+            main(
+                [
+                    "--train-path",
+                    str(train_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--tokenizer-path",
+                    str(tokenizer_path),
+                    "--prompt",
+                    "answer: ",
+                    "--text-context-length",
+                    "32",
+                    "--image-patch-size",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--max-steps",
+                    "1",
+                    "--device",
+                    "cpu",
+                ]
+            )
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            checkpoint = load_image_text_choice_checkpoint(checkpoint_path, device="cpu")
+
+        self.assertEqual(payload["tokenizer_path"], str(tokenizer_path))
+        self.assertEqual(checkpoint.tokenizer.vocab_size, tokenizer.vocab_size)
 
 
 def _write_examples(path: Path, root: Path) -> None:
