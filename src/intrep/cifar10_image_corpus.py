@@ -17,6 +17,7 @@ from intrep.image_classification import (
     image_classification_example_to_record,
     image_text_choice_example_to_record,
 )
+from intrep.image_text_answer_training import ImageTextAnswerExample, image_text_answer_example_to_record
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,13 @@ class CIFAR10ImageTextChoiceSelection:
 @dataclass(frozen=True)
 class CIFAR10ClassificationSelection:
     examples: list[ImageClassificationExample]
+    image_count: int
+    output_dir: Path
+
+
+@dataclass(frozen=True)
+class CIFAR10ImageTextAnswerSelection:
+    examples: list[ImageTextAnswerExample]
     image_count: int
     output_dir: Path
 
@@ -99,6 +107,41 @@ def write_cifar10_image_text_choice_jsonl(
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return CIFAR10ImageTextChoiceSelection(examples=examples, image_count=len(examples), output_dir=output_dir)
+
+
+def write_cifar10_image_text_answer_jsonl(
+    *,
+    batch_paths: Sequence[str | Path],
+    output_path: str | Path,
+    image_output_dir: str | Path,
+    prompt: str,
+    split: str = "train",
+    limit: int | None = None,
+) -> CIFAR10ImageTextAnswerSelection:
+    images, labels = _read_cifar10_images_and_labels(batch_paths, limit=limit)
+    output_dir = Path(image_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    examples: list[ImageTextAnswerExample] = []
+    for index, (image, label_id) in enumerate(zip(images, labels, strict=True)):
+        if not 0 <= label_id < len(CIFAR10_LABELS):
+            raise ValueError("label id is out of range for CIFAR-10 labels")
+        image_path = output_dir / f"{split}_{index:06d}.ppm"
+        write_ppm(image_path, image)
+        examples.append(
+            ImageTextAnswerExample(
+                image_path=image_path.resolve(),
+                prompt=prompt,
+                answer_text=CIFAR10_LABELS[label_id],
+            )
+        )
+
+    lines = [
+        json.dumps(image_text_answer_example_to_record(example), ensure_ascii=False)
+        for example in examples
+    ]
+    Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return CIFAR10ImageTextAnswerSelection(examples=examples, image_count=len(examples), output_dir=output_dir)
 
 
 def _read_cifar10_images_and_labels(
