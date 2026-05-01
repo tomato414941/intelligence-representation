@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
-import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from intrep.image_classification import ImageTextChoiceExample
-from intrep.image_io import read_portable_image
+from intrep.image_training_data import (
+    channel_count_from_image_shape,
+    image_tensor_from_path,
+    seeded_data_loader,
+)
 from intrep.language_modeling_training import (
     LanguageModelingDataset,
     LanguageModelingTrainingDevice,
@@ -75,15 +77,15 @@ class ImageTextChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
             raise ValueError("examples must not be empty")
         _choices_from_examples(examples)
         self.examples = tuple(examples)
-        self.image_shape = tuple(int(value) for value in _image_tensor_from_path(examples[0].image_path).shape)
-        self.channel_count = _channel_count_from_image_shape(self.image_shape)
+        self.image_shape = tuple(int(value) for value in image_tensor_from_path(examples[0].image_path).shape)
+        self.channel_count = channel_count_from_image_shape(self.image_shape)
 
     def __len__(self) -> int:
         return len(self.examples)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         example = self.examples[index]
-        image = _image_tensor_from_path(example.image_path)
+        image = image_tensor_from_path(example.image_path)
         if tuple(image.shape) != self.image_shape:
             raise ValueError("all images must have the same shape")
         return image, torch.tensor(example.answer_index, dtype=torch.long)
@@ -468,19 +470,6 @@ def _choices_from_examples(examples: list[ImageTextChoiceExample]) -> tuple[str,
     return choices
 
 
-def _image_tensor_from_path(path: Path) -> torch.Tensor:
-    image = read_portable_image(path).astype(np.float32) / 255.0
-    return torch.tensor(image, dtype=torch.float32)
-
-
-def _channel_count_from_image_shape(image_shape: tuple[int, ...]) -> int:
-    if len(image_shape) == 2:
-        return 1
-    if len(image_shape) == 3:
-        return image_shape[2]
-    raise ValueError("image shape must be [height, width] or [height, width, channels]")
-
-
 def _data_loader(
     dataset: Dataset,
     *,
@@ -489,14 +478,12 @@ def _data_loader(
     shuffle: bool,
     device: torch.device,
 ) -> DataLoader:
-    generator = torch.Generator()
-    generator.manual_seed(seed)
-    return DataLoader(
+    return seeded_data_loader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        generator=generator,
-        pin_memory=device.type == "cuda",
+        seed=seed,
+        device=device,
     )
 
 
