@@ -34,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
+    parser.add_argument("--lr-schedule", choices=("constant", "warmup_cosine"), default="constant")
+    parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
@@ -60,6 +62,8 @@ def main(argv: list[str] | None = None) -> None:
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
         max_grad_norm=args.max_grad_norm,
+        lr_schedule=args.lr_schedule,
+        warmup_steps=args.warmup_steps,
         seed=args.seed,
         device=args.device,
         checkpoint_path=args.checkpoint_path,
