@@ -12,6 +12,7 @@ from intrep.idx_image_corpus import (
     read_idx_images,
     read_idx_labels,
     write_idx_image_classification_jsonl,
+    write_idx_image_text_answer_jsonl,
     write_idx_image_text_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
@@ -108,6 +109,53 @@ class IDXImageCorpusTest(unittest.TestCase):
 
         self.assertEqual(loaded[0]["choices"], [str(index) for index in range(10)])
         self.assertEqual(loaded[0]["answer_index"], 7)
+
+    def test_writes_image_text_answer_jsonl_and_pgm_images(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            images_path = root / "images.idx3-ubyte.gz"
+            labels_path = root / "labels.idx1-ubyte.gz"
+            output_path = root / "fashion-answer.jsonl"
+            image_output_dir = root / "images"
+            _write_idx_images(images_path, [[[0, 255], [128, 64]]])
+            _write_idx_labels(labels_path, [9])
+
+            selection = write_idx_image_text_answer_jsonl(
+                images_path=images_path,
+                labels_path=labels_path,
+                output_path=output_path,
+                image_output_dir=image_output_dir,
+                prompt="answer: ",
+            )
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(selection.image_count, 1)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["prompt"], "answer: ")
+        self.assertEqual(loaded[0]["answer_text"], "Ankle boot")
+
+    def test_writes_mnist_digit_image_text_answers(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            images_path = root / "images.idx3-ubyte.gz"
+            labels_path = root / "labels.idx1-ubyte.gz"
+            output_path = root / "mnist-answer.jsonl"
+            image_output_dir = root / "images"
+            _write_idx_images(images_path, [[[0, 255], [128, 64]]])
+            _write_idx_labels(labels_path, [7])
+
+            write_idx_image_text_answer_jsonl(
+                images_path=images_path,
+                labels_path=labels_path,
+                output_path=output_path,
+                image_output_dir=image_output_dir,
+                prompt="digit: ",
+                label_names=tuple(str(index) for index in range(10)),
+            )
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(loaded[0]["prompt"], "digit: ")
+        self.assertEqual(loaded[0]["answer_text"], "7")
 
     def test_generated_image_path_can_be_loaded_as_image(self) -> None:
         with TemporaryDirectory() as directory:

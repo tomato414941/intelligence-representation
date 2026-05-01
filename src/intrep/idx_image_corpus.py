@@ -18,6 +18,7 @@ from intrep.image_classification import (
     image_classification_example_to_record,
     image_text_choice_example_to_record,
 )
+from intrep.image_text_answer_training import ImageTextAnswerExample, image_text_answer_example_to_record
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,13 @@ class IDXImageTextChoiceSelection:
 @dataclass(frozen=True)
 class IDXImageClassificationSelection:
     examples: list[ImageClassificationExample]
+    image_count: int
+    output_dir: Path
+
+
+@dataclass(frozen=True)
+class IDXImageTextAnswerSelection:
+    examples: list[ImageTextAnswerExample]
     image_count: int
     output_dir: Path
 
@@ -124,6 +132,53 @@ def write_idx_image_text_choice_jsonl(
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return IDXImageTextChoiceSelection(examples=examples, image_count=count, output_dir=output_dir)
+
+
+def write_idx_image_text_answer_jsonl(
+    *,
+    images_path: str | Path,
+    labels_path: str | Path,
+    output_path: str | Path,
+    image_output_dir: str | Path,
+    prompt: str,
+    split: str = "train",
+    limit: int | None = None,
+    label_names: Sequence[str] = FASHION_MNIST_LABELS,
+) -> IDXImageTextAnswerSelection:
+    images = read_idx_images(images_path)
+    labels = read_idx_labels(labels_path)
+    if len(images) != len(labels):
+        raise ValueError("IDX image and label counts must match")
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+    if not label_names:
+        raise ValueError("label_names must not be empty")
+
+    count = len(images) if limit is None else min(limit, len(images))
+    output_dir = Path(image_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    examples: list[ImageTextAnswerExample] = []
+    for index in range(count):
+        label_id = int(labels[index])
+        if not 0 <= label_id < len(label_names):
+            raise ValueError("label id is out of range for label_names")
+        image_path = output_dir / f"{split}_{index:06d}.pgm"
+        write_pgm(image_path, images[index])
+        examples.append(
+            ImageTextAnswerExample(
+                image_path=image_path.resolve(),
+                prompt=prompt,
+                answer_text=label_names[label_id],
+            )
+        )
+
+    lines = [
+        json.dumps(image_text_answer_example_to_record(example), ensure_ascii=False)
+        for example in examples
+    ]
+    Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return IDXImageTextAnswerSelection(examples=examples, image_count=count, output_dir=output_dir)
 
 
 def read_idx_images(path: str | Path) -> np.ndarray:
