@@ -20,7 +20,7 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
             result = train_image_text_answer_model(
                 train_examples=examples,
                 prompt="answer: ",
-                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 config=ImageTextAnswerTrainingConfig(
                     text_context_length=32,
                     image_patch_size=1,

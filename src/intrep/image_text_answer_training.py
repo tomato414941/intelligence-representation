@@ -45,7 +45,7 @@ def train_image_text_answer_model(
     *,
     train_examples: list[ImageChoiceExample],
     prompt: str,
-    text_corpus: str = "",
+    tokenizer_corpus: str = "",
     config: ImageTextAnswerTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
 ) -> ImageTextAnswerTrainingResult:
@@ -54,7 +54,7 @@ def train_image_text_answer_model(
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
     train_images, _ = image_label_tensors_from_examples(train_examples)
-    tokenizer_text = "\n".join((text_corpus, prompt, *(example.answer_text for example in train_examples)))
+    tokenizer_text = "\n".join((tokenizer_corpus, prompt, *(example.answer_text for example in train_examples)))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
         kind="byte-pair",
