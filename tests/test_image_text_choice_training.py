@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.image_classification import FASHION_MNIST_LABELS, ImageChoiceExample
+from intrep.image_classification import FASHION_MNIST_LABELS, ImageTextChoiceExample
 from intrep.image_text_choice_checkpoint import (
     load_image_text_choice_checkpoint,
     save_image_text_choice_checkpoint,
@@ -166,14 +166,14 @@ class SharedMultimodalChoicePathTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([2, 3]))
 
 
-def _write_examples(root: Path) -> list[ImageChoiceExample]:
+def _write_examples(root: Path) -> list[ImageTextChoiceExample]:
     image_a = root / "a.pgm"
     image_b = root / "b.pgm"
     image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
     image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
     return [
-        ImageChoiceExample(image_path=image_a, choices=FASHION_MNIST_LABELS, answer_index=9),
-        ImageChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=0),
+        ImageTextChoiceExample(image_path=image_a, choices=FASHION_MNIST_LABELS, answer_index=9),
+        ImageTextChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=0),
     ]
 
 

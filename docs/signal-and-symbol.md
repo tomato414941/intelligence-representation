@@ -92,7 +92,7 @@ The project should keep raw examples close to their source task.
 text:
   raw text
 
-image choice:
+image-text choice:
   image_path
   choices
   answer_index

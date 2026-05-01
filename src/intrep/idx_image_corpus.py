@@ -12,17 +12,17 @@ import numpy as np
 
 from intrep.image_classification import (
     FASHION_MNIST_LABELS,
-    ImageChoiceExample,
+    ImageTextChoiceExample,
     ImageClassificationExample,
     MNIST_LABELS,
     image_classification_example_to_record,
-    image_choice_example_to_record,
+    image_text_choice_example_to_record,
 )
 
 
 @dataclass(frozen=True)
 class IDXImageChoiceSelection:
-    examples: list[ImageChoiceExample]
+    examples: list[ImageTextChoiceExample]
     image_count: int
     output_dir: Path
 
@@ -103,7 +103,7 @@ def write_idx_image_choice_jsonl(
     output_dir = Path(image_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    examples: list[ImageChoiceExample] = []
+    examples: list[ImageTextChoiceExample] = []
     for index in range(count):
         label_id = int(labels[index])
         if not 0 <= label_id < len(label_names):
@@ -111,7 +111,7 @@ def write_idx_image_choice_jsonl(
         image_path = output_dir / f"{split}_{index:06d}.pgm"
         write_pgm(image_path, images[index])
         examples.append(
-            ImageChoiceExample(
+            ImageTextChoiceExample(
                 image_path=image_path.resolve(),
                 choices=tuple(label_names),
                 answer_index=label_id,
@@ -119,7 +119,7 @@ def write_idx_image_choice_jsonl(
         )
 
     lines = [
-        json.dumps(image_choice_example_to_record(example), ensure_ascii=False)
+        json.dumps(image_text_choice_example_to_record(example), ensure_ascii=False)
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")

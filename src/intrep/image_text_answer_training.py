@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
-from intrep.image_classification import ImageChoiceExample, image_label_tensors_from_examples
+from intrep.image_classification import ImageTextChoiceExample, image_text_choice_tensors_from_examples
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
@@ -43,7 +43,7 @@ class ImageTextAnswerTrainingResult:
 
 def train_image_text_answer_model(
     *,
-    train_examples: list[ImageChoiceExample],
+    train_examples: list[ImageTextChoiceExample],
     prompt: str,
     tokenizer_corpus: str = "",
     config: ImageTextAnswerTrainingConfig | None = None,
@@ -53,7 +53,7 @@ def train_image_text_answer_model(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
-    train_images, _ = image_label_tensors_from_examples(train_examples)
+    train_images, _ = image_text_choice_tensors_from_examples(train_examples)
     tokenizer_text = "\n".join((tokenizer_corpus, prompt, *(example.answer_text for example in train_examples)))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
@@ -139,7 +139,7 @@ def generate_image_text_answer(
 
 
 def _prompt_answer_token_tensors(
-    examples: list[ImageChoiceExample],
+    examples: list[ImageTextChoiceExample],
     prompt: str,
     tokenizer: TextTokenizer,
 ) -> tuple[torch.Tensor, torch.Tensor]:

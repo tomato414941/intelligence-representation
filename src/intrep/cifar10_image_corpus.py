@@ -12,16 +12,16 @@ import numpy as np
 
 from intrep.image_classification import (
     CIFAR10_LABELS,
-    ImageChoiceExample,
+    ImageTextChoiceExample,
     ImageClassificationExample,
     image_classification_example_to_record,
-    image_choice_example_to_record,
+    image_text_choice_example_to_record,
 )
 
 
 @dataclass(frozen=True)
 class CIFAR10Selection:
-    examples: list[ImageChoiceExample]
+    examples: list[ImageTextChoiceExample]
     image_count: int
     output_dir: Path
 
@@ -79,14 +79,14 @@ def write_cifar10_image_choice_jsonl(
     output_dir = Path(image_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    examples: list[ImageChoiceExample] = []
+    examples: list[ImageTextChoiceExample] = []
     for index, (image, label_id) in enumerate(zip(images, labels, strict=True)):
         if not 0 <= label_id < len(CIFAR10_LABELS):
             raise ValueError("label id is out of range for CIFAR-10 labels")
         image_path = output_dir / f"{split}_{index:06d}.ppm"
         write_ppm(image_path, image)
         examples.append(
-            ImageChoiceExample(
+            ImageTextChoiceExample(
                 image_path=image_path.resolve(),
                 choices=CIFAR10_LABELS,
                 answer_index=label_id,
@@ -94,7 +94,7 @@ def write_cifar10_image_choice_jsonl(
         )
 
     lines = [
-        json.dumps(image_choice_example_to_record(example), ensure_ascii=False)
+        json.dumps(image_text_choice_example_to_record(example), ensure_ascii=False)
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")

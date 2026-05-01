@@ -49,7 +49,7 @@ byte-level text tokenization as a small fallback baseline
 Tiny Shakespeare language modeling run with held-out evaluation
 Tiny Shakespeare byte-level BPE checkpoint with tokenizer restore
 token-level loss masks for text scoring
-Fashion-MNIST image-choice raw examples
+Fashion-MNIST image classification raw examples
 prompted image/text fusion candidate selection
 mixed text LM plus image/text choice training
 small image/prompt-to-text generation overfit
@@ -243,9 +243,9 @@ The current Fashion-MNIST image classification path is wired end to end:
 
 ```text
 IDX image dataset
-  -> image-choice JSONL
+  -> image-classification JSONL
   -> local PGM files
-  -> ImageChoiceExample
+  -> ImageClassificationExample
   -> image patch embedding
   -> SharedTransformerCore
   -> ClassificationHead
@@ -276,14 +276,14 @@ train_accuracy: 0.8574
 eval_accuracy: 0.8000
 ```
 
-CIFAR-10 can also be converted into the same image-choice JSONL shape from local
+CIFAR-10 can also be converted into the same image-classification JSONL shape from local
 python batch files:
 
 ```text
 CIFAR-10 python batch
-  -> image-choice JSONL
+  -> image-classification JSONL
   -> local PPM files
-  -> ImageChoiceExample
+  -> ImageClassificationExample
   -> image patch embedding
   -> SharedTransformerCore
   -> ClassificationHead
@@ -307,7 +307,7 @@ The current image/text choice path fuses image patches, prompt text, and
 candidate text in one shared-core pass:
 
 ```text
-ImageChoiceExample
+ImageTextChoiceExample
   -> image patch embeddings + prompt text embeddings + candidate text embeddings
   -> SharedTransformerCore
   -> candidate score
