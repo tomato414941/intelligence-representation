@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from intrep import evaluate_image_classification
+from intrep import train_image_classification
 from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationMetrics,
@@ -17,7 +17,7 @@ from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initializ
 from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
-class EvaluateImageClassificationCLITest(unittest.TestCase):
+class TrainImageClassificationCLITest(unittest.TestCase):
     def test_builds_image_classification_config(self) -> None:
         captured_config = None
         captured_train_count = 0
@@ -69,11 +69,11 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
             with patch.object(
-                evaluate_image_classification,
+                train_image_classification,
                 "train_image_classifier_with_result",
                 fake_train_image_classifier_with_result,
             ):
-                evaluate_image_classification.main(
+                train_image_classification.main(
                     [
                         "--train-path",
                         str(train_path),
@@ -105,7 +105,7 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
             _write_image_label_events(eval_path, root / "eval-images", "eval")
 
             with redirect_stdout(output):
-                evaluate_image_classification.main(
+                train_image_classification.main(
                     [
                         "--train-path",
                         str(train_path),
