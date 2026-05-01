@@ -41,7 +41,7 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
 
 
 class SharedMultimodalCandidatePathTest(unittest.TestCase):
-    def test_outputs_candidate_logits(self) -> None:
+    def test_outputs_fusion_candidate_logits(self) -> None:
         model = SharedMultimodalModel(
             vocab_size=32,
             text_context_length=4,
@@ -54,7 +54,7 @@ class SharedMultimodalCandidatePathTest(unittest.TestCase):
             num_classes=10,
         )
 
-        logits = model.image_text_candidate_logits(
+        logits = model.image_text_fusion_candidate_logits(
             torch.zeros((2, 4, 4), dtype=torch.float32),
             torch.ones((3, 2), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.bool),
