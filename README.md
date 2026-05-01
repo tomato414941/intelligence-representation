@@ -56,6 +56,7 @@ Read these first:
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Input Boundaries](docs/model-input-boundaries.md)
 - [Learning and Execution](docs/learning-and-execution.md)
+- [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
 - [Current Experiment](docs/current-experiment.md)
 - [World Model Centering](docs/world-model.md)
