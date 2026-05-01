@@ -14,6 +14,7 @@ from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.shared_state_loading import load_compatible_shared_state
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.token_scoring import next_token_loss
+from intrep.training_utils import build_adamw, clip_gradients
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,8 @@ class ImageTextAnswerTrainingConfig:
     max_steps: int = 100
     batch_size: int = 8
     learning_rate: float = 0.003
+    weight_decay: float = 0.01
+    max_grad_norm: float | None = 1.0
     seed: int = 7
     model_preset: str = "tiny"
     device: LanguageModelingTrainingDevice = "cpu"
@@ -107,7 +110,11 @@ def train_image_text_answer_model(
     text_token_ids = text_token_ids.to(device)
     loss_mask = loss_mask.to(device)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=training_config.learning_rate)
+    optimizer = build_adamw(
+        model,
+        learning_rate=training_config.learning_rate,
+        weight_decay=training_config.weight_decay,
+    )
     initial_loss = _loss(model, train_images, text_token_ids, loss_mask)
     for step in range(training_config.max_steps):
         start = (step * training_config.batch_size) % len(train_images)
@@ -118,6 +125,7 @@ def train_image_text_answer_model(
         optimizer.zero_grad(set_to_none=True)
         loss = _loss_tensor(model, batch_images, batch_token_ids, batch_loss_mask)
         loss.backward()
+        clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
 
     return ImageTextAnswerTrainingResult(
@@ -319,6 +327,10 @@ def _validate_config(config: ImageTextAnswerTrainingConfig) -> None:
         raise ValueError("batch_size must be positive")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
+    if config.weight_decay < 0.0:
+        raise ValueError("weight_decay must be non-negative")
+    if config.max_grad_norm is not None and config.max_grad_norm <= 0.0:
+        raise ValueError("max_grad_norm must be positive")
     if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
     if config.device not in ("auto", "cpu", "cuda"):

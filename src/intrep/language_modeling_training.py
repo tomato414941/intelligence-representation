@@ -18,6 +18,7 @@ from intrep.text_tokenizer import (
     build_text_tokenizer,
     text_tokenizer_to_payload,
 )
+from intrep.training_utils import build_adamw, clip_gradients
 
 LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
@@ -30,6 +31,8 @@ class LanguageModelingTrainingConfig:
     batch_size: int = 8
     max_steps: int = 20
     learning_rate: float = 0.003
+    weight_decay: float = 0.01
+    max_grad_norm: float | None = 1.0
     seed: int = 7
     device: LanguageModelingTrainingDevice = "cpu"
     checkpoint_path: Path | None = None
@@ -224,7 +227,11 @@ def _train_text_corpus_with_artifacts(
         if initial_model is not None
         else CausalTextModel(causal_text_config).to(device)
     )
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
+    optimizer = build_adamw(
+        model,
+        learning_rate=config.learning_rate,
+        weight_decay=config.weight_decay,
+    )
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
     final_loss = 0.0
@@ -262,6 +269,7 @@ def _train_text_corpus_with_artifacts(
         final_loss = float(loss.item())
         loss_history.append(final_loss)
         loss.backward()
+        clip_gradients(model, config.max_grad_norm)
         optimizer.step()
 
     final_train_loss = _evaluate_loss(
@@ -407,6 +415,10 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("max_steps must be positive")
     if config.learning_rate <= 0:
         raise ValueError("learning_rate must be positive")
+    if config.weight_decay < 0:
+        raise ValueError("weight_decay must be non-negative")
+    if config.max_grad_norm is not None and config.max_grad_norm <= 0:
+        raise ValueError("max_grad_norm must be positive")
     if config.device not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer not in ("byte", "byte-pair", "simple-byte-pair"):

@@ -13,6 +13,7 @@ from intrep.language_modeling_training import resolve_training_device
 from intrep.image_io import read_portable_image
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
+from intrep.training_utils import build_adamw, clip_gradients
 
 
 FASHION_MNIST_LABELS = (
@@ -84,6 +85,8 @@ class ImageClassificationConfig:
     max_steps: int = 20
     batch_size: int = 8
     learning_rate: float = 0.003
+    weight_decay: float = 0.01
+    max_grad_norm: float | None = 1.0
     seed: int = 7
     model_preset: str = "tiny"
     device: str = "auto"
@@ -181,7 +184,11 @@ def train_image_classifier_with_result(
         eval_labels = eval_labels.to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=training_config.learning_rate)
+    optimizer = build_adamw(
+        model,
+        learning_rate=training_config.learning_rate,
+        weight_decay=training_config.weight_decay,
+    )
     initial_loss = _loss(model, loss_fn, train_images, train_labels)
     for step in range(training_config.max_steps):
         start = (step * training_config.batch_size) % len(train_images)
@@ -191,6 +198,7 @@ def train_image_classifier_with_result(
         optimizer.zero_grad(set_to_none=True)
         loss = loss_fn(model.image_classification_logits(batch_images), batch_labels)
         loss.backward()
+        clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
 
     final_loss = _loss(model, loss_fn, train_images, train_labels)
@@ -447,6 +455,10 @@ def _validate_config(config: ImageClassificationConfig) -> None:
         raise ValueError("batch_size must be positive")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
+    if config.weight_decay < 0.0:
+        raise ValueError("weight_decay must be non-negative")
+    if config.max_grad_norm is not None and config.max_grad_norm <= 0.0:
+        raise ValueError("max_grad_norm must be positive")
     if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
 
