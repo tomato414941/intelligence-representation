@@ -145,11 +145,21 @@ one shared Transformer core. A task may leave some routes unused; unused
 tokenizer, text embedding, image input, token output, choice scoring, or
 classification components do not make that task secondary.
 
-Text language modeling uses the main byte-pair tokenizer by default:
+Text language modeling can train a tokenizer by default, but the preferred
+workflow is to train a text tokenizer once and reuse it across text-consuming
+tasks:
+
+```sh
+uv run python -m intrep.train_text_tokenizer \
+  --corpus-path data/external/tiny-shakespeare.txt \
+  --tokenizer-path runs/text-tokenizer.json \
+  --tokenizer-vocab-size 1024
+```
 
 ```sh
 uv run python -m intrep.train_language_model \
   --corpus-path data/external/tiny-shakespeare.txt \
+  --tokenizer-path runs/text-tokenizer.json \
   --metrics-path runs/text.json \
   --checkpoint-path runs/text.pt
 ```
@@ -196,6 +206,7 @@ answers:
 uv run python -m intrep.train_image_text_choice \
   --train-path runs/fashion-choice-train.jsonl \
   --eval-path runs/fashion-choice-eval.jsonl \
+  --tokenizer-path runs/text-tokenizer.json \
   --prompt "What is this item?" \
   --metrics-path runs/fashion-choice.json \
   --checkpoint-path runs/fashion-choice.pt
@@ -207,13 +218,17 @@ tokens:
 ```sh
 uv run python -m intrep.train_image_text_answer \
   --train-path runs/fashion-answer-train.jsonl \
+  --tokenizer-path runs/text-tokenizer.json \
   --metrics-path runs/fashion-answer.json \
   --checkpoint-path runs/fashion-answer.pt
 ```
 
 Shared multimodal training commands also accept `--init-checkpoint-path` for
-compatible shared multimodal checkpoints. This initializes a new run from model
-weights and tokenizer state, independent of the source task name.
+compatible shared multimodal checkpoints. Text-consuming commands accept
+`--tokenizer-path` to reuse a fixed tokenizer; if both a checkpoint and a
+tokenizer path are provided, the explicit tokenizer path is used. Checkpoint
+initialization loads compatible model weights independent of the source task
+name.
 
 Image classification uses the same shared multimodal model shell, with the
 image route, shared Transformer core, and classification head active.
