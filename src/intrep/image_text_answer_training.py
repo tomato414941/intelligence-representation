@@ -11,6 +11,7 @@ from intrep.image_io import read_portable_image
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.shared_state_loading import load_compatible_shared_state
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.token_scoring import next_token_loss
 
@@ -101,7 +102,7 @@ def train_image_text_answer_model(
         channel_count=_channel_count_from_images(train_images),
     ).to(device)
     if initial_model_state_dict is not None:
-        model.load_state_dict(initial_model_state_dict)
+        load_compatible_shared_state(model, initial_model_state_dict)
     train_images = train_images.to(device)
     text_token_ids = text_token_ids.to(device)
     loss_mask = loss_mask.to(device)
