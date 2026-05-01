@@ -15,7 +15,7 @@ from intrep.image_classification import (
     ImagePatchInputLayer,
     MNIST_LABELS,
     PatchTransformerClassifier,
-    image_classification_examples_from_choices,
+    image_classification_examples_from_text_choices,
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
     load_image_classification_examples_jsonl,
@@ -292,7 +292,7 @@ class ImageClassificationTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "fashion.jsonl"
             _write_image_text_choice_examples(path, Path(directory) / "images")
-            examples = image_classification_examples_from_choices(load_image_text_choice_examples_jsonl(path))
+            examples = image_classification_examples_from_text_choices(load_image_text_choice_examples_jsonl(path))
 
             metrics = train_image_classifier(
                 train_examples=examples,
@@ -318,7 +318,7 @@ class ImageClassificationTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "fashion.jsonl"
             _write_image_text_choice_examples(path, Path(directory) / "images")
-            examples = image_classification_examples_from_choices(load_image_text_choice_examples_jsonl(path))
+            examples = image_classification_examples_from_text_choices(load_image_text_choice_examples_jsonl(path))
 
             result = train_image_classifier_with_result(
                 train_examples=examples,

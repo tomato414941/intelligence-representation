@@ -343,7 +343,7 @@ def image_classification_tensors_from_examples(
     return image_tensor, label_tensor
 
 
-def image_classification_examples_from_choices(
+def image_classification_examples_from_text_choices(
     examples: list[ImageTextChoiceExample],
 ) -> list[ImageClassificationExample]:
     return [

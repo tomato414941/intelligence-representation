@@ -12,7 +12,7 @@ from intrep.cifar10_image_corpus import (
     main,
     read_cifar10_batch,
     write_cifar10_image_classification_jsonl,
-    write_cifar10_image_choice_jsonl,
+    write_cifar10_image_text_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
 
@@ -29,7 +29,7 @@ class CIFAR10ImageCorpusTest(unittest.TestCase):
         self.assertEqual(images[0].shape, (32, 32, 3))
         self.assertEqual(labels, [3])
 
-    def test_writes_image_choice_jsonl_and_ppm_images(self) -> None:
+    def test_writes_image_text_choice_jsonl_and_ppm_images(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             batch_path = root / "data_batch_1"
@@ -37,7 +37,7 @@ class CIFAR10ImageCorpusTest(unittest.TestCase):
             image_output_dir = root / "images"
             _write_cifar_batch(batch_path, labels=[3, 9])
 
-            selection = write_cifar10_image_choice_jsonl(
+            selection = write_cifar10_image_text_choice_jsonl(
                 batch_paths=[batch_path],
                 output_path=output_path,
                 image_output_dir=image_output_dir,
@@ -82,7 +82,7 @@ class CIFAR10ImageCorpusTest(unittest.TestCase):
             root = Path(directory)
 
             with self.assertRaisesRegex(ValueError, "batch_paths must not be empty"):
-                write_cifar10_image_choice_jsonl(
+                write_cifar10_image_text_choice_jsonl(
                     batch_paths=[],
                     output_path=root / "cifar10.jsonl",
                     image_output_dir=root / "images",

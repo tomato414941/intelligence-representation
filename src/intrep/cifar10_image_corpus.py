@@ -20,7 +20,7 @@ from intrep.image_classification import (
 
 
 @dataclass(frozen=True)
-class CIFAR10Selection:
+class CIFAR10ImageTextChoiceSelection:
     examples: list[ImageTextChoiceExample]
     image_count: int
     output_dir: Path
@@ -67,14 +67,14 @@ def write_cifar10_image_classification_jsonl(
     return CIFAR10ClassificationSelection(examples=examples, image_count=len(examples), output_dir=output_dir)
 
 
-def write_cifar10_image_choice_jsonl(
+def write_cifar10_image_text_choice_jsonl(
     *,
     batch_paths: Sequence[str | Path],
     output_path: str | Path,
     image_output_dir: str | Path,
     split: str = "train",
     limit: int | None = None,
-) -> CIFAR10Selection:
+) -> CIFAR10ImageTextChoiceSelection:
     images, labels = _read_cifar10_images_and_labels(batch_paths, limit=limit)
     output_dir = Path(image_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -98,7 +98,7 @@ def write_cifar10_image_choice_jsonl(
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    return CIFAR10Selection(examples=examples, image_count=len(examples), output_dir=output_dir)
+    return CIFAR10ImageTextChoiceSelection(examples=examples, image_count=len(examples), output_dir=output_dir)
 
 
 def _read_cifar10_images_and_labels(
