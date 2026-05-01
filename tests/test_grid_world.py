@@ -7,6 +7,8 @@ from intrep.grid_world import (
     GridWorldState,
     Position,
     generate_grid_world_experience,
+    grid_experience_transition_to_text,
+    language_modeling_examples_from_grid_experience,
     observation_from_state,
     transition_state,
 )
@@ -97,6 +99,49 @@ class GridWorldTest(unittest.TestCase):
         self.assertEqual(examples[1].reward, -0.1)
         self.assertFalse(examples[1].terminated)
         self.assertEqual(examples[2].next_observation.agent, Position(row=0, col=2))
+
+    def test_grid_experience_transition_to_text_renders_prediction_task(self) -> None:
+        state = GridWorldState(
+            width=3,
+            height=2,
+            agent=Position(row=0, col=0),
+            goal=Position(row=1, col=2),
+            walls=frozenset({Position(row=1, col=1)}),
+        )
+        example = generate_grid_world_experience(actions=("right",), initial_state=state)[0]
+
+        text = grid_experience_transition_to_text(example)
+
+        self.assertEqual(
+            text,
+            "\n".join(
+                (
+                    "<obs>",
+                    "A..",
+                    ".#G",
+                    "<action> right",
+                    "<next_obs>",
+                    ".A.",
+                    ".#G",
+                    "<reward> -0.01",
+                    "<terminated> false",
+                    "<truncated> false",
+                )
+            ),
+        )
+
+    def test_language_modeling_examples_from_grid_experience(self) -> None:
+        examples = generate_grid_world_experience(actions=("right", "down"))
+
+        text_examples = language_modeling_examples_from_grid_experience(examples)
+
+        self.assertEqual(len(text_examples), 2)
+        self.assertIn("<action> right", text_examples[0].text)
+        self.assertIn("<next_obs>", text_examples[0].text)
+
+    def test_language_modeling_examples_from_grid_experience_rejects_empty_examples(self) -> None:
+        with self.assertRaisesRegex(ValueError, "examples must not be empty"):
+            language_modeling_examples_from_grid_experience(())
 
 
 if __name__ == "__main__":

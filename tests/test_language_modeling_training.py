@@ -15,6 +15,7 @@ from intrep.language_modeling_training import (
     train_language_modeling_with_artifacts,
     _train_text_corpus_with_artifacts,
 )
+from intrep.grid_world import generate_grid_world_experience, language_modeling_examples_from_grid_experience
 from intrep.text_examples import LanguageModelingExample
 from intrep.text_tokenizer import train_simple_byte_pair_tokenizer
 
@@ -166,6 +167,33 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertEqual(artifacts.result.eval_split, "held_out")
         self.assertTrue(artifacts.result.generalization_eval)
         self.assertGreater(artifacts.result.token_count, 0)
+
+    def test_training_runs_on_grid_world_experience_text_examples(self) -> None:
+        examples = language_modeling_examples_from_grid_experience(
+            generate_grid_world_experience(actions=("right", "down", "right", "down", "right", "stay"))
+        )
+
+        artifacts = train_language_modeling_with_artifacts(
+            train_examples=examples,
+            training_config=LanguageModelingTrainingConfig(
+                context_length=16,
+                batch_size=2,
+                max_steps=2,
+                learning_rate=0.005,
+                seed=29,
+                tokenizer="byte",
+            ),
+            model_config=CausalTextConfig(
+                vocab_size=ByteTokenizer.vocab_size,
+                context_length=16,
+                embedding_dim=16,
+                num_heads=2,
+                hidden_dim=32,
+            ),
+        )
+
+        self.assertGreater(artifacts.result.token_count, 0)
+        self.assertLessEqual(artifacts.result.best_loss, artifacts.result.initial_loss)
 
     def test_resolve_training_device_auto_prefers_cuda_when_available(self) -> None:
         with unittest.mock.patch.object(torch.cuda, "is_available", return_value=True):

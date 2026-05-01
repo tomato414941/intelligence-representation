@@ -100,5 +100,9 @@ The first useful objective is:
 observation + action -> next observation / reward / terminated
 ```
 
+The first implementation path renders grid-world experience as text
+language-modeling examples. This is intentionally a small bridge into the
+existing text training path, not a new task-specific trainer.
+
 Policy learning and online reinforcement learning can be added later if the
 prediction tasks show useful pressure.
