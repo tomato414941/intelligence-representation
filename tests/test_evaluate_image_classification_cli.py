@@ -11,10 +11,10 @@ from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationMetrics,
     ImageClassificationTrainingResult,
-    PatchTransformerClassifier,
 )
 from intrep.image_classification_checkpoint import load_image_classification_checkpoint
 from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
+from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
 class EvaluateImageClassificationCLITest(unittest.TestCase):
@@ -41,7 +41,9 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
                 max_steps=config.max_steps,
                 model_preset=config.model_preset,
             )
-            model = PatchTransformerClassifier(
+            model = SharedMultimodalModel(
+                vocab_size=1,
+                text_context_length=1,
                 image_size=(4, 4),
                 patch_size=config.patch_size,
                 embedding_dim=8,

@@ -8,10 +8,11 @@ import numpy as np
 import torch
 from torch import nn
 
+from intrep.image_input_layer import ImagePatchInputLayer
 from intrep.language_modeling_training import resolve_training_device
 from intrep.image_io import read_portable_image
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.transformer_core import SharedTransformerCore
+from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
 
 
 FASHION_MNIST_LABELS = (
@@ -121,107 +122,10 @@ class ImageClassificationMetrics:
 @dataclass(frozen=True)
 class ImageClassificationTrainingResult:
     metrics: ImageClassificationMetrics
-    model: "PatchTransformerClassifier"
+    model: SharedMultimodalModel
     config: ImageClassificationConfig
     image_shape: tuple[int, ...]
     label_names: tuple[str, ...]
-
-
-class ImagePatchInputLayer(nn.Module):
-    def __init__(
-        self,
-        *,
-        image_size: tuple[int, int],
-        patch_size: int,
-        embedding_dim: int,
-        channel_count: int = 1,
-    ) -> None:
-        super().__init__()
-        height, width = image_size
-        if patch_size <= 0:
-            raise ValueError("patch_size must be positive")
-        if channel_count <= 0:
-            raise ValueError("channel_count must be positive")
-        if height % patch_size != 0 or width % patch_size != 0:
-            raise ValueError("image dimensions must be divisible by patch_size")
-        patch_dim = patch_size * patch_size * channel_count
-        patch_count = (height // patch_size) * (width // patch_size)
-        self.image_size = image_size
-        self.channel_count = channel_count
-        self.patch_size = patch_size
-        self.patch_embedding = nn.Linear(patch_dim, embedding_dim)
-        self.position_embedding = nn.Embedding(patch_count, embedding_dim)
-
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
-        if images.ndim not in (3, 4):
-            raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
-        if tuple(images.shape[1:]) != self.image_size:
-            if images.ndim == 3 or tuple(images.shape[1:3]) != self.image_size:
-                raise ValueError("images do not match input layer image_size")
-        channel_count = 1 if images.ndim == 3 else int(images.shape[3])
-        if channel_count != self.channel_count:
-            raise ValueError("images do not match input layer channel_count")
-        patches = _patchify(images, self.patch_size)
-        positions = torch.arange(patches.size(1), device=images.device).unsqueeze(0)
-        return self.patch_embedding(patches) + self.position_embedding(positions)
-
-
-class ClassificationHead(nn.Module):
-    def __init__(self, *, embedding_dim: int, num_classes: int) -> None:
-        super().__init__()
-        self.output = nn.Linear(embedding_dim, num_classes)
-
-    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
-        if hidden.ndim != 3:
-            raise ValueError("hidden states must have shape [batch, sequence, hidden]")
-        pooled = hidden.mean(dim=1)
-        return self.output(pooled)
-
-
-class PatchTransformerClassifier(nn.Module):
-    def __init__(
-        self,
-        *,
-        image_size: tuple[int, int],
-        patch_size: int,
-        embedding_dim: int,
-        num_heads: int,
-        hidden_dim: int,
-        num_layers: int,
-        num_classes: int,
-        channel_count: int = 1,
-        dropout: float = 0.0,
-    ) -> None:
-        super().__init__()
-        self.image_input_layer = ImagePatchInputLayer(
-            image_size=image_size,
-            patch_size=patch_size,
-            embedding_dim=embedding_dim,
-            channel_count=channel_count,
-        )
-        self.core = SharedTransformerCore(
-            embedding_dim=embedding_dim,
-            num_heads=num_heads,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            dropout=dropout,
-        )
-        self.classification_head = ClassificationHead(
-            embedding_dim=embedding_dim,
-            num_classes=num_classes,
-        )
-
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
-        return self.classify_embeddings(self.encode_images(images))
-
-    def embed_images(self, images: torch.Tensor) -> torch.Tensor:
-        return self.image_input_layer(images)
-
-    def encode_images(self, images: torch.Tensor) -> torch.Tensor:
-        return self.core(self.embed_images(images))
-
-    def classify_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
-        return self.classification_head(embeddings)
 
 
 def train_image_classifier(
@@ -257,7 +161,9 @@ def train_image_classifier_with_result(
         _validate_label_set(train_examples, eval_examples)
 
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
-    model = PatchTransformerClassifier(
+    model = SharedMultimodalModel(
+        vocab_size=1,
+        text_context_length=1,
         image_size=(int(train_images.shape[1]), int(train_images.shape[2])),
         patch_size=training_config.patch_size,
         embedding_dim=int(preset["embedding_dim"]),
@@ -265,8 +171,8 @@ def train_image_classifier_with_result(
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        num_classes=_class_count_from_examples(train_examples),
         channel_count=_channel_count_from_images(train_images),
+        num_classes=_class_count_from_examples(train_examples),
     ).to(device)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
@@ -283,7 +189,7 @@ def train_image_classifier_with_result(
         batch_images = train_images.index_select(0, indices)
         batch_labels = train_labels.index_select(0, indices)
         optimizer.zero_grad(set_to_none=True)
-        loss = loss_fn(model(batch_images), batch_labels)
+        loss = loss_fn(model.image_classification_logits(batch_images), batch_labels)
         loss.backward()
         optimizer.step()
 
@@ -515,17 +421,6 @@ def write_metrics(path: str | Path, metrics: ImageClassificationMetrics) -> None
     Path(path).write_text(json.dumps(metrics.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _patchify(images: torch.Tensor, patch_size: int) -> torch.Tensor:
-    if images.ndim == 3:
-        patches = images.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size)
-        return patches.contiguous().view(images.size(0), -1, patch_size * patch_size)
-    if images.ndim == 4:
-        patches = images.unfold(1, patch_size, patch_size).unfold(2, patch_size, patch_size)
-        patches = patches.permute(0, 1, 2, 4, 5, 3)
-        return patches.contiguous().view(images.size(0), -1, patch_size * patch_size * images.size(3))
-    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
-
-
 def _read_image_path(path: Path) -> np.ndarray:
     pixels = read_portable_image(path)
     if pixels.ndim == 2:
@@ -557,18 +452,18 @@ def _validate_config(config: ImageClassificationConfig) -> None:
 
 
 def _loss(
-    model: PatchTransformerClassifier,
+    model: SharedMultimodalModel,
     loss_fn: nn.CrossEntropyLoss,
     images: torch.Tensor,
     labels: torch.Tensor,
 ) -> float:
     model.eval()
     with torch.no_grad():
-        return float(loss_fn(model(images), labels).item())
+        return float(loss_fn(model.image_classification_logits(images), labels).item())
 
 
-def _accuracy(model: PatchTransformerClassifier, images: torch.Tensor, labels: torch.Tensor) -> float:
+def _accuracy(model: SharedMultimodalModel, images: torch.Tensor, labels: torch.Tensor) -> float:
     model.eval()
     with torch.no_grad():
-        predictions = model(images).argmax(dim=1)
+        predictions = model.image_classification_logits(images).argmax(dim=1)
     return float((predictions == labels).float().mean().item())
