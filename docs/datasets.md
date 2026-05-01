@@ -17,6 +17,11 @@ for this project. It is not a downloader guide.
 | MNIST | image | 70k images | supported | A grayscale handwritten digit image dataset with 10 classes. |
 | Fashion-MNIST | image | 70k images | supported | A grayscale fashion-product image dataset with 10 classes. |
 | CIFAR-10 | image | 60k images | supported | A color natural-image dataset with 10 classes. |
+| Mini-ImageNet | image | about 65k images | candidate | A smaller ImageNet-derived image classification dataset commonly organized around 100 classes. |
+| Food-101 | image | about 101k images | candidate | A food image classification dataset with 101 classes. |
+| Places365 | image | large | candidate | A scene recognition dataset with 365 place categories. |
+| ImageNet-1K | image | about 1.28M train images | candidate | A large object image classification dataset with 1000 classes. |
+| iNaturalist 2021 | image | large | candidate | A fine-grained species image dataset with many biological categories. |
 
 ## Notes
 
