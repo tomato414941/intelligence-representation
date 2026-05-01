@@ -64,6 +64,7 @@ def train_image_text_candidate_model(
     text_corpus: str = "",
     language_modeling_corpus: str | None = None,
     prompt: str = "",
+    additional_prompts: tuple[str, ...] = (),
     config: ImageTextCandidateTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
 ) -> ImageTextCandidateTrainingResult:
@@ -78,16 +79,17 @@ def train_image_text_candidate_model(
     else:
         eval_images, eval_labels = None, None
     choices = _choices_from_examples(train_examples)
-    tokenizer_text = "\n".join((text_corpus, language_modeling_corpus or "", prompt, *choices))
+    prompt_options = (prompt, *additional_prompts)
+    tokenizer_text = "\n".join((text_corpus, language_modeling_corpus or "", *prompt_options, *choices))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
         kind="byte-pair",
         vocab_size=training_config.tokenizer_vocab_size,
     )
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
+    prompt_token_options = [torch.tensor(tokenizer.encode(value), dtype=torch.long) for value in prompt_options]
     candidate_token_ids, candidate_token_mask = _candidate_token_tensors(choices, tokenizer)
-    if prompt_token_ids.numel() + candidate_token_ids.size(1) > training_config.text_context_length:
-        raise ValueError("prompt plus candidate token length must not exceed text_context_length")
+    _validate_prompt_candidate_lengths(prompt_token_options, candidate_token_ids, training_config.text_context_length)
     text_inputs: torch.Tensor | None = None
     text_targets: torch.Tensor | None = None
     if language_modeling_corpus is not None:
@@ -113,6 +115,7 @@ def train_image_text_candidate_model(
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)
+    prompt_token_options = [row.to(device) for row in prompt_token_options]
     candidate_token_ids = candidate_token_ids.to(device)
     candidate_token_mask = candidate_token_mask.to(device)
     if eval_images is not None and eval_labels is not None:
@@ -143,6 +146,7 @@ def train_image_text_candidate_model(
             loss = _text_batch_loss(model, loss_fn, text_inputs[batch_index], text_targets[batch_index])
         else:
             image_step = step if text_inputs is None else step // 2
+            batch_prompt_token_ids = prompt_token_options[image_step % len(prompt_token_options)]
             start = (image_step * training_config.batch_size) % len(train_images)
             indices = (torch.arange(training_config.batch_size, device=device) + start) % len(train_images)
             batch_images = train_images.index_select(0, indices)
@@ -150,7 +154,7 @@ def train_image_text_candidate_model(
             loss = loss_fn(
                 model.image_text_fusion_candidate_logits(
                     batch_images,
-                    prompt_token_ids,
+                    batch_prompt_token_ids,
                     candidate_token_ids,
                     candidate_token_mask,
                 ),
@@ -256,6 +260,16 @@ def _candidate_token_tensors(choices: tuple[str, ...], tokenizer: TextTokenizer)
     padded = [row + [0] * (max_length - len(row)) for row in rows]
     mask = [[True] * len(row) + [False] * (max_length - len(row)) for row in rows]
     return torch.tensor(padded, dtype=torch.long), torch.tensor(mask, dtype=torch.bool)
+
+
+def _validate_prompt_candidate_lengths(
+    prompt_token_options: list[torch.Tensor],
+    candidate_token_ids: torch.Tensor,
+    text_context_length: int,
+) -> None:
+    for prompt_token_ids in prompt_token_options:
+        if prompt_token_ids.numel() + candidate_token_ids.size(1) > text_context_length:
+            raise ValueError("prompt plus candidate token length must not exceed text_context_length")
 
 
 def _text_batch_loss(

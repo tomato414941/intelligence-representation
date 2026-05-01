@@ -82,6 +82,29 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.text_initial_loss, 0.0)
         self.assertGreater(result.metrics.text_final_loss, 0.0)
 
+    def test_can_train_with_prompt_variations(self) -> None:
+        with TemporaryDirectory() as directory:
+            result = train_image_text_candidate_model(
+                train_examples=_write_examples(Path(directory)),
+                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                prompt="What is this item?",
+                additional_prompts=("Choose the best label.",),
+                config=ImageTextCandidateTrainingConfig(
+                    text_context_length=32,
+                    image_patch_size=1,
+                    max_steps=4,
+                    batch_size=2,
+                    learning_rate=0.01,
+                    seed=17,
+                    model_preset="tiny",
+                    device="cpu",
+                    tokenizer_vocab_size=270,
+                ),
+            )
+
+        self.assertGreater(result.metrics.train_final_loss, 0.0)
+        self.assertGreaterEqual(result.metrics.train_accuracy, 0.0)
+
 
 class SharedMultimodalCandidatePathTest(unittest.TestCase):
     def test_outputs_fusion_candidate_logits(self) -> None:
