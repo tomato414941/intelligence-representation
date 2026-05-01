@@ -10,6 +10,7 @@ from intrep.image_text_answer_checkpoint import (
     save_image_text_answer_checkpoint,
 )
 from intrep.image_text_answer_training import (
+    ImageTextAnswerDataset,
     ImageTextAnswerExample,
     ImageTextAnswerTrainingConfig,
     generate_image_text_answer,
@@ -21,6 +22,21 @@ from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
 class ImageTextAnswerTrainingTest(unittest.TestCase):
+    def test_image_text_answer_dataset_reads_examples_lazily(self) -> None:
+        with TemporaryDirectory() as directory:
+            examples = _write_examples(Path(directory))
+            token_ids = torch.tensor([[1, 2, 3], [4, 5, 0]], dtype=torch.long)
+            loss_mask = torch.tensor([[False, True, True], [False, True, False]], dtype=torch.bool)
+            dataset = ImageTextAnswerDataset(examples, token_ids, loss_mask)
+            image, row_token_ids, row_loss_mask = dataset[1]
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.image_shape, (2, 2))
+        self.assertEqual(dataset.channel_count, 1)
+        self.assertEqual(image.shape, torch.Size([2, 2]))
+        self.assertEqual(row_token_ids.tolist(), [4, 5, 0])
+        self.assertEqual(row_loss_mask.tolist(), [False, True, False])
+
     def test_trains_image_prompt_to_answer_tokens(self) -> None:
         with TemporaryDirectory() as directory:
             examples = _write_examples(Path(directory))

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, Dataset
 
 from intrep.image_io import read_portable_image
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
@@ -65,6 +66,35 @@ class ImageTextAnswerTrainingResult:
     image_shape: tuple[int, ...]
 
 
+class ImageTextAnswerDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
+    def __init__(
+        self,
+        examples: list[ImageTextAnswerExample],
+        text_token_ids: torch.Tensor,
+        loss_mask: torch.Tensor,
+    ) -> None:
+        if not examples:
+            raise ValueError("examples must not be empty")
+        if text_token_ids.size(0) != len(examples):
+            raise ValueError("text_token_ids batch size must match examples")
+        if loss_mask.shape != text_token_ids.shape:
+            raise ValueError("loss_mask must have the same shape as text_token_ids")
+        self.examples = tuple(examples)
+        self.text_token_ids = text_token_ids
+        self.loss_mask = loss_mask
+        self.image_shape = tuple(int(value) for value in _image_tensor_from_path(examples[0].image_path).shape)
+        self.channel_count = _channel_count_from_image_shape(self.image_shape)
+
+    def __len__(self) -> int:
+        return len(self.examples)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        image = _image_tensor_from_path(self.examples[index].image_path)
+        if tuple(image.shape) != self.image_shape:
+            raise ValueError("all images must have the same shape")
+        return image, self.text_token_ids[index], self.loss_mask[index]
+
+
 def train_image_text_answer_model(
     *,
     train_examples: list[ImageTextAnswerExample],
@@ -77,7 +107,6 @@ def train_image_text_answer_model(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
-    train_images = image_text_answer_image_tensor_from_examples(train_examples)
     tokenizer_text = "\n".join(
         (
             tokenizer_corpus,
@@ -93,24 +122,36 @@ def train_image_text_answer_model(
     text_token_ids, loss_mask = _prompt_answer_token_tensors(train_examples, tokenizer)
     if text_token_ids.size(1) > training_config.text_context_length:
         raise ValueError("prompt plus answer token length must not exceed text_context_length")
+    train_dataset = ImageTextAnswerDataset(train_examples, text_token_ids, loss_mask)
+    train_loader = _data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=True,
+        device=device,
+    )
+    train_eval_loader = _data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=False,
+        device=device,
+    )
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = SharedMultimodalModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=training_config.text_context_length,
-        image_size=(int(train_images.shape[1]), int(train_images.shape[2])),
+        image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
         patch_size=training_config.image_patch_size,
         embedding_dim=int(preset["embedding_dim"]),
         num_heads=int(preset["num_heads"]),
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        channel_count=_channel_count_from_images(train_images),
+        channel_count=train_dataset.channel_count,
     ).to(device)
     if initial_model_state_dict is not None:
         load_compatible_shared_state(model, initial_model_state_dict)
-    train_images = train_images.to(device)
-    text_token_ids = text_token_ids.to(device)
-    loss_mask = loss_mask.to(device)
 
     optimizer = build_adamw(
         model,
@@ -123,15 +164,22 @@ def train_image_text_answer_model(
         warmup_steps=training_config.warmup_steps,
         max_steps=training_config.max_steps,
     )
-    initial_loss = _loss(model, train_images, text_token_ids, loss_mask)
+    initial_loss = _loss(model, train_eval_loader, device)
+    train_iterator = iter(train_loader)
+    model.train()
     for step in range(training_config.max_steps):
-        start = (step * training_config.batch_size) % len(train_images)
-        indices = (torch.arange(training_config.batch_size, device=device) + start) % len(train_images)
-        batch_images = train_images.index_select(0, indices)
-        batch_token_ids = text_token_ids.index_select(0, indices)
-        batch_loss_mask = loss_mask.index_select(0, indices)
+        try:
+            batch_images, batch_token_ids, batch_loss_mask = next(train_iterator)
+        except StopIteration:
+            train_iterator = iter(train_loader)
+            batch_images, batch_token_ids, batch_loss_mask = next(train_iterator)
         optimizer.zero_grad(set_to_none=True)
-        loss = _loss_tensor(model, batch_images, batch_token_ids, batch_loss_mask)
+        loss = _loss_tensor(
+            model,
+            batch_images.to(device),
+            batch_token_ids.to(device),
+            batch_loss_mask.to(device),
+        )
         loss.backward()
         clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
@@ -139,16 +187,16 @@ def train_image_text_answer_model(
 
     return ImageTextAnswerTrainingResult(
         metrics=ImageTextAnswerMetrics(
-            train_case_count=int(train_images.size(0)),
+            train_case_count=len(train_dataset),
             train_initial_loss=initial_loss,
-            train_final_loss=_loss(model, train_images, text_token_ids, loss_mask),
+            train_final_loss=_loss(model, train_eval_loader, device),
             max_steps=training_config.max_steps,
             model_preset=training_config.model_preset,
         ),
         model=model,
         tokenizer=tokenizer,
         config=training_config,
-        image_shape=tuple(int(value) for value in train_images.shape[1:]),
+        image_shape=train_dataset.image_shape,
     )
 
 
@@ -279,17 +327,27 @@ def _prompt_answer_token_tensors(
 
 def _loss(
     model: SharedMultimodalModel,
-    images: torch.Tensor,
-    text_token_ids: torch.Tensor,
-    loss_mask: torch.Tensor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+    device: torch.device,
 ) -> float:
     was_training = model.training
     model.eval()
+    total_loss = 0.0
+    sample_count = 0
     with torch.no_grad():
-        loss = _loss_tensor(model, images, text_token_ids, loss_mask)
+        for images, text_token_ids, loss_mask in data_loader:
+            loss = _loss_tensor(
+                model,
+                images.to(device),
+                text_token_ids.to(device),
+                loss_mask.to(device),
+            )
+            batch_size = int(text_token_ids.size(0))
+            total_loss += float(loss.item()) * batch_size
+            sample_count += batch_size
     if was_training:
         model.train()
-    return float(loss.item())
+    return total_loss / sample_count
 
 
 def _loss_tensor(
@@ -317,12 +375,36 @@ def _image_batch(image: torch.Tensor) -> torch.Tensor:
     raise ValueError("image must have shape [height, width], [height, width, channels], or [1, height, width]")
 
 
-def _channel_count_from_images(images: torch.Tensor) -> int:
-    if images.ndim == 3:
+def _image_tensor_from_path(path: Path) -> torch.Tensor:
+    image = read_portable_image(path).astype(np.float32) / 255.0
+    return torch.tensor(image, dtype=torch.float32)
+
+
+def _channel_count_from_image_shape(image_shape: tuple[int, ...]) -> int:
+    if len(image_shape) == 2:
         return 1
-    if images.ndim == 4:
-        return int(images.shape[3])
-    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
+    if len(image_shape) == 3:
+        return image_shape[2]
+    raise ValueError("image shape must be [height, width] or [height, width, channels]")
+
+
+def _data_loader(
+    dataset: ImageTextAnswerDataset,
+    *,
+    batch_size: int,
+    seed: int,
+    shuffle: bool,
+    device: torch.device,
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        generator=generator,
+        pin_memory=device.type == "cuda",
+    )
 
 
 def _validate_config(config: ImageTextAnswerTrainingConfig) -> None:

@@ -10,6 +10,7 @@ from intrep.image_text_choice_checkpoint import (
     save_image_text_choice_checkpoint,
 )
 from intrep.image_text_choice_training import (
+    ImageTextChoiceDataset,
     ImageTextChoiceTrainingConfig,
     evaluate_image_text_choice_model,
     train_image_text_choice_model,
@@ -18,6 +19,17 @@ from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
 class ImageTextChoiceTrainingTest(unittest.TestCase):
+    def test_image_text_choice_dataset_reads_examples_lazily(self) -> None:
+        with TemporaryDirectory() as directory:
+            dataset = ImageTextChoiceDataset(_write_examples(Path(directory)))
+            image, label = dataset[1]
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.image_shape, (2, 2))
+        self.assertEqual(dataset.channel_count, 1)
+        self.assertEqual(image.shape, torch.Size([2, 2]))
+        self.assertEqual(int(label.item()), 0)
+
     def test_trains_image_text_choice_selector(self) -> None:
         with TemporaryDirectory() as directory:
             result = train_image_text_choice_model(

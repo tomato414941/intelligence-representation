@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
+import numpy as np
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
-from intrep.image_classification import ImageTextChoiceExample, image_text_choice_tensors_from_examples
+from intrep.image_classification import ImageTextChoiceExample
+from intrep.image_io import read_portable_image
 from intrep.language_modeling_training import (
+    LanguageModelingDataset,
     LanguageModelingTrainingDevice,
-    language_model_batches,
     resolve_training_device,
 )
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
@@ -65,6 +69,26 @@ class ImageTextChoiceEvalMetrics:
     accuracy: float
 
 
+class ImageTextChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(self, examples: list[ImageTextChoiceExample]) -> None:
+        if not examples:
+            raise ValueError("examples must not be empty")
+        _choices_from_examples(examples)
+        self.examples = tuple(examples)
+        self.image_shape = tuple(int(value) for value in _image_tensor_from_path(examples[0].image_path).shape)
+        self.channel_count = _channel_count_from_image_shape(self.image_shape)
+
+    def __len__(self) -> int:
+        return len(self.examples)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        example = self.examples[index]
+        image = _image_tensor_from_path(example.image_path)
+        if tuple(image.shape) != self.image_shape:
+            raise ValueError("all images must have the same shape")
+        return image, torch.tensor(example.answer_index, dtype=torch.long)
+
+
 def train_image_text_choice_model(
     *,
     train_examples: list[ImageTextChoiceExample],
@@ -81,12 +105,35 @@ def train_image_text_choice_model(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
-    train_images, train_labels = image_text_choice_tensors_from_examples(train_examples)
+    train_dataset = ImageTextChoiceDataset(train_examples)
+    train_loader = _data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=True,
+        device=device,
+    )
+    train_eval_loader = _data_loader(
+        train_dataset,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+        shuffle=False,
+        device=device,
+    )
+    eval_dataset: ImageTextChoiceDataset | None = None
+    eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
     if eval_examples is not None:
         _validate_choice_set(train_examples, eval_examples)
-        eval_images, eval_labels = image_text_choice_tensors_from_examples(eval_examples)
-    else:
-        eval_images, eval_labels = None, None
+        eval_dataset = ImageTextChoiceDataset(eval_examples)
+        if eval_dataset.image_shape != train_dataset.image_shape:
+            raise ValueError("eval images must have the same shape as train images")
+        eval_loader = _data_loader(
+            eval_dataset,
+            batch_size=training_config.batch_size,
+            seed=training_config.seed,
+            shuffle=False,
+            device=device,
+        )
     choices = _choices_from_examples(train_examples)
     prompt_options = (prompt, *additional_prompts)
     tokenizer_text = "\n".join((tokenizer_corpus, language_modeling_corpus or "", *prompt_options, *choices))
@@ -99,42 +146,47 @@ def train_image_text_choice_model(
     prompt_token_options = [torch.tensor(tokenizer.encode(value), dtype=torch.long) for value in prompt_options]
     choice_token_ids, choice_token_mask = _choice_token_tensors(choices, tokenizer)
     _validate_prompt_choice_lengths(prompt_token_options, choice_token_ids, training_config.text_context_length)
-    text_inputs: torch.Tensor | None = None
-    text_targets: torch.Tensor | None = None
+    text_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
+    text_eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
     if language_modeling_corpus is not None:
         text_token_ids = tokenizer.encode(language_modeling_corpus)
-        text_inputs, text_targets = language_model_batches(
+        text_dataset = LanguageModelingDataset(
             text_token_ids,
             context_length=training_config.text_context_length,
+        )
+        text_loader = _data_loader(
+            text_dataset,
             batch_size=training_config.batch_size,
+            seed=training_config.seed,
+            shuffle=True,
+            device=device,
+        )
+        text_eval_loader = _data_loader(
+            text_dataset,
+            batch_size=training_config.batch_size,
+            seed=training_config.seed,
+            shuffle=False,
+            device=device,
         )
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = SharedMultimodalModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=training_config.text_context_length,
-        image_size=(int(train_images.shape[1]), int(train_images.shape[2])),
+        image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
         patch_size=training_config.image_patch_size,
         embedding_dim=int(preset["embedding_dim"]),
         num_heads=int(preset["num_heads"]),
         hidden_dim=int(preset["hidden_dim"]),
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
-        channel_count=_channel_count_from_images(train_images),
+        channel_count=train_dataset.channel_count,
     ).to(device)
     if initial_model_state_dict is not None:
         load_compatible_shared_state(model, initial_model_state_dict)
-    train_images = train_images.to(device)
-    train_labels = train_labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)
     prompt_token_options = [row.to(device) for row in prompt_token_options]
     choice_token_ids = choice_token_ids.to(device)
     choice_token_mask = choice_token_mask.to(device)
-    if eval_images is not None and eval_labels is not None:
-        eval_images = eval_images.to(device)
-        eval_labels = eval_labels.to(device)
-    if text_inputs is not None and text_targets is not None:
-        text_inputs = text_inputs.to(device)
-        text_targets = text_targets.to(device)
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = build_adamw(
@@ -151,35 +203,43 @@ def train_image_text_choice_model(
     initial_loss = _loss(
         model,
         loss_fn,
-        train_images,
-        train_labels,
+        train_eval_loader,
+        device,
         prompt_token_ids,
         choice_token_ids,
         choice_token_mask,
     )
     text_initial_loss = None
-    if text_inputs is not None and text_targets is not None:
-        text_initial_loss = _text_loss(model, loss_fn, text_inputs, text_targets)
+    if text_eval_loader is not None:
+        text_initial_loss = _text_loss(model, loss_fn, text_eval_loader, device)
+    image_iterator = iter(train_loader)
+    text_iterator = iter(text_loader) if text_loader is not None else None
+    model.train()
     for step in range(training_config.max_steps):
         optimizer.zero_grad(set_to_none=True)
-        if text_inputs is not None and text_targets is not None and step % 2 == 0:
-            batch_index = (step // 2) % text_inputs.size(0)
-            loss = _text_batch_loss(model, loss_fn, text_inputs[batch_index], text_targets[batch_index])
+        if text_iterator is not None and step % 2 == 0:
+            try:
+                batch_inputs, batch_targets = next(text_iterator)
+            except StopIteration:
+                text_iterator = iter(text_loader)
+                batch_inputs, batch_targets = next(text_iterator)
+            loss = _text_batch_loss(model, loss_fn, batch_inputs.to(device), batch_targets.to(device))
         else:
-            image_step = step if text_inputs is None else step // 2
+            try:
+                batch_images, batch_labels = next(image_iterator)
+            except StopIteration:
+                image_iterator = iter(train_loader)
+                batch_images, batch_labels = next(image_iterator)
+            image_step = step if text_iterator is None else step // 2
             batch_prompt_token_ids = prompt_token_options[image_step % len(prompt_token_options)]
-            start = (image_step * training_config.batch_size) % len(train_images)
-            indices = (torch.arange(training_config.batch_size, device=device) + start) % len(train_images)
-            batch_images = train_images.index_select(0, indices)
-            batch_labels = train_labels.index_select(0, indices)
             loss = loss_fn(
                 model.image_text_choice_logits(
-                    batch_images,
+                    batch_images.to(device),
                     batch_prompt_token_ids,
                     choice_token_ids,
                     choice_token_mask,
                 ),
-                batch_labels,
+                batch_labels.to(device),
             )
         loss.backward()
         clip_gradients(model, training_config.max_grad_norm)
@@ -188,37 +248,37 @@ def train_image_text_choice_model(
 
     train_accuracy = _accuracy(
         model,
-        train_images,
-        train_labels,
+        train_eval_loader,
+        device,
         prompt_token_ids,
         choice_token_ids,
         choice_token_mask,
     )
     eval_accuracy = None
     eval_count = 0
-    if eval_images is not None and eval_labels is not None:
+    if eval_dataset is not None and eval_loader is not None:
         eval_accuracy = _accuracy(
             model,
-            eval_images,
-            eval_labels,
+            eval_loader,
+            device,
             prompt_token_ids,
             choice_token_ids,
             choice_token_mask,
         )
-        eval_count = int(eval_labels.numel())
+        eval_count = len(eval_dataset)
     text_final_loss = None
-    if text_inputs is not None and text_targets is not None:
-        text_final_loss = _text_loss(model, loss_fn, text_inputs, text_targets)
+    if text_eval_loader is not None:
+        text_final_loss = _text_loss(model, loss_fn, text_eval_loader, device)
     return ImageTextChoiceTrainingResult(
         metrics=ImageTextChoiceMetrics(
-            train_case_count=int(train_labels.numel()),
+            train_case_count=len(train_dataset),
             eval_case_count=eval_count,
             train_initial_loss=initial_loss,
             train_final_loss=_loss(
                 model,
                 loss_fn,
-                train_images,
-                train_labels,
+                train_eval_loader,
+                device,
                 prompt_token_ids,
                 choice_token_ids,
                 choice_token_mask,
@@ -233,7 +293,7 @@ def train_image_text_choice_model(
         model=model,
         tokenizer=tokenizer,
         config=training_config,
-        image_shape=tuple(int(value) for value in train_images.shape[1:]),
+        image_shape=train_dataset.image_shape,
     )
 
 
@@ -244,32 +304,31 @@ def evaluate_image_text_choice_model(
     examples: list[ImageTextChoiceExample],
     prompt: str = "",
 ) -> ImageTextChoiceEvalMetrics:
-    images, labels = image_text_choice_tensors_from_examples(examples)
+    dataset = ImageTextChoiceDataset(examples)
     choices = _choices_from_examples(examples)
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
     choice_token_ids, choice_token_mask = _choice_token_tensors(choices, tokenizer)
     device = next(model.parameters()).device
-    images = images.to(device)
-    labels = labels.to(device)
+    data_loader = _data_loader(dataset, batch_size=len(dataset), seed=0, shuffle=False, device=device)
     prompt_token_ids = prompt_token_ids.to(device)
     choice_token_ids = choice_token_ids.to(device)
     choice_token_mask = choice_token_mask.to(device)
     loss_fn = nn.CrossEntropyLoss()
     return ImageTextChoiceEvalMetrics(
-        case_count=int(labels.numel()),
+        case_count=len(dataset),
         loss=_loss(
             model,
             loss_fn,
-            images,
-            labels,
+            data_loader,
+            device,
             prompt_token_ids,
             choice_token_ids,
             choice_token_mask,
         ),
         accuracy=_accuracy(
             model,
-            images,
-            labels,
+            data_loader,
+            device,
             prompt_token_ids,
             choice_token_ids,
             choice_token_mask,
@@ -310,67 +369,83 @@ def _text_batch_loss(
 def _text_loss(
     model: SharedMultimodalModel,
     loss_fn: nn.CrossEntropyLoss,
-    inputs: torch.Tensor,
-    targets: torch.Tensor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
 ) -> float:
     was_training = model.training
     model.eval()
+    total_loss = 0.0
+    batch_count = 0
     with torch.no_grad():
-        losses = [
-            float(_text_batch_loss(model, loss_fn, batch_inputs, batch_targets).item())
-            for batch_inputs, batch_targets in zip(inputs, targets)
-        ]
+        for batch_inputs, batch_targets in data_loader:
+            loss = _text_batch_loss(model, loss_fn, batch_inputs.to(device), batch_targets.to(device))
+            total_loss += float(loss.item())
+            batch_count += 1
     if was_training:
         model.train()
-    return sum(losses) / len(losses)
+    return total_loss / batch_count
 
 
 def _loss(
     model: SharedMultimodalModel,
     loss_fn: nn.CrossEntropyLoss,
-    images: torch.Tensor,
-    labels: torch.Tensor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
     prompt_token_ids: torch.Tensor,
     choice_token_ids: torch.Tensor,
     choice_token_mask: torch.Tensor,
 ) -> float:
     was_training = model.training
     model.eval()
+    total_loss = 0.0
+    sample_count = 0
     with torch.no_grad():
-        loss = loss_fn(
-            model.image_text_choice_logits(
-                images,
-                prompt_token_ids,
-                choice_token_ids,
-                choice_token_mask,
-            ),
-            labels,
-        )
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            loss = loss_fn(
+                model.image_text_choice_logits(
+                    images,
+                    prompt_token_ids,
+                    choice_token_ids,
+                    choice_token_mask,
+                ),
+                labels,
+            )
+            total_loss += float(loss.item()) * int(labels.numel())
+            sample_count += int(labels.numel())
     if was_training:
         model.train()
-    return float(loss.item())
+    return total_loss / sample_count
 
 
 def _accuracy(
     model: SharedMultimodalModel,
-    images: torch.Tensor,
-    labels: torch.Tensor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
     prompt_token_ids: torch.Tensor,
     choice_token_ids: torch.Tensor,
     choice_token_mask: torch.Tensor,
 ) -> float:
     was_training = model.training
     model.eval()
+    correct_count = 0
+    total_count = 0
     with torch.no_grad():
-        predictions = model.image_text_choice_logits(
-            images,
-            prompt_token_ids,
-            choice_token_ids,
-            choice_token_mask,
-        ).argmax(dim=1)
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            predictions = model.image_text_choice_logits(
+                images,
+                prompt_token_ids,
+                choice_token_ids,
+                choice_token_mask,
+            ).argmax(dim=1)
+            correct_count += int((predictions == labels).sum().item())
+            total_count += int(labels.numel())
     if was_training:
         model.train()
-    return float((predictions == labels).float().mean().item())
+    return correct_count / total_count
 
 
 def _validate_choice_set(
@@ -393,12 +468,36 @@ def _choices_from_examples(examples: list[ImageTextChoiceExample]) -> tuple[str,
     return choices
 
 
-def _channel_count_from_images(images: torch.Tensor) -> int:
-    if images.ndim == 3:
+def _image_tensor_from_path(path: Path) -> torch.Tensor:
+    image = read_portable_image(path).astype(np.float32) / 255.0
+    return torch.tensor(image, dtype=torch.float32)
+
+
+def _channel_count_from_image_shape(image_shape: tuple[int, ...]) -> int:
+    if len(image_shape) == 2:
         return 1
-    if images.ndim == 4:
-        return int(images.shape[3])
-    raise ValueError("images must have shape [batch, height, width] or [batch, height, width, channels]")
+    if len(image_shape) == 3:
+        return image_shape[2]
+    raise ValueError("image shape must be [height, width] or [height, width, channels]")
+
+
+def _data_loader(
+    dataset: Dataset,
+    *,
+    batch_size: int,
+    seed: int,
+    shuffle: bool,
+    device: torch.device,
+) -> DataLoader:
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        generator=generator,
+        pin_memory=device.type == "cuda",
+    )
 
 
 def _validate_config(config: ImageTextChoiceTrainingConfig) -> None:
