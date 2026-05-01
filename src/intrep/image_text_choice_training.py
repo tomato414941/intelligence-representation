@@ -90,8 +90,8 @@ def train_image_text_choice_model(
     )
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
     prompt_token_options = [torch.tensor(tokenizer.encode(value), dtype=torch.long) for value in prompt_options]
-    candidate_token_ids, candidate_token_mask = _candidate_token_tensors(choices, tokenizer)
-    _validate_prompt_candidate_lengths(prompt_token_options, candidate_token_ids, training_config.text_context_length)
+    choice_token_ids, choice_token_mask = _choice_token_tensors(choices, tokenizer)
+    _validate_prompt_choice_lengths(prompt_token_options, choice_token_ids, training_config.text_context_length)
     text_inputs: torch.Tensor | None = None
     text_targets: torch.Tensor | None = None
     if language_modeling_corpus is not None:
@@ -118,8 +118,8 @@ def train_image_text_choice_model(
     train_labels = train_labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)
     prompt_token_options = [row.to(device) for row in prompt_token_options]
-    candidate_token_ids = candidate_token_ids.to(device)
-    candidate_token_mask = candidate_token_mask.to(device)
+    choice_token_ids = choice_token_ids.to(device)
+    choice_token_mask = choice_token_mask.to(device)
     if eval_images is not None and eval_labels is not None:
         eval_images = eval_images.to(device)
         eval_labels = eval_labels.to(device)
@@ -135,8 +135,8 @@ def train_image_text_choice_model(
         train_images,
         train_labels,
         prompt_token_ids,
-        candidate_token_ids,
-        candidate_token_mask,
+        choice_token_ids,
+        choice_token_mask,
     )
     text_initial_loss = None
     if text_inputs is not None and text_targets is not None:
@@ -157,8 +157,8 @@ def train_image_text_choice_model(
                 model.image_text_choice_logits(
                     batch_images,
                     batch_prompt_token_ids,
-                    candidate_token_ids,
-                    candidate_token_mask,
+                    choice_token_ids,
+                    choice_token_mask,
                 ),
                 batch_labels,
             )
@@ -170,8 +170,8 @@ def train_image_text_choice_model(
         train_images,
         train_labels,
         prompt_token_ids,
-        candidate_token_ids,
-        candidate_token_mask,
+        choice_token_ids,
+        choice_token_mask,
     )
     eval_accuracy = None
     eval_count = 0
@@ -181,8 +181,8 @@ def train_image_text_choice_model(
             eval_images,
             eval_labels,
             prompt_token_ids,
-            candidate_token_ids,
-            candidate_token_mask,
+            choice_token_ids,
+            choice_token_mask,
         )
         eval_count = int(eval_labels.numel())
     text_final_loss = None
@@ -199,8 +199,8 @@ def train_image_text_choice_model(
                 train_images,
                 train_labels,
                 prompt_token_ids,
-                candidate_token_ids,
-                candidate_token_mask,
+                choice_token_ids,
+                choice_token_mask,
             ),
             train_accuracy=train_accuracy,
             eval_accuracy=eval_accuracy,
@@ -226,13 +226,13 @@ def evaluate_image_text_choice_model(
     images, labels = image_label_tensors_from_examples(examples)
     choices = _choices_from_examples(examples)
     prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
-    candidate_token_ids, candidate_token_mask = _candidate_token_tensors(choices, tokenizer)
+    choice_token_ids, choice_token_mask = _choice_token_tensors(choices, tokenizer)
     device = next(model.parameters()).device
     images = images.to(device)
     labels = labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)
-    candidate_token_ids = candidate_token_ids.to(device)
-    candidate_token_mask = candidate_token_mask.to(device)
+    choice_token_ids = choice_token_ids.to(device)
+    choice_token_mask = choice_token_mask.to(device)
     loss_fn = nn.CrossEntropyLoss()
     return ImageTextChoiceEvalMetrics(
         case_count=int(labels.numel()),
@@ -242,38 +242,38 @@ def evaluate_image_text_choice_model(
             images,
             labels,
             prompt_token_ids,
-            candidate_token_ids,
-            candidate_token_mask,
+            choice_token_ids,
+            choice_token_mask,
         ),
         accuracy=_accuracy(
             model,
             images,
             labels,
             prompt_token_ids,
-            candidate_token_ids,
-            candidate_token_mask,
+            choice_token_ids,
+            choice_token_mask,
         ),
     )
 
 
-def _candidate_token_tensors(choices: tuple[str, ...], tokenizer: TextTokenizer) -> tuple[torch.Tensor, torch.Tensor]:
+def _choice_token_tensors(choices: tuple[str, ...], tokenizer: TextTokenizer) -> tuple[torch.Tensor, torch.Tensor]:
     rows = [tokenizer.encode(choice) for choice in choices]
     if any(not row for row in rows):
-        raise ValueError("candidate text must encode to at least one token")
+        raise ValueError("choice text must encode to at least one token")
     max_length = max(len(row) for row in rows)
     padded = [row + [0] * (max_length - len(row)) for row in rows]
     mask = [[True] * len(row) + [False] * (max_length - len(row)) for row in rows]
     return torch.tensor(padded, dtype=torch.long), torch.tensor(mask, dtype=torch.bool)
 
 
-def _validate_prompt_candidate_lengths(
+def _validate_prompt_choice_lengths(
     prompt_token_options: list[torch.Tensor],
-    candidate_token_ids: torch.Tensor,
+    choice_token_ids: torch.Tensor,
     text_context_length: int,
 ) -> None:
     for prompt_token_ids in prompt_token_options:
-        if prompt_token_ids.numel() + candidate_token_ids.size(1) > text_context_length:
-            raise ValueError("prompt plus candidate token length must not exceed text_context_length")
+        if prompt_token_ids.numel() + choice_token_ids.size(1) > text_context_length:
+            raise ValueError("prompt plus choice token length must not exceed text_context_length")
 
 
 def _text_batch_loss(
@@ -310,8 +310,8 @@ def _loss(
     images: torch.Tensor,
     labels: torch.Tensor,
     prompt_token_ids: torch.Tensor,
-    candidate_token_ids: torch.Tensor,
-    candidate_token_mask: torch.Tensor,
+    choice_token_ids: torch.Tensor,
+    choice_token_mask: torch.Tensor,
 ) -> float:
     was_training = model.training
     model.eval()
@@ -320,8 +320,8 @@ def _loss(
             model.image_text_choice_logits(
                 images,
                 prompt_token_ids,
-                candidate_token_ids,
-                candidate_token_mask,
+                choice_token_ids,
+                choice_token_mask,
             ),
             labels,
         )
@@ -335,8 +335,8 @@ def _accuracy(
     images: torch.Tensor,
     labels: torch.Tensor,
     prompt_token_ids: torch.Tensor,
-    candidate_token_ids: torch.Tensor,
-    candidate_token_mask: torch.Tensor,
+    choice_token_ids: torch.Tensor,
+    choice_token_mask: torch.Tensor,
 ) -> float:
     was_training = model.training
     model.eval()
@@ -344,8 +344,8 @@ def _accuracy(
         predictions = model.image_text_choice_logits(
             images,
             prompt_token_ids,
-            candidate_token_ids,
-            candidate_token_mask,
+            choice_token_ids,
+            choice_token_mask,
         ).argmax(dim=1)
     if was_training:
         model.train()
