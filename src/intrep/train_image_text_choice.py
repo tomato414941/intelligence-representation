@@ -11,6 +11,7 @@ from intrep.image_text_choice_training import (
     ImageTextChoiceTrainingConfig,
     train_image_text_choice_model,
 )
+from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prompt", default="")
     parser.add_argument("--metrics-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path)
+    parser.add_argument("--init-checkpoint-path", type=Path)
     parser.add_argument("--text-context-length", type=int, default=16)
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -42,6 +44,11 @@ def main(argv: list[str] | None = None) -> None:
         if args.eval_path is not None
         else None
     )
+    initialization = (
+        load_shared_multimodal_initialization(args.init_checkpoint_path, device=args.device)
+        if args.init_checkpoint_path is not None
+        else None
+    )
     result = train_image_text_choice_model(
         train_examples=train_examples,
         eval_examples=eval_examples,
@@ -58,6 +65,10 @@ def main(argv: list[str] | None = None) -> None:
             model_preset=args.model_preset,
             device=args.device,
             tokenizer_vocab_size=args.tokenizer_vocab_size,
+        ),
+        tokenizer_override=initialization.tokenizer if initialization is not None else None,
+        initial_model_state_dict=(
+            initialization.model_state_dict if initialization is not None else None
         ),
     )
     if args.metrics_path is not None:
@@ -77,6 +88,10 @@ def main(argv: list[str] | None = None) -> None:
                         else None
                     ),
                     "prompt": args.prompt,
+                    "init_checkpoint_path": (
+                        str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None
+                    ),
+                    "init_checkpoint_schema": initialization.source_schema if initialization is not None else None,
                     "metrics": asdict(result.metrics),
                 },
                 indent=2,
