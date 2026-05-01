@@ -44,6 +44,13 @@ class ImageTextCandidateTrainingResult:
     tokenizer: TextTokenizer
 
 
+@dataclass(frozen=True)
+class ImageTextCandidateEvalMetrics:
+    case_count: int
+    loss: float
+    accuracy: float
+
+
 def train_image_text_candidate_model(
     *,
     train_examples: list[ImageChoiceExample],
@@ -63,7 +70,7 @@ def train_image_text_candidate_model(
         eval_images, eval_labels = image_label_tensors_from_examples(eval_examples)
     else:
         eval_images, eval_labels = None, None
-    choices = train_examples[0].choices
+    choices = _choices_from_examples(train_examples)
     tokenizer_text = "\n".join((text_corpus, prompt, *choices))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
@@ -169,6 +176,46 @@ def train_image_text_candidate_model(
     )
 
 
+def evaluate_image_text_candidate_model(
+    *,
+    model: SharedMultimodalModel,
+    tokenizer: TextTokenizer,
+    examples: list[ImageChoiceExample],
+    prompt: str = "",
+) -> ImageTextCandidateEvalMetrics:
+    images, labels = image_label_tensors_from_examples(examples)
+    choices = _choices_from_examples(examples)
+    prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
+    candidate_token_ids, candidate_token_mask = _candidate_token_tensors(choices, tokenizer)
+    device = next(model.parameters()).device
+    images = images.to(device)
+    labels = labels.to(device)
+    prompt_token_ids = prompt_token_ids.to(device)
+    candidate_token_ids = candidate_token_ids.to(device)
+    candidate_token_mask = candidate_token_mask.to(device)
+    loss_fn = nn.CrossEntropyLoss()
+    return ImageTextCandidateEvalMetrics(
+        case_count=int(labels.numel()),
+        loss=_loss(
+            model,
+            loss_fn,
+            images,
+            labels,
+            prompt_token_ids,
+            candidate_token_ids,
+            candidate_token_mask,
+        ),
+        accuracy=_accuracy(
+            model,
+            images,
+            labels,
+            prompt_token_ids,
+            candidate_token_ids,
+            candidate_token_mask,
+        ),
+    )
+
+
 def _candidate_token_tensors(choices: tuple[str, ...], tokenizer: TextTokenizer) -> tuple[torch.Tensor, torch.Tensor]:
     rows = [tokenizer.encode(choice) for choice in choices]
     if any(not row for row in rows):
@@ -235,6 +282,16 @@ def _validate_choice_set(
     for example in eval_examples:
         if example.choices != choices:
             raise ValueError("eval examples must use the same choices as train examples")
+
+
+def _choices_from_examples(examples: list[ImageChoiceExample]) -> tuple[str, ...]:
+    if not examples:
+        raise ValueError("examples must not be empty")
+    choices = examples[0].choices
+    for example in examples:
+        if example.choices != choices:
+            raise ValueError("all examples must use the same choices")
+    return choices
 
 
 def _channel_count_from_images(images: torch.Tensor) -> int:
