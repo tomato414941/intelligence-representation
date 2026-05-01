@@ -56,11 +56,8 @@ Examples:
 language modeling:
   preceding text tokens
 
-image classification:
-  image patch embeddings
-
-image-to-text:
-  image embeddings plus text prompt tokens
+image/text choice:
+  image patch embeddings plus candidate text embeddings
 
 interaction modeling:
   recent observations, actions, outputs, and feedback
@@ -77,7 +74,6 @@ Examples:
 
 ```text
 next token logits
-class logits
 candidate scores
 generated text
 predicted reward or value

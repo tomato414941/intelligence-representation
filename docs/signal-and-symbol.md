@@ -122,7 +122,7 @@ image example
   -> patch embedding layer
   -> input embedding sequence
 
-image-to-text example
+image/text choice example
   -> image input layer + text tokenizer / embedding layer
   -> input embedding sequence
 ```
@@ -304,9 +304,9 @@ modality-specific input layer
 ```
 
 For text-only language modeling, the input layer may be a tokenizer plus an
-embedding table. For image classification, it may be an image patch embedding
-layer plus a classification head. For image-to-text or audio-to-text tasks,
-input and output layers can differ while the Transformer core remains
+embedding table. For image/text choice tasks, image patches and candidate text
+embeddings can be fused before a candidate scoring head. For audio-to-text
+tasks, input and output layers can differ while the Transformer core remains
 shareable.
 
 ## Retired Direction
