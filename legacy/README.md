@@ -1,6 +1,6 @@
 # Legacy Material
 
-This directory contains historical experiments and tests that led to the current `src/intrep` prototype.
+This directory contains historical docs, experiments, and tests that led to the current `src/intrep` prototype.
 
 These files are kept for reference only. They are not the active implementation surface, and they are not part of the default test suite.
 

@@ -41,11 +41,11 @@ tests/
 docs/
   Project concepts, evaluation principles, and current results
 
-docs/experiments/
-  Planned or active experiment notes
+docs/current-experiment.md
+  Planned or active experiment note
 
-docs/legacy/
-  Historical notes and retired experiments
+legacy/
+  Historical docs, experiments, and tests
 ```
 
 ## Canonical Docs
@@ -57,6 +57,7 @@ Read these first:
 - [Model Input Boundaries](docs/model-input-boundaries.md)
 - [Learning and Execution](docs/learning-and-execution.md)
 - [Datasets](docs/datasets.md)
+- [Current Experiment](docs/current-experiment.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
@@ -64,7 +65,7 @@ Read these first:
 
 Historical notes:
 
-- [Legacy Docs](docs/legacy/)
+- [Legacy Docs](legacy/docs/)
 
 ## Design Constraints
 
