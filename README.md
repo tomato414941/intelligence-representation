@@ -95,7 +95,8 @@ uv run python -m unittest
 
 On RunPod, use an official PyTorch template and keep its system PyTorch/CUDA
 stack. Do not run `uv sync`, because it may install a PyTorch wheel that does
-not match the host NVIDIA driver.
+not match the host NVIDIA driver. The tested template is `runpod-torch-v220`
+(`Runpod Pytorch 2.2.0`, CUDA 12.1).
 
 ```sh
 ./scripts/setup_runpod.sh
