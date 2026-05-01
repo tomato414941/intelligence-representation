@@ -1,15 +1,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
+import numpy as np
 import torch
 
-from intrep.image_classification import ImageTextChoiceExample, image_text_choice_tensors_from_examples
+from intrep.image_io import read_portable_image
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.token_scoring import next_token_loss
+
+
+@dataclass(frozen=True)
+class ImageTextAnswerExample:
+    image_path: Path
+    prompt: str
+    answer_text: str
+
+    def __post_init__(self) -> None:
+        if not self.prompt:
+            raise ValueError("prompt must not be empty")
+        if not self.answer_text:
+            raise ValueError("answer_text must not be empty")
 
 
 @dataclass(frozen=True)
@@ -43,8 +58,7 @@ class ImageTextAnswerTrainingResult:
 
 def train_image_text_answer_model(
     *,
-    train_examples: list[ImageTextChoiceExample],
-    prompt: str,
+    train_examples: list[ImageTextAnswerExample],
     tokenizer_corpus: str = "",
     config: ImageTextAnswerTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
@@ -53,14 +67,20 @@ def train_image_text_answer_model(
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)
-    train_images, _ = image_text_choice_tensors_from_examples(train_examples)
-    tokenizer_text = "\n".join((tokenizer_corpus, prompt, *(example.answer_text for example in train_examples)))
+    train_images = image_text_answer_image_tensor_from_examples(train_examples)
+    tokenizer_text = "\n".join(
+        (
+            tokenizer_corpus,
+            *(example.prompt for example in train_examples),
+            *(example.answer_text for example in train_examples),
+        )
+    )
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
         kind="byte-pair",
         vocab_size=training_config.tokenizer_vocab_size,
     )
-    text_token_ids, loss_mask = _prompt_answer_token_tensors(train_examples, prompt, tokenizer)
+    text_token_ids, loss_mask = _prompt_answer_token_tensors(train_examples, tokenizer)
     if text_token_ids.size(1) > training_config.text_context_length:
         raise ValueError("prompt plus answer token length must not exceed text_context_length")
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
@@ -106,6 +126,18 @@ def train_image_text_answer_model(
     )
 
 
+def image_text_answer_image_tensor_from_examples(examples: list[ImageTextAnswerExample]) -> torch.Tensor:
+    images: list[np.ndarray] = []
+    for example in examples:
+        images.append(read_portable_image(example.image_path))
+    if not images:
+        raise ValueError("examples must not be empty")
+    first_shape = images[0].shape
+    if any(image.shape != first_shape for image in images):
+        raise ValueError("all images must have the same shape")
+    return torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
+
+
 def generate_image_text_answer(
     *,
     model: SharedMultimodalModel,
@@ -139,23 +171,25 @@ def generate_image_text_answer(
 
 
 def _prompt_answer_token_tensors(
-    examples: list[ImageTextChoiceExample],
-    prompt: str,
+    examples: list[ImageTextAnswerExample],
     tokenizer: TextTokenizer,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if not examples:
         raise ValueError("examples must not be empty")
-    rows = [tokenizer.encode(prompt + example.answer_text) for example in examples]
-    prompt_ids = tokenizer.encode(prompt)
-    if not prompt_ids:
-        raise ValueError("prompt must encode to at least one token")
-    if any(len(row) <= len(prompt_ids) for row in rows):
-        raise ValueError("answer_text must encode to at least one token")
+    rows = [tokenizer.encode(example.prompt + example.answer_text) for example in examples]
+    prompt_lengths: list[int] = []
+    for example, row in zip(examples, rows, strict=True):
+        prompt_ids = tokenizer.encode(example.prompt)
+        if not prompt_ids:
+            raise ValueError("prompt must encode to at least one token")
+        if len(row) <= len(prompt_ids):
+            raise ValueError("answer_text must encode to at least one token")
+        prompt_lengths.append(len(prompt_ids))
     max_length = max(len(row) for row in rows)
     padded = [row + [0] * (max_length - len(row)) for row in rows]
     masks = [
-        [False] * len(prompt_ids) + [True] * (len(row) - len(prompt_ids)) + [False] * (max_length - len(row))
-        for row in rows
+        [False] * prompt_length + [True] * (len(row) - prompt_length) + [False] * (max_length - len(row))
+        for row, prompt_length in zip(rows, prompt_lengths, strict=True)
     ]
     return torch.tensor(padded, dtype=torch.long), torch.tensor(masks, dtype=torch.bool)
 

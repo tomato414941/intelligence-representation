@@ -4,8 +4,8 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.image_classification import FASHION_MNIST_LABELS, ImageTextChoiceExample
 from intrep.image_text_answer_training import (
+    ImageTextAnswerExample,
     ImageTextAnswerTrainingConfig,
     generate_image_text_answer,
     train_image_text_answer_model,
@@ -19,7 +19,6 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
             examples = _write_examples(Path(directory))
             result = train_image_text_answer_model(
                 train_examples=examples,
-                prompt="answer: ",
                 tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
                 config=ImageTextAnswerTrainingConfig(
                     text_context_length=32,
@@ -48,14 +47,14 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
         self.assertIsInstance(generated, str)
 
 
-def _write_examples(root: Path) -> list[ImageTextChoiceExample]:
+def _write_examples(root: Path) -> list[ImageTextAnswerExample]:
     image_a = root / "a.pgm"
     image_b = root / "b.pgm"
     image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
     image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
     return [
-        ImageTextChoiceExample(image_path=image_a, choices=FASHION_MNIST_LABELS, answer_index=9),
-        ImageTextChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=0),
+        ImageTextAnswerExample(image_path=image_a, prompt="answer: ", answer_text="Ankle boot"),
+        ImageTextAnswerExample(image_path=image_b, prompt="answer: ", answer_text="T-shirt/top"),
     ]
 
 
