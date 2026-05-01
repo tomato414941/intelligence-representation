@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import nn
 
@@ -12,8 +14,8 @@ class SharedMultimodalModel(nn.Module):
     """Shared model shell for text-token and image-patch inputs.
 
     This is not a universal multimodal model yet. It currently exposes text
-    language-model logits and image classification logits over one shared
-    Transformer core.
+    language-model logits, image classification logits, and image-text
+    candidate scores over one shared Transformer core.
     """
 
     def __init__(
@@ -66,3 +68,32 @@ class SharedMultimodalModel(nn.Module):
     def image_logits(self, images: torch.Tensor) -> torch.Tensor:
         embeddings = self.image_input_layer(images)
         return self.classification_head(self.core(embeddings, causal=False))
+
+    def image_text_candidate_logits(
+        self,
+        images: torch.Tensor,
+        candidate_token_ids: torch.Tensor,
+        candidate_token_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        if candidate_token_ids.ndim != 2:
+            raise ValueError("candidate_token_ids must have shape [candidate, sequence]")
+        if candidate_token_mask.shape != candidate_token_ids.shape:
+            raise ValueError("candidate_token_mask must match candidate_token_ids shape")
+        if candidate_token_ids.size(1) > self.text_context_length:
+            raise ValueError("candidate token length must not exceed text_context_length")
+        image_hidden = self.core(self.image_input_layer(images), causal=False)
+        image_repr = image_hidden.mean(dim=1)
+        candidate_repr = self._text_candidate_representations(candidate_token_ids, candidate_token_mask)
+        return image_repr @ candidate_repr.transpose(0, 1) / math.sqrt(image_repr.size(-1))
+
+    def _text_candidate_representations(
+        self,
+        candidate_token_ids: torch.Tensor,
+        candidate_token_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        positions = torch.arange(candidate_token_ids.size(1), device=candidate_token_ids.device).unsqueeze(0)
+        embeddings = self.token_embedding(candidate_token_ids) + self.text_position_embedding(positions)
+        hidden = self.core(embeddings, causal=False)
+        mask = candidate_token_mask.unsqueeze(-1).to(hidden.dtype)
+        token_counts = mask.sum(dim=1).clamp_min(1.0)
+        return (hidden * mask).sum(dim=1) / token_counts
