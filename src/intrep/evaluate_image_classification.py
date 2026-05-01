@@ -5,6 +5,7 @@ from pathlib import Path
 
 from intrep.image_classification import (
     ImageClassificationConfig,
+    image_classification_examples_from_choices,
     load_image_choice_examples_jsonl,
     train_image_classifier,
     write_metrics,
@@ -30,8 +31,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    train_examples = load_image_choice_examples_jsonl(args.train_path)
-    eval_examples = load_image_choice_examples_jsonl(args.eval_path) if args.eval_path is not None else None
+    train_examples = image_classification_examples_from_choices(load_image_choice_examples_jsonl(args.train_path))
+    eval_examples = (
+        image_classification_examples_from_choices(load_image_choice_examples_jsonl(args.eval_path))
+        if args.eval_path is not None
+        else None
+    )
     metrics = train_image_classifier(
         train_examples=train_examples,
         eval_examples=eval_examples,

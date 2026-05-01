@@ -10,10 +10,13 @@ from intrep.image_classification import (
     ClassificationHead,
     FASHION_MNIST_LABELS,
     ImageChoiceExample,
+    ImageClassificationExample,
     ImageClassificationConfig,
     ImagePatchInputLayer,
     MNIST_LABELS,
     PatchTransformerClassifier,
+    image_classification_examples_from_choices,
+    image_classification_tensors_from_examples,
     load_image_choice_examples_jsonl,
     image_label_tensors_from_examples,
     train_image_classifier,
@@ -77,6 +80,23 @@ class ImageClassificationTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "all images must have the same shape"):
                 image_label_tensors_from_examples(examples)
 
+    def test_image_classification_tensors_from_examples_uses_label_index(self) -> None:
+        with TemporaryDirectory() as directory:
+            image_a = Path(directory) / "a.pgm"
+            image_b = Path(directory) / "b.pgm"
+            image_a.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
+            image_b.write_bytes(b"P5\n2 1\n255\n" + bytes([128, 64]))
+            examples = [
+                ImageClassificationExample(image_path=image_a, label_names=FASHION_MNIST_LABELS, label_index=1),
+                ImageClassificationExample(image_path=image_b, label_names=FASHION_MNIST_LABELS, label_index=2),
+            ]
+
+            images, labels = image_classification_tensors_from_examples(examples)
+
+        self.assertEqual(images.shape, torch.Size([2, 1, 2]))
+        self.assertEqual(labels.tolist(), [1, 2])
+        self.assertEqual(examples[0].label_text, "Trouser")
+
     def test_patch_transformer_classifier_outputs_class_logits(self) -> None:
         model = PatchTransformerClassifier(
             image_size=(4, 4),
@@ -113,10 +133,10 @@ class ImageClassificationTest(unittest.TestCase):
             image_path = Path(directory) / "a.ppm"
             image_path.write_bytes(b"P6\n2 1\n255\n" + bytes([255, 0, 0, 0, 255, 0]))
             examples = [
-                ImageChoiceExample(image_path=image_path, choices=CIFAR10_LABELS, answer_index=3),
+                ImageClassificationExample(image_path=image_path, label_names=CIFAR10_LABELS, label_index=3),
             ]
 
-            images, labels = image_label_tensors_from_examples(examples)
+            images, labels = image_classification_tensors_from_examples(examples)
 
         self.assertEqual(images.shape, torch.Size([1, 1, 2, 3]))
         self.assertEqual(labels.tolist(), [3])
@@ -130,8 +150,8 @@ class ImageClassificationTest(unittest.TestCase):
             image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
             image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
             examples = [
-                ImageChoiceExample(image_path=image_a, choices=MNIST_LABELS, answer_index=7),
-                ImageChoiceExample(image_path=image_b, choices=MNIST_LABELS, answer_index=0),
+                ImageClassificationExample(image_path=image_a, label_names=MNIST_LABELS, label_index=7),
+                ImageClassificationExample(image_path=image_b, label_names=MNIST_LABELS, label_index=0),
             ]
 
             result = train_image_classifier_with_result(
@@ -156,11 +176,11 @@ class ImageClassificationTest(unittest.TestCase):
             image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
             image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
             examples = [
-                ImageChoiceExample(image_path=image_a, choices=MNIST_LABELS, answer_index=7),
-                ImageChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=0),
+                ImageClassificationExample(image_path=image_a, label_names=MNIST_LABELS, label_index=7),
+                ImageClassificationExample(image_path=image_b, label_names=FASHION_MNIST_LABELS, label_index=0),
             ]
 
-            with self.assertRaisesRegex(ValueError, "same choices"):
+            with self.assertRaisesRegex(ValueError, "same label_names"):
                 train_image_classifier_with_result(
                     train_examples=examples,
                     config=ImageClassificationConfig(
@@ -243,7 +263,7 @@ class ImageClassificationTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "fashion.jsonl"
             _write_image_choice_examples(path, Path(directory) / "images")
-            examples = load_image_choice_examples_jsonl(path)
+            examples = image_classification_examples_from_choices(load_image_choice_examples_jsonl(path))
 
             metrics = train_image_classifier(
                 train_examples=examples,
@@ -269,7 +289,7 @@ class ImageClassificationTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "fashion.jsonl"
             _write_image_choice_examples(path, Path(directory) / "images")
-            examples = load_image_choice_examples_jsonl(path)
+            examples = image_classification_examples_from_choices(load_image_choice_examples_jsonl(path))
 
             result = train_image_classifier_with_result(
                 train_examples=examples,

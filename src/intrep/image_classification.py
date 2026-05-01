@@ -61,6 +61,23 @@ class ImageChoiceExample:
 
 
 @dataclass(frozen=True)
+class ImageClassificationExample:
+    image_path: Path
+    label_names: tuple[str, ...]
+    label_index: int
+
+    def __post_init__(self) -> None:
+        if not self.label_names:
+            raise ValueError("label_names must not be empty")
+        if not 0 <= self.label_index < len(self.label_names):
+            raise ValueError("label_index out of range")
+
+    @property
+    def label_text(self) -> str:
+        return self.label_names[self.label_index]
+
+
+@dataclass(frozen=True)
 class ImageClassificationConfig:
     patch_size: int = 4
     max_steps: int = 20
@@ -206,8 +223,8 @@ class PatchTransformerClassifier(nn.Module):
 
 def train_image_classifier(
     *,
-    train_examples: list[ImageChoiceExample],
-    eval_examples: list[ImageChoiceExample] | None = None,
+    train_examples: list[ImageClassificationExample],
+    eval_examples: list[ImageClassificationExample] | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationMetrics:
     return train_image_classifier_with_result(
@@ -219,22 +236,22 @@ def train_image_classifier(
 
 def train_image_classifier_with_result(
     *,
-    train_examples: list[ImageChoiceExample],
-    eval_examples: list[ImageChoiceExample] | None = None,
+    train_examples: list[ImageClassificationExample],
+    eval_examples: list[ImageClassificationExample] | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationTrainingResult:
     training_config = config or ImageClassificationConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)  # type: ignore[arg-type]
-    train_images, train_labels = image_label_tensors_from_examples(train_examples)
+    train_images, train_labels = image_classification_tensors_from_examples(train_examples)
     eval_images: torch.Tensor | None = None
     eval_labels: torch.Tensor | None = None
     if eval_examples is not None:
-        eval_images, eval_labels = image_label_tensors_from_examples(eval_examples)
+        eval_images, eval_labels = image_classification_tensors_from_examples(eval_examples)
         if tuple(eval_images.shape[1:]) != tuple(train_images.shape[1:]):
             raise ValueError("eval images must have the same shape as train images")
-        _validate_choice_set(train_examples, eval_examples)
+        _validate_label_set(train_examples, eval_examples)
 
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = PatchTransformerClassifier(
@@ -308,24 +325,55 @@ def image_label_tensors_from_examples(
     return image_tensor, label_tensor
 
 
-def _class_count_from_examples(examples: list[ImageChoiceExample]) -> int:
+def image_classification_tensors_from_examples(
+    examples: list[ImageClassificationExample],
+) -> tuple[torch.Tensor, torch.Tensor]:
+    images: list[np.ndarray] = []
+    labels: list[int] = []
+    for example in examples:
+        images.append(_read_image_path(example.image_path))
+        labels.append(example.label_index)
+    if not images:
+        raise ValueError("examples must not be empty")
+    first_shape = images[0].shape
+    if any(image.shape != first_shape for image in images):
+        raise ValueError("all images must have the same shape")
+    image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
+    label_tensor = torch.tensor(labels, dtype=torch.long)
+    return image_tensor, label_tensor
+
+
+def image_classification_examples_from_choices(
+    examples: list[ImageChoiceExample],
+) -> list[ImageClassificationExample]:
+    return [
+        ImageClassificationExample(
+            image_path=example.image_path,
+            label_names=example.choices,
+            label_index=example.answer_index,
+        )
+        for example in examples
+    ]
+
+
+def _class_count_from_examples(examples: list[ImageClassificationExample]) -> int:
     if not examples:
         raise ValueError("examples must not be empty")
-    choices = examples[0].choices
+    label_names = examples[0].label_names
     for example in examples:
-        if example.choices != choices:
-            raise ValueError("all examples must use the same choices")
-    return len(choices)
+        if example.label_names != label_names:
+            raise ValueError("all examples must use the same label_names")
+    return len(label_names)
 
 
-def _validate_choice_set(
-    train_examples: list[ImageChoiceExample],
-    eval_examples: list[ImageChoiceExample],
+def _validate_label_set(
+    train_examples: list[ImageClassificationExample],
+    eval_examples: list[ImageClassificationExample],
 ) -> None:
-    train_choices = train_examples[0].choices
+    train_label_names = train_examples[0].label_names
     for example in eval_examples:
-        if example.choices != train_choices:
-            raise ValueError("eval examples must use the same choices as train examples")
+        if example.label_names != train_label_names:
+            raise ValueError("eval examples must use the same label_names as train examples")
 
 
 def load_image_choice_examples_jsonl(path: str | Path) -> list[ImageChoiceExample]:
