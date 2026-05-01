@@ -6,18 +6,18 @@ checkpoints remain local artifacts unless explicitly versioned.
 
 ## Supported And Candidate Datasets
 
-| Dataset | Modality | Approximate size | Status | Intended use |
+| Dataset | Modality | Approximate size | Status | Description |
 | --- | --- | ---: | --- | --- |
-| Tiny Shakespeare | text | about 1 MB | supported | Fast text language-model checks only. It should not be treated as strong evidence of text modeling quality. |
-| WikiText-2 | text | about 2M tokens | candidate | Lightweight language-model evaluation when a stable public benchmark is useful. |
-| WikiText-103 | text | about 103M tokens | candidate | Larger language-model evaluation without moving to web-scale data. |
-| TinyStories | text | over 2M stories | candidate | Text generation quality checks for small models, especially coherent short-form English. |
-| OpenWebText | text | about 8M documents / 40 GB text | candidate | GPT-2-style web-text pretraining checks when a large but finite local corpus is desired. |
-| FineWeb-Edu | text | about 1.3T tokens | candidate | Main large text source for sampled or streamed pretraining experiments. Use slices, not the full dataset, for this project scale. |
-| FineWeb-Edu score-2 | text | about 5.4T tokens | candidate | Future broader web-text source if FineWeb-Edu slices are too narrow. Not a near-term default. |
-| MNIST | image | 70k images | supported | Simple grayscale image classification and image-to-label experiments. |
-| Fashion-MNIST | image | 70k images | supported | Grayscale image classification, image-text choice, and image-text answer experiments. |
-| CIFAR-10 | image | 60k images | supported | Small color image classification checks. |
+| Tiny Shakespeare | text | about 1 MB | supported | A single small Shakespeare text corpus commonly used for toy language-model examples. |
+| WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
+| WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
+| TinyStories | text | over 2M stories | candidate | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
+| OpenWebText | text | about 8M documents / 40 GB text | candidate | An open reproduction of GPT-2-style WebText, collected from web pages linked by Reddit posts. |
+| FineWeb-Edu | text | about 1.3T tokens | candidate | A filtered educational subset of FineWeb built from Common Crawl web pages. |
+| FineWeb-Edu score-2 | text | about 5.4T tokens | candidate | A broader FineWeb-Edu variant using a lower educational-score threshold. |
+| MNIST | image | 70k images | supported | A grayscale handwritten digit image dataset with 10 classes. |
+| Fashion-MNIST | image | 70k images | supported | A grayscale fashion-product image dataset with 10 classes. |
+| CIFAR-10 | image | 60k images | supported | A color natural-image dataset with 10 classes. |
 
 ## Current Policy
 
