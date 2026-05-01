@@ -17,6 +17,9 @@ dependencies = [
 torch = [
     "torch>=2.2",
 ]
+vision = [
+    "torchvision>=0.17",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
