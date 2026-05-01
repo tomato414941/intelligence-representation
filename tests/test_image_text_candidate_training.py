@@ -18,8 +18,9 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
             result = train_image_text_candidate_model(
                 train_examples=_write_examples(Path(directory)),
                 text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                prompt="What is this item?",
                 config=ImageTextCandidateTrainingConfig(
-                    text_context_length=16,
+                    text_context_length=32,
                     image_patch_size=1,
                     max_steps=2,
                     batch_size=2,
@@ -55,6 +56,7 @@ class SharedMultimodalCandidatePathTest(unittest.TestCase):
 
         logits = model.image_text_fusion_candidate_logits(
             torch.zeros((2, 4, 4), dtype=torch.float32),
+            torch.ones((1,), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.bool),
         )

@@ -63,34 +63,57 @@ class SharedMultimodalModel(nn.Module):
     def image_text_fusion_candidate_logits(
         self,
         images: torch.Tensor,
+        prompt_token_ids: torch.Tensor,
         candidate_token_ids: torch.Tensor,
         candidate_token_mask: torch.Tensor,
     ) -> torch.Tensor:
+        if prompt_token_ids.ndim != 1:
+            raise ValueError("prompt_token_ids must have shape [sequence]")
         if candidate_token_ids.ndim != 2:
             raise ValueError("candidate_token_ids must have shape [candidate, sequence]")
         if candidate_token_mask.shape != candidate_token_ids.shape:
             raise ValueError("candidate_token_mask must match candidate_token_ids shape")
-        if candidate_token_ids.size(1) > self.text_context_length:
-            raise ValueError("candidate token length must not exceed text_context_length")
+        if prompt_token_ids.size(0) + candidate_token_ids.size(1) > self.text_context_length:
+            raise ValueError("prompt plus candidate token length must not exceed text_context_length")
         image_embeddings = self.image_input_layer(images)
-        candidate_embeddings = self._candidate_text_embeddings(candidate_token_ids)
+        prompt_embeddings = self._text_embeddings(prompt_token_ids.unsqueeze(0))
+        candidate_embeddings = self._text_embeddings(
+            candidate_token_ids,
+            position_offset=prompt_token_ids.size(0),
+        )
         batch_size = images.size(0)
         candidate_count = candidate_token_ids.size(0)
         expanded_images = image_embeddings[:, None, :, :].expand(-1, candidate_count, -1, -1)
+        expanded_prompts = prompt_embeddings[:, None, :, :].expand(batch_size, candidate_count, -1, -1)
         expanded_candidates = candidate_embeddings[None, :, :, :].expand(batch_size, -1, -1, -1)
         image_sequence_length = image_embeddings.size(1)
-        combined = concatenate_input_embedding_sequences(
-            expanded_images.reshape(batch_size * candidate_count, image_sequence_length, -1),
-            expanded_candidates.reshape(batch_size * candidate_count, candidate_token_ids.size(1), -1),
+        expanded_image_rows = expanded_images.reshape(batch_size * candidate_count, image_sequence_length, -1)
+        expanded_candidate_rows = expanded_candidates.reshape(
+            batch_size * candidate_count,
+            candidate_token_ids.size(1),
+            -1,
         )
+        if prompt_token_ids.numel() == 0:
+            combined = concatenate_input_embedding_sequences(expanded_image_rows, expanded_candidate_rows)
+        else:
+            combined = concatenate_input_embedding_sequences(
+                expanded_image_rows,
+                expanded_prompts.reshape(batch_size * candidate_count, prompt_token_ids.size(0), -1),
+                expanded_candidate_rows,
+            )
         hidden = self.core(combined, causal=False)
-        candidate_hidden = hidden[:, image_sequence_length:, :]
+        candidate_start = image_sequence_length + prompt_token_ids.size(0)
+        candidate_hidden = hidden[:, candidate_start:, :]
         expanded_mask = candidate_token_mask[None, :, :].expand(batch_size, -1, -1)
         mask = expanded_mask.reshape(batch_size * candidate_count, -1).unsqueeze(-1).to(hidden.dtype)
         token_counts = mask.sum(dim=1).clamp_min(1.0)
         pooled = (candidate_hidden * mask).sum(dim=1) / token_counts
         return self.candidate_score_head(pooled).reshape(batch_size, candidate_count)
 
-    def _candidate_text_embeddings(self, candidate_token_ids: torch.Tensor) -> torch.Tensor:
-        positions = torch.arange(candidate_token_ids.size(1), device=candidate_token_ids.device).unsqueeze(0)
-        return self.token_embedding(candidate_token_ids) + self.text_position_embedding(positions)
+    def _text_embeddings(self, token_ids: torch.Tensor, *, position_offset: int = 0) -> torch.Tensor:
+        positions = torch.arange(
+            position_offset,
+            position_offset + token_ids.size(1),
+            device=token_ids.device,
+        ).unsqueeze(0)
+        return self.token_embedding(token_ids) + self.text_position_embedding(positions)

@@ -49,6 +49,7 @@ def train_image_text_candidate_model(
     train_examples: list[ImageChoiceExample],
     eval_examples: list[ImageChoiceExample] | None = None,
     text_corpus: str = "",
+    prompt: str = "",
     config: ImageTextCandidateTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
 ) -> ImageTextCandidateTrainingResult:
@@ -63,13 +64,16 @@ def train_image_text_candidate_model(
     else:
         eval_images, eval_labels = None, None
     choices = train_examples[0].choices
-    tokenizer_text = "\n".join((text_corpus, *choices))
+    tokenizer_text = "\n".join((text_corpus, prompt, *choices))
     tokenizer = tokenizer_override or build_text_tokenizer(
         tokenizer_text,
         kind="byte-pair",
         vocab_size=training_config.tokenizer_vocab_size,
     )
+    prompt_token_ids = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)
     candidate_token_ids, candidate_token_mask = _candidate_token_tensors(choices, tokenizer)
+    if prompt_token_ids.numel() + candidate_token_ids.size(1) > training_config.text_context_length:
+        raise ValueError("prompt plus candidate token length must not exceed text_context_length")
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = SharedMultimodalModel(
         vocab_size=tokenizer.vocab_size,
@@ -85,6 +89,7 @@ def train_image_text_candidate_model(
     ).to(device)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
+    prompt_token_ids = prompt_token_ids.to(device)
     candidate_token_ids = candidate_token_ids.to(device)
     candidate_token_mask = candidate_token_mask.to(device)
     if eval_images is not None and eval_labels is not None:
@@ -93,7 +98,15 @@ def train_image_text_candidate_model(
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=training_config.learning_rate)
-    initial_loss = _loss(model, loss_fn, train_images, train_labels, candidate_token_ids, candidate_token_mask)
+    initial_loss = _loss(
+        model,
+        loss_fn,
+        train_images,
+        train_labels,
+        prompt_token_ids,
+        candidate_token_ids,
+        candidate_token_mask,
+    )
     for step in range(training_config.max_steps):
         start = (step * training_config.batch_size) % len(train_images)
         indices = (torch.arange(training_config.batch_size, device=device) + start) % len(train_images)
@@ -101,24 +114,51 @@ def train_image_text_candidate_model(
         batch_labels = train_labels.index_select(0, indices)
         optimizer.zero_grad(set_to_none=True)
         loss = loss_fn(
-            model.image_text_fusion_candidate_logits(batch_images, candidate_token_ids, candidate_token_mask),
+            model.image_text_fusion_candidate_logits(
+                batch_images,
+                prompt_token_ids,
+                candidate_token_ids,
+                candidate_token_mask,
+            ),
             batch_labels,
         )
         loss.backward()
         optimizer.step()
 
-    train_accuracy = _accuracy(model, train_images, train_labels, candidate_token_ids, candidate_token_mask)
+    train_accuracy = _accuracy(
+        model,
+        train_images,
+        train_labels,
+        prompt_token_ids,
+        candidate_token_ids,
+        candidate_token_mask,
+    )
     eval_accuracy = None
     eval_count = 0
     if eval_images is not None and eval_labels is not None:
-        eval_accuracy = _accuracy(model, eval_images, eval_labels, candidate_token_ids, candidate_token_mask)
+        eval_accuracy = _accuracy(
+            model,
+            eval_images,
+            eval_labels,
+            prompt_token_ids,
+            candidate_token_ids,
+            candidate_token_mask,
+        )
         eval_count = int(eval_labels.numel())
     return ImageTextCandidateTrainingResult(
         metrics=ImageTextCandidateMetrics(
             train_case_count=int(train_labels.numel()),
             eval_case_count=eval_count,
             train_initial_loss=initial_loss,
-            train_final_loss=_loss(model, loss_fn, train_images, train_labels, candidate_token_ids, candidate_token_mask),
+            train_final_loss=_loss(
+                model,
+                loss_fn,
+                train_images,
+                train_labels,
+                prompt_token_ids,
+                candidate_token_ids,
+                candidate_token_mask,
+            ),
             train_accuracy=train_accuracy,
             eval_accuracy=eval_accuracy,
             max_steps=training_config.max_steps,
@@ -144,13 +184,22 @@ def _loss(
     loss_fn: nn.CrossEntropyLoss,
     images: torch.Tensor,
     labels: torch.Tensor,
+    prompt_token_ids: torch.Tensor,
     candidate_token_ids: torch.Tensor,
     candidate_token_mask: torch.Tensor,
 ) -> float:
     was_training = model.training
     model.eval()
     with torch.no_grad():
-        loss = loss_fn(model.image_text_fusion_candidate_logits(images, candidate_token_ids, candidate_token_mask), labels)
+        loss = loss_fn(
+            model.image_text_fusion_candidate_logits(
+                images,
+                prompt_token_ids,
+                candidate_token_ids,
+                candidate_token_mask,
+            ),
+            labels,
+        )
     if was_training:
         model.train()
     return float(loss.item())
@@ -160,6 +209,7 @@ def _accuracy(
     model: SharedMultimodalModel,
     images: torch.Tensor,
     labels: torch.Tensor,
+    prompt_token_ids: torch.Tensor,
     candidate_token_ids: torch.Tensor,
     candidate_token_mask: torch.Tensor,
 ) -> float:
@@ -168,6 +218,7 @@ def _accuracy(
     with torch.no_grad():
         predictions = model.image_text_fusion_candidate_logits(
             images,
+            prompt_token_ids,
             candidate_token_ids,
             candidate_token_mask,
         ).argmax(dim=1)
