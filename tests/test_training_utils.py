@@ -3,7 +3,7 @@ import unittest
 import torch
 from torch import nn
 
-from intrep.training_utils import build_adamw, clip_gradients
+from intrep.training_utils import build_adamw, build_lr_scheduler, clip_gradients
 
 
 class TrainingUtilsTest(unittest.TestCase):
@@ -47,6 +47,52 @@ class TrainingUtilsTest(unittest.TestCase):
             torch.cat([parameter.grad.detach().flatten() for parameter in model.parameters()])
         )
         self.assertLessEqual(float(clipped_norm), 0.1001)
+
+    def test_constant_lr_scheduler_keeps_learning_rate(self) -> None:
+        model = nn.Linear(2, 1)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+        scheduler = build_lr_scheduler(
+            optimizer,
+            schedule="constant",
+            warmup_steps=0,
+            max_steps=4,
+        )
+
+        optimizer.step()
+        scheduler.step()
+
+        self.assertAlmostEqual(optimizer.param_groups[0]["lr"], 0.01)
+
+    def test_warmup_cosine_lr_scheduler_warms_up_then_decays(self) -> None:
+        model = nn.Linear(2, 1)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+        scheduler = build_lr_scheduler(
+            optimizer,
+            schedule="warmup_cosine",
+            warmup_steps=2,
+            max_steps=6,
+        )
+
+        learning_rates = []
+        for _ in range(6):
+            learning_rates.append(optimizer.param_groups[0]["lr"])
+            optimizer.step()
+            scheduler.step()
+
+        self.assertAlmostEqual(learning_rates[0], 0.005)
+        self.assertAlmostEqual(learning_rates[1], 0.01)
+        self.assertGreater(learning_rates[2], learning_rates[4])
+
+    def test_lr_scheduler_rejects_invalid_values(self) -> None:
+        model = nn.Linear(2, 1)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+
+        with self.assertRaisesRegex(ValueError, "warmup_steps must be non-negative"):
+            build_lr_scheduler(optimizer, schedule="constant", warmup_steps=-1, max_steps=4)
+        with self.assertRaisesRegex(ValueError, "max_steps must be non-negative"):
+            build_lr_scheduler(optimizer, schedule="constant", warmup_steps=0, max_steps=-1)
+        with self.assertRaisesRegex(ValueError, "lr_schedule"):
+            build_lr_scheduler(optimizer, schedule="linear", warmup_steps=0, max_steps=4)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

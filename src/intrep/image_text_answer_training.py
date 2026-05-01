@@ -14,7 +14,7 @@ from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.shared_state_loading import load_compatible_shared_state
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.token_scoring import next_token_loss
-from intrep.training_utils import build_adamw, clip_gradients
+from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,8 @@ class ImageTextAnswerTrainingConfig:
     learning_rate: float = 0.003
     weight_decay: float = 0.01
     max_grad_norm: float | None = 1.0
+    lr_schedule: LearningRateSchedule = "constant"
+    warmup_steps: int = 0
     seed: int = 7
     model_preset: str = "tiny"
     device: LanguageModelingTrainingDevice = "cpu"
@@ -115,6 +117,12 @@ def train_image_text_answer_model(
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
+    scheduler = build_lr_scheduler(
+        optimizer,
+        schedule=training_config.lr_schedule,
+        warmup_steps=training_config.warmup_steps,
+        max_steps=training_config.max_steps,
+    )
     initial_loss = _loss(model, train_images, text_token_ids, loss_mask)
     for step in range(training_config.max_steps):
         start = (step * training_config.batch_size) % len(train_images)
@@ -127,6 +135,7 @@ def train_image_text_answer_model(
         loss.backward()
         clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
+        scheduler.step()
 
     return ImageTextAnswerTrainingResult(
         metrics=ImageTextAnswerMetrics(
@@ -331,6 +340,10 @@ def _validate_config(config: ImageTextAnswerTrainingConfig) -> None:
         raise ValueError("weight_decay must be non-negative")
     if config.max_grad_norm is not None and config.max_grad_norm <= 0.0:
         raise ValueError("max_grad_norm must be positive")
+    if config.lr_schedule not in ("constant", "warmup_cosine"):
+        raise ValueError("lr_schedule must be one of: constant, warmup_cosine")
+    if config.warmup_steps < 0:
+        raise ValueError("warmup_steps must be non-negative")
     if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
     if config.device not in ("auto", "cpu", "cuda"):

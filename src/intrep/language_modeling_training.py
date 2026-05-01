@@ -18,7 +18,7 @@ from intrep.text_tokenizer import (
     build_text_tokenizer,
     text_tokenizer_to_payload,
 )
-from intrep.training_utils import build_adamw, clip_gradients
+from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ class LanguageModelingTrainingConfig:
     learning_rate: float = 0.003
     weight_decay: float = 0.01
     max_grad_norm: float | None = 1.0
+    lr_schedule: LearningRateSchedule = "constant"
+    warmup_steps: int = 0
     seed: int = 7
     device: LanguageModelingTrainingDevice = "cpu"
     checkpoint_path: Path | None = None
@@ -232,6 +234,12 @@ def _train_text_corpus_with_artifacts(
         learning_rate=config.learning_rate,
         weight_decay=config.weight_decay,
     )
+    scheduler = build_lr_scheduler(
+        optimizer,
+        schedule=config.lr_schedule,
+        warmup_steps=config.warmup_steps,
+        max_steps=config.max_steps,
+    )
     loss_fn = nn.CrossEntropyLoss()
     initial_loss: float | None = None
     final_loss = 0.0
@@ -271,6 +279,7 @@ def _train_text_corpus_with_artifacts(
         loss.backward()
         clip_gradients(model, config.max_grad_norm)
         optimizer.step()
+        scheduler.step()
 
     final_train_loss = _evaluate_loss(
         model,
@@ -419,6 +428,10 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("weight_decay must be non-negative")
     if config.max_grad_norm is not None and config.max_grad_norm <= 0:
         raise ValueError("max_grad_norm must be positive")
+    if config.lr_schedule not in ("constant", "warmup_cosine"):
+        raise ValueError("lr_schedule must be one of: constant, warmup_cosine")
+    if config.warmup_steps < 0:
+        raise ValueError("warmup_steps must be non-negative")
     if config.device not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer not in ("byte", "byte-pair", "simple-byte-pair"):
