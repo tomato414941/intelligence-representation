@@ -15,6 +15,7 @@ from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.shared_state_loading import load_compatible_shared_state
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
+from intrep.training_utils import build_adamw, clip_gradients
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,8 @@ class ImageTextChoiceTrainingConfig:
     max_steps: int = 1000
     batch_size: int = 8
     learning_rate: float = 0.003
+    weight_decay: float = 0.01
+    max_grad_norm: float | None = 1.0
     seed: int = 7
     model_preset: str = "tiny"
     device: LanguageModelingTrainingDevice = "cpu"
@@ -132,7 +135,11 @@ def train_image_text_choice_model(
         text_targets = text_targets.to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=training_config.learning_rate)
+    optimizer = build_adamw(
+        model,
+        learning_rate=training_config.learning_rate,
+        weight_decay=training_config.weight_decay,
+    )
     initial_loss = _loss(
         model,
         loss_fn,
@@ -167,6 +174,7 @@ def train_image_text_choice_model(
                 batch_labels,
             )
         loss.backward()
+        clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
 
     train_accuracy = _accuracy(
@@ -395,6 +403,10 @@ def _validate_config(config: ImageTextChoiceTrainingConfig) -> None:
         raise ValueError("batch_size must be positive")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
+    if config.weight_decay < 0.0:
+        raise ValueError("weight_decay must be non-negative")
+    if config.max_grad_norm is not None and config.max_grad_norm <= 0.0:
+        raise ValueError("max_grad_norm must be positive")
     if config.model_preset not in TRANSFORMER_CORE_PRESETS:
         raise ValueError(f"unknown model preset: {config.model_preset}")
     if config.device not in ("auto", "cpu", "cuda"):
