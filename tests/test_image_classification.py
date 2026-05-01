@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import torch
+from PIL import Image
 
 from intrep.image_classification import (
     CIFAR10_LABELS,
@@ -13,6 +14,7 @@ from intrep.image_classification import (
     ImageClassificationExample,
     ImageClassificationConfig,
     ImageClassificationDataset,
+    ImageFolderClassificationDataset,
     ImagePatchInputLayer,
     MNIST_LABELS,
     image_classification_examples_from_text_choices,
@@ -169,6 +171,55 @@ class ImageClassificationTest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "class directories"):
                 load_image_folder_classification_examples(directory)
+
+    def test_image_folder_classification_dataset_reads_png_images(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            apple_dir = root / "apple"
+            zebra_dir = root / "zebra"
+            apple_dir.mkdir()
+            zebra_dir.mkdir()
+            Image.new("RGB", (2, 2), color=(255, 0, 0)).save(apple_dir / "a.png")
+            Image.new("RGB", (2, 2), color=(0, 255, 0)).save(zebra_dir / "z.png")
+
+            dataset = ImageFolderClassificationDataset(root)
+            image, label = dataset[0]
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.label_names, ("apple", "zebra"))
+        self.assertEqual(dataset.image_shape, (2, 2, 3))
+        self.assertEqual(dataset.channel_count, 3)
+        self.assertEqual(image.shape, torch.Size([2, 2, 3]))
+        self.assertEqual(int(label.item()), 0)
+        self.assertAlmostEqual(float(image[0, 0, 0]), 1.0)
+
+    def test_training_accepts_image_folder_classification_dataset(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            apple_dir = root / "apple"
+            zebra_dir = root / "zebra"
+            apple_dir.mkdir()
+            zebra_dir.mkdir()
+            Image.new("RGB", (2, 2), color=(255, 0, 0)).save(apple_dir / "a.png")
+            Image.new("RGB", (2, 2), color=(0, 255, 0)).save(zebra_dir / "z.png")
+            dataset = ImageFolderClassificationDataset(root)
+
+            result = train_image_classifier_with_result(
+                train_dataset=dataset,
+                config=ImageClassificationConfig(
+                    patch_size=1,
+                    max_steps=0,
+                    batch_size=2,
+                    learning_rate=0.003,
+                    seed=7,
+                    model_preset="tiny",
+                    device="cpu",
+                ),
+            )
+
+        self.assertEqual(result.label_names, ("apple", "zebra"))
+        self.assertEqual(result.image_shape, (2, 2, 3))
+        self.assertEqual(result.metrics.train_case_count, 2)
 
     def test_shared_multimodal_model_outputs_class_logits(self) -> None:
         model = SharedMultimodalModel(
