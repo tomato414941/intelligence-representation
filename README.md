@@ -108,6 +108,15 @@ not match the host NVIDIA driver. The tested template is `runpod-torch-v220`
 python -m unittest
 ```
 
+When RunPod also needs torchvision, install the wheel that matches the template's
+system PyTorch/CUDA stack:
+
+```sh
+./scripts/setup_runpod.sh
+./scripts/setup_runpod_vision.sh
+python -m unittest
+```
+
 ## Current Training Entrypoints
 
 The current prototype supports four single-task training paths:

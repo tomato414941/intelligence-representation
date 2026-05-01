@@ -22,8 +22,12 @@
 - PyTorch is an optional dependency so RunPod official PyTorch templates can use
   their system CUDA-compatible torch instead of replacing it from the project
   environment.
-- Local and CI test environments must install the torch extra before running the
-  full unit test suite: `./scripts/setup_local.sh` or `uv sync --extra torch`.
+- Local and CI test environments must install the torch and vision extras before
+  running the full unit test suite: `./scripts/setup_local.sh` or
+  `uv sync --extra torch --extra vision`.
 - RunPod setup must use `./scripts/setup_runpod.sh`. It intentionally avoids
   `uv sync` and installs the project without dependencies so the template's
   system PyTorch/CUDA stack is not replaced.
+- RunPod torchvision setup must use `./scripts/setup_runpod_vision.sh` after
+  `./scripts/setup_runpod.sh`. It installs a torch/CUDA-matched torchvision
+  wheel with `--no-deps`.
