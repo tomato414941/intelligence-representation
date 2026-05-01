@@ -11,6 +11,7 @@ from intrep.idx_image_choice_corpus import (
     main,
     read_idx_images,
     read_idx_labels,
+    write_idx_image_classification_jsonl,
     write_idx_image_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
@@ -62,6 +63,29 @@ class IDXImageChoiceCorpusTest(unittest.TestCase):
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["choices"][9], "Ankle boot")
         self.assertEqual(loaded[0]["answer_index"], 9)
+
+    def test_writes_image_classification_jsonl_and_pgm_images(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            images_path = root / "images.idx3-ubyte.gz"
+            labels_path = root / "labels.idx1-ubyte.gz"
+            output_path = root / "fashion-classification.jsonl"
+            image_output_dir = root / "images"
+            _write_idx_images(images_path, [[[0, 255], [128, 64]]])
+            _write_idx_labels(labels_path, [9])
+
+            selection = write_idx_image_classification_jsonl(
+                images_path=images_path,
+                labels_path=labels_path,
+                output_path=output_path,
+                image_output_dir=image_output_dir,
+            )
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(selection.image_count, 1)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["label_names"][9], "Ankle boot")
+        self.assertEqual(loaded[0]["label_index"], 9)
 
     def test_writes_mnist_digit_choices(self) -> None:
         with TemporaryDirectory() as directory:

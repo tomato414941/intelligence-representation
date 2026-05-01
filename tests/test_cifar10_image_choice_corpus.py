@@ -11,6 +11,7 @@ import numpy as np
 from intrep.cifar10_image_choice_corpus import (
     main,
     read_cifar10_batch,
+    write_cifar10_image_classification_jsonl,
     write_cifar10_image_choice_jsonl,
 )
 from intrep.image_io import read_portable_image
@@ -50,6 +51,30 @@ class CIFAR10ImageChoiceCorpusTest(unittest.TestCase):
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["choices"][3], "cat")
         self.assertEqual(loaded[0]["answer_index"], 3)
+        self.assertEqual(pixels.shape, (32, 32, 3))
+
+    def test_writes_image_classification_jsonl_and_ppm_images(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            batch_path = root / "data_batch_1"
+            output_path = root / "cifar10-classification.jsonl"
+            image_output_dir = root / "images"
+            _write_cifar_batch(batch_path, labels=[3, 9])
+
+            selection = write_cifar10_image_classification_jsonl(
+                batch_paths=[batch_path],
+                output_path=output_path,
+                image_output_dir=image_output_dir,
+                split="train",
+                limit=1,
+            )
+            loaded = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
+            pixels = read_portable_image(Path(loaded[0]["image_path"]))
+
+        self.assertEqual(selection.image_count, 1)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["label_names"][3], "cat")
+        self.assertEqual(loaded[0]["label_index"], 3)
         self.assertEqual(pixels.shape, (32, 32, 3))
 
     def test_rejects_empty_batch_paths(self) -> None:

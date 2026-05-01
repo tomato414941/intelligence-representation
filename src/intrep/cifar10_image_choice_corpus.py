@@ -13,6 +13,8 @@ import numpy as np
 from intrep.image_classification import (
     CIFAR10_LABELS,
     ImageChoiceExample,
+    ImageClassificationExample,
+    image_classification_example_to_record,
     image_choice_example_to_record,
 )
 
@@ -24,6 +26,47 @@ class CIFAR10Selection:
     output_dir: Path
 
 
+@dataclass(frozen=True)
+class CIFAR10ClassificationSelection:
+    examples: list[ImageClassificationExample]
+    image_count: int
+    output_dir: Path
+
+
+def write_cifar10_image_classification_jsonl(
+    *,
+    batch_paths: Sequence[str | Path],
+    output_path: str | Path,
+    image_output_dir: str | Path,
+    split: str = "train",
+    limit: int | None = None,
+) -> CIFAR10ClassificationSelection:
+    images, labels = _read_cifar10_images_and_labels(batch_paths, limit=limit)
+    output_dir = Path(image_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    examples: list[ImageClassificationExample] = []
+    for index, (image, label_id) in enumerate(zip(images, labels, strict=True)):
+        if not 0 <= label_id < len(CIFAR10_LABELS):
+            raise ValueError("label id is out of range for CIFAR-10 labels")
+        image_path = output_dir / f"{split}_{index:06d}.ppm"
+        write_ppm(image_path, image)
+        examples.append(
+            ImageClassificationExample(
+                image_path=image_path.resolve(),
+                label_names=CIFAR10_LABELS,
+                label_index=label_id,
+            )
+        )
+
+    lines = [
+        json.dumps(image_classification_example_to_record(example), ensure_ascii=False)
+        for example in examples
+    ]
+    Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    return CIFAR10ClassificationSelection(examples=examples, image_count=len(examples), output_dir=output_dir)
+
+
 def write_cifar10_image_choice_jsonl(
     *,
     batch_paths: Sequence[str | Path],
@@ -32,29 +75,16 @@ def write_cifar10_image_choice_jsonl(
     split: str = "train",
     limit: int | None = None,
 ) -> CIFAR10Selection:
-    if not batch_paths:
-        raise ValueError("batch_paths must not be empty")
-    if limit is not None and limit < 0:
-        raise ValueError("limit must be non-negative")
-
-    images: list[np.ndarray] = []
-    labels: list[int] = []
-    for batch_path in batch_paths:
-        batch_images, batch_labels = read_cifar10_batch(batch_path)
-        images.extend(batch_images)
-        labels.extend(batch_labels)
-
-    count = len(images) if limit is None else min(limit, len(images))
+    images, labels = _read_cifar10_images_and_labels(batch_paths, limit=limit)
     output_dir = Path(image_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     examples: list[ImageChoiceExample] = []
-    for index in range(count):
-        label_id = labels[index]
+    for index, (image, label_id) in enumerate(zip(images, labels, strict=True)):
         if not 0 <= label_id < len(CIFAR10_LABELS):
             raise ValueError("label id is out of range for CIFAR-10 labels")
         image_path = output_dir / f"{split}_{index:06d}.ppm"
-        write_ppm(image_path, images[index])
+        write_ppm(image_path, image)
         examples.append(
             ImageChoiceExample(
                 image_path=image_path.resolve(),
@@ -68,7 +98,28 @@ def write_cifar10_image_choice_jsonl(
         for example in examples
     ]
     Path(output_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    return CIFAR10Selection(examples=examples, image_count=count, output_dir=output_dir)
+    return CIFAR10Selection(examples=examples, image_count=len(examples), output_dir=output_dir)
+
+
+def _read_cifar10_images_and_labels(
+    batch_paths: Sequence[str | Path],
+    *,
+    limit: int | None,
+) -> tuple[list[np.ndarray], list[int]]:
+    if not batch_paths:
+        raise ValueError("batch_paths must not be empty")
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be non-negative")
+
+    images: list[np.ndarray] = []
+    labels: list[int] = []
+    for batch_path in batch_paths:
+        batch_images, batch_labels = read_cifar10_batch(batch_path)
+        images.extend(batch_images)
+        labels.extend(batch_labels)
+
+    count = len(images) if limit is None else min(limit, len(images))
+    return images[:count], labels[:count]
 
 
 def read_cifar10_batch(path: str | Path) -> tuple[list[np.ndarray], list[int]]:
