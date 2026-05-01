@@ -11,6 +11,7 @@ from intrep.image_text_answer_training import (
     train_image_text_answer_model,
 )
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
+from intrep.image_text_choice_checkpoint import load_image_text_choice_checkpoint
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tokenizer-corpus-path", type=Path)
     parser.add_argument("--metrics-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path)
+    parser.add_argument("--init-image-text-choice-checkpoint-path", type=Path)
     parser.add_argument("--text-context-length", type=int, default=32)
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -34,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     train_examples = load_image_text_answer_examples_jsonl(args.train_path)
+    initial_checkpoint = (
+        load_image_text_choice_checkpoint(args.init_image_text_choice_checkpoint_path, device=args.device)
+        if args.init_image_text_choice_checkpoint_path is not None
+        else None
+    )
     result = train_image_text_answer_model(
         train_examples=train_examples,
         tokenizer_corpus=_read_optional_text(args.tokenizer_corpus_path),
@@ -48,6 +55,10 @@ def main(argv: list[str] | None = None) -> None:
             device=args.device,
             tokenizer_vocab_size=args.tokenizer_vocab_size,
         ),
+        tokenizer_override=initial_checkpoint.tokenizer if initial_checkpoint is not None else None,
+        initial_model_state_dict=(
+            initial_checkpoint.model.state_dict() if initial_checkpoint is not None else None
+        ),
     )
     if args.metrics_path is not None:
         args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +69,11 @@ def main(argv: list[str] | None = None) -> None:
                     "train_path": str(args.train_path),
                     "tokenizer_corpus_path": (
                         str(args.tokenizer_corpus_path) if args.tokenizer_corpus_path is not None else None
+                    ),
+                    "init_image_text_choice_checkpoint_path": (
+                        str(args.init_image_text_choice_checkpoint_path)
+                        if args.init_image_text_choice_checkpoint_path is not None
+                        else None
                     ),
                     "metrics": asdict(result.metrics),
                 },

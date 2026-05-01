@@ -65,6 +65,7 @@ def train_image_text_answer_model(
     tokenizer_corpus: str = "",
     config: ImageTextAnswerTrainingConfig | None = None,
     tokenizer_override: TextTokenizer | None = None,
+    initial_model_state_dict: dict[str, torch.Tensor] | None = None,
 ) -> ImageTextAnswerTrainingResult:
     training_config = config or ImageTextAnswerTrainingConfig()
     _validate_config(training_config)
@@ -99,6 +100,8 @@ def train_image_text_answer_model(
         dropout=float(preset["dropout"]),
         channel_count=_channel_count_from_images(train_images),
     ).to(device)
+    if initial_model_state_dict is not None:
+        model.load_state_dict(initial_model_state_dict)
     train_images = train_images.to(device)
     text_token_ids = text_token_ids.to(device)
     loss_mask = loss_mask.to(device)
