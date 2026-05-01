@@ -5,7 +5,16 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.image_classification import FASHION_MNIST_LABELS, ImageTextChoiceExample, image_text_choice_example_to_record
+from intrep.image_classification import (
+    FASHION_MNIST_LABELS,
+    ImageClassificationConfig,
+    ImageTextChoiceExample,
+    image_classification_examples_from_text_choices,
+    image_text_choice_example_to_record,
+    load_image_text_choice_examples_jsonl,
+    train_image_classifier_with_result,
+)
+from intrep.image_classification_checkpoint import save_image_classification_checkpoint
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
 from intrep.image_text_answer_training import ImageTextAnswerExample, ImageTextAnswerTrainingConfig, train_image_text_answer_model
 from intrep.image_text_choice_checkpoint import load_image_text_choice_checkpoint
@@ -139,6 +148,73 @@ class TrainImageTextChoiceCLITest(unittest.TestCase):
 
         self.assertEqual(payload["init_checkpoint_path"], str(answer_checkpoint_path))
         self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_text_answer_checkpoint.v1")
+        self.assertEqual(checkpoint.config.text_context_length, 32)
+        self.assertIn("train_cases=2", output.getvalue())
+
+    def test_initializes_from_image_classification_checkpoint_by_compatible_components(self) -> None:
+        output = io.StringIO()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "choices.jsonl"
+            metrics_path = root / "metrics.json"
+            checkpoint_path = root / "choice.pt"
+            classification_checkpoint_path = root / "classification.pt"
+            _write_examples(train_path, root)
+            classification_result = train_image_classifier_with_result(
+                train_examples=image_classification_examples_from_text_choices(
+                    load_image_text_choice_examples_jsonl(train_path)
+                ),
+                config=ImageClassificationConfig(
+                    patch_size=1,
+                    max_steps=1,
+                    batch_size=2,
+                    learning_rate=0.01,
+                    seed=17,
+                    model_preset="tiny",
+                    device="cpu",
+                ),
+            )
+            save_image_classification_checkpoint(classification_checkpoint_path, classification_result)
+
+            with redirect_stdout(output):
+                main(
+                    [
+                        "--train-path",
+                        str(train_path),
+                        "--eval-path",
+                        str(train_path),
+                        "--metrics-path",
+                        str(metrics_path),
+                        "--checkpoint-path",
+                        str(checkpoint_path),
+                        "--init-checkpoint-path",
+                        str(classification_checkpoint_path),
+                        "--prompt",
+                        "answer: ",
+                        "--text-context-length",
+                        "32",
+                        "--image-patch-size",
+                        "1",
+                        "--batch-size",
+                        "2",
+                        "--max-steps",
+                        "1",
+                        "--learning-rate",
+                        "0.01",
+                        "--seed",
+                        "17",
+                        "--model-preset",
+                        "tiny",
+                        "--device",
+                        "cpu",
+                        "--tokenizer-vocab-size",
+                        "270",
+                    ]
+                )
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            checkpoint = load_image_text_choice_checkpoint(checkpoint_path, device="cpu")
+
+        self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_classification_checkpoint.v1")
         self.assertEqual(checkpoint.config.text_context_length, 32)
         self.assertIn("train_cases=2", output.getvalue())
 

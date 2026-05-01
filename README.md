@@ -114,6 +114,11 @@ not a temporary/permanent hierarchy. Choice is useful for matching, retrieval,
 and multiple-choice tasks. Answer is useful for token-generating image/text
 tasks.
 
+The shared multimodal model is a shell with task-specific routes and heads over
+one shared Transformer core. A task may leave some routes unused; unused
+tokenizer, text embedding, image input, token output, choice scoring, or
+classification components do not make that task secondary.
+
 Text language modeling uses the main byte-pair tokenizer by default:
 
 ```sh
@@ -166,8 +171,9 @@ weights and tokenizer state, independent of the source task name.
 
 Image classification uses the same shared multimodal model shell, with the
 image route, shared Transformer core, and classification head active.
-Its checkpoint restores that route as-is; full multimodal initialization still
-requires compatible text-side state such as tokenizer and token output weights.
+Its checkpoint restores the model state for that training run. Reusing a
+checkpoint for another run is a compatibility question about the components
+that the next task needs, not about which task produced the checkpoint.
 
 IDX datasets such as MNIST and Fashion-MNIST, and CIFAR-10 python batches, can
 produce these image JSONL forms:

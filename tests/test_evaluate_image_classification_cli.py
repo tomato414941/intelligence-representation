@@ -126,8 +126,7 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
             checkpoint = load_image_classification_checkpoint(checkpoint_path, device="cpu")
-            with self.assertRaisesRegex(ValueError, "not a shared multimodal checkpoint"):
-                load_shared_multimodal_initialization(checkpoint_path, device="cpu")
+            initialization = load_shared_multimodal_initialization(checkpoint_path, device="cpu")
 
         self.assertIn("target=label", output.getvalue())
         self.assertIn("intrep image classification", output.getvalue())
@@ -138,6 +137,8 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
         self.assertEqual(payload["eval_case_count"], 2)
         self.assertEqual(checkpoint.label_names, FASHION_MNIST_LABELS)
         self.assertEqual(checkpoint.image_shape, (1, 2))
+        self.assertEqual(initialization.source_schema, "intrep.image_classification_checkpoint.v1")
+        self.assertIsNone(initialization.tokenizer)
 
 
 def _write_image_label_events(path: Path, image_dir: Path, prefix: str) -> None:

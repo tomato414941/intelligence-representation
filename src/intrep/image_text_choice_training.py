@@ -13,6 +13,7 @@ from intrep.language_modeling_training import (
 )
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.shared_state_loading import load_compatible_shared_state
 from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
 
 
@@ -116,7 +117,7 @@ def train_image_text_choice_model(
         channel_count=_channel_count_from_images(train_images),
     ).to(device)
     if initial_model_state_dict is not None:
-        model.load_state_dict(initial_model_state_dict)
+        load_compatible_shared_state(model, initial_model_state_dict)
     train_images = train_images.to(device)
     train_labels = train_labels.to(device)
     prompt_token_ids = prompt_token_ids.to(device)

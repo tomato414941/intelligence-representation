@@ -22,10 +22,10 @@ class ClassificationHead(nn.Module):
 
 
 class SharedMultimodalModel(nn.Module):
-    """Shared model shell for text-token and image-patch inputs.
+    """Model shell with task-specific routes over one shared Transformer core.
 
-    It exposes text-token logits, image-conditioned token logits, and
-    image-text choice scores over one shared Transformer core.
+    A task may use only the routes and heads it needs. Unused text, image,
+    choice, token-output, or classification components are normal.
     """
 
     def __init__(
