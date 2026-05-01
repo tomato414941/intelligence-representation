@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -139,12 +140,23 @@ class ImageClassificationTrainingResult:
     label_names: tuple[str, ...]
 
 
+class ImageClassificationDatasetLike(Protocol):
+    image_shape: tuple[int, ...]
+    channel_count: int
+    label_names: tuple[str, ...]
+
+    def __len__(self) -> int: ...
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]: ...
+
+
 class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: list[ImageClassificationExample]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
         _class_count_from_examples(examples)
         self.examples = tuple(examples)
+        self.label_names = examples[0].label_names
         self.image_shape = tuple(int(value) for value in image_tensor_from_path(examples[0].image_path).shape)
         self.channel_count = channel_count_from_image_shape(self.image_shape)
 
@@ -158,6 +170,52 @@ class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
             raise ValueError("all images must have the same shape")
         label = torch.tensor(example.label_index, dtype=torch.long)
         return image, label
+
+
+class ImageFolderClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        image_size: tuple[int, int] | None = None,
+    ) -> None:
+        try:
+            from PIL import Image
+            from torchvision.datasets import ImageFolder
+        except ModuleNotFoundError as error:
+            raise ModuleNotFoundError(
+                "ImageFolderClassificationDataset requires the vision extra. "
+                "Install with `uv sync --extra torch --extra vision`."
+            ) from error
+
+        self._image_module = Image
+        self._dataset = ImageFolder(str(root))
+        if len(self._dataset) == 0:
+            raise ValueError("image folder root must contain image files")
+        self.label_names = tuple(self._dataset.classes)
+        first_image, _ = self._dataset[0]
+        first_rgb = first_image.convert("RGB")
+        if image_size is None:
+            width, height = first_rgb.size
+            self.image_size = (height, width)
+        else:
+            self.image_size = image_size
+        self.image_shape = (self.image_size[0], self.image_size[1], 3)
+        self.channel_count = 3
+
+    def __len__(self) -> int:
+        return len(self._dataset)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        image, label_index = self._dataset[index]
+        image = image.convert("RGB")
+        if (image.height, image.width) != self.image_size:
+            image = image.resize(
+                (self.image_size[1], self.image_size[0]),
+                resample=self._image_module.Resampling.BILINEAR,
+            )
+        pixels = np.asarray(image, dtype=np.float32) / 255.0
+        return torch.tensor(pixels, dtype=torch.float32), torch.tensor(label_index, dtype=torch.long)
 
 
 def train_image_classifier(
@@ -175,15 +233,22 @@ def train_image_classifier(
 
 def train_image_classifier_with_result(
     *,
-    train_examples: list[ImageClassificationExample],
+    train_examples: list[ImageClassificationExample] | None = None,
     eval_examples: list[ImageClassificationExample] | None = None,
+    train_dataset: ImageClassificationDatasetLike | None = None,
+    eval_dataset: ImageClassificationDatasetLike | None = None,
     config: ImageClassificationConfig | None = None,
 ) -> ImageClassificationTrainingResult:
     training_config = config or ImageClassificationConfig()
     _validate_config(training_config)
     torch.manual_seed(training_config.seed)
     device = resolve_training_device(training_config.device)  # type: ignore[arg-type]
-    train_dataset = ImageClassificationDataset(train_examples)
+    if train_dataset is None:
+        if train_examples is None:
+            raise ValueError("train_examples or train_dataset is required")
+        train_dataset = ImageClassificationDataset(train_examples)
+    elif train_examples is not None:
+        raise ValueError("provide only one of train_examples or train_dataset")
     train_loader = _image_classification_data_loader(
         train_dataset,
         batch_size=training_config.batch_size,
@@ -198,13 +263,18 @@ def train_image_classifier_with_result(
         shuffle=False,
         device=device,
     )
-    eval_dataset: ImageClassificationDataset | None = None
     eval_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None = None
     if eval_examples is not None:
+        if eval_dataset is not None:
+            raise ValueError("provide only one of eval_examples or eval_dataset")
         eval_dataset = ImageClassificationDataset(eval_examples)
+        if eval_dataset.label_names != train_dataset.label_names:
+            raise ValueError("eval examples must use the same label_names as train examples")
+    if eval_dataset is not None:
         if eval_dataset.image_shape != train_dataset.image_shape:
             raise ValueError("eval images must have the same shape as train images")
-        _validate_label_set(train_examples, eval_examples)
+        if eval_dataset.label_names != train_dataset.label_names:
+            raise ValueError("eval examples must use the same label_names as train examples")
         eval_loader = _image_classification_data_loader(
             eval_dataset,
             batch_size=training_config.batch_size,
@@ -225,7 +295,7 @@ def train_image_classifier_with_result(
         num_layers=int(preset["num_layers"]),
         dropout=float(preset["dropout"]),
         channel_count=train_dataset.channel_count,
-        num_classes=_class_count_from_examples(train_examples),
+        num_classes=len(train_dataset.label_names),
     ).to(device)
 
     loss_fn = nn.CrossEntropyLoss()
@@ -283,7 +353,7 @@ def train_image_classifier_with_result(
         model=model,
         config=training_config,
         image_shape=train_dataset.image_shape,
-        label_names=train_examples[0].label_names,
+        label_names=train_dataset.label_names,
     )
 
 
@@ -439,16 +509,6 @@ def _class_count_from_examples(examples: list[ImageClassificationExample]) -> in
     return len(label_names)
 
 
-def _validate_label_set(
-    train_examples: list[ImageClassificationExample],
-    eval_examples: list[ImageClassificationExample],
-) -> None:
-    train_label_names = train_examples[0].label_names
-    for example in eval_examples:
-        if example.label_names != train_label_names:
-            raise ValueError("eval examples must use the same label_names as train examples")
-
-
 def load_image_text_choice_examples_jsonl(path: str | Path) -> list[ImageTextChoiceExample]:
     examples: list[ImageTextChoiceExample] = []
     for line_number, line in enumerate(
@@ -524,7 +584,7 @@ def _read_image_path(path: Path) -> np.ndarray:
 
 
 def _image_classification_data_loader(
-    dataset: ImageClassificationDataset,
+    dataset: ImageClassificationDatasetLike,
     *,
     batch_size: int,
     seed: int,
