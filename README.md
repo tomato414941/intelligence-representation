@@ -53,6 +53,7 @@ Read these first:
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Input Boundaries](docs/model-input-boundaries.md)
 - [Learning and Execution](docs/learning-and-execution.md)
+- [Datasets](docs/datasets.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
