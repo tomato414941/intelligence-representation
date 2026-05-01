@@ -8,6 +8,8 @@ from intrep.image_classification import FASHION_MNIST_LABELS, ImageChoiceExample
 from intrep.image_text_candidate_training import (
     ImageTextCandidateTrainingConfig,
     evaluate_image_text_candidate_model,
+    load_image_text_candidate_checkpoint,
+    save_image_text_candidate_checkpoint,
     train_image_text_candidate_model,
 )
 from intrep.shared_multimodal_model import SharedMultimodalModel
@@ -53,6 +55,39 @@ class ImageTextCandidateTrainingTest(unittest.TestCase):
         self.assertGreater(eval_metrics.loss, 0.0)
         self.assertGreaterEqual(eval_metrics.accuracy, 0.0)
         self.assertLessEqual(eval_metrics.accuracy, 1.0)
+
+    def test_saves_loads_and_evaluates_checkpoint(self) -> None:
+        with TemporaryDirectory() as directory:
+            examples = _write_examples(Path(directory))
+            result = train_image_text_candidate_model(
+                train_examples=examples,
+                text_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                prompt="What is this item?",
+                config=ImageTextCandidateTrainingConfig(
+                    text_context_length=32,
+                    image_patch_size=1,
+                    max_steps=2,
+                    batch_size=2,
+                    learning_rate=0.01,
+                    seed=17,
+                    model_preset="tiny",
+                    device="cpu",
+                    tokenizer_vocab_size=270,
+                ),
+            )
+            checkpoint_path = Path(directory) / "candidate.pt"
+            save_image_text_candidate_checkpoint(checkpoint_path, result)
+            checkpoint = load_image_text_candidate_checkpoint(checkpoint_path, device="cpu")
+            metrics = evaluate_image_text_candidate_model(
+                model=checkpoint.model,
+                tokenizer=checkpoint.tokenizer,
+                examples=examples,
+                prompt="What is this item?",
+            )
+
+        self.assertEqual(checkpoint.config.text_context_length, 32)
+        self.assertEqual(metrics.case_count, 2)
+        self.assertGreater(metrics.loss, 0.0)
 
     def test_can_mix_text_lm_and_image_text_candidate_training(self) -> None:
         with TemporaryDirectory() as directory:
