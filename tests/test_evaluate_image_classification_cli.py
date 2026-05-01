@@ -14,6 +14,7 @@ from intrep.image_classification import (
     PatchTransformerClassifier,
 )
 from intrep.image_classification_checkpoint import load_image_classification_checkpoint
+from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
 
 
 class EvaluateImageClassificationCLITest(unittest.TestCase):
@@ -123,6 +124,8 @@ class EvaluateImageClassificationCLITest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
             checkpoint = load_image_classification_checkpoint(checkpoint_path, device="cpu")
+            with self.assertRaisesRegex(ValueError, "not a shared multimodal checkpoint"):
+                load_shared_multimodal_initialization(checkpoint_path, device="cpu")
 
         self.assertIn("target=label", output.getvalue())
         self.assertIn("intrep image classification", output.getvalue())
