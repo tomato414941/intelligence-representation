@@ -5,6 +5,10 @@ from tempfile import TemporaryDirectory
 
 import torch
 
+from intrep.image_text_answer_checkpoint import (
+    load_image_text_answer_checkpoint,
+    save_image_text_answer_checkpoint,
+)
 from intrep.image_text_answer_training import (
     ImageTextAnswerExample,
     ImageTextAnswerTrainingConfig,
@@ -47,6 +51,39 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
         self.assertEqual(result.metrics.train_case_count, 2)
         self.assertGreater(result.metrics.train_initial_loss, 0.0)
         self.assertGreater(result.metrics.train_final_loss, 0.0)
+        self.assertIsInstance(generated, str)
+
+    def test_saves_loads_and_generates_from_checkpoint(self) -> None:
+        with TemporaryDirectory() as directory:
+            examples = _write_examples(Path(directory))
+            result = train_image_text_answer_model(
+                train_examples=examples,
+                tokenizer_corpus="T-shirt/top Trouser Pullover Dress Coat Sandal Shirt Sneaker Bag Ankle boot",
+                config=ImageTextAnswerTrainingConfig(
+                    text_context_length=32,
+                    image_patch_size=1,
+                    max_steps=2,
+                    batch_size=2,
+                    learning_rate=0.01,
+                    seed=17,
+                    model_preset="tiny",
+                    device="cpu",
+                    tokenizer_vocab_size=270,
+                ),
+            )
+            checkpoint_path = Path(directory) / "answer.pt"
+            save_image_text_answer_checkpoint(checkpoint_path, result)
+            checkpoint = load_image_text_answer_checkpoint(checkpoint_path, device="cpu")
+            generated = generate_image_text_answer(
+                model=checkpoint.model,
+                tokenizer=checkpoint.tokenizer,
+                image=torch.zeros((2, 2), dtype=torch.float32),
+                prompt="answer: ",
+                max_new_tokens=2,
+            )
+
+        self.assertEqual(checkpoint.config.text_context_length, 32)
+        self.assertEqual(checkpoint.image_shape, (2, 2))
         self.assertIsInstance(generated, str)
 
     def test_loads_image_text_answer_examples_jsonl(self) -> None:

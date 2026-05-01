@@ -122,6 +122,9 @@ class ImageClassificationMetrics:
 class ImageClassificationTrainingResult:
     metrics: ImageClassificationMetrics
     model: "PatchTransformerClassifier"
+    config: ImageClassificationConfig
+    image_shape: tuple[int, ...]
+    label_names: tuple[str, ...]
 
 
 class ImagePatchInputLayer(nn.Module):
@@ -304,7 +307,13 @@ def train_image_classifier_with_result(
         max_steps=training_config.max_steps,
         model_preset=training_config.model_preset,
     )
-    return ImageClassificationTrainingResult(metrics=metrics, model=model)
+    return ImageClassificationTrainingResult(
+        metrics=metrics,
+        model=model,
+        config=training_config,
+        image_shape=tuple(int(value) for value in train_images.shape[1:]),
+        label_names=train_examples[0].label_names,
+    )
 
 
 def image_text_choice_tensors_from_examples(
