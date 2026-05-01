@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.causal_text_model import TokenOutputHead
-from intrep.image_classification import ClassificationHead, ImagePatchInputLayer
+from intrep.image_classification import ImagePatchInputLayer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.transformer_core import SharedTransformerCore
 
@@ -13,8 +13,8 @@ class SharedMultimodalModel(nn.Module):
     """Shared model shell for text-token and image-patch inputs.
 
     This is not a universal multimodal model yet. It currently exposes text
-    language-model logits, image classification logits, and image-text
-    candidate scores over one shared Transformer core.
+    language-model logits and image-text candidate scores over one shared
+    Transformer core.
     """
 
     def __init__(
@@ -28,7 +28,6 @@ class SharedMultimodalModel(nn.Module):
         num_heads: int,
         hidden_dim: int,
         num_layers: int,
-        num_classes: int,
         channel_count: int = 1,
         dropout: float = 0.0,
     ) -> None:
@@ -50,10 +49,6 @@ class SharedMultimodalModel(nn.Module):
             dropout=dropout,
         )
         self.token_output = TokenOutputHead(embedding_dim=embedding_dim, vocab_size=vocab_size)
-        self.classification_head = ClassificationHead(
-            embedding_dim=embedding_dim,
-            num_classes=num_classes,
-        )
         self.candidate_score_head = nn.Linear(embedding_dim, 1)
 
     def text_logits(self, token_ids: torch.Tensor) -> torch.Tensor:
@@ -64,10 +59,6 @@ class SharedMultimodalModel(nn.Module):
         positions = torch.arange(token_ids.size(1), device=token_ids.device).unsqueeze(0)
         embeddings = self.token_embedding(token_ids) + self.text_position_embedding(positions)
         return self.token_output(self.core(embeddings, causal=True))
-
-    def image_logits(self, images: torch.Tensor) -> torch.Tensor:
-        embeddings = self.image_input_layer(images)
-        return self.classification_head(self.core(embeddings, causal=False))
 
     def image_text_fusion_candidate_logits(
         self,

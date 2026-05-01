@@ -51,7 +51,6 @@ class SharedMultimodalCandidatePathTest(unittest.TestCase):
             num_heads=2,
             hidden_dim=16,
             num_layers=1,
-            num_classes=10,
         )
 
         logits = model.image_text_fusion_candidate_logits(
