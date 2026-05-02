@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -47,13 +48,16 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     "2",
                     "--max-eval-examples",
                     "2",
+                    "--log-every",
+                    "1",
                 ],
-            ):
+            ), patch("sys.stdout", new_callable=StringIO) as stdout:
                 main()
 
             self.assertTrue(checkpoint_path.exists())
             self.assertTrue(metrics_path.exists())
             self.assertTrue(train_examples_path.exists())
+            self.assertIn("step=1/1", stdout.getvalue())
 
 
 if __name__ == "__main__":
