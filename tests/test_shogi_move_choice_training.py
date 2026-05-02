@@ -65,6 +65,32 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
         self.assertEqual(result.metrics.train_case_count, 3)
 
+    def test_trains_with_eval_split_from_usi_files(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            train_path = Path(directory) / "train.txt"
+            eval_path = Path(directory) / "eval.txt"
+            train_path.write_text("7g7f 3c3d 2g2f\n", encoding="utf-8")
+            eval_path.write_text("2g2f 8c8d\n", encoding="utf-8")
+            result = train_shogi_move_choice_model_from_usi_file(
+                str(train_path),
+                eval_path=str(eval_path),
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    batch_size=2,
+                    embedding_dim=8,
+                    hidden_dim=16,
+                    num_heads=2,
+                ),
+            )
+
+        self.assertEqual(result.metrics.train_case_count, 3)
+        self.assertEqual(result.metrics.eval_case_count, 2)
+        self.assertIsNotNone(result.metrics.eval_loss)
+        self.assertIsNotNone(result.metrics.eval_accuracy)
+
 
 if __name__ == "__main__":
     unittest.main()

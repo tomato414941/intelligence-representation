@@ -35,9 +35,12 @@ class ShogiMoveChoiceTrainingConfig:
 @dataclass(frozen=True)
 class ShogiMoveChoiceTrainingMetrics:
     train_case_count: int
+    eval_case_count: int
     initial_loss: float
     final_loss: float
     accuracy: float
+    eval_loss: float | None
+    eval_accuracy: float | None
     max_steps: int
 
 
@@ -51,6 +54,7 @@ class ShogiMoveChoiceTrainingResult:
 def train_shogi_move_choice_model(
     examples: Sequence[ShogiMoveChoiceExample],
     *,
+    eval_examples: Sequence[ShogiMoveChoiceExample] | None = None,
     config: ShogiMoveChoiceTrainingConfig | None = None,
 ) -> ShogiMoveChoiceTrainingResult:
     training_config = config or ShogiMoveChoiceTrainingConfig()
@@ -59,14 +63,20 @@ def train_shogi_move_choice_model(
     torch.manual_seed(training_config.seed)
     dataset = ShogiMoveChoiceDataset(examples)
     loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=True)
-    eval_loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=False)
+    train_eval_loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=False)
+    eval_dataset = ShogiMoveChoiceDataset(eval_examples) if eval_examples is not None else None
+    eval_loader = (
+        DataLoader(eval_dataset, batch_size=training_config.batch_size, shuffle=False)
+        if eval_dataset is not None
+        else None
+    )
     model = build_shogi_move_choice_model(training_config)
     optimizer = build_adamw(
         model,
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
-    initial_loss, _ = evaluate_shogi_move_choice_model(model, eval_loader)
+    initial_loss, _ = evaluate_shogi_move_choice_model(model, train_eval_loader)
 
     model.train()
     step = 0
@@ -81,15 +91,22 @@ def train_shogi_move_choice_model(
             if step >= training_config.max_steps:
                 break
 
-    final_loss, accuracy = evaluate_shogi_move_choice_model(model, eval_loader)
+    final_loss, accuracy = evaluate_shogi_move_choice_model(model, train_eval_loader)
+    eval_loss: float | None = None
+    eval_accuracy: float | None = None
+    if eval_loader is not None:
+        eval_loss, eval_accuracy = evaluate_shogi_move_choice_model(model, eval_loader)
     return ShogiMoveChoiceTrainingResult(
         model=model,
         config=training_config,
         metrics=ShogiMoveChoiceTrainingMetrics(
             train_case_count=len(dataset),
+            eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
             initial_loss=initial_loss,
             final_loss=final_loss,
             accuracy=accuracy,
+            eval_loss=eval_loss,
+            eval_accuracy=eval_accuracy,
             max_steps=training_config.max_steps,
         ),
     )
@@ -117,10 +134,12 @@ def evaluate_shogi_move_choice_model(
 def train_shogi_move_choice_model_from_usi_file(
     path: str,
     *,
+    eval_path: str | None = None,
     config: ShogiMoveChoiceTrainingConfig | None = None,
 ) -> ShogiMoveChoiceTrainingResult:
     return train_shogi_move_choice_model(
         load_shogi_move_choice_examples_from_usi_file(path),
+        eval_examples=load_shogi_move_choice_examples_from_usi_file(eval_path) if eval_path is not None else None,
         config=config,
     )
 
