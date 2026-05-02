@@ -12,11 +12,10 @@ import numpy as np
 
 from intrep.image_classification import (
     CIFAR10_LABELS,
-    ImageTextChoiceExample,
     ImageClassificationExample,
     image_classification_example_to_record,
-    image_text_choice_example_to_record,
 )
+from intrep.image_text_choice_examples import ImageTextChoiceExample, image_text_choice_example_to_record
 from intrep.image_text_answer_training import ImageTextAnswerExample, image_text_answer_example_to_record
 
 

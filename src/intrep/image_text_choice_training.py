@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.image_classification import ImageTextChoiceExample
+from intrep.image_text_choice_examples import ImageTextChoiceExample
 from intrep.image_training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
