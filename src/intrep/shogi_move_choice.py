@@ -7,6 +7,7 @@ import shogi
 import torch
 from torch.utils.data import Dataset
 
+from intrep.shogi_move_encoding import shogi_candidate_move_features
 from intrep.shogi_position_encoding import shogi_position_token_ids_from_sfen
 
 
@@ -43,7 +44,7 @@ def shogi_move_choice_examples_from_usi_moves(moves: Sequence[str]) -> list[Shog
     return examples
 
 
-class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
+class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: Sequence[ShogiMoveChoiceExample]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
@@ -53,10 +54,14 @@ class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
     def __len__(self) -> int:
         return len(self.examples)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         example = self.examples[index]
         position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)
+        candidate_move_features = shogi_candidate_move_features(
+            example.legal_moves,
+            max_choice_count=self.max_choice_count,
+        )
         move_index = example.legal_moves.index(example.chosen_move)
         candidate_mask = torch.zeros(self.max_choice_count, dtype=torch.bool)
         candidate_mask[: len(example.legal_moves)] = True
-        return position_token_ids, candidate_mask, torch.tensor(move_index, dtype=torch.long)
+        return position_token_ids, candidate_move_features, candidate_mask, torch.tensor(move_index, dtype=torch.long)
