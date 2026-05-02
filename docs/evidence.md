@@ -1,4 +1,4 @@
-# Current Evidence
+# Evidence
 
 This document records what has actually been demonstrated in the current
 project. It is not a design spec, command reference, dataset guide, or complete
@@ -8,15 +8,14 @@ For related context:
 
 - [README](../README.md): project map and common commands
 - [Evaluation](evaluation.md): evaluation concepts
-- [Current Experiment](current-experiment.md): planned or active experiment
 - [Datasets](datasets.md): supported and candidate datasets
 
-## Current Claim
+## Claim Boundary
 
 The project has not yet produced a general predictive representation system, a
 latent world model, or robust action-conditioned future prediction.
 
-The current evidence supports a narrower claim:
+The evidence collected so far supports a narrower claim:
 
 ```text
 text, image, and image/text tasks can be connected to small Transformer-based
@@ -34,7 +33,7 @@ and belief.
 
 ## Confirmed Capabilities
 
-The current implementation has demonstrated:
+The implementation has demonstrated:
 
 - text language-model training with held-out evaluation
 - reusable byte-level BPE tokenizer training and restore
@@ -78,20 +77,6 @@ train tokens: 5047211
 eval loss: 7.7803 -> 4.1420
 eval perplexity: 2392.99 -> 62.93
 ```
-
-Increasing the same tokenizer to vocab 8192 did not improve that 1000-step CPU
-run:
-
-```text
-tokenizer vocab: 8192
-model: small
-steps: 1000
-train tokens: 3939335
-eval loss: 9.1603 -> 4.2991
-eval perplexity: 9495.50 -> 73.64
-```
-
-Under this run budget, vocab 2048 remains the better baseline.
 
 ### Image Classification
 
