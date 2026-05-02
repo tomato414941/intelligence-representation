@@ -15,6 +15,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+archive = [
+    "py7zr>=1.0",
+]
 torch = [
     "torch>=2.2",
 ]
