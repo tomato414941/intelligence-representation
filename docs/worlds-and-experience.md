@@ -104,5 +104,15 @@ The first implementation path renders grid-world experience as text
 language-modeling examples. This is intentionally a small bridge into the
 existing text training path, not a new task-specific trainer.
 
+The first reinforcement-learning-style path uses tensor observations and
+discrete action IDs:
+
+```text
+grid observation tensor + action id -> next agent cell
+```
+
+This keeps the world interface close to common RL practice while still using a
+small Transformer core.
+
 Policy learning and online reinforcement learning can be added later if the
 prediction tasks show useful pressure.
