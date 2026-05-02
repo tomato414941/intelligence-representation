@@ -58,12 +58,15 @@ class ShogiMoveChoiceTrainingMetrics:
     mean_correct_move_rank: float
     value_loss: float | None
     eval_loss: float | None
+    initial_eval_loss: float | None
     eval_accuracy: float | None
+    initial_eval_accuracy: float | None
     eval_top_3_accuracy: float | None
     eval_top_5_accuracy: float | None
     eval_mean_reciprocal_rank: float | None
     eval_mean_correct_move_rank: float | None
     eval_value_loss: float | None
+    initial_eval_value_loss: float | None
     max_steps: int
 
 
@@ -100,6 +103,9 @@ def train_shogi_move_choice_model(
         weight_decay=training_config.weight_decay,
     )
     initial_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
+    initial_eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+    if eval_loader is not None:
+        initial_eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
 
     model.train()
     step = 0
@@ -139,12 +145,15 @@ def train_shogi_move_choice_model(
             mean_correct_move_rank=final_metrics.mean_correct_move_rank,
             value_loss=final_metrics.value_loss,
             eval_loss=eval_metrics.loss if eval_metrics is not None else None,
+            initial_eval_loss=initial_eval_metrics.loss if initial_eval_metrics is not None else None,
             eval_accuracy=eval_metrics.accuracy if eval_metrics is not None else None,
+            initial_eval_accuracy=initial_eval_metrics.accuracy if initial_eval_metrics is not None else None,
             eval_top_3_accuracy=eval_metrics.top_3_accuracy if eval_metrics is not None else None,
             eval_top_5_accuracy=eval_metrics.top_5_accuracy if eval_metrics is not None else None,
             eval_mean_reciprocal_rank=eval_metrics.mean_reciprocal_rank if eval_metrics is not None else None,
             eval_mean_correct_move_rank=eval_metrics.mean_correct_move_rank if eval_metrics is not None else None,
             eval_value_loss=eval_metrics.value_loss if eval_metrics is not None else None,
+            initial_eval_value_loss=initial_eval_metrics.value_loss if initial_eval_metrics is not None else None,
             max_steps=training_config.max_steps,
         ),
     )
