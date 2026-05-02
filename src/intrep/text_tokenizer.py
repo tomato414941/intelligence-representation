@@ -84,11 +84,6 @@ def text_tokenizer_from_payload(payload: dict[str, object] | None) -> TextTokeni
         if not isinstance(tokenizer_json, str):
             raise ValueError("byte-pair tokenizer payload requires tokenizer_json")
         return BytePairTokenizer(tokenizer_json=tokenizer_json)
-    if kind == "hf-byte-pair":
-        tokenizer_json = payload.get("tokenizer_json")
-        if not isinstance(tokenizer_json, str):
-            raise ValueError("hf-byte-pair tokenizer payload requires tokenizer_json")
-        return BytePairTokenizer(tokenizer_json=tokenizer_json)
     raise ValueError("unsupported tokenizer kind")
 
 
