@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import Sequence
 
 from intrep.grid_world import GridExperienceTransition, GridWorldState, Position, generate_grid_world_transition_table
-from intrep.grid_world_prediction import GridStepPredictionConfig, train_grid_step_predictor
+from intrep.grid_world_checkpoint import save_grid_core_checkpoint
+from intrep.grid_world_prediction import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Train a grid step predictor on a generated transition table.")
     parser.add_argument("--metrics-path", type=Path, required=True)
+    parser.add_argument("--core-checkpoint-path", type=Path)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=5)
     parser.add_argument("--learning-rate", type=float, default=0.01)
@@ -66,11 +68,12 @@ def main(argv: list[str] | None = None) -> None:
         num_layers=args.num_layers,
         device=args.device,
     )
-    result = train_grid_step_predictor(
+    artifacts = train_grid_step_predictor_with_artifacts(
         train_examples,
         eval_examples=eval_examples or None,
         config=config,
     )
+    result = artifacts.result
     payload = {
         "schema_version": "intrep.grid_step_prediction_run.v1",
         "world": {
@@ -85,10 +88,13 @@ def main(argv: list[str] | None = None) -> None:
         "train_case_count": len(train_examples),
         "eval_case_count": len(eval_examples),
         "training_config": asdict(config),
+        "core_checkpoint_path": str(args.core_checkpoint_path) if args.core_checkpoint_path is not None else None,
         "result": asdict(result),
     }
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    if args.core_checkpoint_path is not None:
+        save_grid_core_checkpoint(args.core_checkpoint_path, artifacts)
     print("intrep train grid step prediction")
     print(
         f"train_cases={result.train_case_count}"
