@@ -10,7 +10,6 @@ from intrep.image_classification import (
     CIFAR10_LABELS,
     ClassificationHead,
     FASHION_MNIST_LABELS,
-    ImageTextChoiceExample,
     ImageClassificationExample,
     ImageClassificationConfig,
     ImageClassificationDataset,
@@ -21,32 +20,16 @@ from intrep.image_classification import (
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
     load_image_classification_examples_jsonl,
-    load_image_text_choice_examples_jsonl,
     image_text_choice_tensors_from_examples,
     train_image_classifier,
     train_image_classifier_with_result,
 )
+from intrep.image_text_choice_examples import ImageTextChoiceExample, load_image_text_choice_examples_jsonl
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.transformer_core import SharedTransformerCore
 
 
 class ImageClassificationTest(unittest.TestCase):
-    def test_loads_image_text_choice_examples_jsonl(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "fashion.jsonl"
-            _write_image_text_choice_examples(path, Path(directory) / "images")
-
-            examples = load_image_text_choice_examples_jsonl(path)
-            images, labels = image_text_choice_tensors_from_examples(examples)
-
-        self.assertEqual(len(examples), 2)
-        self.assertIsInstance(examples[0], ImageTextChoiceExample)
-        self.assertEqual(examples[0].answer_text, "Ankle boot")
-        self.assertEqual(images.shape, torch.Size([2, 2, 2]))
-        self.assertEqual(labels.tolist(), [9, 0])
-        self.assertEqual(float(images[0, 0, 0]), 0.0)
-        self.assertEqual(float(images[0, 0, 1]), 1.0)
-
     def test_loads_image_classification_examples_jsonl(self) -> None:
         with TemporaryDirectory() as directory:
             image_dir = Path(directory) / "images"

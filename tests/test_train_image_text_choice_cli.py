@@ -8,11 +8,13 @@ from tempfile import TemporaryDirectory
 from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationConfig,
-    ImageTextChoiceExample,
     image_classification_examples_from_text_choices,
+    train_image_classifier_with_result,
+)
+from intrep.image_text_choice_examples import (
+    ImageTextChoiceExample,
     image_text_choice_example_to_record,
     load_image_text_choice_examples_jsonl,
-    train_image_classifier_with_result,
 )
 from intrep.image_classification_checkpoint import save_image_classification_checkpoint
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
