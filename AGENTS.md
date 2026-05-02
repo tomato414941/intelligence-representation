@@ -29,5 +29,5 @@
   `uv sync` and installs the project without dependencies so the template's
   system PyTorch/CUDA stack is not replaced.
 - RunPod torchvision setup must use `./scripts/setup_runpod_vision.sh` after
-  `./scripts/setup_runpod.sh`. It installs a torch/CUDA-matched torchvision
-  wheel with `--no-deps`.
+  `./scripts/setup_runpod.sh`. It keeps system torch intact and requires an
+  explicit torchvision wheel spec for the selected RunPod image.
