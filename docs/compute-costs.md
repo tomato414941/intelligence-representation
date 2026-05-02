@@ -33,6 +33,7 @@ container disk, trained, and the output directory is synced back.
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | measured smoke | RunPod RTX 4090 | 50 | 512 | about 216 seconds | not separately recorded | Includes setup, transfer, decompression, training, sync, and pod teardown. |
 | aborted main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 planned | 512 | about 12 minutes | about $0.14 | Stopped manually because the small model did not appear to justify a multi-hour GPU run. |
+| planned short baseline | RunPod RTX 4090, assume about $0.69/hr | 300 | 512 | about 15-30 minutes | about $0.20-$0.35 | Measures whether the current larger model trains normally before changing the scorer. |
 | estimated main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses train/eval split caches and the current recipe. |
 
 Current recipe:
@@ -55,6 +56,12 @@ Current command:
 
 ```sh
 scripts/runpod_train_shogi_move_choice.sh
+```
+
+Planned short baseline command:
+
+```sh
+MAX_STEPS=300 MAX_RUNTIME_MINUTES=60 OUTPUT_DIR=runs/shogi/runpod-qhapaq-split-d256-h1024-l6-baseline-steps300 scripts/runpod_train_shogi_move_choice.sh
 ```
 
 The estimate should be replaced by measured runtime and cost after the 5000-step
