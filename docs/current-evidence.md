@@ -44,6 +44,7 @@ The current implementation has demonstrated:
 - image/text choice learning with prompt text and candidate labels
 - mixed text language-model and image/text choice updates in one run
 - small image-conditioned text-output overfit checks
+- action-conditioned grid step prediction from full grid observation and action id
 
 ## Representative Results
 
@@ -170,6 +171,24 @@ generated outputs:
   image_b: B
 ```
 
+### World / Action
+
+GridWorld transition table:
+
+```text
+world: 3x2 fully observed grid, 1 wall, 1 goal
+train cases: 25
+objective: predict next agent cell, reward class, and terminated flag
+steps: 200
+loss: 3.5404 -> 0.5955
+final next-cell loss: 0.3412
+final reward loss: 0.2488
+final terminated loss: 0.0056
+next-cell accuracy: 0.8000
+reward accuracy: 0.8400
+terminated accuracy: 1.0000
+```
+
 ## What These Results Mean
 
 The results show that the training paths are functional and that small models
@@ -182,7 +201,8 @@ They do not show:
 - latent predictive state learning
 - belief update or memory read/write learning
 - planning or control
-- action-conditioned future prediction that generalizes beyond smoke data
+- action-conditioned future prediction that generalizes beyond the small grid
+  transition table
 
 Next-token loss reduction, classification accuracy, and choice accuracy are
 important smoke and task metrics. They are not sufficient by themselves to
