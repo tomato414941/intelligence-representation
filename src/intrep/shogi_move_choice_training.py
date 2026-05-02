@@ -30,6 +30,18 @@ class ShogiMoveChoiceTrainingConfig:
     num_heads: int = 4
     num_layers: int = 1
     use_shared_core: bool = True
+    value_loss_weight: float = 0.0
+
+
+@dataclass(frozen=True)
+class ShogiMoveChoiceEvaluationMetrics:
+    loss: float
+    accuracy: float
+    top_3_accuracy: float
+    top_5_accuracy: float
+    mean_reciprocal_rank: float
+    mean_correct_move_rank: float
+    value_loss: float | None = None
 
 
 @dataclass(frozen=True)
@@ -39,8 +51,18 @@ class ShogiMoveChoiceTrainingMetrics:
     initial_loss: float
     final_loss: float
     accuracy: float
+    top_3_accuracy: float
+    top_5_accuracy: float
+    mean_reciprocal_rank: float
+    mean_correct_move_rank: float
+    value_loss: float | None
     eval_loss: float | None
     eval_accuracy: float | None
+    eval_top_3_accuracy: float | None
+    eval_top_5_accuracy: float | None
+    eval_mean_reciprocal_rank: float | None
+    eval_mean_correct_move_rank: float | None
+    eval_value_loss: float | None
     max_steps: int
 
 
@@ -76,37 +98,51 @@ def train_shogi_move_choice_model(
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
-    initial_loss, _ = evaluate_shogi_move_choice_model(model, train_eval_loader)
+    initial_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
 
     model.train()
     step = 0
     while step < training_config.max_steps:
-        for position_token_ids, candidate_move_features, candidate_mask, labels in loader:
+        for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
             optimizer.zero_grad(set_to_none=True)
             logits = model(position_token_ids, candidate_move_features, candidate_mask)
             loss = torch.nn.functional.cross_entropy(logits, labels)
+            value_mask = torch.isfinite(value_targets)
+            if training_config.value_loss_weight > 0.0 and value_mask.any():
+                value_predictions = model.predict_value(position_token_ids)
+                value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+                loss = loss + training_config.value_loss_weight * value_loss
             loss.backward()
             optimizer.step()
             step += 1
             if step >= training_config.max_steps:
                 break
 
-    final_loss, accuracy = evaluate_shogi_move_choice_model(model, train_eval_loader)
-    eval_loss: float | None = None
-    eval_accuracy: float | None = None
+    final_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
+    eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
     if eval_loader is not None:
-        eval_loss, eval_accuracy = evaluate_shogi_move_choice_model(model, eval_loader)
+        eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
     return ShogiMoveChoiceTrainingResult(
         model=model,
         config=training_config,
         metrics=ShogiMoveChoiceTrainingMetrics(
             train_case_count=len(dataset),
             eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
-            initial_loss=initial_loss,
-            final_loss=final_loss,
-            accuracy=accuracy,
-            eval_loss=eval_loss,
-            eval_accuracy=eval_accuracy,
+            initial_loss=initial_metrics.loss,
+            final_loss=final_metrics.loss,
+            accuracy=final_metrics.accuracy,
+            top_3_accuracy=final_metrics.top_3_accuracy,
+            top_5_accuracy=final_metrics.top_5_accuracy,
+            mean_reciprocal_rank=final_metrics.mean_reciprocal_rank,
+            mean_correct_move_rank=final_metrics.mean_correct_move_rank,
+            value_loss=final_metrics.value_loss,
+            eval_loss=eval_metrics.loss if eval_metrics is not None else None,
+            eval_accuracy=eval_metrics.accuracy if eval_metrics is not None else None,
+            eval_top_3_accuracy=eval_metrics.top_3_accuracy if eval_metrics is not None else None,
+            eval_top_5_accuracy=eval_metrics.top_5_accuracy if eval_metrics is not None else None,
+            eval_mean_reciprocal_rank=eval_metrics.mean_reciprocal_rank if eval_metrics is not None else None,
+            eval_mean_correct_move_rank=eval_metrics.mean_correct_move_rank if eval_metrics is not None else None,
+            eval_value_loss=eval_metrics.value_loss if eval_metrics is not None else None,
             max_steps=training_config.max_steps,
         ),
     )
@@ -114,21 +150,54 @@ def train_shogi_move_choice_model(
 
 def evaluate_shogi_move_choice_model(
     model: nn.Module,
-    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
 ) -> tuple[float, float]:
+    metrics = evaluate_shogi_move_choice_metrics(model, loader)
+    return metrics.loss, metrics.accuracy
+
+
+def evaluate_shogi_move_choice_metrics(
+    model: nn.Module,
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+) -> ShogiMoveChoiceEvaluationMetrics:
     model.eval()
     losses: list[float] = []
+    value_losses: list[float] = []
     correct = 0
+    top_3_correct = 0
+    top_5_correct = 0
+    reciprocal_rank_sum = 0.0
+    rank_sum = 0.0
     total = 0
     with torch.no_grad():
-        for position_token_ids, candidate_move_features, candidate_mask, labels in loader:
+        for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
             logits = model(position_token_ids, candidate_move_features, candidate_mask)
             loss = torch.nn.functional.cross_entropy(logits, labels)
             losses.append(float(loss.item()))
             predictions = logits.argmax(dim=1)
             correct += int((predictions == labels).sum().item())
+            sorted_indices = logits.argsort(dim=1, descending=True)
+            label_matches = sorted_indices.eq(labels[:, None])
+            ranks = label_matches.float().argmax(dim=1) + 1
+            top_3_correct += int((ranks <= 3).sum().item())
+            top_5_correct += int((ranks <= 5).sum().item())
+            reciprocal_rank_sum += float((1.0 / ranks.float()).sum().item())
+            rank_sum += float(ranks.float().sum().item())
             total += int(labels.numel())
-    return sum(losses) / len(losses), correct / total
+            value_mask = torch.isfinite(value_targets)
+            if value_mask.any() and hasattr(model, "predict_value"):
+                value_predictions = model.predict_value(position_token_ids)
+                value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+                value_losses.append(float(value_loss.item()))
+    return ShogiMoveChoiceEvaluationMetrics(
+        loss=sum(losses) / len(losses),
+        accuracy=correct / total,
+        top_3_accuracy=top_3_correct / total,
+        top_5_accuracy=top_5_correct / total,
+        mean_reciprocal_rank=reciprocal_rank_sum / total,
+        mean_correct_move_rank=rank_sum / total,
+        value_loss=sum(value_losses) / len(value_losses) if value_losses else None,
+    )
 
 
 def train_shogi_move_choice_model_from_usi_file(

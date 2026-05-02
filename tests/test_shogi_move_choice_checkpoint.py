@@ -22,7 +22,7 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
                 num_heads=2,
             ),
         )
-        position_token_ids, candidate_move_features, candidate_mask, _ = next(
+        position_token_ids, candidate_move_features, candidate_mask, _, _ = next(
             iter(torch.utils.data.DataLoader(ShogiMoveChoiceDataset(examples), batch_size=2))
         )
 

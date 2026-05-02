@@ -13,7 +13,7 @@ from intrep.shogi_move_choice_model import (
 
 class ShogiMoveChoiceModelTest(unittest.TestCase):
     def test_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
         model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
@@ -21,7 +21,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
     def test_model_masks_invalid_candidates(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
         candidate_mask[:, -1] = False
         model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
 
@@ -30,7 +30,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
     def test_shared_core_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
         model = SharedCoreShogiMoveChoiceModel(
             SharedCoreShogiMoveChoiceModelConfig(
                 embedding_dim=8,
@@ -44,8 +44,24 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
+    def test_shared_core_model_returns_position_value(self) -> None:
+        position_token_ids, _, _, _, _ = _batch()
+        model = SharedCoreShogiMoveChoiceModel(
+            SharedCoreShogiMoveChoiceModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
 
-def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        values = model.predict_value(position_token_ids)
+
+        self.assertEqual(tuple(values.shape), (2,))
+        self.assertLessEqual(float(values.abs().max().item()), 1.0)
+
+
+def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
     dataset = ShogiMoveChoiceDataset(examples)
     rows = [dataset[index] for index in range(len(dataset))]
