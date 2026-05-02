@@ -31,7 +31,7 @@ container disk, trained, and the output directory is synced back.
 
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
-| 2026-05-02 | short baseline | planned | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 300 | 512 | about 15-30 minutes | about $0.20-$0.35 | Measures whether the current larger model trains normally before changing the scorer. |
+| 2026-05-02 | policy-only short baseline | planned | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 300 | 512 | about 15-30 minutes | about $0.20-$0.35 | Measures whether the current larger model trains normally before changing the scorer. |
 
 Current recipe:
 
@@ -44,9 +44,9 @@ Current recipe:
 | cost guard | no separate cost guard; use the runtime guard and the estimate above |
 | train cache input | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
 | eval cache input | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
-| output directory | `runs/shogi/runpod-qhapaq-split-b512-steps5000` |
+| output directory | `runs/shogi/runpod-qhapaq-split-d256-h1024-l6-policy-only-steps300` |
 | model size knobs | embedding dim 256, hidden dim 1024, 8 heads, 6 layers |
-| objective knobs | value loss weight 0.2 |
+| objective knobs | learning rate 0.0005, value loss weight 0.0 |
 | DataLoader knobs | 4 workers, pinned memory |
 
 Current command:
@@ -58,8 +58,8 @@ scripts/runpod_train_shogi_move_choice.sh
 Planned short baseline command:
 
 ```sh
-MAX_STEPS=300 MAX_RUNTIME_MINUTES=60 OUTPUT_DIR=runs/shogi/runpod-qhapaq-split-d256-h1024-l6-baseline-steps300 scripts/runpod_train_shogi_move_choice.sh
+MAX_STEPS=300 MAX_RUNTIME_MINUTES=60 OUTPUT_DIR=runs/shogi/runpod-qhapaq-split-d256-h1024-l6-policy-only-steps300 scripts/runpod_train_shogi_move_choice.sh
 ```
 
-The estimate should be replaced by measured runtime and cost after the 5000-step
-run completes.
+The estimate should be replaced by measured runtime and cost after the short
+baseline run completes.

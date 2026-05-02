@@ -13,6 +13,8 @@ MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
 NUM_WORKERS=${NUM_WORKERS:-4}
+LEARNING_RATE=${LEARNING_RATE:-0.0005}
+VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-0.0}
 EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
@@ -70,13 +72,13 @@ PY
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \
   --max-steps \"$MAX_STEPS\" \
   --batch-size \"$BATCH_SIZE\" \
-  --learning-rate 0.003 \
+  --learning-rate \"$LEARNING_RATE\" \
   --weight-decay 0.01 \
   --embedding-dim \"$EMBEDDING_DIM\" \
   --hidden-dim \"$HIDDEN_DIM\" \
   --num-heads \"$NUM_HEADS\" \
   --num-layers \"$NUM_LAYERS\" \
-  --value-loss-weight 0.2 \
+  --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
   --device cuda \
   --log-every 50 \
   --num-workers \"$NUM_WORKERS\" \
