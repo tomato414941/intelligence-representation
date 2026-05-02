@@ -4,10 +4,10 @@ import torch
 
 from intrep.grid_world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
 from intrep.grid_world_prediction import (
-    GridNextCellDataset,
-    GridNextCellPredictionConfig,
-    GridNextCellPredictor,
-    train_grid_next_cell_predictor,
+    GridStepPredictionConfig,
+    GridStepPredictionDataset,
+    GridStepPredictor,
+    train_grid_step_predictor,
 )
 
 
@@ -23,15 +23,17 @@ class GridWorldPredictionTest(unittest.TestCase):
             ),
         )
 
-        dataset = GridNextCellDataset(examples)
-        observation, action_id, next_cell_id = dataset[0]
+        dataset = GridStepPredictionDataset(examples)
+        observation, action_id, next_cell_id, reward_id, terminated_id = dataset[0]
 
         self.assertEqual(tuple(observation.shape), (3, 2, 3))
         self.assertEqual(int(action_id.item()), 3)
         self.assertEqual(int(next_cell_id.item()), 1)
+        self.assertEqual(int(reward_id.item()), 1)
+        self.assertEqual(int(terminated_id.item()), 0)
 
-    def test_predictor_returns_next_cell_logits(self) -> None:
-        model = GridNextCellPredictor(
+    def test_predictor_returns_step_logits(self) -> None:
+        model = GridStepPredictor(
             height=2,
             width=3,
             embedding_dim=8,
@@ -40,9 +42,14 @@ class GridWorldPredictionTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model(torch.zeros((2, 3, 2, 3)), torch.tensor([3, 4], dtype=torch.long))
+        next_cell_logits, reward_logits, terminated_logits = model(
+            torch.zeros((2, 3, 2, 3)),
+            torch.tensor([3, 4], dtype=torch.long),
+        )
 
-        self.assertEqual(tuple(logits.shape), (2, 6))
+        self.assertEqual(tuple(next_cell_logits.shape), (2, 6))
+        self.assertEqual(tuple(reward_logits.shape), (2, 3))
+        self.assertEqual(tuple(terminated_logits.shape), (2, 2))
 
     def test_training_runs_on_grid_experience(self) -> None:
         examples = generate_grid_world_transition_table(
@@ -55,9 +62,9 @@ class GridWorldPredictionTest(unittest.TestCase):
             )
         )
 
-        result = train_grid_next_cell_predictor(
+        result = train_grid_step_predictor(
             examples,
-            config=GridNextCellPredictionConfig(
+            config=GridStepPredictionConfig(
                 max_steps=200,
                 batch_size=5,
                 learning_rate=0.01,
@@ -73,7 +80,9 @@ class GridWorldPredictionTest(unittest.TestCase):
         self.assertEqual(result.train_case_count, 25)
         self.assertGreater(result.initial_loss, 0.0)
         self.assertLess(result.final_loss, result.initial_loss)
-        self.assertGreaterEqual(result.accuracy, 0.7)
+        self.assertGreaterEqual(result.next_cell_accuracy, 0.7)
+        self.assertGreaterEqual(result.reward_accuracy, 0.8)
+        self.assertGreaterEqual(result.terminated_accuracy, 0.8)
 
 
 if __name__ == "__main__":

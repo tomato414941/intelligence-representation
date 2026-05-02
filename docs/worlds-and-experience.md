@@ -108,7 +108,10 @@ The first reinforcement-learning-style path uses tensor observations and
 discrete action IDs:
 
 ```text
-grid observation tensor + action id -> next agent cell
+grid observation tensor + action id
+  -> next agent cell
+  -> reward class
+  -> terminated flag
 ```
 
 This keeps the world interface close to common RL practice while still using a
