@@ -4,8 +4,9 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Sequence
 
-from intrep.grid_world import GridWorldState, Position, generate_grid_world_transition_table
+from intrep.grid_world import GridExperienceTransition, GridWorldState, Position, generate_grid_world_transition_table
 from intrep.grid_world_prediction import GridStepPredictionConfig, train_grid_step_predictor
 
 
@@ -25,6 +26,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=1)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument(
+        "--eval-agent-cell",
+        type=int,
+        nargs=2,
+        action="append",
+        metavar=("ROW", "COL"),
+        help="Hold out all transitions whose current agent cell matches ROW COL.",
+    )
     return parser
 
 
@@ -38,6 +47,10 @@ def main(argv: list[str] | None = None) -> None:
         walls=frozenset({Position(row=1, col=1)}),
     )
     examples = generate_grid_world_transition_table(state)
+    train_examples, eval_examples = split_grid_transitions_by_agent_cell(
+        examples,
+        held_out_cells=[Position(row=row, col=col) for row, col in args.eval_agent_cell or []],
+    )
     config = GridStepPredictionConfig(
         max_steps=args.max_steps,
         batch_size=args.batch_size,
@@ -53,7 +66,11 @@ def main(argv: list[str] | None = None) -> None:
         num_layers=args.num_layers,
         device=args.device,
     )
-    result = train_grid_step_predictor(examples, config=config)
+    result = train_grid_step_predictor(
+        train_examples,
+        eval_examples=eval_examples or None,
+        config=config,
+    )
     payload = {
         "schema_version": "intrep.grid_step_prediction_run.v1",
         "world": {
@@ -64,7 +81,9 @@ def main(argv: list[str] | None = None) -> None:
             "walls": [asdict(wall) for wall in sorted(state.walls, key=lambda position: (position.row, position.col))],
         },
         "objective": "predict next agent cell, reward class, and terminated flag from full grid observation and action id",
-        "train_case_count": len(examples),
+        "held_out_agent_cells": [asdict(position) for position in sorted(_held_out_cells(args), key=lambda p: (p.row, p.col))],
+        "train_case_count": len(train_examples),
+        "eval_case_count": len(eval_examples),
         "training_config": asdict(config),
         "result": asdict(result),
     }
@@ -73,12 +92,36 @@ def main(argv: list[str] | None = None) -> None:
     print("intrep train grid step prediction")
     print(
         f"train_cases={result.train_case_count}"
+        f" eval_cases={result.eval_case_count}"
         f" initial_loss={result.initial_loss:.4f}"
         f" final_loss={result.final_loss:.4f}"
         f" next_cell_accuracy={result.next_cell_accuracy:.4f}"
         f" reward_accuracy={result.reward_accuracy:.4f}"
         f" terminated_accuracy={result.terminated_accuracy:.4f}"
+        f" eval_next_cell_accuracy={result.eval_next_cell_accuracy if result.eval_next_cell_accuracy is not None else 'none'}"
     )
+
+
+def split_grid_transitions_by_agent_cell(
+    examples: Sequence[GridExperienceTransition],
+    *,
+    held_out_cells: Sequence[Position],
+) -> tuple[list[GridExperienceTransition], list[GridExperienceTransition]]:
+    held_out = set(held_out_cells)
+    train_examples = []
+    eval_examples = []
+    for example in examples:
+        if example.observation.agent in held_out:
+            eval_examples.append(example)
+        else:
+            train_examples.append(example)
+    if not train_examples:
+        raise ValueError("train split must not be empty")
+    return train_examples, eval_examples
+
+
+def _held_out_cells(args: argparse.Namespace) -> list[Position]:
+    return [Position(row=row, col=col) for row, col in args.eval_agent_cell or []]
 
 
 if __name__ == "__main__":

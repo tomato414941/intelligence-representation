@@ -189,10 +189,32 @@ reward accuracy: 0.8400
 terminated accuracy: 1.0000
 ```
 
+GridWorld held-out agent cell:
+
+```text
+world: 3x2 fully observed grid, 1 wall, 1 goal
+held-out current agent cell: (0, 2)
+train cases: 20
+eval cases: 5
+objective: predict next agent cell, reward class, and terminated flag
+steps: 200
+train loss: 3.4889 -> 0.1463
+train next-cell accuracy: 0.9000
+train reward accuracy: 1.0000
+train terminated accuracy: 1.0000
+eval loss: 11.3529
+eval next-cell accuracy: 0.0000
+eval reward accuracy: 0.6000
+eval terminated accuracy: 0.8000
+```
+
 ## What These Results Mean
 
 The results show that the training paths are functional and that small models
 can learn measurable patterns from text, image, and image/text data.
+The GridWorld held-out-cell run also shows a current limitation: the small
+grid step predictor can fit seen transition cases, but it has not yet shown
+reliable state generalization.
 
 They do not show:
 
