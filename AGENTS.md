@@ -18,6 +18,9 @@
 - Run relevant tests or checks after implementation changes.
 - For note-only changes, review formatting and repository status.
 
+## Compute Cost Notes
+- Before and after expensive compute jobs, suggest updating `docs/compute-costs.md`.
+
 ## Dependencies
 - PyTorch is an optional dependency so RunPod official PyTorch templates can use
   their system CUDA-compatible torch instead of replacing it from the project

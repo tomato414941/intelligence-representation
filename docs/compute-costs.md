@@ -1,7 +1,9 @@
-# Compute Runs
+# Compute Costs
 
-This document records compute estimates and measured runs that affect near-term
-training decisions. It is not a full experiment log.
+This document records estimated and measured compute cost for expensive jobs.
+Cost includes runtime, hardware choice, cloud price, setup overhead, and
+operational constraints that affect whether a run is worth starting. It is not
+a model-quality report or full experiment log.
 
 ## Shogi Move-Choice Cache
 
@@ -34,5 +36,5 @@ Current command:
 scripts/runpod_train_shogi_move_choice.sh
 ```
 
-The estimate should be replaced by measured runtime, cost, and metrics after the
-5000-step run completes.
+The estimate should be replaced by measured runtime and cost after the 5000-step
+run completes.

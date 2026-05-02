@@ -28,7 +28,7 @@ Possible split:
 | --- | --- |
 | `README.md` | project summary, setup pointer, canonical docs, shortest common commands |
 | `docs/training.md` | tokenizer workflow, training entrypoints, checkpoint reuse, task command examples |
-| `docs/compute-runs.md` | measured and estimated compute runs, including RunPod-specific run notes |
+| `docs/compute-costs.md` | measured and estimated compute cost, including RunPod-specific run notes |
 
 ## Non-Goal
 
