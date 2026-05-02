@@ -43,6 +43,7 @@ Current recipe:
 | allowed CUDA versions | `12.8`, `12.9`, `13.0` |
 | storage | 80 GB container disk, no network volume |
 | max runtime guard | 420 minutes |
+| cost guard | no separate cost guard; use the runtime guard and the estimate above |
 | train cache input | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
 | eval cache input | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
 | output directory | `runs/shogi/runpod-qhapaq-split-b512-steps5000` |

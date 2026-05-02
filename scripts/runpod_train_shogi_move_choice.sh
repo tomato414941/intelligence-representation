@@ -41,7 +41,6 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --remote-dir /root/intrep \
   --mem 32 \
   --vcpu 8 \
-  --max-cost 1.0 \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 600 \
   --ssh-wait-seconds 180 \
