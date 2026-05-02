@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from intrep.grid_world import GridWorldState, Position, generate_grid_world_experience
+from intrep.grid_world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
 from intrep.grid_world_prediction import (
     GridNextCellDataset,
     GridNextCellPredictionConfig,
@@ -45,29 +45,35 @@ class GridWorldPredictionTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), (2, 6))
 
     def test_training_runs_on_grid_experience(self) -> None:
-        examples = generate_grid_world_experience(
-            actions=("right", "down", "right", "down", "right", "stay", "left", "up")
+        examples = generate_grid_world_transition_table(
+            GridWorldState(
+                width=3,
+                height=2,
+                agent=Position(row=0, col=0),
+                goal=Position(row=1, col=2),
+                walls=frozenset({Position(row=1, col=1)}),
+            )
         )
 
         result = train_grid_next_cell_predictor(
             examples,
             config=GridNextCellPredictionConfig(
-                max_steps=3,
-                batch_size=2,
-                learning_rate=0.005,
+                max_steps=200,
+                batch_size=5,
+                learning_rate=0.01,
                 seed=31,
-                embedding_dim=8,
+                embedding_dim=32,
                 num_heads=2,
-                hidden_dim=16,
+                hidden_dim=64,
                 num_layers=1,
                 device="cpu",
             ),
         )
 
-        self.assertEqual(result.train_case_count, 8)
+        self.assertEqual(result.train_case_count, 25)
         self.assertGreater(result.initial_loss, 0.0)
-        self.assertGreater(result.final_loss, 0.0)
-        self.assertGreaterEqual(result.accuracy, 0.0)
+        self.assertLess(result.final_loss, result.initial_loss)
+        self.assertGreaterEqual(result.accuracy, 0.7)
 
 
 if __name__ == "__main__":
