@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 import torch
@@ -18,10 +18,12 @@ from intrep.image_training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.image_text_choice_examples import ImageTextChoiceExample
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
 from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
+
+if TYPE_CHECKING:
+    from intrep.image_text_choice_examples import ImageTextChoiceExample
 
 
 FASHION_MNIST_LABELS = (
@@ -339,24 +341,6 @@ def train_image_classifier_with_result(
         image_shape=train_dataset.image_shape,
         label_names=train_dataset.label_names,
     )
-
-
-def image_text_choice_tensors_from_examples(
-    examples: list[ImageTextChoiceExample],
-) -> tuple[torch.Tensor, torch.Tensor]:
-    images: list[np.ndarray] = []
-    labels: list[int] = []
-    for example in examples:
-        images.append(_read_image_path(example.image_path))
-        labels.append(example.answer_index)
-    if not images:
-        raise ValueError("examples must not be empty")
-    first_shape = images[0].shape
-    if any(image.shape != first_shape for image in images):
-        raise ValueError("all images must have the same shape")
-    image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
-    label_tensor = torch.tensor(labels, dtype=torch.long)
-    return image_tensor, label_tensor
 
 
 def image_classification_tensors_from_examples(
