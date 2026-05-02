@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Sequence
 
 import torch
@@ -34,6 +35,7 @@ class ShogiMoveChoiceTrainingConfig:
     device: str = "cpu"
     max_train_eval_examples: int | None = None
     max_eval_examples: int | None = None
+    log_every: int | None = None
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,8 @@ def train_shogi_move_choice_model(
     training_config = config or ShogiMoveChoiceTrainingConfig()
     if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
+    if training_config.log_every is not None and training_config.log_every <= 0:
+        raise ValueError("log_every must be positive")
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
     dataset = ShogiMoveChoiceDataset(examples)
@@ -118,6 +122,7 @@ def train_shogi_move_choice_model(
 
     model.train()
     step = 0
+    started = time.monotonic()
     while step < training_config.max_steps:
         for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
             position_token_ids = position_token_ids.to(device)
@@ -136,6 +141,8 @@ def train_shogi_move_choice_model(
             loss.backward()
             optimizer.step()
             step += 1
+            if training_config.log_every is not None and step % training_config.log_every == 0:
+                _log_training_progress(step, training_config.max_steps, started, loss, device)
             if step >= training_config.max_steps:
                 break
 
@@ -240,6 +247,28 @@ def _limit_examples(
     if max_examples <= 0:
         raise ValueError("max eval examples must be positive")
     return examples[:max_examples]
+
+
+def _log_training_progress(
+    step: int,
+    max_steps: int,
+    started: float,
+    loss: torch.Tensor,
+    device: torch.device,
+) -> None:
+    elapsed = time.monotonic() - started
+    steps_per_second = step / elapsed if elapsed > 0.0 else 0.0
+    parts = [
+        f"step={step}/{max_steps}",
+        f"elapsed_seconds={elapsed:.1f}",
+        f"steps_per_second={steps_per_second:.3f}",
+        f"loss={float(loss.detach().item()):.4f}",
+        f"device={device}",
+    ]
+    if device.type == "cuda" and torch.cuda.is_available():
+        allocated_mb = torch.cuda.max_memory_allocated(device) / (1024 * 1024)
+        parts.append(f"cuda_max_memory_mb={allocated_mb:.1f}")
+    print(" ".join(parts), flush=True)
 
 
 def train_shogi_move_choice_model_from_usi_file(

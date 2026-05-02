@@ -66,4 +66,5 @@ PY
   --num-layers 1 \
   --value-loss-weight 0.2 \
   --device cuda \
+  --log-every 50 \
   --max-train-eval-examples 4096"
