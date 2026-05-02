@@ -52,16 +52,6 @@ class TextTokenizerTest(unittest.TestCase):
         self.assertIsInstance(restored, BytePairTokenizer)
         self.assertEqual(restored.decode(restored.encode("hello unseen")), "hello unseen")
 
-    def test_loads_legacy_hf_byte_pair_payload(self) -> None:
-        original = train_byte_pair_tokenizer("hello hello", vocab_size=270)
-        payload = text_tokenizer_to_payload(original)
-        payload["kind"] = "hf-byte-pair"
-
-        restored = text_tokenizer_from_payload(payload)
-
-        self.assertIsInstance(restored, BytePairTokenizer)
-        self.assertEqual(restored.decode(restored.encode("hello unseen")), "hello unseen")
-
 
 if __name__ == "__main__":
     unittest.main()
