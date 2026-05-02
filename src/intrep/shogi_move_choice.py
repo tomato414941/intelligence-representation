@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Sequence
 
 import shogi
-import torch
-from torch.utils.data import Dataset
 
-from intrep.shogi_move_encoding import shogi_candidate_move_features
-from intrep.shogi_position_encoding import shogi_position_token_ids_from_sfen
-
+try:
+    import torch
+    from torch.utils.data import Dataset as TorchDataset
+except ImportError:  # pragma: no cover - exercised in lightweight preprocessing environments.
+    torch = None
+    TorchDataset = object
 
 @dataclass(frozen=True)
 class ShogiMoveChoiceExample:
@@ -74,7 +75,7 @@ def shogi_move_choice_examples_from_usi_moves_with_winner(
     return examples
 
 
-class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
+class ShogiMoveChoiceDataset(TorchDataset):
     def __init__(self, examples: Sequence[ShogiMoveChoiceExample]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
@@ -84,7 +85,12 @@ class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
     def __len__(self) -> int:
         return len(self.examples)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int):
+        if torch is None:
+            raise RuntimeError("torch is required to materialize ShogiMoveChoiceDataset items")
+        from intrep.shogi_move_encoding import shogi_candidate_move_features
+        from intrep.shogi_position_encoding import shogi_position_token_ids_from_sfen
+
         example = self.examples[index]
         position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)
         candidate_move_features = shogi_candidate_move_features(
