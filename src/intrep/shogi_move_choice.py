@@ -16,6 +16,7 @@ class ShogiMoveChoiceExample:
     position_sfen: str
     legal_moves: tuple[str, ...]
     chosen_move: str
+    value_target: float | None = None
 
     def __post_init__(self) -> None:
         if not self.position_sfen:
@@ -24,6 +25,8 @@ class ShogiMoveChoiceExample:
             raise ValueError("legal_moves must not be empty")
         if self.chosen_move not in self.legal_moves:
             raise ValueError("chosen_move must be included in legal_moves")
+        if self.value_target is not None and not -1.0 <= self.value_target <= 1.0:
+            raise ValueError("value_target must be between -1.0 and 1.0")
 
 
 def shogi_move_choice_example_from_board(board: shogi.Board, chosen_move: str) -> ShogiMoveChoiceExample:
@@ -44,7 +47,7 @@ def shogi_move_choice_examples_from_usi_moves(moves: Sequence[str]) -> list[Shog
     return examples
 
 
-class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
+class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: Sequence[ShogiMoveChoiceExample]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
@@ -54,7 +57,7 @@ class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
     def __len__(self) -> int:
         return len(self.examples)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         example = self.examples[index]
         position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)
         candidate_move_features = shogi_candidate_move_features(
@@ -64,4 +67,11 @@ class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         move_index = example.legal_moves.index(example.chosen_move)
         candidate_mask = torch.zeros(self.max_choice_count, dtype=torch.bool)
         candidate_mask[: len(example.legal_moves)] = True
-        return position_token_ids, candidate_move_features, candidate_mask, torch.tensor(move_index, dtype=torch.long)
+        value_target = float("nan") if example.value_target is None else example.value_target
+        return (
+            position_token_ids,
+            candidate_move_features,
+            candidate_mask,
+            torch.tensor(move_index, dtype=torch.long),
+            torch.tensor(value_target, dtype=torch.float32),
+        )

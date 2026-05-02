@@ -43,24 +43,40 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         dataset = ShogiMoveChoiceDataset(examples)
 
-        position_token_ids, candidate_move_features, candidate_mask, label_index = dataset[0]
+        position_token_ids, candidate_move_features, candidate_mask, label_index, value_target = dataset[0]
 
         self.assertEqual(tuple(position_token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
         self.assertEqual(tuple(candidate_move_features.shape), (len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
         self.assertEqual(candidate_mask.dtype, torch.bool)
         self.assertEqual(int(candidate_mask.sum().item()), len(examples[0].legal_moves))
         self.assertEqual(int(label_index.item()), examples[0].legal_moves.index("7g7f"))
+        self.assertTrue(torch.isnan(value_target))
+
+    def test_dataset_returns_optional_value_target(self) -> None:
+        board = shogi.Board()
+        example = ShogiMoveChoiceExample(
+            position_sfen=board.sfen(),
+            legal_moves=tuple(sorted(move.usi() for move in board.legal_moves)),
+            chosen_move="7g7f",
+            value_target=1.0,
+        )
+        dataset = ShogiMoveChoiceDataset((example,))
+
+        *_, value_target = dataset[0]
+
+        self.assertEqual(float(value_target.item()), 1.0)
 
     def test_dataset_can_be_batched(self) -> None:
         examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         loader = DataLoader(ShogiMoveChoiceDataset(examples), batch_size=2)
 
-        position_token_ids, candidate_move_features, candidate_masks, label_indexes = next(iter(loader))
+        position_token_ids, candidate_move_features, candidate_masks, label_indexes, value_targets = next(iter(loader))
 
         self.assertEqual(tuple(position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
         self.assertEqual(tuple(candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
         self.assertEqual(tuple(candidate_masks.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(label_indexes.shape), (2,))
+        self.assertEqual(tuple(value_targets.shape), (2,))
 
 
 if __name__ == "__main__":

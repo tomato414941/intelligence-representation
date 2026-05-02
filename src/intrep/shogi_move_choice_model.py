@@ -37,6 +37,12 @@ class ShogiMoveChoiceModel(nn.Module):
             nn.GELU(),
             nn.Linear(self.config.hidden_dim, 1),
         )
+        self.value_head = nn.Sequential(
+            nn.Linear(embedding_dim, self.config.hidden_dim),
+            nn.GELU(),
+            nn.Linear(self.config.hidden_dim, 1),
+            nn.Tanh(),
+        )
 
     def forward(
         self,
@@ -49,6 +55,10 @@ class ShogiMoveChoiceModel(nn.Module):
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         logits = self.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+
+    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
+        return self.value_head(position_embedding).squeeze(-1)
 
     def embed_candidate_moves(self, candidate_move_features: torch.Tensor) -> torch.Tensor:
         return (
@@ -111,3 +121,8 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         logits = self.move_model.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+
+    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        position_hidden = self.core(self.position_input(position_token_ids), causal=False)
+        position_embedding = position_hidden.mean(dim=1)
+        return self.move_model.value_head(position_embedding).squeeze(-1)
