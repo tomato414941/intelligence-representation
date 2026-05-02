@@ -47,6 +47,7 @@ Current recipe:
 | output directory | `runs/shogi/runpod-qhapaq-split-d256-h1024-l6-policy-only-steps300` |
 | model size knobs | embedding dim 256, hidden dim 1024, 8 heads, 6 layers |
 | objective knobs | learning rate 0.0005, value loss weight 0.0 |
+| eval knobs | 4096 train-eval examples, 4096 eval examples |
 | DataLoader knobs | 4 workers, pinned memory |
 
 Current command:
