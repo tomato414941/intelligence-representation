@@ -45,7 +45,7 @@ docs/current-experiment.md
   Planned or active experiment note
 
 legacy/
-  Historical docs, experiments, and tests
+  Historical archive outside the active implementation path
 ```
 
 ## Canonical Docs
@@ -63,10 +63,6 @@ Read these first:
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
 - [Current Evidence](docs/current-evidence.md)
-
-Historical notes:
-
-- [Legacy Docs](legacy/docs/)
 
 ## Design Constraints
 
