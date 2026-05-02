@@ -21,7 +21,7 @@ from intrep.transformer_core import SharedTransformerCore
 
 
 @dataclass(frozen=True)
-class GridNextCellPredictionConfig:
+class GridStepPredictionConfig:
     max_steps: int = 20
     batch_size: int = 8
     learning_rate: float = 0.003
@@ -38,15 +38,17 @@ class GridNextCellPredictionConfig:
 
 
 @dataclass(frozen=True)
-class GridNextCellPredictionResult:
+class GridStepPredictionResult:
     train_case_count: int
     initial_loss: float
     final_loss: float
-    accuracy: float
+    next_cell_accuracy: float
+    reward_accuracy: float
+    terminated_accuracy: float
     max_steps: int
 
 
-class GridNextCellDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
+class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: Sequence[GridExperienceTransition]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
@@ -59,7 +61,7 @@ class GridNextCellDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor
     def __len__(self) -> int:
         return len(self.examples)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         example = self.examples[index]
         observation = grid_observation_to_tensor(example.observation)
         if tuple(observation.shape) != self.grid_shape:
@@ -69,7 +71,9 @@ class GridNextCellDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor
             grid_position_to_cell_id(example.next_observation.agent, width=self.width),
             dtype=torch.long,
         )
-        return observation, action_id, next_cell_id
+        reward_id = torch.tensor(grid_reward_to_id(example.reward), dtype=torch.long)
+        terminated_id = torch.tensor(int(example.terminated), dtype=torch.long)
+        return observation, action_id, next_cell_id, reward_id, terminated_id
 
 
 class GridObservationInputLayer(nn.Module):
@@ -93,7 +97,7 @@ class GridObservationInputLayer(nn.Module):
         return self.cell_projection(cells) + self.position_embedding(positions)
 
 
-class GridNextCellPredictor(nn.Module):
+class GridStepPredictor(nn.Module):
     def __init__(
         self,
         *,
@@ -113,31 +117,38 @@ class GridNextCellPredictor(nn.Module):
             hidden_dim=hidden_dim,
             num_layers=num_layers,
         )
-        self.output = nn.Linear(embedding_dim, height * width)
+        self.next_cell_output = nn.Linear(embedding_dim, height * width)
+        self.reward_output = nn.Linear(embedding_dim, 3)
+        self.terminated_output = nn.Linear(embedding_dim, 2)
 
-    def forward(self, observations: torch.Tensor, action_ids: torch.Tensor) -> torch.Tensor:
+    def forward(self, observations: torch.Tensor, action_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if action_ids.ndim != 1:
             raise ValueError("action_ids must have shape [batch]")
         grid_embeddings = self.grid_input(observations)
         action_embeddings = self.action_embedding(action_ids).unsqueeze(1)
         hidden = self.core(torch.cat((grid_embeddings, action_embeddings), dim=1), causal=False)
-        return self.output(hidden[:, -1, :])
+        pooled = hidden[:, -1, :]
+        return (
+            self.next_cell_output(pooled),
+            self.reward_output(pooled),
+            self.terminated_output(pooled),
+        )
 
 
-def train_grid_next_cell_predictor(
+def train_grid_step_predictor(
     examples: Sequence[GridExperienceTransition],
     *,
-    config: GridNextCellPredictionConfig | None = None,
-) -> GridNextCellPredictionResult:
-    config = config or GridNextCellPredictionConfig()
+    config: GridStepPredictionConfig | None = None,
+) -> GridStepPredictionResult:
+    config = config or GridStepPredictionConfig()
     if config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
     torch.manual_seed(config.seed)
     device = resolve_training_device(config.device)
-    dataset = GridNextCellDataset(examples)
+    dataset = GridStepPredictionDataset(examples)
     loader = seeded_data_loader(dataset, batch_size=config.batch_size, seed=config.seed, shuffle=True, device=device)
     eval_loader = seeded_data_loader(dataset, batch_size=config.batch_size, seed=config.seed, shuffle=False, device=device)
-    model = GridNextCellPredictor(
+    model = GridStepPredictor(
         height=dataset.height,
         width=dataset.width,
         embedding_dim=config.embedding_dim,
@@ -153,54 +164,88 @@ def train_grid_next_cell_predictor(
         max_steps=config.max_steps,
     )
 
-    initial_loss, _ = _evaluate(model, eval_loader, device)
+    initial_metrics = _evaluate(model, eval_loader, device)
     iterator = iter(loader)
-    final_loss = initial_loss
+    final_loss = initial_metrics[0]
     for _ in range(config.max_steps):
         try:
-            observations, action_ids, targets = next(iterator)
+            observations, action_ids, next_cell_targets, reward_targets, terminated_targets = next(iterator)
         except StopIteration:
             iterator = iter(loader)
-            observations, action_ids, targets = next(iterator)
+            observations, action_ids, next_cell_targets, reward_targets, terminated_targets = next(iterator)
         observations = observations.to(device)
         action_ids = action_ids.to(device)
-        targets = targets.to(device)
+        next_cell_targets = next_cell_targets.to(device)
+        reward_targets = reward_targets.to(device)
+        terminated_targets = terminated_targets.to(device)
         optimizer.zero_grad(set_to_none=True)
-        loss = nn.functional.cross_entropy(model(observations, action_ids), targets)
+        next_cell_logits, reward_logits, terminated_logits = model(observations, action_ids)
+        loss = (
+            nn.functional.cross_entropy(next_cell_logits, next_cell_targets)
+            + nn.functional.cross_entropy(reward_logits, reward_targets)
+            + nn.functional.cross_entropy(terminated_logits, terminated_targets)
+        )
         loss.backward()
         clip_gradients(model, config.max_grad_norm)
         optimizer.step()
         scheduler.step()
         final_loss = float(loss.item())
 
-    eval_loss, accuracy = _evaluate(model, eval_loader, device)
-    return GridNextCellPredictionResult(
+    eval_loss, next_cell_accuracy, reward_accuracy, terminated_accuracy = _evaluate(model, eval_loader, device)
+    return GridStepPredictionResult(
         train_case_count=len(dataset),
-        initial_loss=initial_loss,
+        initial_loss=initial_metrics[0],
         final_loss=eval_loss if eval_loss <= final_loss else final_loss,
-        accuracy=accuracy,
+        next_cell_accuracy=next_cell_accuracy,
+        reward_accuracy=reward_accuracy,
+        terminated_accuracy=terminated_accuracy,
         max_steps=config.max_steps,
     )
 
 
 def _evaluate(
-    model: GridNextCellPredictor,
-    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+    model: GridStepPredictor,
+    data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
     device: torch.device,
-) -> tuple[float, float]:
+) -> tuple[float, float, float, float]:
     model.eval()
     total_loss = 0.0
-    total_correct = 0
+    total_next_cell_correct = 0
+    total_reward_correct = 0
+    total_terminated_correct = 0
     total_count = 0
     with torch.no_grad():
-        for observations, action_ids, targets in data_loader:
+        for observations, action_ids, next_cell_targets, reward_targets, terminated_targets in data_loader:
             observations = observations.to(device)
             action_ids = action_ids.to(device)
-            targets = targets.to(device)
-            logits = model(observations, action_ids)
-            loss = nn.functional.cross_entropy(logits, targets, reduction="sum")
+            next_cell_targets = next_cell_targets.to(device)
+            reward_targets = reward_targets.to(device)
+            terminated_targets = terminated_targets.to(device)
+            next_cell_logits, reward_logits, terminated_logits = model(observations, action_ids)
+            loss = (
+                nn.functional.cross_entropy(next_cell_logits, next_cell_targets, reduction="sum")
+                + nn.functional.cross_entropy(reward_logits, reward_targets, reduction="sum")
+                + nn.functional.cross_entropy(terminated_logits, terminated_targets, reduction="sum")
+            )
             total_loss += float(loss.item())
-            total_correct += int((logits.argmax(dim=1) == targets).sum().item())
-            total_count += int(targets.numel())
+            total_next_cell_correct += int((next_cell_logits.argmax(dim=1) == next_cell_targets).sum().item())
+            total_reward_correct += int((reward_logits.argmax(dim=1) == reward_targets).sum().item())
+            total_terminated_correct += int((terminated_logits.argmax(dim=1) == terminated_targets).sum().item())
+            total_count += int(next_cell_targets.numel())
     model.train()
-    return total_loss / total_count, total_correct / total_count
+    return (
+        total_loss / total_count,
+        total_next_cell_correct / total_count,
+        total_reward_correct / total_count,
+        total_terminated_correct / total_count,
+    )
+
+
+def grid_reward_to_id(reward: float) -> int:
+    if reward == -0.1:
+        return 0
+    if reward == -0.01:
+        return 1
+    if reward == 1.0:
+        return 2
+    raise ValueError(f"unsupported grid reward: {reward}")
