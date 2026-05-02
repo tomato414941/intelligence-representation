@@ -22,6 +22,7 @@ for this project. It is not a downloader guide.
 | Places365 | image | large | candidate | A scene recognition dataset with 365 place categories. |
 | ImageNet-1K | image | about 1.28M train images | candidate | A large object image classification dataset with 1000 classes. |
 | iNaturalist 2021 | image | large | candidate | A fine-grained species image dataset with many biological categories. |
+| Qhapaq computer shogi KIF records | game / shogi | 18,948 games | supported | Computer-shogi game records from Qhapaq Research Lab, downloaded as a KIF archive and converted to local game-record JSONL for shogi move-choice experiments. |
 
 ## Notes
 
@@ -30,3 +31,5 @@ for this project. It is not a downloader guide.
 | Local artifacts | Downloaded datasets, generated samples, run metrics, and checkpoints are usually local artifacts under paths such as `data/` or `runs/`. |
 | Large text data | Large datasets can be used through streaming or fixed-size slices before deciding whether full local copies are needed. |
 | Evidence level | Tiny or toy datasets are useful for quick checks, but larger or task-specific datasets are needed for stronger evaluation claims. |
+| Qhapaq raw data | The local raw archive is `data/qhapaq/raw/180913_kif_rota.7z`; source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
+| Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval files should be split at game boundaries before generating move-choice examples. |
