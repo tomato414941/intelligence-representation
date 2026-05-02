@@ -18,7 +18,7 @@ from intrep.language_modeling_training import (
 from intrep.grid_world import generate_grid_world_experience
 from intrep.grid_world_text import language_modeling_examples_from_grid_experience
 from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import train_simple_byte_pair_tokenizer
+from intrep.text_tokenizer import train_byte_pair_tokenizer
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):
@@ -340,7 +340,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([1, 8, artifacts.tokenizer.vocab_size]))
 
     def test_training_can_reuse_pretrained_tokenizer(self) -> None:
-        tokenizer = train_simple_byte_pair_tokenizer("red green blue red green blue", vocab_size=260)
+        tokenizer = train_byte_pair_tokenizer("red green blue red green blue", vocab_size=270)
 
         artifacts = _train_text_corpus_with_artifacts(
             corpus="red green blue red green blue red green blue",
@@ -353,7 +353,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 tokenizer="byte",
             ),
             model_config=CausalTextConfig(
-                vocab_size=260,
+                vocab_size=tokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
                 num_heads=2,
