@@ -97,20 +97,22 @@ uv run python -m unittest
 
 On RunPod, use an official PyTorch template and keep its system PyTorch/CUDA
 stack. Do not run `uv sync`, because it may install a PyTorch wheel that does
-not match the host NVIDIA driver. The tested template is `runpod-torch-v220`
-(`Runpod Pytorch 2.2.0`, CUDA 12.1).
+not match the host NVIDIA driver. The current shogi RunPod recipe uses
+`runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404`.
 
 ```sh
 ./scripts/setup_runpod.sh
 python -m unittest
 ```
 
-When RunPod also needs torchvision, install the wheel that matches the template's
-system PyTorch/CUDA stack:
+When RunPod also needs torchvision, keep the template's system PyTorch/CUDA stack
+and explicitly install a matching torchvision wheel:
 
 ```sh
 ./scripts/setup_runpod.sh
-./scripts/setup_runpod_vision.sh
+TORCHVISION_PACKAGE='torchvision==0.24.1+cu128' \
+TORCHVISION_INDEX_URL='https://download.pytorch.org/whl/cu128' \
+  ./scripts/setup_runpod_vision.sh
 python -m unittest
 ```
 
