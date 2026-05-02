@@ -107,11 +107,12 @@ class GridStepPredictor(nn.Module):
         num_heads: int,
         hidden_dim: int,
         num_layers: int,
+        core: SharedTransformerCore | None = None,
     ) -> None:
         super().__init__()
         self.grid_input = GridObservationInputLayer(height=height, width=width, embedding_dim=embedding_dim)
         self.action_embedding = nn.Embedding(len(GRID_ACTIONS), embedding_dim)
-        self.core = SharedTransformerCore(
+        self.core = core or SharedTransformerCore(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
             hidden_dim=hidden_dim,
