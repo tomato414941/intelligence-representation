@@ -6,7 +6,7 @@
 world-modeling 側面だけを扱う。
 
 実装状態、データ形式、モデル部品、実験コマンドの正本ではない。
-現在の状態は [Current Evidence](current-evidence.md) を参照する。
+現在の状態は [Evidence](evidence.md) を参照する。
 
 ## 上位概念との関係
 

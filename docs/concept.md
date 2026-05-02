@@ -111,7 +111,7 @@ Observation Stream
 ## Non-Claims
 
 このリポジトリは、まだ Predictive Representation System を実現していない。
-実装状態は README と [Current Evidence](current-evidence.md) を参照する。
+実装状態は README と [Evidence](evidence.md) を参照する。
 
 まだ示していないもの:
 

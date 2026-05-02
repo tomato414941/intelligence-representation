@@ -1,4 +1,4 @@
-# Compute Estimates
+# Compute Runs
 
 This document records compute estimates and measured runs that affect near-term
 training decisions. It is not a full experiment log.

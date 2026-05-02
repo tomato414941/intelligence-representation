@@ -41,9 +41,6 @@ tests/
 docs/
   Project concepts, evaluation principles, and current results
 
-docs/current-experiment.md
-  Planned or active experiment note
-
 legacy/
   Historical archive outside the active implementation path
 ```
@@ -58,12 +55,11 @@ Read these first:
 - [Learning and Execution](docs/learning-and-execution.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
-- [Current Experiment](docs/current-experiment.md)
-- [Compute Estimates](docs/compute-estimates.md)
+- [Compute Runs](docs/compute-runs.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
-- [Current Evidence](docs/current-evidence.md)
+- [Evidence](docs/evidence.md)
 
 ## Design Constraints
 
