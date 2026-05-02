@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
@@ -11,6 +13,12 @@ from intrep.shogi_move_choice import (
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,
 )
+
+
+@dataclass(frozen=True)
+class ShogiGameRecord:
+    moves: tuple[str, ...]
+    winner: str | None = None
 
 
 def load_usi_move_games(path: str | Path) -> list[tuple[str, ...]]:
@@ -35,6 +43,46 @@ def load_shogi_move_choice_examples_from_usi_file(path: str | Path) -> list[Shog
     return examples
 
 
+def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
+    records: list[ShogiGameRecord] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        payload = json.loads(stripped)
+        winner = payload.get("winner")
+        if winner not in {"b", "w"}:
+            winner = None
+        moves = tuple(str(move) for move in payload["moves"])
+        if moves:
+            records.append(ShogiGameRecord(moves=moves, winner=winner))
+    if not records:
+        raise ValueError("shogi game records jsonl must contain at least one game")
+    return records
+
+
+def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGameRecord]) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for record in records:
+        if not record.moves:
+            continue
+        lines.append(json.dumps({"winner": record.winner, "moves": list(record.moves)}, separators=(",", ":")))
+    if not lines:
+        raise ValueError("records must contain at least one non-empty game")
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
+    examples: list[ShogiMoveChoiceExample] = []
+    for record in load_shogi_game_records_jsonl(path):
+        if record.winner is None:
+            examples.extend(shogi_move_choice_examples_from_usi_moves(record.moves))
+        else:
+            examples.extend(shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=record.winner))
+    return examples
+
+
 def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:
     return load_kif_game_record(path, encoding=encoding)[0]
 
@@ -49,6 +97,11 @@ def load_kif_game_record(path: str | Path, *, encoding: str = "cp932") -> tuple[
     if winner not in {"b", "w"}:
         winner = None
     return tuple(game["moves"]), winner
+
+
+def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
+    moves, winner = load_kif_game_record(path)
+    return ShogiGameRecord(moves=moves, winner=winner)
 
 
 def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
@@ -79,6 +132,21 @@ def convert_kif_files_to_usi_file(
         games.append(load_kif_game(path))
     write_usi_move_games(output_path, games)
     return len(games)
+
+
+def convert_kif_files_to_game_records_jsonl(
+    kif_paths: Sequence[str | Path],
+    output_path: str | Path,
+    *,
+    max_games: int | None = None,
+) -> int:
+    records: list[ShogiGameRecord] = []
+    for path in kif_paths:
+        if max_games is not None and len(records) >= max_games:
+            break
+        records.append(load_shogi_game_record_from_kif_file(path))
+    write_shogi_game_records_jsonl(output_path, records)
+    return len(records)
 
 
 def convert_kif_archive_to_usi_files(
