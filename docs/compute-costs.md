@@ -31,9 +31,7 @@ container disk, trained, and the output directory is synced back.
 
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
-| 2026-05-02 | smoke | measured | RunPod RTX 4090 | small model | Qhapaq shogi move-choice cache | 50 | 512 | about 216 seconds | not separately recorded | Includes setup, transfer, decompression, training, sync, and pod teardown. |
 | 2026-05-02 | short baseline | planned | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 300 | 512 | about 15-30 minutes | about $0.20-$0.35 | Measures whether the current larger model trains normally before changing the scorer. |
-| 2026-05-02 | main run | estimated | RunPod RTX 4090, EU-RO-1, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses train/eval split caches and the current recipe. |
 
 Current recipe:
 
