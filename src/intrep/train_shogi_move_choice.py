@@ -37,6 +37,8 @@ def main() -> None:
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
     parser.add_argument("--log-every", type=int)
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true")
     args = parser.parse_args()
 
     train_examples = _load_examples(args.train_examples_jsonl, args.train_games_jsonl)
@@ -63,6 +65,8 @@ def main() -> None:
         max_train_eval_examples=args.max_train_eval_examples,
         max_eval_examples=args.max_eval_examples,
         log_every=args.log_every,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
     )
     result = train_shogi_move_choice_model(train_examples, eval_examples=eval_examples, config=config)
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)

@@ -31,6 +31,9 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             examples = load_shogi_move_choice_examples_jsonl(examples_path)
             self.assertEqual(len(examples), 2)
             self.assertEqual(examples[0].chosen_move, "7g7f")
+            self.assertEqual(examples[0].game_index, 0)
+            self.assertEqual(examples[0].ply_index, 0)
+            self.assertEqual(examples[1].ply_index, 1)
 
     def test_writes_one_shard(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -65,6 +68,8 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             examples = load_shogi_move_choice_examples_jsonl(examples_path)
             self.assertEqual(len(examples), 2)
             self.assertEqual(examples[0].chosen_move, "2g2f")
+            self.assertEqual(examples[0].game_index, 1)
+            self.assertEqual(examples[0].ply_index, 0)
 
 
 if __name__ == "__main__":

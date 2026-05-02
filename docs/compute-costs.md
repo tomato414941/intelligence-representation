@@ -12,12 +12,16 @@ a model-quality report or full experiment log.
 | input | Qhapaq KIF games converted to JSONL |
 | games | 18,948 |
 | examples | 2,460,722 |
-| output | `runs/shogi/qhapaq-all-move-choice-examples.jsonl` |
-| compressed output | `runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst` |
-| compressed size | about 148 MB |
+| train output | `runs/shogi/qhapaq-train-move-choice-examples.jsonl` |
+| eval output | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl` |
+| train examples | 2,220,818 |
+| eval examples | 239,904 |
+| train compressed output | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
+| eval compressed output | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
+| compressed size | about 140 MB train, about 16 MB eval |
 | compute | Modal CPU worker |
-| measured runtime | about 8 minutes |
-| measured cost | about $0.19 |
+| measured runtime | about 13 minutes for train, about 2 minutes for eval |
+| measured cost | about $0.19 for the original full-cache run; split-cache cost not separately recorded |
 
 ## RunPod Shogi Training
 
@@ -29,7 +33,7 @@ container disk, trained, and the output directory is synced back.
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | measured smoke | RunPod RTX 4090 | 50 | 512 | about 216 seconds | not separately recorded | Includes setup, transfer, decompression, training, sync, and pod teardown. |
 | aborted main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 planned | 512 | about 12 minutes | about $0.14 | Stopped manually because the small model did not appear to justify a multi-hour GPU run. |
-| estimated main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses the same cache and recipe as the smoke run. |
+| estimated main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses train/eval split caches and the current recipe. |
 
 Current recipe:
 
@@ -39,10 +43,12 @@ Current recipe:
 | allowed CUDA versions | `12.8`, `12.9`, `13.0` |
 | storage | 80 GB container disk, no network volume |
 | max runtime guard | 420 minutes |
-| cache input | `runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst` |
-| output directory | `runs/shogi/runpod-qhapaq-all-b512-steps5000` |
+| train cache input | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
+| eval cache input | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
+| output directory | `runs/shogi/runpod-qhapaq-split-b512-steps5000` |
 | model size knobs | embedding dim 32, hidden dim 64, 4 heads, 1 layer |
 | objective knobs | value loss weight 0.2 |
+| DataLoader knobs | 4 workers, pinned memory |
 
 Current command:
 

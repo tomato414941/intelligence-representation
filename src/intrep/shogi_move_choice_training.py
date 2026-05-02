@@ -36,6 +36,8 @@ class ShogiMoveChoiceTrainingConfig:
     max_train_eval_examples: int | None = None
     max_eval_examples: int | None = None
     log_every: int | None = None
+    num_workers: int = 0
+    pin_memory: bool = False
 
 
 @dataclass(frozen=True)
@@ -93,19 +95,21 @@ def train_shogi_move_choice_model(
         raise ValueError("max_steps must be positive")
     if training_config.log_every is not None and training_config.log_every <= 0:
         raise ValueError("log_every must be positive")
+    if training_config.num_workers < 0:
+        raise ValueError("num_workers must be non-negative")
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
     dataset = ShogiMoveChoiceDataset(examples)
-    loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=True)
+    loader = _build_shogi_move_choice_loader(dataset, training_config, shuffle=True)
     train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
     train_eval_dataset = ShogiMoveChoiceDataset(train_eval_examples)
-    train_eval_loader = DataLoader(train_eval_dataset, batch_size=training_config.batch_size, shuffle=False)
+    train_eval_loader = _build_shogi_move_choice_loader(train_eval_dataset, training_config, shuffle=False)
     limited_eval_examples = (
         _limit_examples(eval_examples, training_config.max_eval_examples) if eval_examples is not None else None
     )
     eval_dataset = ShogiMoveChoiceDataset(limited_eval_examples) if limited_eval_examples is not None else None
     eval_loader = (
-        DataLoader(eval_dataset, batch_size=training_config.batch_size, shuffle=False)
+        _build_shogi_move_choice_loader(eval_dataset, training_config, shuffle=False)
         if eval_dataset is not None
         else None
     )
@@ -235,6 +239,21 @@ def evaluate_shogi_move_choice_metrics(
         mean_reciprocal_rank=reciprocal_rank_sum / total,
         mean_correct_move_rank=rank_sum / total,
         value_loss=sum(value_losses) / len(value_losses) if value_losses else None,
+    )
+
+
+def _build_shogi_move_choice_loader(
+    dataset: ShogiMoveChoiceDataset,
+    config: ShogiMoveChoiceTrainingConfig,
+    *,
+    shuffle: bool,
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
+    return DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=shuffle,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
     )
 
 

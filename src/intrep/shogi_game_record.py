@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from typing import Iterator, Sequence
 
@@ -80,12 +81,24 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
 
 def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
-    for record in load_shogi_game_records_jsonl(path):
+    for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
         if record.winner is None:
-            examples.extend(shogi_move_choice_examples_from_usi_moves(record.moves))
+            game_examples = shogi_move_choice_examples_from_usi_moves(record.moves)
         else:
-            examples.extend(shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=record.winner))
+            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=record.winner)
+        examples.extend(_with_game_metadata(game_examples, game_index=game_index))
     return examples
+
+
+def _with_game_metadata(
+    examples: Sequence[ShogiMoveChoiceExample],
+    *,
+    game_index: int,
+) -> list[ShogiMoveChoiceExample]:
+    return [
+        replace(example, game_index=game_index, ply_index=ply_index)
+        for ply_index, example in enumerate(examples)
+    ]
 
 
 def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:

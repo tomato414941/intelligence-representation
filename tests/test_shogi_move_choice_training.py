@@ -122,6 +122,18 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertEqual(result.metrics.train_case_count, len(examples))
         self.assertEqual(result.metrics.eval_case_count, 2)
 
+    def test_rejects_negative_num_workers(self) -> None:
+        examples = shogi_move_choice_examples_from_usi_moves(("7g7f",))
+
+        with self.assertRaisesRegex(ValueError, "num_workers"):
+            train_shogi_move_choice_model(
+                examples,
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    num_workers=-1,
+                ),
+            )
+
     def test_trains_value_head_when_targets_are_available(self) -> None:
         base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         examples = tuple(

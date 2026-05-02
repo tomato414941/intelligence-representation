@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -50,6 +51,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     "2",
                     "--log-every",
                     "1",
+                    "--num-workers",
+                    "0",
                 ],
             ), patch("sys.stdout", new_callable=StringIO) as stdout:
                 main()
@@ -58,6 +61,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertTrue(metrics_path.exists())
             self.assertTrue(train_examples_path.exists())
             self.assertIn("step=1/1", stdout.getvalue())
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["config"]["num_workers"], 0)
 
 
 if __name__ == "__main__":
