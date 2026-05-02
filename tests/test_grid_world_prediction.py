@@ -9,6 +9,7 @@ from intrep.grid_world_prediction import (
     GridStepPredictor,
     train_grid_step_predictor,
 )
+from intrep.transformer_core import SharedTransformerCore
 
 
 class GridWorldPredictionTest(unittest.TestCase):
@@ -47,6 +48,33 @@ class GridWorldPredictionTest(unittest.TestCase):
             torch.tensor([3, 4], dtype=torch.long),
         )
 
+        self.assertEqual(tuple(next_cell_logits.shape), (2, 6))
+        self.assertEqual(tuple(reward_logits.shape), (2, 3))
+        self.assertEqual(tuple(terminated_logits.shape), (2, 2))
+
+    def test_predictor_can_reuse_shared_core(self) -> None:
+        core = SharedTransformerCore(
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+        )
+        model = GridStepPredictor(
+            height=2,
+            width=3,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+            core=core,
+        )
+
+        next_cell_logits, reward_logits, terminated_logits = model(
+            torch.zeros((2, 3, 2, 3)),
+            torch.tensor([3, 4], dtype=torch.long),
+        )
+
+        self.assertIs(model.core, core)
         self.assertEqual(tuple(next_cell_logits.shape), (2, 6))
         self.assertEqual(tuple(reward_logits.shape), (2, 3))
         self.assertEqual(tuple(terminated_logits.shape), (2, 2))
