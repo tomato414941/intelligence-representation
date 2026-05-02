@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# RunPod is used here as disposable GPU compute for shogi move-choice training.
+# Keep the job on container disk, not a network volume: network volumes caused
+# pod readiness failures. Transfer the compressed cache in, train, sync outputs
+# back, then let run_once.py delete the pod.
+
 cd "$(dirname "$0")/.."
 
 CACHE_ZST=${CACHE_ZST:-runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst}

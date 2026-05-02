@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# Regenerate the large Qhapaq shogi move-choice example cache on disposable
+# Modal CPU workers. This is intentionally a dataset-specific cache recipe, not
+# a general job framework: local CPU was too slow, and the generated JSONL shards
+# are training artifacts rather than Git-tracked source data.
+
 import subprocess
 import os
 from pathlib import Path
