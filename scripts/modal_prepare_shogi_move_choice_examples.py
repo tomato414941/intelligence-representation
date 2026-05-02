@@ -11,7 +11,8 @@ import modal
 
 
 APP_ROOT = "/workspace/intelligence-representation"
-GAMES_JSONL = f"{APP_ROOT}/data/qhapaq/processed/qhapaq_all_games.jsonl"
+TRAIN_GAMES_JSONL = f"{APP_ROOT}/data/qhapaq/processed/qhapaq_train_games.jsonl"
+EVAL_GAMES_JSONL = f"{APP_ROOT}/data/qhapaq/processed/qhapaq_eval_games.jsonl"
 VOLUME_NAME = "intrep-shogi-cache"
 
 app = modal.App("intrep-shogi-example-cache")
@@ -22,8 +23,12 @@ image = (
     .pip_install("python-shogi>=1.1.1")
     .add_local_dir("src", remote_path=f"{APP_ROOT}/src")
     .add_local_file(
-        "data/qhapaq/processed/qhapaq_all_games.jsonl",
-        remote_path=GAMES_JSONL,
+        "data/qhapaq/processed/qhapaq_train_games.jsonl",
+        remote_path=TRAIN_GAMES_JSONL,
+    )
+    .add_local_file(
+        "data/qhapaq/processed/qhapaq_eval_games.jsonl",
+        remote_path=EVAL_GAMES_JSONL,
     )
 )
 
@@ -35,17 +40,29 @@ image = (
     memory=2048,
     timeout=4 * 60 * 60,
 )
-def prepare_shard(shard_index: int, shard_count: int, max_games: int | None = None) -> dict[str, object]:
-    output_path = f"/cache/shogi/qhapaq-all-move-choice-examples.part-{shard_index:05d}-of-{shard_count:05d}.jsonl"
+def prepare_shard(
+    split: str,
+    shard_index: int,
+    shard_count: int,
+    max_games: int | None = None,
+) -> dict[str, object]:
+    if split == "train":
+        games_jsonl = TRAIN_GAMES_JSONL
+    elif split == "eval":
+        games_jsonl = EVAL_GAMES_JSONL
+    else:
+        raise ValueError("split must be train or eval")
+
+    output_path = f"/cache/shogi/qhapaq-{split}-move-choice-examples.part-{shard_index:05d}-of-{shard_count:05d}.jsonl"
     failure_path = (
-        f"/cache/shogi/qhapaq-all-move-choice-examples.failures.part-{shard_index:05d}-of-{shard_count:05d}.jsonl"
+        f"/cache/shogi/qhapaq-{split}-move-choice-examples.failures.part-{shard_index:05d}-of-{shard_count:05d}.jsonl"
     )
     command = [
         "python",
         "-m",
         "intrep.prepare_shogi_move_choice_examples",
         "--games-jsonl",
-        GAMES_JSONL,
+        games_jsonl,
         "--examples-jsonl",
         output_path,
         "--failures-jsonl",
@@ -73,6 +90,7 @@ def prepare_shard(shard_index: int, shard_count: int, max_games: int | None = No
         raise RuntimeError(f"prepare shard failed\nstdout:\n{completed.stdout}\nstderr:\n{completed.stderr}")
     cache_volume.commit()
     return {
+        "split": split,
         "shard_index": shard_index,
         "shard_count": shard_count,
         "output_path": output_path,
@@ -82,14 +100,20 @@ def prepare_shard(shard_index: int, shard_count: int, max_games: int | None = No
 
 
 @app.local_entrypoint()
-def main(shard_count: int = 8, start: int = 0, end: int | None = None, max_games: int | None = None) -> None:
+def main(
+    split: str = "train",
+    shard_count: int = 8,
+    start: int = 0,
+    end: int | None = None,
+    max_games: int | None = None,
+) -> None:
     end = shard_count if end is None else end
     if shard_count <= 0:
         raise ValueError("shard_count must be positive")
     if not 0 <= start <= end <= shard_count:
         raise ValueError("expected 0 <= start <= end <= shard_count")
     for result in prepare_shard.starmap(
-        [(index, shard_count, max_games) for index in range(start, end)],
+        [(split, index, shard_count, max_games) for index in range(start, end)],
         order_outputs=False,
     ):
         print(result)
