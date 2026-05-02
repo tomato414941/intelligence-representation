@@ -59,6 +59,7 @@ Read these first:
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
 - [Current Experiment](docs/current-experiment.md)
+- [Compute Estimates](docs/compute-estimates.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
