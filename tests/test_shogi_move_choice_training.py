@@ -1,7 +1,11 @@
 import unittest
 
 from intrep.shogi_move_choice import shogi_move_choice_examples_from_usi_moves
-from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
+from intrep.shogi_move_choice_training import (
+    ShogiMoveChoiceTrainingConfig,
+    train_shogi_move_choice_model,
+    train_shogi_move_choice_model_from_usi_file,
+)
 
 
 class ShogiMoveChoiceTrainingTest(unittest.TestCase):
@@ -15,6 +19,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
                 batch_size=2,
                 embedding_dim=8,
                 hidden_dim=16,
+                num_heads=2,
             ),
         )
 
@@ -33,11 +38,32 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
                 learning_rate=0.02,
                 embedding_dim=8,
                 hidden_dim=16,
+                use_shared_core=False,
             ),
         )
 
         self.assertLess(result.metrics.final_loss, result.metrics.initial_loss)
         self.assertGreaterEqual(result.metrics.accuracy, 0.5)
+
+    def test_trains_from_usi_file(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.txt"
+            path.write_text("7g7f 3c3d 2g2f\n", encoding="utf-8")
+            result = train_shogi_move_choice_model_from_usi_file(
+                str(path),
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    batch_size=2,
+                    embedding_dim=8,
+                    hidden_dim=16,
+                    num_heads=2,
+                ),
+            )
+
+        self.assertEqual(result.metrics.train_case_count, 3)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
                 batch_size=2,
                 embedding_dim=8,
                 hidden_dim=16,
+                num_heads=2,
             ),
         )
         position_token_ids, candidate_move_features, candidate_mask, _ = next(
