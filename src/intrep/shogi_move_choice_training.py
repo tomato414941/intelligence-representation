@@ -49,6 +49,7 @@ class ShogiMoveChoiceTrainingMetrics:
     train_case_count: int
     eval_case_count: int
     initial_loss: float
+    initial_value_loss: float | None
     final_loss: float
     accuracy: float
     top_3_accuracy: float
@@ -129,6 +130,7 @@ def train_shogi_move_choice_model(
             train_case_count=len(dataset),
             eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
             initial_loss=initial_metrics.loss,
+            initial_value_loss=initial_metrics.value_loss,
             final_loss=final_metrics.loss,
             accuracy=final_metrics.accuracy,
             top_3_accuracy=final_metrics.top_3_accuracy,
