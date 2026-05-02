@@ -109,6 +109,8 @@ class ShogiGameRecordTest(unittest.TestCase):
 
         self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
         self.assertEqual([example.value_target for example in examples], [-1.0, 1.0])
+        self.assertEqual([example.game_index for example in examples], [0, 0])
+        self.assertEqual([example.ply_index for example in examples], [0, 1])
 
     def test_converts_kif_files_to_usi_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

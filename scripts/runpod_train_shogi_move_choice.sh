@@ -6,14 +6,20 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-CACHE_ZST=${CACHE_ZST:-runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst}
-OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-all-b512-steps5000}
+TRAIN_CACHE_ZST=${TRAIN_CACHE_ZST:-runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst}
+EVAL_CACHE_ZST=${EVAL_CACHE_ZST:-runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst}
+OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-split-b512-steps5000}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
+NUM_WORKERS=${NUM_WORKERS:-4}
 
-if [[ ! -f "$CACHE_ZST" ]]; then
-  echo "compressed cache not found: $CACHE_ZST" >&2
+if [[ ! -f "$TRAIN_CACHE_ZST" ]]; then
+  echo "compressed train cache not found: $TRAIN_CACHE_ZST" >&2
+  exit 1
+fi
+if [[ ! -f "$EVAL_CACHE_ZST" ]]; then
+  echo "compressed eval cache not found: $EVAL_CACHE_ZST" >&2
   exit 1
 fi
 
@@ -38,22 +44,25 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --allow-existing-pods \
   --no-cuda-smoke \
   --sync scripts/setup_runpod.sh \
-  --sync "$CACHE_ZST" \
+  --sync "$TRAIN_CACHE_ZST" \
+  --sync "$EVAL_CACHE_ZST" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \
   --output "$OUTPUT_DIR" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"; .venv/bin/python - <<'PY'
 import zstandard as zstd
 from pathlib import Path
 
-src = Path('$CACHE_ZST')
-dst = src.with_suffix('')
-print(f'decompressing {src} -> {dst}', flush=True)
-with src.open('rb') as f, dst.open('wb') as out:
-    zstd.ZstdDecompressor().copy_stream(f, out)
-print(f'decompressed_bytes={dst.stat().st_size}', flush=True)
+for name in ('$TRAIN_CACHE_ZST', '$EVAL_CACHE_ZST'):
+    src = Path(name)
+    dst = src.with_suffix('')
+    print(f'decompressing {src} -> {dst}', flush=True)
+    with src.open('rb') as f, dst.open('wb') as out:
+        zstd.ZstdDecompressor().copy_stream(f, out)
+    print(f'decompressed_bytes={dst.stat().st_size}', flush=True)
 PY
 .venv/bin/python -u -m intrep.train_shogi_move_choice \
-  --train-examples-jsonl \"${CACHE_ZST%.zst}\" \
+  --train-examples-jsonl \"${TRAIN_CACHE_ZST%.zst}\" \
+  --eval-examples-jsonl \"${EVAL_CACHE_ZST%.zst}\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \
   --max-steps \"$MAX_STEPS\" \
@@ -67,4 +76,6 @@ PY
   --value-loss-weight 0.2 \
   --device cuda \
   --log-every 50 \
+  --num-workers \"$NUM_WORKERS\" \
+  --pin-memory \
   --max-train-eval-examples 4096"

@@ -68,7 +68,7 @@ def main() -> None:
                     + "\n"
                 )
                 continue
-            for example in examples:
+            for ply_index, example in enumerate(examples):
                 output.write(
                     json.dumps(
                         {
@@ -76,6 +76,8 @@ def main() -> None:
                             "legal_moves": list(example.legal_moves),
                             "chosen_move": example.chosen_move,
                             "value_target": example.value_target,
+                            "game_index": input_index,
+                            "ply_index": ply_index,
                         },
                         separators=(",", ":"),
                     )

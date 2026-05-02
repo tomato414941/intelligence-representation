@@ -20,6 +20,8 @@ class ShogiMoveChoiceExample:
     legal_moves: tuple[str, ...]
     chosen_move: str
     value_target: float | None = None
+    game_index: int | None = None
+    ply_index: int | None = None
 
     def __post_init__(self) -> None:
         if not self.position_sfen:
@@ -30,6 +32,10 @@ class ShogiMoveChoiceExample:
             raise ValueError("chosen_move must be included in legal_moves")
         if self.value_target is not None and not -1.0 <= self.value_target <= 1.0:
             raise ValueError("value_target must be between -1.0 and 1.0")
+        if self.game_index is not None and self.game_index < 0:
+            raise ValueError("game_index must be non-negative")
+        if self.ply_index is not None and self.ply_index < 0:
+            raise ValueError("ply_index must be non-negative")
 
 
 def shogi_move_choice_example_from_board(board: shogi.Board, chosen_move: str) -> ShogiMoveChoiceExample:
@@ -124,6 +130,8 @@ def write_shogi_move_choice_examples_jsonl(
                     "legal_moves": list(example.legal_moves),
                     "chosen_move": example.chosen_move,
                     "value_target": example.value_target,
+                    "game_index": example.game_index,
+                    "ply_index": example.ply_index,
                 },
                 separators=(",", ":"),
             )
@@ -146,6 +154,8 @@ def load_shogi_move_choice_examples_jsonl(path: str | Path) -> list[ShogiMoveCho
                 legal_moves=tuple(str(move) for move in payload["legal_moves"]),
                 chosen_move=str(payload["chosen_move"]),
                 value_target=payload.get("value_target"),
+                game_index=payload.get("game_index"),
+                ply_index=payload.get("ply_index"),
             )
         )
     if not examples:
