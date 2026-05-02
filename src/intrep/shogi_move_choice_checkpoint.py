@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
+from torch import nn
 
-from intrep.shogi_move_choice_model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
 from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingResult
 
 
@@ -16,8 +16,11 @@ def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceT
         {
             "schema_version": SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA,
             "config": {
-                "embedding_dim": result.model.config.embedding_dim,
-                "hidden_dim": result.model.config.hidden_dim,
+                "embedding_dim": result.config.embedding_dim,
+                "hidden_dim": result.config.hidden_dim,
+                "num_heads": result.config.num_heads,
+                "num_layers": result.config.num_layers,
+                "use_shared_core": result.config.use_shared_core,
             },
             "model_state_dict": result.model.state_dict(),
         },
@@ -25,15 +28,20 @@ def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceT
     )
 
 
-def load_shogi_move_choice_checkpoint(path: str | Path, *, device: str = "cpu") -> ShogiMoveChoiceModel:
+def load_shogi_move_choice_checkpoint(path: str | Path, *, device: str = "cpu") -> nn.Module:
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi move choice checkpoint schema")
+    from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
+
     config_payload = payload["config"]
-    model = ShogiMoveChoiceModel(
-        ShogiMoveChoiceModelConfig(
+    model = build_shogi_move_choice_model(
+        ShogiMoveChoiceTrainingConfig(
             embedding_dim=int(config_payload["embedding_dim"]),
             hidden_dim=int(config_payload["hidden_dim"]),
+            num_heads=int(config_payload.get("num_heads", 4)),
+            num_layers=int(config_payload.get("num_layers", 1)),
+            use_shared_core=bool(config_payload.get("use_shared_core", False)),
         )
     )
     model.load_state_dict(payload["model_state_dict"])
