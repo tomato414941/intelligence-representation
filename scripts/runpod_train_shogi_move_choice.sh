@@ -10,7 +10,7 @@ CACHE_ZST=${CACHE_ZST:-runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-all-b512-steps5000}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
-MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-180}
+MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
 
 if [[ ! -f "$CACHE_ZST" ]]; then
   echo "compressed cache not found: $CACHE_ZST" >&2
