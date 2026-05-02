@@ -23,4 +23,4 @@ print("device", torch.cuda.get_device_name(0))
 PY
 
 "$PYTHON" -m pip install -e . --no-deps
-"$PYTHON" -m pip install "numpy<2" "tokenizers>=0.23.1"
+"$PYTHON" -m pip install "numpy<2" "python-shogi>=1.1.1" "tokenizers>=0.23.1"
