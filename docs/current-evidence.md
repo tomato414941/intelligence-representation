@@ -10,7 +10,6 @@ For related context:
 - [Evaluation](evaluation.md): evaluation concepts
 - [Current Experiment](current-experiment.md): planned or active experiment
 - [Datasets](datasets.md): supported and candidate datasets
-- [Legacy Docs](../legacy/docs/): retired experiments and historical notes
 
 ## Current Claim
 
@@ -238,4 +237,5 @@ could reduce loss on rendered streams, but did not show robust
 action-conditioned future prediction. Those runs are diagnostic history, not
 the current implementation direction.
 
-Legacy experiment details remain under `legacy/docs/`.
+Detailed legacy experiment notes remain archived under `legacy/docs/`, but they
+are not part of the active implementation direction.
