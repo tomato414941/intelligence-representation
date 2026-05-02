@@ -46,7 +46,7 @@ Current recipe:
 | train cache input | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
 | eval cache input | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
 | output directory | `runs/shogi/runpod-qhapaq-split-b512-steps5000` |
-| model size knobs | embedding dim 32, hidden dim 64, 4 heads, 1 layer |
+| model size knobs | embedding dim 256, hidden dim 1024, 8 heads, 6 layers |
 | objective knobs | value loss weight 0.2 |
 | DataLoader knobs | 4 workers, pinned memory |
 
