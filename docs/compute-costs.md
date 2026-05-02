@@ -28,6 +28,7 @@ container disk, trained, and the output directory is synced back.
 | Run | Hardware | Steps | Batch size | Runtime | Cost | Notes |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | measured smoke | RunPod RTX 4090 | 50 | 512 | about 216 seconds | not separately recorded | Includes setup, transfer, decompression, training, sync, and pod teardown. |
+| aborted main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 planned | 512 | about 12 minutes | about $0.14 | Stopped manually because the small model did not appear to justify a multi-hour GPU run. |
 | estimated main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses the same cache and recipe as the smoke run. |
 
 Current recipe:
