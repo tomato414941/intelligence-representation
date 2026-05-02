@@ -143,21 +143,22 @@ def write_shogi_move_choice_examples_jsonl(
 
 def load_shogi_move_choice_examples_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        payload = json.loads(stripped)
-        examples.append(
-            ShogiMoveChoiceExample(
-                position_sfen=str(payload["position_sfen"]),
-                legal_moves=tuple(str(move) for move in payload["legal_moves"]),
-                chosen_move=str(payload["chosen_move"]),
-                value_target=payload.get("value_target"),
-                game_index=payload.get("game_index"),
-                ply_index=payload.get("ply_index"),
+    with Path(path).open(encoding="utf-8") as input_file:
+        for line in input_file:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            payload = json.loads(stripped)
+            examples.append(
+                ShogiMoveChoiceExample(
+                    position_sfen=str(payload["position_sfen"]),
+                    legal_moves=tuple(str(move) for move in payload["legal_moves"]),
+                    chosen_move=str(payload["chosen_move"]),
+                    value_target=payload.get("value_target"),
+                    game_index=payload.get("game_index"),
+                    ply_index=payload.get("ply_index"),
+                )
             )
-        )
     if not examples:
         raise ValueError("shogi move choice examples jsonl must contain at least one example")
     return examples
