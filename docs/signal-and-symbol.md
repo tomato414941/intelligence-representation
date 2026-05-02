@@ -311,9 +311,8 @@ shareable.
 
 ## Retired Direction
 
-The old `Signal` class and Signal JSONL path are retired from the active
-implementation. The class name is reserved only to prevent accidental reuse of
-the old abstraction.
+The old `Signal` class is retired from the active implementation. The class
+name is reserved only to prevent accidental reuse of the old abstraction.
 
 That retirement does not mean the word "signal" is forbidden. It means the
 project no longer uses a generic `channel` / `payload` envelope as the common
