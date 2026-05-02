@@ -4,7 +4,7 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 import shogi.KIF
 
@@ -45,6 +45,14 @@ def load_shogi_move_choice_examples_from_usi_file(path: str | Path) -> list[Shog
 
 def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
     records: list[ShogiGameRecord] = []
+    for record in iter_shogi_game_records_jsonl(path):
+        records.append(record)
+    if not records:
+        raise ValueError("shogi game records jsonl must contain at least one game")
+    return records
+
+
+def iter_shogi_game_records_jsonl(path: str | Path) -> Iterator[ShogiGameRecord]:
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped:
@@ -55,10 +63,7 @@ def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
             winner = None
         moves = tuple(str(move) for move in payload["moves"])
         if moves:
-            records.append(ShogiGameRecord(moves=moves, winner=winner))
-    if not records:
-        raise ValueError("shogi game records jsonl must contain at least one game")
-    return records
+            yield ShogiGameRecord(moves=moves, winner=winner)
 
 
 def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGameRecord]) -> None:
