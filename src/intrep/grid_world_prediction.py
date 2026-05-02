@@ -39,6 +39,7 @@ class GridStepPredictionConfig:
 @dataclass(frozen=True)
 class GridStepPredictionResult:
     train_case_count: int
+    eval_case_count: int
     initial_loss: float
     final_loss: float
     final_next_cell_loss: float
@@ -48,6 +49,13 @@ class GridStepPredictionResult:
     reward_accuracy: float
     terminated_accuracy: float
     max_steps: int
+    eval_loss: float | None = None
+    eval_next_cell_loss: float | None = None
+    eval_reward_loss: float | None = None
+    eval_terminated_loss: float | None = None
+    eval_next_cell_accuracy: float | None = None
+    eval_reward_accuracy: float | None = None
+    eval_terminated_accuracy: float | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +111,7 @@ class GridStepPredictor(nn.Module):
 def train_grid_step_predictor(
     examples: Sequence[GridExperienceTransition],
     *,
+    eval_examples: Sequence[GridExperienceTransition] | None = None,
     config: GridStepPredictionConfig | None = None,
 ) -> GridStepPredictionResult:
     config = config or GridStepPredictionConfig()
@@ -111,8 +120,16 @@ def train_grid_step_predictor(
     torch.manual_seed(config.seed)
     device = resolve_training_device(config.device)
     dataset = GridStepPredictionDataset(examples)
+    eval_dataset = GridStepPredictionDataset(eval_examples) if eval_examples is not None else None
+    if eval_dataset is not None and (eval_dataset.height != dataset.height or eval_dataset.width != dataset.width):
+        raise ValueError("eval examples must use the same grid size as train examples")
     loader = seeded_data_loader(dataset, batch_size=config.batch_size, seed=config.seed, shuffle=True, device=device)
-    eval_loader = seeded_data_loader(dataset, batch_size=config.batch_size, seed=config.seed, shuffle=False, device=device)
+    train_eval_loader = seeded_data_loader(dataset, batch_size=config.batch_size, seed=config.seed, shuffle=False, device=device)
+    eval_loader = (
+        seeded_data_loader(eval_dataset, batch_size=config.batch_size, seed=config.seed, shuffle=False, device=device)
+        if eval_dataset is not None
+        else None
+    )
     model = GridStepPredictor(
         height=dataset.height,
         width=dataset.width,
@@ -129,7 +146,7 @@ def train_grid_step_predictor(
         max_steps=config.max_steps,
     )
 
-    initial_metrics = _evaluate(model, eval_loader, device)
+    initial_metrics = _evaluate(model, train_eval_loader, device)
     iterator = iter(loader)
     for _ in range(config.max_steps):
         try:
@@ -154,17 +171,26 @@ def train_grid_step_predictor(
         optimizer.step()
         scheduler.step()
 
-    eval_metrics = _evaluate(model, eval_loader, device)
+    train_metrics = _evaluate(model, train_eval_loader, device)
+    held_out_metrics = _evaluate(model, eval_loader, device) if eval_loader is not None else None
     return GridStepPredictionResult(
         train_case_count=len(dataset),
+        eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
         initial_loss=initial_metrics.loss,
-        final_loss=eval_metrics.loss,
-        final_next_cell_loss=eval_metrics.next_cell_loss,
-        final_reward_loss=eval_metrics.reward_loss,
-        final_terminated_loss=eval_metrics.terminated_loss,
-        next_cell_accuracy=eval_metrics.next_cell_accuracy,
-        reward_accuracy=eval_metrics.reward_accuracy,
-        terminated_accuracy=eval_metrics.terminated_accuracy,
+        final_loss=train_metrics.loss,
+        final_next_cell_loss=train_metrics.next_cell_loss,
+        final_reward_loss=train_metrics.reward_loss,
+        final_terminated_loss=train_metrics.terminated_loss,
+        next_cell_accuracy=train_metrics.next_cell_accuracy,
+        reward_accuracy=train_metrics.reward_accuracy,
+        terminated_accuracy=train_metrics.terminated_accuracy,
+        eval_loss=held_out_metrics.loss if held_out_metrics is not None else None,
+        eval_next_cell_loss=held_out_metrics.next_cell_loss if held_out_metrics is not None else None,
+        eval_reward_loss=held_out_metrics.reward_loss if held_out_metrics is not None else None,
+        eval_terminated_loss=held_out_metrics.terminated_loss if held_out_metrics is not None else None,
+        eval_next_cell_accuracy=held_out_metrics.next_cell_accuracy if held_out_metrics is not None else None,
+        eval_reward_accuracy=held_out_metrics.reward_accuracy if held_out_metrics is not None else None,
+        eval_terminated_accuracy=held_out_metrics.terminated_accuracy if held_out_metrics is not None else None,
         max_steps=config.max_steps,
     )
 
