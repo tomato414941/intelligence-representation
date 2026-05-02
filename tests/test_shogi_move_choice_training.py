@@ -92,7 +92,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
         self.assertEqual(result.metrics.train_case_count, 3)
         self.assertEqual(result.metrics.eval_case_count, 2)
+        self.assertIsNotNone(result.metrics.initial_eval_loss)
         self.assertIsNotNone(result.metrics.eval_loss)
+        self.assertIsNotNone(result.metrics.initial_eval_accuracy)
         self.assertIsNotNone(result.metrics.eval_accuracy)
         self.assertIsNotNone(result.metrics.eval_top_3_accuracy)
         self.assertIsNotNone(result.metrics.eval_mean_reciprocal_rank)
@@ -159,7 +161,10 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertIsNotNone(result.metrics.value_loss)
         self.assertLess(result.metrics.value_loss, result.metrics.initial_value_loss)
         self.assertEqual(result.metrics.eval_case_count, 2)
+        self.assertIsNotNone(result.metrics.initial_eval_loss)
         self.assertIsNotNone(result.metrics.eval_loss)
+        self.assertIsNotNone(result.metrics.initial_eval_accuracy)
+        self.assertIsNotNone(result.metrics.initial_eval_value_loss)
         self.assertIsNotNone(result.metrics.eval_value_loss)
 
 
