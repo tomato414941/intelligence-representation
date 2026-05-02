@@ -25,4 +25,4 @@ PY
 "$PYTHON" -m venv --system-site-packages .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e . --no-deps
-.venv/bin/python -m pip install "numpy<2" "python-shogi>=1.1.1" "tokenizers>=0.23.1"
+.venv/bin/python -m pip install "numpy<2" "python-shogi>=1.1.1" "tokenizers>=0.23.1" "zstandard>=0.23"
