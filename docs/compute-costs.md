@@ -30,6 +30,19 @@ container disk, trained, and the output directory is synced back.
 | measured smoke | RunPod RTX 4090 | 50 | 512 | about 216 seconds | not separately recorded | Includes setup, transfer, decompression, training, sync, and pod teardown. |
 | estimated main run | RunPod RTX 4090, EU-RO-1, $0.69/hr | 5000 | 512 | about 4.5-6.5 hours | about $3-$5 | Uses the same cache and recipe as the smoke run. |
 
+Current recipe:
+
+| Item | Value |
+| --- | --- |
+| RunPod image | `runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404` |
+| allowed CUDA versions | `12.8`, `12.9`, `13.0` |
+| storage | 80 GB container disk, no network volume |
+| max runtime guard | 420 minutes |
+| cache input | `runs/shogi/qhapaq-all-move-choice-examples.jsonl.zst` |
+| output directory | `runs/shogi/runpod-qhapaq-all-b512-steps5000` |
+| model size knobs | embedding dim 32, hidden dim 64, 4 heads, 1 layer |
+| objective knobs | value loss weight 0.2 |
+
 Current command:
 
 ```sh
