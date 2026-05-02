@@ -55,7 +55,7 @@ Read these first:
 - [Learning and Execution](docs/learning-and-execution.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
-- [Compute Runs](docs/compute-runs.md)
+- [Compute Costs](docs/compute-costs.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
