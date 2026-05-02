@@ -8,13 +8,12 @@ from tempfile import TemporaryDirectory
 from intrep.image_classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationConfig,
-    image_classification_examples_from_text_choices,
+    ImageClassificationExample,
     train_image_classifier_with_result,
 )
 from intrep.image_text_choice_examples import (
     ImageTextChoiceExample,
     image_text_choice_example_to_record,
-    load_image_text_choice_examples_jsonl,
 )
 from intrep.image_classification_checkpoint import save_image_classification_checkpoint
 from intrep.image_text_answer_checkpoint import save_image_text_answer_checkpoint
@@ -164,9 +163,7 @@ class TrainImageTextChoiceCLITest(unittest.TestCase):
             classification_checkpoint_path = root / "classification.pt"
             _write_examples(train_path, root)
             classification_result = train_image_classifier_with_result(
-                train_examples=image_classification_examples_from_text_choices(
-                    load_image_text_choice_examples_jsonl(train_path)
-                ),
+                train_examples=_classification_examples(root),
                 config=ImageClassificationConfig(
                     patch_size=1,
                     max_steps=1,
@@ -280,6 +277,13 @@ def _write_examples(path: Path, root: Path) -> None:
         "\n".join(json.dumps(image_text_choice_example_to_record(example)) for example in examples) + "\n",
         encoding="utf-8",
     )
+
+
+def _classification_examples(root: Path) -> list[ImageClassificationExample]:
+    return [
+        ImageClassificationExample(image_path=root / "a.pgm", label_names=FASHION_MNIST_LABELS, label_index=9),
+        ImageClassificationExample(image_path=root / "b.pgm", label_names=FASHION_MNIST_LABELS, label_index=0),
+    ]
 
 
 if __name__ == "__main__":

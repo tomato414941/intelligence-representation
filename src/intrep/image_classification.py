@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -21,9 +21,6 @@ from intrep.image_training_data import (
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
 from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
-
-if TYPE_CHECKING:
-    from intrep.image_text_choice_examples import ImageTextChoiceExample
 
 
 FASHION_MNIST_LABELS = (
@@ -359,19 +356,6 @@ def image_classification_tensors_from_examples(
     image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
     label_tensor = torch.tensor(labels, dtype=torch.long)
     return image_tensor, label_tensor
-
-
-def image_classification_examples_from_text_choices(
-    examples: list[ImageTextChoiceExample],
-) -> list[ImageClassificationExample]:
-    return [
-        ImageClassificationExample(
-            image_path=example.image_path,
-            label_names=example.choices,
-            label_index=example.answer_index,
-        )
-        for example in examples
-    ]
 
 
 def load_image_classification_examples_jsonl(path: str | Path) -> list[ImageClassificationExample]:

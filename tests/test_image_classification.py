@@ -16,14 +16,12 @@ from intrep.image_classification import (
     ImageFolderClassificationDataset,
     ImagePatchInputLayer,
     MNIST_LABELS,
-    image_classification_examples_from_text_choices,
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
     load_image_classification_examples_jsonl,
     train_image_classifier,
     train_image_classifier_with_result,
 )
-from intrep.image_text_choice_examples import load_image_text_choice_examples_jsonl
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.transformer_core import SharedTransformerCore
 
@@ -316,9 +314,7 @@ class ImageClassificationTest(unittest.TestCase):
 
     def test_trains_small_classifier_smoke(self) -> None:
         with TemporaryDirectory() as directory:
-            path = Path(directory) / "fashion.jsonl"
-            _write_image_text_choice_examples(path, Path(directory) / "images")
-            examples = image_classification_examples_from_text_choices(load_image_text_choice_examples_jsonl(path))
+            examples = _classification_examples(Path(directory) / "images")
 
             metrics = train_image_classifier(
                 train_examples=examples,
@@ -342,9 +338,7 @@ class ImageClassificationTest(unittest.TestCase):
 
     def test_trains_small_classifier_with_result(self) -> None:
         with TemporaryDirectory() as directory:
-            path = Path(directory) / "fashion.jsonl"
-            _write_image_text_choice_examples(path, Path(directory) / "images")
-            examples = image_classification_examples_from_text_choices(load_image_text_choice_examples_jsonl(path))
+            examples = _classification_examples(Path(directory) / "images")
 
             result = train_image_classifier_with_result(
                 train_examples=examples,
@@ -365,25 +359,16 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertIsInstance(result.model.image_input_layer, ImagePatchInputLayer)
 
 
-def _write_image_text_choice_examples(path: Path, image_dir: Path) -> None:
+def _classification_examples(image_dir: Path) -> list[ImageClassificationExample]:
     image_dir.mkdir(parents=True, exist_ok=True)
     image_a = image_dir / "a.pgm"
     image_b = image_dir / "b.pgm"
     image_a.write_bytes(b"P5\n2 2\n255\n" + bytes([0, 255, 0, 255]))
     image_b.write_bytes(b"P5\n2 2\n255\n" + bytes([255, 0, 255, 0]))
-    rows = [
-        {
-            "image_path": str(image_a),
-            "choices": list(FASHION_MNIST_LABELS),
-            "answer_index": 9,
-        },
-        {
-            "image_path": str(image_b),
-            "choices": list(FASHION_MNIST_LABELS),
-            "answer_index": 0,
-        },
+    return [
+        ImageClassificationExample(image_path=image_a, label_names=FASHION_MNIST_LABELS, label_index=9),
+        ImageClassificationExample(image_path=image_b, label_names=FASHION_MNIST_LABELS, label_index=0),
     ]
-    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
