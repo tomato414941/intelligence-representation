@@ -7,6 +7,7 @@ from intrep.grid_world import (
     GridWorldState,
     Position,
     generate_grid_world_experience,
+    generate_grid_world_transition_table,
     grid_action_from_id,
     grid_action_to_id,
     grid_experience_transition_to_text,
@@ -103,6 +104,23 @@ class GridWorldTest(unittest.TestCase):
         self.assertEqual(examples[1].reward, -0.1)
         self.assertFalse(examples[1].terminated)
         self.assertEqual(examples[2].next_observation.agent, Position(row=0, col=2))
+
+    def test_generate_grid_world_transition_table_enumerates_open_cells_and_actions(self) -> None:
+        examples = generate_grid_world_transition_table(
+            GridWorldState(
+                width=3,
+                height=2,
+                agent=Position(row=0, col=0),
+                goal=Position(row=1, col=2),
+                walls=frozenset({Position(row=1, col=1)}),
+            )
+        )
+
+        self.assertEqual(len(examples), 25)
+        self.assertEqual(examples[0].observation.agent, Position(row=0, col=0))
+        self.assertEqual(examples[0].action.direction, "up")
+        self.assertTrue(examples[0].next_observation.blocked)
+        self.assertTrue(any(example.terminated for example in examples))
 
     def test_grid_experience_transition_to_text_renders_prediction_task(self) -> None:
         state = GridWorldState(

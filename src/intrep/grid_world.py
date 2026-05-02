@@ -236,6 +236,49 @@ def generate_grid_world_experience(
     return examples
 
 
+def generate_grid_world_transition_table(
+    state_template: GridWorldState | None = None,
+) -> list[GridExperienceTransition]:
+    template = state_template or default_grid_world_state()
+    examples: list[GridExperienceTransition] = []
+    index = 0
+    for row in range(template.height):
+        for col in range(template.width):
+            agent = Position(row=row, col=col)
+            if agent in template.walls:
+                continue
+            state = GridWorldState(
+                width=template.width,
+                height=template.height,
+                agent=agent,
+                goal=template.goal,
+                walls=template.walls,
+            )
+            for action_direction in GRID_ACTIONS:
+                action = GridAction(direction=action_direction)
+                observation = observation_from_state(state)
+                state_after, blocked = transition_state(state, action)
+                next_observation = observation_from_state(
+                    state_after,
+                    last_action=action.direction,
+                    blocked=blocked,
+                )
+                step_result = step_result_from_observation(next_observation)
+                index += 1
+                examples.append(
+                    GridExperienceTransition(
+                        id=f"grid_transition_{index}",
+                        observation=observation,
+                        action=action,
+                        reward=step_result.reward,
+                        next_observation=next_observation,
+                        terminated=step_result.terminated,
+                        truncated=step_result.truncated,
+                    )
+                )
+    return examples
+
+
 def grid_observation_to_text(observation: GridObservation) -> str:
     return "\n".join(observation.grid)
 
