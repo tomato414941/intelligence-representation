@@ -15,7 +15,8 @@ from intrep.language_modeling_training import (
     train_language_modeling_with_artifacts,
     _train_text_corpus_with_artifacts,
 )
-from intrep.grid_world import generate_grid_world_experience, language_modeling_examples_from_grid_experience
+from intrep.grid_world import generate_grid_world_experience
+from intrep.grid_world_text import language_modeling_examples_from_grid_experience
 from intrep.text_examples import LanguageModelingExample
 from intrep.text_tokenizer import train_simple_byte_pair_tokenizer
 

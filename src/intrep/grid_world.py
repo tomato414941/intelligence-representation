@@ -3,10 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-import torch
-
-from intrep.text_examples import LanguageModelingExample
-
 
 @dataclass(frozen=True)
 class Position:
@@ -278,72 +274,3 @@ def generate_grid_world_transition_table(
                 )
     return examples
 
-
-def grid_observation_to_text(observation: GridObservation) -> str:
-    return "\n".join(observation.grid)
-
-
-def grid_experience_transition_to_text(example: GridExperienceTransition) -> str:
-    return "\n".join(
-        (
-            "<obs>",
-            grid_observation_to_text(example.observation),
-            f"<action> {example.action.direction}",
-            "<next_obs>",
-            grid_observation_to_text(example.next_observation),
-            f"<reward> {example.reward:g}",
-            f"<terminated> {str(example.terminated).lower()}",
-            f"<truncated> {str(example.truncated).lower()}",
-        )
-    )
-
-
-def language_modeling_examples_from_grid_experience(
-    examples: Sequence[GridExperienceTransition],
-) -> list[LanguageModelingExample]:
-    if not examples:
-        raise ValueError("examples must not be empty")
-    return [LanguageModelingExample(grid_experience_transition_to_text(example)) for example in examples]
-
-
-def grid_action_to_id(action: GridAction | str) -> int:
-    action = coerce_action(action)
-    try:
-        return GRID_ACTIONS.index(action.direction)
-    except ValueError as error:
-        raise ValueError(f"unknown grid action: {action.direction}") from error
-
-
-def grid_action_from_id(action_id: int) -> GridAction:
-    if not 0 <= action_id < len(GRID_ACTIONS):
-        raise ValueError("grid action id out of range")
-    return GridAction(direction=GRID_ACTIONS[action_id])
-
-
-def grid_observation_to_tensor(observation: GridObservation) -> torch.Tensor:
-    if not observation.grid:
-        raise ValueError("observation grid must not be empty")
-    width = len(observation.grid[0])
-    if width == 0:
-        raise ValueError("observation grid rows must not be empty")
-    if any(len(row) != width for row in observation.grid):
-        raise ValueError("observation grid rows must have the same width")
-
-    tensor = torch.zeros((3, len(observation.grid), width), dtype=torch.float32)
-    for row_index, row in enumerate(observation.grid):
-        for col_index, cell in enumerate(row):
-            if cell in {"A", "*"}:
-                tensor[0, row_index, col_index] = 1.0
-            elif cell == "G":
-                tensor[1, row_index, col_index] = 1.0
-            elif cell == "#":
-                tensor[2, row_index, col_index] = 1.0
-            elif cell != ".":
-                raise ValueError(f"unknown grid observation cell: {cell}")
-    return tensor
-
-
-def grid_position_to_cell_id(position: Position, *, width: int) -> int:
-    if width <= 0:
-        raise ValueError("width must be positive")
-    return position.row * width + position.col
