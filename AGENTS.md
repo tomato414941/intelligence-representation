@@ -20,6 +20,7 @@
 
 ## Compute Cost Notes
 - Before and after expensive compute jobs, suggest updating `docs/compute-costs.md`.
+- When adding or changing datasets, suggest updating `docs/datasets.md`.
 
 ## Dependencies
 - PyTorch is an optional dependency so RunPod official PyTorch templates can use
