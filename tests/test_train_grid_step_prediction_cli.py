@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_grid_step_prediction
+from intrep.grid_world_checkpoint import load_grid_core_checkpoint
 
 
 class TrainGridStepPredictionCLITest(unittest.TestCase):
@@ -73,6 +74,36 @@ class TrainGridStepPredictionCLITest(unittest.TestCase):
         self.assertEqual(payload["result"]["train_case_count"], 20)
         self.assertEqual(payload["result"]["eval_case_count"], 5)
         self.assertIsNotNone(payload["result"]["eval_next_cell_accuracy"])
+
+    def test_can_save_grid_core_checkpoint(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            metrics_path = root / "grid-step.json"
+            checkpoint_path = root / "grid-core.pt"
+
+            with redirect_stdout(io.StringIO()):
+                train_grid_step_prediction.main(
+                    [
+                        "--metrics-path",
+                        str(metrics_path),
+                        "--core-checkpoint-path",
+                        str(checkpoint_path),
+                        "--max-steps",
+                        "1",
+                        "--batch-size",
+                        "5",
+                        "--device",
+                        "cpu",
+                    ]
+                )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+            checkpoint = load_grid_core_checkpoint(checkpoint_path, device="cpu")
+
+        self.assertEqual(payload["core_checkpoint_path"], str(checkpoint_path))
+        self.assertEqual(checkpoint.config.max_steps, 1)
+        self.assertEqual(checkpoint.grid_size, (2, 3))
+        self.assertEqual(checkpoint.metrics["train_case_count"], 25)
 
 
 if __name__ == "__main__":

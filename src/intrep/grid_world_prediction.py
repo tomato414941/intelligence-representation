@@ -59,6 +59,14 @@ class GridStepPredictionResult:
 
 
 @dataclass(frozen=True)
+class GridStepTrainingArtifacts:
+    result: GridStepPredictionResult
+    model: GridStepPredictor
+    config: GridStepPredictionConfig
+    grid_size: tuple[int, int]
+
+
+@dataclass(frozen=True)
 class _GridStepPredictionMetrics:
     loss: float
     next_cell_loss: float
@@ -114,6 +122,19 @@ def train_grid_step_predictor(
     eval_examples: Sequence[GridExperienceTransition] | None = None,
     config: GridStepPredictionConfig | None = None,
 ) -> GridStepPredictionResult:
+    return train_grid_step_predictor_with_artifacts(
+        examples,
+        eval_examples=eval_examples,
+        config=config,
+    ).result
+
+
+def train_grid_step_predictor_with_artifacts(
+    examples: Sequence[GridExperienceTransition],
+    *,
+    eval_examples: Sequence[GridExperienceTransition] | None = None,
+    config: GridStepPredictionConfig | None = None,
+) -> GridStepTrainingArtifacts:
     config = config or GridStepPredictionConfig()
     if config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
@@ -173,7 +194,7 @@ def train_grid_step_predictor(
 
     train_metrics = _evaluate(model, train_eval_loader, device)
     held_out_metrics = _evaluate(model, eval_loader, device) if eval_loader is not None else None
-    return GridStepPredictionResult(
+    result = GridStepPredictionResult(
         train_case_count=len(dataset),
         eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
         initial_loss=initial_metrics.loss,
@@ -192,6 +213,12 @@ def train_grid_step_predictor(
         eval_reward_accuracy=held_out_metrics.reward_accuracy if held_out_metrics is not None else None,
         eval_terminated_accuracy=held_out_metrics.terminated_accuracy if held_out_metrics is not None else None,
         max_steps=config.max_steps,
+    )
+    return GridStepTrainingArtifacts(
+        result=result,
+        model=model,
+        config=config,
+        grid_size=(dataset.height, dataset.width),
     )
 
 
