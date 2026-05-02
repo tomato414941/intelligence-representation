@@ -1,6 +1,6 @@
-# Model Input Boundaries
+# Model Boundaries
 
-This document defines the current input-boundary vocabulary for model training.
+This document defines the current model-boundary vocabulary for model training.
 It is not a complete ontology of every possible data type. Its purpose is to
 keep the project from mixing raw data, token IDs, embedding vectors, Transformer
 hidden states, and task outputs into one unclear schema.

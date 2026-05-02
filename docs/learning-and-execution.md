@@ -64,7 +64,7 @@ interaction modeling:
 ```
 
 The shared model boundary is still the input embedding sequence described in
-[Model Input Boundaries](model-input-boundaries.md).
+[Model Boundaries](model-boundaries.md).
 
 ## Outputs
 

@@ -54,7 +54,7 @@ Read these first:
 
 - [Concept](docs/concept.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
-- [Model Input Boundaries](docs/model-input-boundaries.md)
+- [Model Boundaries](docs/model-boundaries.md)
 - [Learning and Execution](docs/learning-and-execution.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
