@@ -7,7 +7,11 @@ from intrep.grid_world import (
     GridWorldState,
     Position,
     generate_grid_world_experience,
+    grid_action_from_id,
+    grid_action_to_id,
     grid_experience_transition_to_text,
+    grid_observation_to_tensor,
+    grid_position_to_cell_id,
     language_modeling_examples_from_grid_experience,
     observation_from_state,
     transition_state,
@@ -142,6 +146,32 @@ class GridWorldTest(unittest.TestCase):
     def test_language_modeling_examples_from_grid_experience_rejects_empty_examples(self) -> None:
         with self.assertRaisesRegex(ValueError, "examples must not be empty"):
             language_modeling_examples_from_grid_experience(())
+
+    def test_grid_action_ids_round_trip(self) -> None:
+        action_id = grid_action_to_id("right")
+
+        self.assertEqual(grid_action_from_id(action_id), GridAction(direction="right"))
+
+    def test_grid_observation_to_tensor_uses_agent_goal_wall_channels(self) -> None:
+        observation = observation_from_state(
+            GridWorldState(
+                width=3,
+                height=2,
+                agent=Position(row=0, col=0),
+                goal=Position(row=1, col=2),
+                walls=frozenset({Position(row=1, col=1)}),
+            )
+        )
+
+        tensor = grid_observation_to_tensor(observation)
+
+        self.assertEqual(tuple(tensor.shape), (3, 2, 3))
+        self.assertEqual(float(tensor[0, 0, 0]), 1.0)
+        self.assertEqual(float(tensor[1, 1, 2]), 1.0)
+        self.assertEqual(float(tensor[2, 1, 1]), 1.0)
+
+    def test_grid_position_to_cell_id(self) -> None:
+        self.assertEqual(grid_position_to_cell_id(Position(row=1, col=2), width=3), 5)
 
 
 if __name__ == "__main__":
