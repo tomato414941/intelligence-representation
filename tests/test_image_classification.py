@@ -20,11 +20,10 @@ from intrep.image_classification import (
     image_classification_example_to_record,
     image_classification_tensors_from_examples,
     load_image_classification_examples_jsonl,
-    image_text_choice_tensors_from_examples,
     train_image_classifier,
     train_image_classifier_with_result,
 )
-from intrep.image_text_choice_examples import ImageTextChoiceExample, load_image_text_choice_examples_jsonl
+from intrep.image_text_choice_examples import load_image_text_choice_examples_jsonl
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.transformer_core import SharedTransformerCore
 
@@ -56,44 +55,6 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(loaded[0].label_text, "Ankle boot")
         self.assertEqual(images.shape, torch.Size([2, 2, 2]))
         self.assertEqual(labels.tolist(), [9, 0])
-
-    def test_image_text_choice_tensors_from_examples_uses_shared_example_core(self) -> None:
-        with TemporaryDirectory() as directory:
-            image_a = Path(directory) / "a.pgm"
-            image_b = Path(directory) / "b.pgm"
-            image_a.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            image_b.write_bytes(b"P5\n2 1\n255\n" + bytes([128, 64]))
-            examples = [
-                ImageTextChoiceExample(image_path=image_a, choices=FASHION_MNIST_LABELS, answer_index=1),
-                ImageTextChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=2),
-            ]
-
-            images, labels = image_text_choice_tensors_from_examples(examples)
-
-        self.assertEqual(images.shape, torch.Size([2, 1, 2]))
-        self.assertEqual(labels.tolist(), [1, 2])
-        self.assertEqual(images.dtype, torch.float32)
-        self.assertEqual(labels.dtype, torch.long)
-        self.assertAlmostEqual(float(images[0, 0, 1]), 1.0)
-        self.assertAlmostEqual(float(images[1, 0, 0]), 128 / 255)
-
-    def test_image_text_choice_tensors_from_examples_rejects_empty_examples(self) -> None:
-        with self.assertRaisesRegex(ValueError, "examples must not be empty"):
-            image_text_choice_tensors_from_examples([])
-
-    def test_image_text_choice_tensors_from_examples_rejects_mismatched_image_shapes(self) -> None:
-        with TemporaryDirectory() as directory:
-            image_a = Path(directory) / "a.pgm"
-            image_b = Path(directory) / "b.pgm"
-            image_a.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
-            image_b.write_bytes(b"P5\n1 1\n255\n" + bytes([128]))
-            examples = [
-                ImageTextChoiceExample(image_path=image_a, choices=FASHION_MNIST_LABELS, answer_index=1),
-                ImageTextChoiceExample(image_path=image_b, choices=FASHION_MNIST_LABELS, answer_index=2),
-            ]
-
-            with self.assertRaisesRegex(ValueError, "all images must have the same shape"):
-                image_text_choice_tensors_from_examples(examples)
 
     def test_image_classification_tensors_from_examples_uses_label_index(self) -> None:
         with TemporaryDirectory() as directory:
@@ -218,7 +179,7 @@ class ImageClassificationTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
-    def test_image_text_choice_tensors_from_examples_preserves_rgb_images(self) -> None:
+    def test_image_classification_tensors_from_examples_preserves_rgb_images(self) -> None:
         with TemporaryDirectory() as directory:
             image_path = Path(directory) / "a.ppm"
             image_path.write_bytes(b"P6\n2 1\n255\n" + bytes([255, 0, 0, 0, 255, 0]))
