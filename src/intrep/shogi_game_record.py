@@ -6,7 +6,11 @@ from typing import Sequence
 
 import shogi.KIF
 
-from intrep.shogi_move_choice import ShogiMoveChoiceExample, shogi_move_choice_examples_from_usi_moves
+from intrep.shogi_move_choice import (
+    ShogiMoveChoiceExample,
+    shogi_move_choice_examples_from_usi_moves,
+    shogi_move_choice_examples_from_usi_moves_with_winner,
+)
 
 
 def load_usi_move_games(path: str | Path) -> list[tuple[str, ...]]:
@@ -32,15 +36,26 @@ def load_shogi_move_choice_examples_from_usi_file(path: str | Path) -> list[Shog
 
 
 def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:
+    return load_kif_game_record(path, encoding=encoding)[0]
+
+
+def load_kif_game_record(path: str | Path, *, encoding: str = "cp932") -> tuple[tuple[str, ...], str | None]:
     text = Path(path).read_text(encoding=encoding)
     parsed_games = shogi.KIF.Parser.parse_str(text)
     if not parsed_games:
         raise ValueError("KIF file must contain at least one game")
-    return tuple(parsed_games[0]["moves"])
+    game = parsed_games[0]
+    winner = game.get("win")
+    if winner not in {"b", "w"}:
+        winner = None
+    return tuple(game["moves"]), winner
 
 
 def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    return shogi_move_choice_examples_from_usi_moves(load_kif_game(path))
+    moves, winner = load_kif_game_record(path)
+    if winner is None:
+        return shogi_move_choice_examples_from_usi_moves(moves)
+    return shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
 
 
 def write_usi_move_games(path: str | Path, games: Sequence[Sequence[str]]) -> None:
