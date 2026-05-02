@@ -8,14 +8,18 @@ from intrep.grid_world import (
     Position,
     generate_grid_world_experience,
     generate_grid_world_transition_table,
-    grid_action_from_id,
-    grid_action_to_id,
-    grid_experience_transition_to_text,
-    grid_observation_to_tensor,
-    grid_position_to_cell_id,
-    language_modeling_examples_from_grid_experience,
     observation_from_state,
     transition_state,
+)
+from intrep.grid_world_encoding import (
+    grid_action_from_id,
+    grid_action_to_id,
+    grid_observation_to_tensor,
+    grid_position_to_cell_id,
+)
+from intrep.grid_world_text import (
+    grid_experience_transition_to_text,
+    language_modeling_examples_from_grid_experience,
 )
 
 

@@ -10,10 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 from intrep.grid_world import (
     GRID_ACTIONS,
     GridExperienceTransition,
-    grid_action_to_id,
-    grid_observation_to_tensor,
-    grid_position_to_cell_id,
 )
+from intrep.grid_world_encoding import grid_action_to_id, grid_observation_to_tensor, grid_position_to_cell_id
 from intrep.image_training_data import seeded_data_loader
 from intrep.language_modeling_training import resolve_training_device
 from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
