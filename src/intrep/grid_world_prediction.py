@@ -41,10 +41,24 @@ class GridStepPredictionResult:
     train_case_count: int
     initial_loss: float
     final_loss: float
+    final_next_cell_loss: float
+    final_reward_loss: float
+    final_terminated_loss: float
     next_cell_accuracy: float
     reward_accuracy: float
     terminated_accuracy: float
     max_steps: int
+
+
+@dataclass(frozen=True)
+class _GridStepPredictionMetrics:
+    loss: float
+    next_cell_loss: float
+    reward_loss: float
+    terminated_loss: float
+    next_cell_accuracy: float
+    reward_accuracy: float
+    terminated_accuracy: float
 
 
 class GridStepPredictor(nn.Module):
@@ -117,7 +131,6 @@ def train_grid_step_predictor(
 
     initial_metrics = _evaluate(model, eval_loader, device)
     iterator = iter(loader)
-    final_loss = initial_metrics[0]
     for _ in range(config.max_steps):
         try:
             observations, action_ids, next_cell_targets, reward_targets, terminated_targets = next(iterator)
@@ -140,16 +153,18 @@ def train_grid_step_predictor(
         clip_gradients(model, config.max_grad_norm)
         optimizer.step()
         scheduler.step()
-        final_loss = float(loss.item())
 
-    eval_loss, next_cell_accuracy, reward_accuracy, terminated_accuracy = _evaluate(model, eval_loader, device)
+    eval_metrics = _evaluate(model, eval_loader, device)
     return GridStepPredictionResult(
         train_case_count=len(dataset),
-        initial_loss=initial_metrics[0],
-        final_loss=eval_loss if eval_loss <= final_loss else final_loss,
-        next_cell_accuracy=next_cell_accuracy,
-        reward_accuracy=reward_accuracy,
-        terminated_accuracy=terminated_accuracy,
+        initial_loss=initial_metrics.loss,
+        final_loss=eval_metrics.loss,
+        final_next_cell_loss=eval_metrics.next_cell_loss,
+        final_reward_loss=eval_metrics.reward_loss,
+        final_terminated_loss=eval_metrics.terminated_loss,
+        next_cell_accuracy=eval_metrics.next_cell_accuracy,
+        reward_accuracy=eval_metrics.reward_accuracy,
+        terminated_accuracy=eval_metrics.terminated_accuracy,
         max_steps=config.max_steps,
     )
 
@@ -158,9 +173,11 @@ def _evaluate(
     model: GridStepPredictor,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
     device: torch.device,
-) -> tuple[float, float, float, float]:
+) -> _GridStepPredictionMetrics:
     model.eval()
-    total_loss = 0.0
+    total_next_cell_loss = 0.0
+    total_reward_loss = 0.0
+    total_terminated_loss = 0.0
     total_next_cell_correct = 0
     total_reward_correct = 0
     total_terminated_correct = 0
@@ -173,20 +190,26 @@ def _evaluate(
             reward_targets = reward_targets.to(device)
             terminated_targets = terminated_targets.to(device)
             next_cell_logits, reward_logits, terminated_logits = model(observations, action_ids)
-            loss = (
-                nn.functional.cross_entropy(next_cell_logits, next_cell_targets, reduction="sum")
-                + nn.functional.cross_entropy(reward_logits, reward_targets, reduction="sum")
-                + nn.functional.cross_entropy(terminated_logits, terminated_targets, reduction="sum")
-            )
-            total_loss += float(loss.item())
+            next_cell_loss = nn.functional.cross_entropy(next_cell_logits, next_cell_targets, reduction="sum")
+            reward_loss = nn.functional.cross_entropy(reward_logits, reward_targets, reduction="sum")
+            terminated_loss = nn.functional.cross_entropy(terminated_logits, terminated_targets, reduction="sum")
+            total_next_cell_loss += float(next_cell_loss.item())
+            total_reward_loss += float(reward_loss.item())
+            total_terminated_loss += float(terminated_loss.item())
             total_next_cell_correct += int((next_cell_logits.argmax(dim=1) == next_cell_targets).sum().item())
             total_reward_correct += int((reward_logits.argmax(dim=1) == reward_targets).sum().item())
             total_terminated_correct += int((terminated_logits.argmax(dim=1) == terminated_targets).sum().item())
             total_count += int(next_cell_targets.numel())
     model.train()
-    return (
-        total_loss / total_count,
-        total_next_cell_correct / total_count,
-        total_reward_correct / total_count,
-        total_terminated_correct / total_count,
+    next_cell_loss = total_next_cell_loss / total_count
+    reward_loss = total_reward_loss / total_count
+    terminated_loss = total_terminated_loss / total_count
+    return _GridStepPredictionMetrics(
+        loss=next_cell_loss + reward_loss + terminated_loss,
+        next_cell_loss=next_cell_loss,
+        reward_loss=reward_loss,
+        terminated_loss=terminated_loss,
+        next_cell_accuracy=total_next_cell_correct / total_count,
+        reward_accuracy=total_reward_correct / total_count,
+        terminated_accuracy=total_terminated_correct / total_count,
     )

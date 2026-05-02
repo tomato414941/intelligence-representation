@@ -108,6 +108,14 @@ class GridWorldPredictionTest(unittest.TestCase):
         self.assertEqual(result.train_case_count, 25)
         self.assertGreater(result.initial_loss, 0.0)
         self.assertLess(result.final_loss, result.initial_loss)
+        self.assertGreater(result.final_next_cell_loss, 0.0)
+        self.assertGreater(result.final_reward_loss, 0.0)
+        self.assertGreater(result.final_terminated_loss, 0.0)
+        self.assertAlmostEqual(
+            result.final_loss,
+            result.final_next_cell_loss + result.final_reward_loss + result.final_terminated_loss,
+            places=5,
+        )
         self.assertGreaterEqual(result.next_cell_accuracy, 0.7)
         self.assertGreaterEqual(result.reward_accuracy, 0.8)
         self.assertGreaterEqual(result.terminated_accuracy, 0.8)
