@@ -31,6 +31,9 @@ class ShogiMoveChoiceTrainingConfig:
     num_layers: int = 1
     use_shared_core: bool = True
     value_loss_weight: float = 0.0
+    device: str = "cpu"
+    max_train_eval_examples: int | None = None
+    max_eval_examples: int | None = None
 
 
 @dataclass(frozen=True)
@@ -87,16 +90,22 @@ def train_shogi_move_choice_model(
     if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
     torch.manual_seed(training_config.seed)
+    device = torch.device(training_config.device)
     dataset = ShogiMoveChoiceDataset(examples)
     loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=True)
-    train_eval_loader = DataLoader(dataset, batch_size=training_config.batch_size, shuffle=False)
-    eval_dataset = ShogiMoveChoiceDataset(eval_examples) if eval_examples is not None else None
+    train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
+    train_eval_dataset = ShogiMoveChoiceDataset(train_eval_examples)
+    train_eval_loader = DataLoader(train_eval_dataset, batch_size=training_config.batch_size, shuffle=False)
+    limited_eval_examples = (
+        _limit_examples(eval_examples, training_config.max_eval_examples) if eval_examples is not None else None
+    )
+    eval_dataset = ShogiMoveChoiceDataset(limited_eval_examples) if limited_eval_examples is not None else None
     eval_loader = (
         DataLoader(eval_dataset, batch_size=training_config.batch_size, shuffle=False)
         if eval_dataset is not None
         else None
     )
-    model = build_shogi_move_choice_model(training_config)
+    model = build_shogi_move_choice_model(training_config).to(device)
     optimizer = build_adamw(
         model,
         learning_rate=training_config.learning_rate,
@@ -111,6 +120,11 @@ def train_shogi_move_choice_model(
     step = 0
     while step < training_config.max_steps:
         for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
+            position_token_ids = position_token_ids.to(device)
+            candidate_move_features = candidate_move_features.to(device)
+            candidate_mask = candidate_mask.to(device)
+            labels = labels.to(device)
+            value_targets = value_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
             logits = model(position_token_ids, candidate_move_features, candidate_mask)
             loss = torch.nn.functional.cross_entropy(logits, labels)
@@ -180,8 +194,14 @@ def evaluate_shogi_move_choice_metrics(
     reciprocal_rank_sum = 0.0
     rank_sum = 0.0
     total = 0
+    device = next(model.parameters()).device
     with torch.no_grad():
         for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
+            position_token_ids = position_token_ids.to(device)
+            candidate_move_features = candidate_move_features.to(device)
+            candidate_mask = candidate_mask.to(device)
+            labels = labels.to(device)
+            value_targets = value_targets.to(device)
             logits = model(position_token_ids, candidate_move_features, candidate_mask)
             loss = torch.nn.functional.cross_entropy(logits, labels)
             losses.append(float(loss.item()))
@@ -209,6 +229,17 @@ def evaluate_shogi_move_choice_metrics(
         mean_correct_move_rank=rank_sum / total,
         value_loss=sum(value_losses) / len(value_losses) if value_losses else None,
     )
+
+
+def _limit_examples(
+    examples: Sequence[ShogiMoveChoiceExample],
+    max_examples: int | None,
+) -> Sequence[ShogiMoveChoiceExample]:
+    if max_examples is None:
+        return examples
+    if max_examples <= 0:
+        raise ValueError("max eval examples must be positive")
+    return examples[:max_examples]
 
 
 def train_shogi_move_choice_model_from_usi_file(

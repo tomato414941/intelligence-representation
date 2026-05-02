@@ -99,6 +99,29 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertIsNotNone(result.metrics.eval_top_3_accuracy)
         self.assertIsNotNone(result.metrics.eval_mean_reciprocal_rank)
 
+    def test_limits_eval_examples(self) -> None:
+        examples = tuple(
+            shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
+            + shogi_move_choice_examples_from_usi_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
+        )
+
+        result = train_shogi_move_choice_model(
+            examples,
+            eval_examples=examples,
+            config=ShogiMoveChoiceTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                max_train_eval_examples=3,
+                max_eval_examples=2,
+            ),
+        )
+
+        self.assertEqual(result.metrics.train_case_count, len(examples))
+        self.assertEqual(result.metrics.eval_case_count, 2)
+
     def test_trains_value_head_when_targets_are_available(self) -> None:
         base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         examples = tuple(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
 
 import shogi
@@ -100,3 +102,46 @@ class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
             torch.tensor(move_index, dtype=torch.long),
             torch.tensor(value_target, dtype=torch.float32),
         )
+
+
+def write_shogi_move_choice_examples_jsonl(
+    path: str | Path,
+    examples: Sequence[ShogiMoveChoiceExample],
+) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for example in examples:
+        lines.append(
+            json.dumps(
+                {
+                    "position_sfen": example.position_sfen,
+                    "legal_moves": list(example.legal_moves),
+                    "chosen_move": example.chosen_move,
+                    "value_target": example.value_target,
+                },
+                separators=(",", ":"),
+            )
+        )
+    if not lines:
+        raise ValueError("examples must not be empty")
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def load_shogi_move_choice_examples_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
+    examples: list[ShogiMoveChoiceExample] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        payload = json.loads(stripped)
+        examples.append(
+            ShogiMoveChoiceExample(
+                position_sfen=str(payload["position_sfen"]),
+                legal_moves=tuple(str(move) for move in payload["legal_moves"]),
+                chosen_move=str(payload["chosen_move"]),
+                value_target=payload.get("value_target"),
+            )
+        )
+    if not examples:
+        raise ValueError("shogi move choice examples jsonl must contain at least one example")
+    return examples
