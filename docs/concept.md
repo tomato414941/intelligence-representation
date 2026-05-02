@@ -8,7 +8,7 @@
 詳細は次の文書に置く。
 
 - [Predictive Representation System](predictive-representation-system.md)
-- [Model Input Boundaries](model-input-boundaries.md)
+- [Model Boundaries](model-boundaries.md)
 - [Learning and Execution](learning-and-execution.md)
 - [Representation, Signal, and Symbol](signal-and-symbol.md)
 - [World Model Centering](world-model.md)
