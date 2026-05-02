@@ -5,6 +5,7 @@ from pathlib import Path
 from intrep.shogi_game_record import (
     convert_kif_files_to_usi_file,
     load_kif_game,
+    load_kif_game_record,
     load_shogi_move_choice_examples_from_kif_file,
     load_shogi_move_choice_examples_from_usi_file,
     load_usi_move_games,
@@ -46,6 +47,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                         "手数----指手---------消費時間--",
                         "   1 ７六歩(77)        ( 0:00/00:00:00)",
                         "   2 ３四歩(33)        ( 0:00/00:00:00)",
+                        "   3 投了",
                     ]
                 )
                 + "\n",
@@ -53,10 +55,14 @@ class ShogiGameRecordTest(unittest.TestCase):
             )
 
             moves = load_kif_game(path)
+            record_moves, winner = load_kif_game_record(path)
             examples = load_shogi_move_choice_examples_from_kif_file(path)
 
         self.assertEqual(moves, ("7g7f", "3c3d"))
+        self.assertEqual(record_moves, ("7g7f", "3c3d"))
+        self.assertEqual(winner, "w")
         self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
+        self.assertEqual([example.value_target for example in examples], [-1.0, 1.0])
 
     def test_writes_usi_move_games(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

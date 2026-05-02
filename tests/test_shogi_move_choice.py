@@ -9,6 +9,7 @@ from intrep.shogi_move_choice import (
     ShogiMoveChoiceExample,
     shogi_move_choice_example_from_board,
     shogi_move_choice_examples_from_usi_moves,
+    shogi_move_choice_examples_from_usi_moves_with_winner,
 )
 from intrep.shogi_move_encoding import SHOGI_MOVE_FEATURE_COUNT
 from intrep.shogi_position_encoding import SHOGI_POSITION_TOKEN_COUNT
@@ -38,6 +39,12 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(examples[0].chosen_move, "7g7f")
         self.assertEqual(examples[1].chosen_move, "3c3d")
         self.assertIn("3c3d", examples[1].legal_moves)
+
+    def test_builds_value_targets_from_winner(self) -> None:
+        examples = shogi_move_choice_examples_from_usi_moves_with_winner(("7g7f", "3c3d"), winner="b")
+
+        self.assertEqual(examples[0].value_target, 1.0)
+        self.assertEqual(examples[1].value_target, -1.0)
 
     def test_dataset_returns_candidate_mask_and_label_index(self) -> None:
         examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))

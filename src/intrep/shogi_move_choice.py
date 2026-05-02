@@ -47,6 +47,31 @@ def shogi_move_choice_examples_from_usi_moves(moves: Sequence[str]) -> list[Shog
     return examples
 
 
+def shogi_move_choice_examples_from_usi_moves_with_winner(
+    moves: Sequence[str],
+    *,
+    winner: str,
+) -> list[ShogiMoveChoiceExample]:
+    if winner not in {"b", "w"}:
+        raise ValueError("winner must be 'b' or 'w'")
+    board = shogi.Board()
+    examples: list[ShogiMoveChoiceExample] = []
+    for move in moves:
+        side_to_move = "b" if board.turn == shogi.BLACK else "w"
+        value_target = 1.0 if side_to_move == winner else -1.0
+        base_example = shogi_move_choice_example_from_board(board, move)
+        examples.append(
+            ShogiMoveChoiceExample(
+                position_sfen=base_example.position_sfen,
+                legal_moves=base_example.legal_moves,
+                chosen_move=base_example.chosen_move,
+                value_target=value_target,
+            )
+        )
+        board.push_usi(move)
+    return examples
+
+
 class ShogiMoveChoiceDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: Sequence[ShogiMoveChoiceExample]) -> None:
         if not examples:
