@@ -32,7 +32,7 @@ container disk, trained, and the output directory is synced back.
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
 | 2026-05-03 | policy-only full-cache smoke | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 50 | 512 | 2m25s total, 7.2s training | about $0.03 | Passed. Full-cache sync/decompress/load, CUDA forward/backward, DataLoader settings, checkpoint, metrics, and output sync worked. Training throughput was 6.94 steps/s and CUDA max memory was about 8.1 GB. |
-| 2026-05-03 | policy-only full-cache baseline | failed | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | target 2000, reached 350 | 512 | 3m50s total before failure | about $0.04 | Setup, sync, decompression, and training startup worked. Training reached 350/2000 steps at about 7.8 steps/s and 8.1 GB CUDA max memory, then SSH timed out with the pod not responding. No metrics or checkpoint were synced. |
+| 2026-05-03 | policy-only full-cache baseline | failed | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | target 2000, reached 350 | 512 | 3m50s total before failure | about $0.04 | Setup, sync, decompression, and training startup worked. Training reached 350/2000 steps at about 7.8 steps/s and 8.1 GB CUDA max memory, then SSH timed out with the pod not responding. No metrics or checkpoint were synced. Follow-up local probing suggests CPU RAM pressure from full Python-object cache plus `num_workers=4` is more likely than CUDA memory exhaustion. |
 
 Current recipe:
 
@@ -69,6 +69,7 @@ scripts/runpod_train_shogi_move_choice.sh
 ```
 
 The first baseline attempt failed before metrics were written. The next attempt
-should keep the same model target but reduce operational risk, for example by
-using `--keep-pod-on-failure` while debugging or by choosing a pod/location with
-stable SSH during the full remote command.
+should keep the same model target but reduce operational risk by lowering
+DataLoader worker memory pressure first, for example with `NUM_WORKERS=0` or
+`NUM_WORKERS=1`. Use `--keep-pod-on-failure` while debugging if another remote
+attempt is needed.
