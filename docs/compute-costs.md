@@ -31,7 +31,7 @@ container disk, trained, and the output directory is synced back.
 
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
-| 2026-05-03 | policy-only full-cache smoke | planned | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 50 | 512 | about 10-20 minutes | about $0.12-$0.25, guarded at about $0.35 | Verifies full-cache sync/decompress/load, CUDA forward/backward, DataLoader settings, checkpoint, metrics, and output sync before a longer baseline. |
+| 2026-05-03 | policy-only full-cache smoke | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 50 | 512 | 2m25s total, 7.2s training | about $0.03 | Passed. Full-cache sync/decompress/load, CUDA forward/backward, DataLoader settings, checkpoint, metrics, and output sync worked. Training throughput was 6.94 steps/s and CUDA max memory was about 8.1 GB. |
 
 Current recipe:
 
@@ -40,7 +40,7 @@ Current recipe:
 | RunPod image | `runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404` |
 | allowed CUDA versions | `12.8`, `12.9`, `13.0` |
 | storage | 80 GB container disk, no network volume |
-| max runtime guard | 30 minutes for the 50-step smoke; 420 minutes default |
+| max runtime guard | 30 minutes for the measured 50-step smoke; 420 minutes default |
 | cost guard | no separate cost guard; use the runtime guard and the estimate above |
 | train cache input | `runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst` |
 | eval cache input | `runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst` |
@@ -67,5 +67,5 @@ OUTPUT_DIR=runs/shogi/runpod-qhapaq-split-d256-h1024-l6-policy-only-steps50 \
 scripts/runpod_train_shogi_move_choice.sh
 ```
 
-The estimate should be replaced by measured runtime and cost after the smoke
-run completes.
+The smoke estimate has been replaced by measured runtime and cost. Use the
+recorded throughput and memory before planning the next longer baseline.
