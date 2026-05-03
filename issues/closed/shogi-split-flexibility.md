@@ -1,6 +1,7 @@
 # Shogi Split Flexibility
 
-Status: resolved for the current cache format.
+Status: closed.
+Resolution: resolved for the current cache format.
 
 ## Issue
 

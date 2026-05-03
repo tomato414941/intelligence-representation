@@ -9,7 +9,8 @@ object list. This is operationally fragile for long RunPod jobs, especially
 when PyTorch `DataLoader` workers are enabled.
 
 This is separate from raw DataLoader throughput. The immediate throughput
-control path is covered by [`shogi-dataloader-throughput.md`](shogi-dataloader-throughput.md).
+control path is covered by
+[`closed/shogi-dataloader-throughput.md`](closed/shogi-dataloader-throughput.md).
 This issue tracks memory stability and cache format.
 
 ## Evidence
