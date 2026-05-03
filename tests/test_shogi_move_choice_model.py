@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock
 
 import torch
 
@@ -59,6 +60,24 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
         self.assertEqual(tuple(values.shape), (2,))
         self.assertLessEqual(float(values.abs().max().item()), 1.0)
+
+    def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
+        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
+        model = SharedCoreShogiMoveChoiceModel(
+            SharedCoreShogiMoveChoiceModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
+        model.core.forward = Mock(wraps=model.core.forward)
+
+        logits, values = model.forward_policy_value(position_token_ids, candidate_move_features, candidate_mask)
+
+        self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
+        self.assertEqual(tuple(values.shape), (2,))
+        self.assertEqual(model.core.forward.call_count, 1)
 
 
 def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

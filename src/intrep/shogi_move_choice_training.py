@@ -135,11 +135,19 @@ def train_shogi_move_choice_model(
             labels = labels.to(device)
             value_targets = value_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
-            logits = model(position_token_ids, candidate_move_features, candidate_mask)
-            loss = torch.nn.functional.cross_entropy(logits, labels)
             value_mask = torch.isfinite(value_targets)
             if training_config.value_loss_weight > 0.0 and value_mask.any():
-                value_predictions = model.predict_value(position_token_ids)
+                logits, value_predictions = _forward_policy_value(
+                    model,
+                    position_token_ids,
+                    candidate_move_features,
+                    candidate_mask,
+                )
+            else:
+                logits = model(position_token_ids, candidate_move_features, candidate_mask)
+                value_predictions = None
+            loss = torch.nn.functional.cross_entropy(logits, labels)
+            if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 loss = loss + training_config.value_loss_weight * value_loss
             loss.backward()
@@ -213,7 +221,17 @@ def evaluate_shogi_move_choice_metrics(
             candidate_mask = candidate_mask.to(device)
             labels = labels.to(device)
             value_targets = value_targets.to(device)
-            logits = model(position_token_ids, candidate_move_features, candidate_mask)
+            value_mask = torch.isfinite(value_targets)
+            if value_mask.any() and hasattr(model, "predict_value"):
+                logits, value_predictions = _forward_policy_value(
+                    model,
+                    position_token_ids,
+                    candidate_move_features,
+                    candidate_mask,
+                )
+            else:
+                logits = model(position_token_ids, candidate_move_features, candidate_mask)
+                value_predictions = None
             loss = torch.nn.functional.cross_entropy(logits, labels)
             losses.append(float(loss.item()))
             predictions = logits.argmax(dim=1)
@@ -226,9 +244,7 @@ def evaluate_shogi_move_choice_metrics(
             reciprocal_rank_sum += float((1.0 / ranks.float()).sum().item())
             rank_sum += float(ranks.float().sum().item())
             total += int(labels.numel())
-            value_mask = torch.isfinite(value_targets)
-            if value_mask.any() and hasattr(model, "predict_value"):
-                value_predictions = model.predict_value(position_token_ids)
+            if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 value_losses.append(float(value_loss.item()))
     return ShogiMoveChoiceEvaluationMetrics(
@@ -255,6 +271,19 @@ def _build_shogi_move_choice_loader(
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
     )
+
+
+def _forward_policy_value(
+    model: nn.Module,
+    position_token_ids: torch.Tensor,
+    candidate_move_features: torch.Tensor,
+    candidate_mask: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if hasattr(model, "forward_policy_value"):
+        return model.forward_policy_value(position_token_ids, candidate_move_features, candidate_mask)
+    logits = model(position_token_ids, candidate_move_features, candidate_mask)
+    value_predictions = model.predict_value(position_token_ids)
+    return logits, value_predictions
 
 
 def _limit_examples(

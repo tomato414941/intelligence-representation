@@ -56,6 +56,20 @@ class ShogiMoveChoiceModel(nn.Module):
         logits = self.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
 
+    def forward_policy_value(
+        self,
+        position_token_ids: torch.Tensor,
+        candidate_move_features: torch.Tensor,
+        candidate_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
+        move_embedding = self.embed_candidate_moves(candidate_move_features)
+        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
+        logits = self.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
+        masked_logits = logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+        values = self.value_head(position_embedding).squeeze(-1)
+        return masked_logits, values
+
     def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
         return self.value_head(position_embedding).squeeze(-1)
@@ -121,6 +135,21 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         logits = self.move_model.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+
+    def forward_policy_value(
+        self,
+        position_token_ids: torch.Tensor,
+        candidate_move_features: torch.Tensor,
+        candidate_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        position_hidden = self.core(self.position_input(position_token_ids), causal=False)
+        position_embedding = position_hidden.mean(dim=1)
+        move_embedding = self.move_model.embed_candidate_moves(candidate_move_features)
+        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
+        logits = self.move_model.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
+        masked_logits = logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+        values = self.move_model.value_head(position_embedding).squeeze(-1)
+        return masked_logits, values
 
     def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)

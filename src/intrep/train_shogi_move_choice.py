@@ -32,7 +32,7 @@ def main() -> None:
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--num-heads", type=int, default=4)
     parser.add_argument("--num-layers", type=int, default=1)
-    parser.add_argument("--value-loss-weight", type=float, default=0.2)
+    parser.add_argument("--value-loss-weight", type=float, default=0.0)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
@@ -72,8 +72,9 @@ def main() -> None:
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     save_shogi_move_choice_checkpoint(args.checkpoint_path, result)
     metrics = {
-        "train_case_count": len(train_examples),
-        "eval_case_count": len(eval_examples) if eval_examples is not None else 0,
+        "raw_train_case_count": len(train_examples),
+        "raw_eval_case_count": len(eval_examples) if eval_examples is not None else 0,
+        "used_eval_case_count": result.metrics.eval_case_count,
         "checkpoint_path": str(args.checkpoint_path),
         "config": asdict(result.config),
         "metrics": asdict(result.metrics),
