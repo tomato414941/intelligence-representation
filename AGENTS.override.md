@@ -8,6 +8,7 @@
 - Do not commit downloaded datasets, generated images, run metrics, or checkpoint files by default.
 
 ## Development Guardrails
+- Keep shogi battle/runtime implementation in `../shogi-arena-agent`; this repository owns learning and checkpoint generation.
 - Keep experimental paths explicitly marked as temporary when they are not intended as the main architecture.
 - Prefer deleting or replacing temporary validation code once the main path exists.
 - Avoid broad multitask or multimodal abstractions until at least two concrete tasks require the same interface.
