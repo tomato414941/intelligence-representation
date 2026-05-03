@@ -12,18 +12,22 @@ SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA = "intrep.shogi_move_choice_checkpoint.v1"
 
 
 def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceTrainingResult) -> None:
+    save_shogi_move_choice_model_checkpoint(path, result.model, result.config)
+
+
+def save_shogi_move_choice_model_checkpoint(path: str | Path, model: nn.Module, config: object) -> None:
     torch.save(
         {
             "schema_version": SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA,
             "config": {
-                "embedding_dim": result.config.embedding_dim,
-                "hidden_dim": result.config.hidden_dim,
-                "num_heads": result.config.num_heads,
-                "num_layers": result.config.num_layers,
-                "use_shared_core": result.config.use_shared_core,
-                "value_loss_weight": result.config.value_loss_weight,
+                "embedding_dim": config.embedding_dim,
+                "hidden_dim": config.hidden_dim,
+                "num_heads": config.num_heads,
+                "num_layers": config.num_layers,
+                "use_shared_core": config.use_shared_core,
+                "value_loss_weight": config.value_loss_weight,
             },
-            "model_state_dict": result.model.state_dict(),
+            "model_state_dict": model.state_dict(),
         },
         path,
     )

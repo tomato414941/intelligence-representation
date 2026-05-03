@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import time
-from typing import Sequence
+from typing import Callable, Sequence
 
 import torch
 from torch import nn
@@ -84,11 +84,22 @@ class ShogiMoveChoiceTrainingResult:
     metrics: ShogiMoveChoiceTrainingMetrics
 
 
+@dataclass(frozen=True)
+class ShogiMoveChoiceTrainingProgress:
+    step: int
+    max_steps: int
+    loss: float
+    elapsed_seconds: float
+    model: nn.Module
+    config: ShogiMoveChoiceTrainingConfig
+
+
 def train_shogi_move_choice_model(
     examples: Sequence[ShogiMoveChoiceExample],
     *,
     eval_examples: Sequence[ShogiMoveChoiceExample] | None = None,
     config: ShogiMoveChoiceTrainingConfig | None = None,
+    progress_callback: Callable[[ShogiMoveChoiceTrainingProgress], None] | None = None,
 ) -> ShogiMoveChoiceTrainingResult:
     training_config = config or ShogiMoveChoiceTrainingConfig()
     if training_config.max_steps <= 0:
@@ -153,6 +164,17 @@ def train_shogi_move_choice_model(
             loss.backward()
             optimizer.step()
             step += 1
+            if progress_callback is not None:
+                progress_callback(
+                    ShogiMoveChoiceTrainingProgress(
+                        step=step,
+                        max_steps=training_config.max_steps,
+                        loss=float(loss.detach().cpu().item()),
+                        elapsed_seconds=time.monotonic() - started,
+                        model=model,
+                        config=training_config,
+                    )
+                )
             if training_config.log_every is not None and step % training_config.log_every == 0:
                 _log_training_progress(step, training_config.max_steps, started, loss, device)
             if step >= training_config.max_steps:

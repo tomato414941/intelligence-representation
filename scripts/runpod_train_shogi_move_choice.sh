@@ -21,6 +21,9 @@ LEARNING_RATE=${LEARNING_RATE:-0.0005}
 VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-0.0}
 MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-4096}
 MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-4096}
+CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-1000}
+METRICS_EVERY=${METRICS_EVERY:-1000}
+KEEP_LAST_N_CHECKPOINTS=${KEEP_LAST_N_CHECKPOINTS:-3}
 EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
@@ -76,7 +79,7 @@ for name in ('$TRAIN_CACHE_ZST', '$EVAL_CACHE_ZST'):
         zstd.ZstdDecompressor().copy_stream(f, out)
     print(f'decompressed_bytes={dst.stat().st_size}', flush=True)
 PY
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS\"
 .venv/bin/python -u -m intrep.train_shogi_move_choice \
   --train-examples-jsonl \"${TRAIN_CACHE_ZST%.zst}\" \
   --eval-examples-jsonl \"${EVAL_CACHE_ZST%.zst}\" \
@@ -96,5 +99,8 @@ echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEA
   --num-workers \"$NUM_WORKERS\" \
   --pin-memory \
   --max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\" \
-  --max-eval-examples \"$MAX_EVAL_EXAMPLES\"" \
+  --max-eval-examples \"$MAX_EVAL_EXAMPLES\" \
+  --checkpoint-every \"$CHECKPOINT_EVERY\" \
+  --metrics-every \"$METRICS_EVERY\" \
+  --keep-last-n-checkpoints \"$KEEP_LAST_N_CHECKPOINTS\"" \
   "$@"

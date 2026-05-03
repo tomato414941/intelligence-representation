@@ -69,6 +69,54 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertEqual(metrics["used_eval_case_count"], 2)
             self.assertEqual(metrics["metrics"]["eval_case_count"], 2)
 
+    def test_writes_periodic_checkpoints_and_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            checkpoint_path = root / "shogi.pt"
+            metrics_path = root / "metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [ShogiGameRecord(("7g7f", "3c3d"), "w")])
+
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_move_choice",
+                    "--train-games-jsonl",
+                    str(train_games_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--max-steps",
+                    "3",
+                    "--batch-size",
+                    "2",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                    "--checkpoint-every",
+                    "1",
+                    "--metrics-every",
+                    "2",
+                    "--keep-last-n-checkpoints",
+                    "2",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            self.assertFalse((root / "checkpoint_step_1.pt").exists())
+            self.assertTrue((root / "checkpoint_step_2.pt").exists())
+            self.assertTrue((root / "checkpoint_step_3.pt").exists())
+            step_metrics_path = root / "metrics_step_2.json"
+            self.assertTrue(step_metrics_path.exists())
+            step_metrics = json.loads(step_metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(step_metrics["step"], 2)
+            self.assertEqual(step_metrics["max_steps"], 3)
+            self.assertIn("loss", step_metrics)
+
 
 if __name__ == "__main__":
     unittest.main()

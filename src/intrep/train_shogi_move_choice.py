@@ -10,8 +10,15 @@ from intrep.shogi_move_choice import (
     load_shogi_move_choice_examples_jsonl,
     write_shogi_move_choice_examples_jsonl,
 )
-from intrep.shogi_move_choice_checkpoint import save_shogi_move_choice_checkpoint
-from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
+from intrep.shogi_move_choice_checkpoint import (
+    save_shogi_move_choice_checkpoint,
+    save_shogi_move_choice_model_checkpoint,
+)
+from intrep.shogi_move_choice_training import (
+    ShogiMoveChoiceTrainingConfig,
+    ShogiMoveChoiceTrainingProgress,
+    train_shogi_move_choice_model,
+)
 
 
 def main() -> None:
@@ -39,6 +46,9 @@ def main() -> None:
     parser.add_argument("--log-every", type=int)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--checkpoint-every", type=int)
+    parser.add_argument("--metrics-every", type=int)
+    parser.add_argument("--keep-last-n-checkpoints", type=int)
     args = parser.parse_args()
 
     train_examples = _load_examples(args.train_examples_jsonl, args.train_games_jsonl)
@@ -68,7 +78,13 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
     )
-    result = train_shogi_move_choice_model(train_examples, eval_examples=eval_examples, config=config)
+    progress_writer = _ProgressArtifactWriter(args)
+    result = train_shogi_move_choice_model(
+        train_examples,
+        eval_examples=eval_examples,
+        config=config,
+        progress_callback=progress_writer.write,
+    )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     save_shogi_move_choice_checkpoint(args.checkpoint_path, result)
     metrics = {
@@ -90,6 +106,54 @@ def _load_examples(examples_jsonl: Path | None, games_jsonl: Path | None):
     if games_jsonl is not None:
         return load_shogi_move_choice_examples_from_game_records_jsonl(games_jsonl)
     raise ValueError("either examples jsonl or games jsonl must be provided")
+
+
+class _ProgressArtifactWriter:
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.checkpoint_every = args.checkpoint_every
+        self.metrics_every = args.metrics_every
+        self.keep_last_n_checkpoints = args.keep_last_n_checkpoints
+        self.checkpoint_dir = args.checkpoint_path.parent
+        self.metrics_dir = args.metrics_path.parent
+        self.saved_checkpoints: list[Path] = []
+        if self.checkpoint_every is not None and self.checkpoint_every <= 0:
+            raise ValueError("checkpoint_every must be positive")
+        if self.metrics_every is not None and self.metrics_every <= 0:
+            raise ValueError("metrics_every must be positive")
+        if self.keep_last_n_checkpoints is not None and self.keep_last_n_checkpoints <= 0:
+            raise ValueError("keep_last_n_checkpoints must be positive")
+
+    def write(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+        if self.checkpoint_every is not None and progress.step % self.checkpoint_every == 0:
+            self._write_checkpoint(progress)
+        if self.metrics_every is not None and progress.step % self.metrics_every == 0:
+            self._write_metrics(progress)
+
+    def _write_checkpoint(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        path = self.checkpoint_dir / f"checkpoint_step_{progress.step}.pt"
+        save_shogi_move_choice_model_checkpoint(path, progress.model, progress.config)
+        self.saved_checkpoints.append(path)
+        self._prune_checkpoints()
+
+    def _write_metrics(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+        self.metrics_dir.mkdir(parents=True, exist_ok=True)
+        path = self.metrics_dir / f"metrics_step_{progress.step}.json"
+        payload = {
+            "step": progress.step,
+            "max_steps": progress.max_steps,
+            "loss": progress.loss,
+            "elapsed_seconds": progress.elapsed_seconds,
+            "config": asdict(progress.config),
+        }
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    def _prune_checkpoints(self) -> None:
+        if self.keep_last_n_checkpoints is None:
+            return
+        while len(self.saved_checkpoints) > self.keep_last_n_checkpoints:
+            path = self.saved_checkpoints.pop(0)
+            path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
