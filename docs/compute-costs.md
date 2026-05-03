@@ -32,7 +32,7 @@ container disk, trained, and the output directory is synced back.
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
 | 2026-05-03 | policy-only full-cache smoke | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 50 | 512 | 2m25s total, 7.2s training | about $0.03 | Passed. Full-cache sync/decompress/load, CUDA forward/backward, DataLoader settings, checkpoint, metrics, and output sync worked. Training throughput was 6.94 steps/s and CUDA max memory was about 8.1 GB. |
-| 2026-05-03 | policy-only full-cache baseline | planned | RunPod RTX 4090, assume $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 2000 | 512 | about 7-10 minutes | about $0.08-$0.12, guarded at about $0.35 | First comparison-quality full-cache policy-only baseline. Uses the measured smoke throughput to test whether eval accuracy, top-k, and MRR continue improving beyond the smoke run. |
+| 2026-05-03 | policy-only full-cache baseline | failed | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | target 2000, reached 350 | 512 | 3m50s total before failure | about $0.04 | Setup, sync, decompression, and training startup worked. Training reached 350/2000 steps at about 7.8 steps/s and 8.1 GB CUDA max memory, then SSH timed out with the pod not responding. No metrics or checkpoint were synced. |
 
 Current recipe:
 
@@ -68,5 +68,7 @@ OUTPUT_DIR=runs/shogi/runpod-qhapaq-split-d256-h1024-l6-policy-only-steps2000 \
 scripts/runpod_train_shogi_move_choice.sh
 ```
 
-The baseline estimate should be replaced by measured runtime and cost after the
-run completes.
+The first baseline attempt failed before metrics were written. The next attempt
+should keep the same model target but reduce operational risk, for example by
+using `--keep-pod-on-failure` while debugging or by choosing a pod/location with
+stable SSH during the full remote command.
