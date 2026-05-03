@@ -87,4 +87,5 @@ echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEA
   --num-workers \"$NUM_WORKERS\" \
   --pin-memory \
   --max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\" \
-  --max-eval-examples \"$MAX_EVAL_EXAMPLES\""
+  --max-eval-examples \"$MAX_EVAL_EXAMPLES\"" \
+  "$@"
