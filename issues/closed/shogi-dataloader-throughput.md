@@ -1,6 +1,7 @@
 # Shogi DataLoader Throughput
 
-Status: resolved for the current KISS throughput path.
+Status: closed.
+Resolution: resolved for the current KISS throughput path.
 
 ## Issue
 
