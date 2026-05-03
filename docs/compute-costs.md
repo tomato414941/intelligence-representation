@@ -32,7 +32,6 @@ container disk, trained, and the output directory is synced back.
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
 | 2026-05-03 | policy-only full-cache smoke | planned | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 50 | 512 | about 10-20 minutes | about $0.12-$0.25, guarded at about $0.35 | Verifies full-cache sync/decompress/load, CUDA forward/backward, DataLoader settings, checkpoint, metrics, and output sync before a longer baseline. |
-| 2026-05-02 | policy-only short baseline | deferred | RunPod RTX 4090, assume about $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq shogi move-choice train/eval cache | 300 | 512 | about 15-30 minutes | about $0.20-$0.35 | Run after the 50-step smoke if throughput and memory look normal. |
 
 Current recipe:
 
