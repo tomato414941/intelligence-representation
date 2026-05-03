@@ -12,7 +12,11 @@ OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-split-b512-steps5000}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
-NUM_WORKERS=${NUM_WORKERS:-4}
+# Keep worker count at zero for the current JSONL/Python-object cache. Worker
+# processes gradually private-copy the large example list and can make 46 GB
+# pods unresponsive during longer full-cache runs. Revisit after a tensorized or
+# binary cache exists.
+NUM_WORKERS=${NUM_WORKERS:-0}
 LEARNING_RATE=${LEARNING_RATE:-0.0005}
 VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-0.0}
 MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-4096}
@@ -21,6 +25,9 @@ EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
 NUM_LAYERS=${NUM_LAYERS:-6}
+# Optional RunPod data-center pin. EU-RO-1 has completed the 2000-step
+# full-cache baseline; a US-CA-2 host failed with SSH timeout and CUDA init
+# errors during the same workstream.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
 if [[ ! -f "$TRAIN_CACHE_ZST" ]]; then
