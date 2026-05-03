@@ -12,6 +12,8 @@ This is separate from raw DataLoader throughput. The immediate throughput
 control path is covered by
 [`closed/shogi-dataloader-throughput.md`](closed/shogi-dataloader-throughput.md).
 This issue tracks memory stability and cache format.
+RunPod region stability is tracked separately in
+[`runpod-region-stability.md`](runpod-region-stability.md).
 
 ## Evidence
 
@@ -35,7 +37,7 @@ The RunPod shogi training script defaults to:
 | Setting | Default | Reason |
 | --- | --- | --- |
 | `NUM_WORKERS` | `0` | Avoid private-copy RAM growth from DataLoader workers. |
-| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default; use `EU-RO-1` for longer baselines because it has a successful full-cache run. |
+| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default; see [`runpod-region-stability.md`](runpod-region-stability.md) before longer baselines. |
 
 For longer full-cache RunPod baselines, prefer:
 
