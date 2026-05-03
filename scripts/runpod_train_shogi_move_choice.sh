@@ -21,6 +21,7 @@ EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
 NUM_LAYERS=${NUM_LAYERS:-6}
+DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
 if [[ ! -f "$TRAIN_CACHE_ZST" ]]; then
   echo "compressed train cache not found: $TRAIN_CACHE_ZST" >&2
@@ -45,6 +46,7 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --remote-dir /root/intrep \
   --mem 32 \
   --vcpu 8 \
+  ${DATA_CENTER_IDS:+--data-center-ids "$DATA_CENTER_IDS"} \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 600 \
   --ssh-wait-seconds 180 \
