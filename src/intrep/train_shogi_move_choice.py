@@ -77,6 +77,7 @@ def main() -> None:
         log_every=args.log_every,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
+        progress_every=_progress_every(args.checkpoint_every, args.metrics_every),
     )
     # Periodic artifacts keep long disposable-pod runs from losing all progress
     # when the process ends before final checkpoint and metrics are written.
@@ -108,6 +109,11 @@ def _load_examples(examples_jsonl: Path | None, games_jsonl: Path | None):
     if games_jsonl is not None:
         return load_shogi_move_choice_examples_from_game_records_jsonl(games_jsonl)
     raise ValueError("either examples jsonl or games jsonl must be provided")
+
+
+def _progress_every(*values: int | None) -> int | None:
+    intervals = [value for value in values if value is not None]
+    return min(intervals) if intervals else None
 
 
 class _ProgressArtifactWriter:

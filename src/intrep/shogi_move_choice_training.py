@@ -38,6 +38,7 @@ class ShogiMoveChoiceTrainingConfig:
     log_every: int | None = None
     num_workers: int = 0
     pin_memory: bool = False
+    progress_every: int | None = None
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,8 @@ def train_shogi_move_choice_model(
         raise ValueError("max_steps must be positive")
     if training_config.log_every is not None and training_config.log_every <= 0:
         raise ValueError("log_every must be positive")
+    if training_config.progress_every is not None and training_config.progress_every <= 0:
+        raise ValueError("progress_every must be positive")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
     torch.manual_seed(training_config.seed)
@@ -164,7 +167,11 @@ def train_shogi_move_choice_model(
             loss.backward()
             optimizer.step()
             step += 1
-            if progress_callback is not None:
+            if (
+                progress_callback is not None
+                and training_config.progress_every is not None
+                and step % training_config.progress_every == 0
+            ):
                 progress_callback(
                     ShogiMoveChoiceTrainingProgress(
                         step=step,

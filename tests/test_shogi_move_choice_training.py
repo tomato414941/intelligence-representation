@@ -134,6 +134,43 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
                 ),
             )
 
+    def test_progress_callback_runs_only_on_progress_interval(self) -> None:
+        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        reported_steps: list[int] = []
+
+        train_shogi_move_choice_model(
+            examples,
+            config=ShogiMoveChoiceTrainingConfig(
+                max_steps=3,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                progress_every=2,
+            ),
+            progress_callback=lambda progress: reported_steps.append(progress.step),
+        )
+
+        self.assertEqual(reported_steps, [2])
+
+    def test_progress_callback_is_not_called_without_progress_interval(self) -> None:
+        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        reported_steps: list[int] = []
+
+        train_shogi_move_choice_model(
+            examples,
+            config=ShogiMoveChoiceTrainingConfig(
+                max_steps=3,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            ),
+            progress_callback=lambda progress: reported_steps.append(progress.step),
+        )
+
+        self.assertEqual(reported_steps, [])
+
     def test_trains_value_head_when_targets_are_available(self) -> None:
         base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         examples = tuple(
