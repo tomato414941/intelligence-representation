@@ -5,9 +5,9 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.image_text_choice_examples import load_image_text_choice_examples_jsonl
-from intrep.image_text_choice_checkpoint import save_image_text_choice_checkpoint
-from intrep.image_text_choice_training import (
+from intrep.tasks.image_text_choice.examples import load_image_text_choice_examples_jsonl
+from intrep.tasks.image_text_choice.checkpoint import save_image_text_choice_checkpoint
+from intrep.tasks.image_text_choice.training import (
     ImageTextChoiceTrainingConfig,
     train_image_text_choice_model,
 )

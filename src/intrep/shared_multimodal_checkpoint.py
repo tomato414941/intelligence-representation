@@ -6,8 +6,8 @@ from pathlib import Path
 import torch
 
 from intrep.image_classification_checkpoint import load_image_classification_checkpoint
-from intrep.image_text_answer_checkpoint import load_image_text_answer_checkpoint
-from intrep.image_text_choice_checkpoint import load_image_text_choice_checkpoint
+from intrep.tasks.image_text_answer.checkpoint import load_image_text_answer_checkpoint
+from intrep.tasks.image_text_choice.checkpoint import load_image_text_choice_checkpoint
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.text_tokenizer import TextTokenizer
 

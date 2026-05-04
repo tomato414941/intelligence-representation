@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.image_text_answer_training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
+from intrep.tasks.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
 from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel

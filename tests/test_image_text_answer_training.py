@@ -5,11 +5,11 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.image_text_answer_checkpoint import (
+from intrep.tasks.image_text_answer.checkpoint import (
     load_image_text_answer_checkpoint,
     save_image_text_answer_checkpoint,
 )
-from intrep.image_text_answer_training import (
+from intrep.tasks.image_text_answer.training import (
     ImageTextAnswerDataset,
     ImageTextAnswerExample,
     ImageTextAnswerTrainingConfig,
