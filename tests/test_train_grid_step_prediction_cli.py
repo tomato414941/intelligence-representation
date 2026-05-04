@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_grid_step_prediction
-from intrep.grid_world_checkpoint import load_grid_core_checkpoint
+from intrep.grid.checkpoint import load_grid_core_checkpoint
 
 
 class TrainGridStepPredictionCLITest(unittest.TestCase):

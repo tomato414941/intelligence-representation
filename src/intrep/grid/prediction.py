@@ -7,12 +7,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from intrep.grid_world import (
+from intrep.grid.world import (
     GRID_ACTIONS,
     GridExperienceTransition,
 )
-from intrep.grid_world_layers import GridObservationInputLayer
-from intrep.grid_world_training_data import GridStepPredictionDataset
+from intrep.grid.layers import GridObservationInputLayer
+from intrep.grid.training_data import GridStepPredictionDataset
 from intrep.vision.training_data import seeded_data_loader
 from intrep.text.language_modeling_training import resolve_training_device
 from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients

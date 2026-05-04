@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from intrep.grid_world import GridExperienceTransition, GridObservation
+from intrep.grid.world import GridExperienceTransition, GridObservation
 from intrep.text.examples import LanguageModelingExample
 
 
+# TODO: Revisit whether grid-to-text adapters belong in grid or a task-specific text package.
 def grid_observation_to_text(observation: GridObservation) -> str:
     return "\n".join(observation.grid)
 

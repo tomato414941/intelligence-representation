@@ -1,6 +1,6 @@
 import unittest
 
-from intrep.grid_world import (
+from intrep.grid.world import (
     GridAction,
     GridExperienceTransition,
     GridWorld,
@@ -11,13 +11,13 @@ from intrep.grid_world import (
     observation_from_state,
     transition_state,
 )
-from intrep.grid_world_encoding import (
+from intrep.grid.encoding import (
     grid_action_from_id,
     grid_action_to_id,
     grid_observation_to_tensor,
     grid_position_to_cell_id,
 )
-from intrep.grid_world_text import (
+from intrep.grid.text import (
     grid_experience_transition_to_text,
     language_modeling_examples_from_grid_experience,
 )

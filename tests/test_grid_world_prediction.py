@@ -2,13 +2,13 @@ import unittest
 
 import torch
 
-from intrep.grid_world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
-from intrep.grid_world_prediction import (
+from intrep.grid.world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
+from intrep.grid.prediction import (
     GridStepPredictionConfig,
     GridStepPredictor,
     train_grid_step_predictor,
 )
-from intrep.grid_world_training_data import GridStepPredictionDataset
+from intrep.grid.training_data import GridStepPredictionDataset
 from intrep.transformer_core import SharedTransformerCore
 
 
