@@ -8,13 +8,13 @@ import torch
 from intrep.tasks.image_text_choice.training import ImageTextChoiceTrainingConfig, ImageTextChoiceTrainingResult
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
 
 @dataclass(frozen=True)
 class ImageTextChoiceCheckpoint:
-    model: SharedMultimodalModel
+    model: ImageTextChoiceModel
     tokenizer: TextTokenizer
     config: ImageTextChoiceTrainingConfig
     image_shape: tuple[int, ...]
@@ -56,7 +56,7 @@ def load_image_text_choice_checkpoint(
     config = ImageTextChoiceTrainingConfig(**config_payload)
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
     preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageTextChoiceModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=config.text_context_length,
         image_size=(image_shape[0], image_shape[1]),

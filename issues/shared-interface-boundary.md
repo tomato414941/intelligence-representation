@@ -23,6 +23,12 @@ just image and text.
 - External adapters: concrete input or state formats to embedding sequences.
 - Task heads: hidden sequences to task-specific outputs.
 - Tasks: compose adapters, shared core, and task heads.
+- Task models: `tasks/<task>/model.py` wraps the interfaces, shared core, and
+  prediction head for one concrete task.
+
+`shared_multimodal_model.py` is a temporary multi-task model shell. New
+task-specific model entry points should live under `tasks/<task>/model.py`
+instead of adding more public routes to that shell.
 
 ## Acceptance Criteria
 

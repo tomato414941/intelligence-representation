@@ -18,7 +18,7 @@ from intrep.tasks.image_text_answer.training import (
     load_image_text_answer_examples_jsonl,
     train_image_text_answer_model,
 )
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.tasks.image_text_answer.model import ImageTextAnswerModel
 
 
 class ImageTextAnswerTrainingTest(unittest.TestCase):
@@ -63,7 +63,7 @@ class ImageTextAnswerTrainingTest(unittest.TestCase):
                 max_new_tokens=2,
             )
 
-        self.assertIsInstance(result.model, SharedMultimodalModel)
+        self.assertIsInstance(result.model, ImageTextAnswerModel)
         self.assertEqual(result.metrics.train_case_count, 2)
         self.assertGreater(result.metrics.train_initial_loss, 0.0)
         self.assertGreater(result.metrics.train_final_loss, 0.0)

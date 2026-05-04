@@ -16,6 +16,7 @@ from intrep.tasks.image_text_choice.training import (
     evaluate_image_text_choice_model,
     train_image_text_choice_model,
 )
+from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
 from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
@@ -57,7 +58,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
                 prompt="What is this item?",
             )
 
-        self.assertIsInstance(result.model, SharedMultimodalModel)
+        self.assertIsInstance(result.model, ImageTextChoiceModel)
         self.assertEqual(result.metrics.train_case_count, 2)
         self.assertEqual(result.metrics.max_steps, 2)
         self.assertGreater(result.metrics.train_initial_loss, 0.0)

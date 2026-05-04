@@ -16,8 +16,8 @@ from intrep.vision.training_data import (
 )
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.core.shared_state_loading import load_compatible_shared_state
+from intrep.tasks.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.text.token_scoring import next_token_loss
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
@@ -65,7 +65,7 @@ class ImageTextAnswerMetrics:
 @dataclass(frozen=True)
 class ImageTextAnswerTrainingResult:
     metrics: ImageTextAnswerMetrics
-    model: SharedMultimodalModel
+    model: ImageTextAnswerModel
     tokenizer: TextTokenizer
     config: ImageTextAnswerTrainingConfig
     image_shape: tuple[int, ...]
@@ -143,7 +143,7 @@ def train_image_text_answer_model(
         device=device,
     )
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageTextAnswerModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=training_config.text_context_length,
         image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
@@ -276,7 +276,7 @@ def image_text_answer_example_to_record(example: ImageTextAnswerExample) -> dict
 
 def generate_image_text_answer(
     *,
-    model: SharedMultimodalModel,
+    model: ImageTextAnswerModel,
     tokenizer: TextTokenizer,
     image: torch.Tensor,
     prompt: str,
@@ -297,7 +297,7 @@ def generate_image_text_answer(
             if text_ids.size(1) > model.text_context_length:
                 break
             with torch.no_grad():
-                logits = model.image_text_token_logits(image_batch, text_ids)
+                logits = model.token_logits(image_batch, text_ids)
             next_token_id = int(logits[0, -1].argmax().item())
             token_ids.append(next_token_id)
         return tokenizer.decode(token_ids)[len(prompt):]
@@ -331,7 +331,7 @@ def _prompt_answer_token_tensors(
 
 
 def _loss(
-    model: SharedMultimodalModel,
+    model: ImageTextAnswerModel,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
     device: torch.device,
 ) -> float:
@@ -356,12 +356,12 @@ def _loss(
 
 
 def _loss_tensor(
-    model: SharedMultimodalModel,
+    model: ImageTextAnswerModel,
     images: torch.Tensor,
     text_token_ids: torch.Tensor,
     loss_mask: torch.Tensor,
 ) -> torch.Tensor:
-    logits = model.image_text_token_logits(images, text_token_ids)
+    logits = model.token_logits(images, text_token_ids)
     image_token_count = logits.size(1) - text_token_ids.size(1)
     targets = torch.zeros((text_token_ids.size(0), logits.size(1)), dtype=torch.long, device=text_token_ids.device)
     targets[:, image_token_count:] = text_token_ids

@@ -8,13 +8,13 @@ import torch
 from intrep.tasks.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.tasks.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
 
 @dataclass(frozen=True)
 class ImageTextAnswerCheckpoint:
-    model: SharedMultimodalModel
+    model: ImageTextAnswerModel
     tokenizer: TextTokenizer
     config: ImageTextAnswerTrainingConfig
     image_shape: tuple[int, ...]
@@ -56,7 +56,7 @@ def load_image_text_answer_checkpoint(
     config = ImageTextAnswerTrainingConfig(**config_payload)
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
     preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageTextAnswerModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=config.text_context_length,
         image_size=(image_shape[0], image_shape[1]),

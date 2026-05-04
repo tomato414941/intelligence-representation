@@ -18,8 +18,8 @@ from intrep.text.language_modeling_training import (
     resolve_training_device,
 )
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.core.shared_state_loading import load_compatible_shared_state
+from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
@@ -58,7 +58,7 @@ class ImageTextChoiceMetrics:
 @dataclass(frozen=True)
 class ImageTextChoiceTrainingResult:
     metrics: ImageTextChoiceMetrics
-    model: SharedMultimodalModel
+    model: ImageTextChoiceModel
     tokenizer: TextTokenizer
     config: ImageTextChoiceTrainingConfig
     image_shape: tuple[int, ...]
@@ -171,7 +171,7 @@ def train_image_text_choice_model(
             device=device,
         )
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageTextChoiceModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=training_config.text_context_length,
         image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
@@ -235,7 +235,7 @@ def train_image_text_choice_model(
             image_step = step if text_iterator is None else step // 2
             batch_prompt_token_ids = prompt_token_options[image_step % len(prompt_token_options)]
             loss = loss_fn(
-                model.image_text_choice_logits(
+                model.choice_logits(
                     batch_images.to(device),
                     batch_prompt_token_ids,
                     choice_token_ids,
@@ -301,7 +301,7 @@ def train_image_text_choice_model(
 
 def evaluate_image_text_choice_model(
     *,
-    model: SharedMultimodalModel,
+    model: ImageTextChoiceModel,
     tokenizer: TextTokenizer,
     examples: list[ImageTextChoiceExample],
     prompt: str = "",
@@ -359,7 +359,7 @@ def _validate_prompt_choice_lengths(
 
 
 def _text_batch_loss(
-    model: SharedMultimodalModel,
+    model: ImageTextChoiceModel,
     loss_fn: nn.CrossEntropyLoss,
     inputs: torch.Tensor,
     targets: torch.Tensor,
@@ -369,7 +369,7 @@ def _text_batch_loss(
 
 
 def _text_loss(
-    model: SharedMultimodalModel,
+    model: ImageTextChoiceModel,
     loss_fn: nn.CrossEntropyLoss,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
@@ -389,7 +389,7 @@ def _text_loss(
 
 
 def _loss(
-    model: SharedMultimodalModel,
+    model: ImageTextChoiceModel,
     loss_fn: nn.CrossEntropyLoss,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
@@ -406,7 +406,7 @@ def _loss(
             images = images.to(device)
             labels = labels.to(device)
             loss = loss_fn(
-                model.image_text_choice_logits(
+                model.choice_logits(
                     images,
                     prompt_token_ids,
                     choice_token_ids,
@@ -422,7 +422,7 @@ def _loss(
 
 
 def _accuracy(
-    model: SharedMultimodalModel,
+    model: ImageTextChoiceModel,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
     prompt_token_ids: torch.Tensor,
@@ -437,7 +437,7 @@ def _accuracy(
         for images, labels in data_loader:
             images = images.to(device)
             labels = labels.to(device)
-            predictions = model.image_text_choice_logits(
+            predictions = model.choice_logits(
                 images,
                 prompt_token_ids,
                 choice_token_ids,
