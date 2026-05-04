@@ -4,9 +4,9 @@ from pathlib import Path
 
 import torch
 
-from intrep.shogi_move_choice import ShogiMoveChoiceDataset, shogi_move_choice_examples_from_usi_moves
-from intrep.shogi_move_choice_checkpoint import load_shogi_move_choice_checkpoint, save_shogi_move_choice_checkpoint
-from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
+from intrep.shogi.move_choice import ShogiMoveChoiceDataset, shogi_move_choice_examples_from_usi_moves
+from intrep.shogi.move_choice_checkpoint import load_shogi_move_choice_checkpoint, save_shogi_move_choice_checkpoint
+from intrep.shogi.move_choice_training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
 
 
 class ShogiMoveChoiceCheckpointTest(unittest.TestCase):

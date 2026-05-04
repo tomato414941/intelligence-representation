@@ -6,7 +6,7 @@ import shogi
 import torch
 from torch.utils.data import DataLoader
 
-from intrep.shogi_move_choice import (
+from intrep.shogi.move_choice import (
     ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
     load_shogi_move_choice_examples_jsonl,
@@ -15,8 +15,8 @@ from intrep.shogi_move_choice import (
     shogi_move_choice_examples_from_usi_moves_with_winner,
     write_shogi_move_choice_examples_jsonl,
 )
-from intrep.shogi_move_encoding import SHOGI_MOVE_FEATURE_COUNT
-from intrep.shogi_position_encoding import SHOGI_POSITION_TOKEN_COUNT
+from intrep.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
+from intrep.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
 class ShogiMoveChoiceExampleTest(unittest.TestCase):

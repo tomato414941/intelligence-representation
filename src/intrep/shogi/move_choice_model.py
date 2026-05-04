@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from intrep.shogi_move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
-from intrep.shogi_position_encoding import SHOGI_POSITION_TOKEN_COUNT, SHOGI_POSITION_VOCAB_SIZE
+from intrep.shogi.move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
+from intrep.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT, SHOGI_POSITION_VOCAB_SIZE
 from intrep.transformer_core import SharedTransformerCore
 
 

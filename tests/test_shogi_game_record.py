@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.shogi_game_record import (
+from intrep.shogi.game_record import (
     PlayerSpec,
     ShogiGameRecord,
     convert_kif_files_to_usi_file,

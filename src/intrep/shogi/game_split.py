@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.shogi_game_record import iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.shogi.game_record import iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 
 def main() -> None:

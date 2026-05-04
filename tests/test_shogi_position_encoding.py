@@ -3,7 +3,7 @@ import unittest
 import shogi
 import torch
 
-from intrep.shogi_position_encoding import (
+from intrep.shogi.position_encoding import (
     SHOGI_POSITION_TOKEN_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,

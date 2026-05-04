@@ -9,7 +9,7 @@ from typing import Iterator, Sequence
 
 import shogi.KIF
 
-from intrep.shogi_move_choice import (
+from intrep.shogi.move_choice import (
     ShogiMoveChoiceExample,
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,

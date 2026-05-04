@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.shogi_game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
-from intrep.split_shogi_game_records import split_shogi_game_records_jsonl
+from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.shogi.game_split import split_shogi_game_records_jsonl
 
 
 BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})

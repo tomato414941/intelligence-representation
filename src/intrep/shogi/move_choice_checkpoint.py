@@ -5,10 +5,10 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingResult
+from intrep.shogi.move_choice_training import ShogiMoveChoiceTrainingResult
 
 
-SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA = "intrep.shogi_move_choice_checkpoint.v1"
+SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA = "intrep.shogi.move_choice_checkpoint.v1"
 
 
 def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceTrainingResult) -> None:
@@ -38,7 +38,7 @@ def load_shogi_move_choice_checkpoint(path: str | Path, *, device: str = "cpu") 
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi move choice checkpoint schema")
-    from intrep.shogi_move_choice_training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
+    from intrep.shogi.move_choice_training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
 
     config_payload = payload["config"]
     model = build_shogi_move_choice_model(

@@ -8,9 +8,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from intrep.shogi_game_record import load_shogi_move_choice_examples_from_usi_file
-from intrep.shogi_move_choice import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
-from intrep.shogi_move_choice_model import (
+from intrep.shogi.game_record import load_shogi_move_choice_examples_from_usi_file
+from intrep.shogi.move_choice import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
+from intrep.shogi.move_choice_model import (
     SharedCoreShogiMoveChoiceModel,
     SharedCoreShogiMoveChoiceModelConfig,
     ShogiMoveChoiceModel,
