@@ -157,18 +157,23 @@ def train_shogi_move_choice_model(
             value_targets = value_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
             value_mask = torch.isfinite(value_targets)
-            if training_config.value_loss_weight > 0.0 and value_mask.any():
+            if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
+                value_predictions = model.predict_value(position_token_ids)
+                loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
+            elif training_config.value_loss_weight > 0.0 and value_mask.any():
                 logits, value_predictions = _forward_policy_value(
                     model,
                     position_token_ids,
                     candidate_move_features,
                     candidate_mask,
                 )
+                policy_loss = torch.nn.functional.cross_entropy(logits, labels)
+                loss = training_config.policy_loss_weight * policy_loss
             else:
                 logits = model(position_token_ids, candidate_move_features, candidate_mask)
                 value_predictions = None
-            policy_loss = torch.nn.functional.cross_entropy(logits, labels)
-            loss = training_config.policy_loss_weight * policy_loss
+                policy_loss = torch.nn.functional.cross_entropy(logits, labels)
+                loss = training_config.policy_loss_weight * policy_loss
             if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 loss = loss + training_config.value_loss_weight * value_loss

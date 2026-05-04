@@ -1,6 +1,9 @@
 import unittest
+from unittest.mock import Mock
 
 from intrep.shogi_move_choice import ShogiMoveChoiceExample, shogi_move_choice_examples_from_usi_moves
+from intrep.shogi_move_choice_model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
+import intrep.shogi_move_choice_training as training
 from intrep.shogi_move_choice_training import (
     ShogiMoveChoiceTrainingConfig,
     train_shogi_move_choice_model,
@@ -286,6 +289,43 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertIsNotNone(result.metrics.initial_value_loss)
         self.assertIsNotNone(result.metrics.value_loss)
         self.assertLess(result.metrics.value_loss, result.metrics.initial_value_loss)
+
+    def test_value_only_training_step_skips_policy_forward(self) -> None:
+        base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = tuple(
+            ShogiMoveChoiceExample(
+                position_sfen=example.position_sfen,
+                legal_moves=example.legal_moves,
+                chosen_move=example.chosen_move,
+                value_target=1.0,
+            )
+            for example in base_examples
+        )
+        model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
+        model.forward_policy_value = Mock(wraps=model.forward_policy_value)
+        model.predict_value = Mock(wraps=model.predict_value)
+
+        original_build_model = training.build_shogi_move_choice_model
+        training.build_shogi_move_choice_model = lambda config: model
+        try:
+            train_shogi_move_choice_model(
+                examples,
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    batch_size=2,
+                    embedding_dim=8,
+                    hidden_dim=16,
+                    use_shared_core=False,
+                    policy_loss_weight=0.0,
+                    value_loss_weight=1.0,
+                    max_train_eval_examples=1,
+                ),
+            )
+        finally:
+            training.build_shogi_move_choice_model = original_build_model
+
+        self.assertGreaterEqual(model.predict_value.call_count, 1)
+        self.assertEqual(model.forward_policy_value.call_count, 2)
 
 
 if __name__ == "__main__":
