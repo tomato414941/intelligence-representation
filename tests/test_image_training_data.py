@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import torch
 from torch.utils.data import TensorDataset
 
-from intrep.image_training_data import (
+from intrep.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
     seeded_data_loader,

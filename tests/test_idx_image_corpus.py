@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.idx_image_corpus import (
+from intrep.vision.idx_corpus import (
     main,
     read_idx_images,
     read_idx_labels,
@@ -15,7 +15,7 @@ from intrep.idx_image_corpus import (
     write_idx_image_text_answer_jsonl,
     write_idx_image_text_choice_jsonl,
 )
-from intrep.image_io import read_portable_image
+from intrep.vision.io import read_portable_image
 
 
 class IDXImageCorpusTest(unittest.TestCase):

@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.causal_text_model import TokenOutputHead
-from intrep.image_input_layer import ImagePatchInputLayer
+from intrep.vision.input_layer import ImagePatchInputLayer
 from intrep.model_input import concatenate_input_embedding_sequences
 from intrep.transformer_core import SharedTransformerCore
 

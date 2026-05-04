@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 from PIL import Image
 
-from intrep import inspect_image_folder
+from intrep.vision import inspect_folder
 
 
 class InspectImageFolderCLITest(unittest.TestCase):
@@ -22,7 +22,7 @@ class InspectImageFolderCLITest(unittest.TestCase):
             Image.new("RGB", (2, 3), color=(0, 255, 0)).save(zebra_dir / "z.png")
 
             with redirect_stdout(output):
-                inspect_image_folder.main([str(root)])
+                inspect_folder.main([str(root)])
 
         text = output.getvalue()
         self.assertIn("intrep image folder", text)
@@ -41,7 +41,7 @@ class InspectImageFolderCLITest(unittest.TestCase):
             Image.new("RGB", (2, 3), color=(255, 0, 0)).save(class_dir / "a.png")
 
             with redirect_stdout(output):
-                inspect_image_folder.main([str(root), "--image-size", "4", "5"])
+                inspect_folder.main([str(root), "--image-size", "4", "5"])
 
         text = output.getvalue()
         self.assertIn("image_shape=(4, 5, 3)", text)

@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.image_classification import (
+from intrep.vision.classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationConfig,
     ImageClassificationExample,
@@ -15,7 +15,7 @@ from intrep.tasks.image_text_choice.examples import (
     ImageTextChoiceExample,
     image_text_choice_example_to_record,
 )
-from intrep.image_classification_checkpoint import save_image_classification_checkpoint
+from intrep.vision.classification_checkpoint import save_image_classification_checkpoint
 from intrep.tasks.image_text_answer.checkpoint import save_image_text_answer_checkpoint
 from intrep.tasks.image_text_answer.training import ImageTextAnswerExample, ImageTextAnswerTrainingConfig, train_image_text_answer_model
 from intrep.tasks.image_text_choice.checkpoint import load_image_text_choice_checkpoint

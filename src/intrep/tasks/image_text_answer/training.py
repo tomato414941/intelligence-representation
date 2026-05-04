@@ -8,8 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.image_io import read_portable_image
-from intrep.image_training_data import (
+from intrep.vision.io import read_portable_image
+from intrep.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
     seeded_data_loader,
