@@ -6,8 +6,8 @@ from typing import Any
 import torch
 from torch import nn
 
-from intrep.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 @dataclass(frozen=True)

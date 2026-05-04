@@ -5,7 +5,7 @@ import unittest
 import torch
 
 from intrep.text.causal_model import CausalTextModel, TokenOutputHead, build_causal_text_config
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 class CausalTextModelConfigTest(unittest.TestCase):

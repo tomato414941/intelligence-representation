@@ -18,7 +18,7 @@ from intrep.text.tokenizer import (
     build_text_tokenizer,
     text_tokenizer_to_payload,
 )
-from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
 logger = logging.getLogger(__name__)

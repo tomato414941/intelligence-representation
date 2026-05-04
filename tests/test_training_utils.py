@@ -3,7 +3,7 @@ import unittest
 import torch
 from torch import nn
 
-from intrep.training_utils import build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.training_utils import build_adamw, build_lr_scheduler, clip_gradients
 
 
 class TrainingUtilsTest(unittest.TestCase):

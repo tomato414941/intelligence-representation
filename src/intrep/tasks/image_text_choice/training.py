@@ -17,11 +17,11 @@ from intrep.text.language_modeling_training import (
     LanguageModelingTrainingDevice,
     resolve_training_device,
 )
-from intrep.model_presets import TRANSFORMER_CORE_PRESETS
+from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
-from intrep.shared_state_loading import load_compatible_shared_state
+from intrep.core.shared_state_loading import load_compatible_shared_state
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
-from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
 @dataclass(frozen=True)

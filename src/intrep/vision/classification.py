@@ -18,9 +18,9 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.model_presets import TRANSFORMER_CORE_PRESETS
+from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
-from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
 FASHION_MNIST_LABELS = (

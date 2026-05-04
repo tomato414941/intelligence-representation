@@ -5,8 +5,8 @@ from torch import nn
 
 from intrep.text.causal_model import TokenOutputHead
 from intrep.vision.input_layer import ImagePatchInputLayer
-from intrep.model_input import concatenate_input_embedding_sequences
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.model_input import concatenate_input_embedding_sequences
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 class ClassificationHead(nn.Module):

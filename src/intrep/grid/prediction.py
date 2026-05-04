@@ -15,8 +15,8 @@ from intrep.grid.layers import GridObservationInputLayer
 from intrep.grid.training_data import GridStepPredictionDataset
 from intrep.vision.training_data import seeded_data_loader
 from intrep.text.language_modeling_training import resolve_training_device
-from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 @dataclass(frozen=True)

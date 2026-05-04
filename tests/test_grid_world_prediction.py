@@ -9,7 +9,7 @@ from intrep.grid.prediction import (
     train_grid_step_predictor,
 )
 from intrep.grid.training_data import GridStepPredictionDataset
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 class GridWorldPredictionTest(unittest.TestCase):

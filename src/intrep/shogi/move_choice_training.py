@@ -15,7 +15,7 @@ from intrep.shogi.move_choice_model import (
     ShogiMoveChoiceModel,
     ShogiMoveChoiceModelConfig,
 )
-from intrep.training_utils import build_adamw
+from intrep.core.training_utils import build_adamw
 
 
 @dataclass(frozen=True)

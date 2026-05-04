@@ -23,7 +23,7 @@ from intrep.vision.classification import (
     train_image_classifier_with_result,
 )
 from intrep.shared_multimodal_model import SharedMultimodalModel
-from intrep.transformer_core import SharedTransformerCore
+from intrep.core.transformer_core import SharedTransformerCore
 
 
 class ImageClassificationTest(unittest.TestCase):
