@@ -9,7 +9,7 @@ from intrep.vision.classification import (
     ImageClassificationConfig,
     ImageClassificationTrainingResult,
 )
-from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
+from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
 

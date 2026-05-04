@@ -5,8 +5,8 @@ from pathlib import Path
 
 import torch
 
-from intrep.causal_text_model import CausalTextConfig, CausalTextModel
-from intrep.text_tokenizer import TextTokenizer, text_tokenizer_from_payload
+from intrep.text.causal_model import CausalTextConfig, CausalTextModel
+from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload
 
 
 def build_parser() -> argparse.ArgumentParser:

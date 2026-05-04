@@ -4,9 +4,9 @@ from pathlib import Path
 
 import torch
 
-from intrep.byte_tokenizer import ByteTokenizer
-from intrep.causal_text_model import CausalTextModel, CausalTextConfig
-from intrep.language_modeling_training import (
+from intrep.text.byte_tokenizer import ByteTokenizer
+from intrep.text.causal_model import CausalTextModel, CausalTextConfig
+from intrep.text.language_modeling_training import (
     LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,
     LanguageModelingTrainingConfig,
@@ -17,8 +17,8 @@ from intrep.language_modeling_training import (
 )
 from intrep.grid_world import generate_grid_world_experience
 from intrep.grid_world_text import language_modeling_examples_from_grid_experience
-from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import train_byte_pair_tokenizer
+from intrep.text.examples import LanguageModelingExample
+from intrep.text.tokenizer import train_byte_pair_tokenizer
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):
@@ -73,7 +73,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
             language_model_batches([1, 2, 3], context_length=1, batch_size=0)
 
     def test_language_model_batches_logs_window_summary(self) -> None:
-        with self.assertLogs("intrep.language_modeling_training", level="DEBUG") as logs:
+        with self.assertLogs("intrep.text.language_modeling_training", level="DEBUG") as logs:
             language_model_batches(list(range(20)), context_length=4, batch_size=3)
 
         self.assertIn("window_count=", logs.output[0])

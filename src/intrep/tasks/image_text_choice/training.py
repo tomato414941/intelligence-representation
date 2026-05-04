@@ -12,7 +12,7 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.language_modeling_training import (
+from intrep.text.language_modeling_training import (
     LanguageModelingDataset,
     LanguageModelingTrainingDevice,
     resolve_training_device,
@@ -20,7 +20,7 @@ from intrep.language_modeling_training import (
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.shared_state_loading import load_compatible_shared_state
-from intrep.text_tokenizer import TextTokenizer, build_text_tokenizer
+from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 
 from intrep.grid_world import GridExperienceTransition, GridObservation
-from intrep.text_examples import LanguageModelingExample
+from intrep.text.examples import LanguageModelingExample
 
 
 def grid_observation_to_text(observation: GridObservation) -> str:

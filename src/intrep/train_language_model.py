@@ -5,15 +5,15 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.causal_text_model import build_causal_text_config
-from intrep.language_modeling_metrics import language_modeling_metrics_from_training_result
-from intrep.language_modeling_training import (
+from intrep.text.causal_model import build_causal_text_config
+from intrep.text.language_modeling_metrics import language_modeling_metrics_from_training_result
+from intrep.text.language_modeling_training import (
     LanguageModelingTrainingConfig,
     train_language_modeling_with_artifacts,
 )
-from intrep.text_corpus import read_split_text_corpora
-from intrep.text_examples import LanguageModelingExample
-from intrep.text_tokenizer import (
+from intrep.text.corpus import read_split_text_corpora
+from intrep.text.examples import LanguageModelingExample
+from intrep.text.tokenizer import (
     TextTokenizerKind,
     build_text_tokenizer,
     load_text_tokenizer,

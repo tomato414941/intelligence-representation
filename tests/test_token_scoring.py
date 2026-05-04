@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from intrep.token_scoring import next_token_loss, next_token_losses
+from intrep.text.token_scoring import next_token_loss, next_token_losses
 
 
 class TokenScoringTest(unittest.TestCase):

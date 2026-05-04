@@ -9,10 +9,10 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.byte_tokenizer import ByteTokenizer
-from intrep.causal_text_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
-from intrep.text_examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.text_tokenizer import (
+from intrep.text.byte_tokenizer import ByteTokenizer
+from intrep.text.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
+from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
+from intrep.text.tokenizer import (
     TextTokenizer,
     TextTokenizerKind,
     build_text_tokenizer,

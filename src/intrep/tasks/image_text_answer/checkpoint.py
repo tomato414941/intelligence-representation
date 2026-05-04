@@ -6,10 +6,10 @@ from pathlib import Path
 import torch
 
 from intrep.tasks.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
-from intrep.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
+from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.shared_multimodal_model import SharedMultimodalModel
-from intrep.text_tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
+from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
 
 @dataclass(frozen=True)

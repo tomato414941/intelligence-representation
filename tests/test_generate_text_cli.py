@@ -6,10 +6,10 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.byte_tokenizer import ByteTokenizer
-from intrep.causal_text_model import CausalTextConfig, CausalTextModel
+from intrep.text.byte_tokenizer import ByteTokenizer
+from intrep.text.causal_model import CausalTextConfig, CausalTextModel
 from intrep.generate_text import generate_text_from_checkpoint, main
-from intrep.text_tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
+from intrep.text.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
 
 
 class GenerateTextCLITest(unittest.TestCase):

@@ -11,7 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from intrep.vision.input_layer import ImagePatchInputLayer
-from intrep.language_modeling_training import resolve_training_device
+from intrep.text.language_modeling_training import resolve_training_device
 from intrep.vision.io import read_portable_image
 from intrep.vision.training_data import (
     channel_count_from_image_shape,

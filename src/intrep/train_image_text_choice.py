@@ -12,7 +12,7 @@ from intrep.tasks.image_text_choice.training import (
     train_image_text_choice_model,
 )
 from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
-from intrep.text_tokenizer import load_text_tokenizer
+from intrep.text.tokenizer import load_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:

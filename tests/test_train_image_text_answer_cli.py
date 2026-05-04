@@ -11,7 +11,7 @@ from intrep.tasks.image_text_choice.checkpoint import save_image_text_choice_che
 from intrep.tasks.image_text_choice.training import ImageTextChoiceTrainingConfig, train_image_text_choice_model
 from intrep.vision.classification import FASHION_MNIST_LABELS
 from intrep.tasks.image_text_choice.examples import ImageTextChoiceExample
-from intrep.text_tokenizer import build_text_tokenizer, save_text_tokenizer
+from intrep.text.tokenizer import build_text_tokenizer, save_text_tokenizer
 from intrep.train_image_text_answer import main
 
 
