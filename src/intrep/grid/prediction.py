@@ -8,15 +8,16 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from intrep.grid.world import (
-    GRID_ACTIONS,
     GridExperienceTransition,
 )
-from intrep.grid.layers import GridObservationInputLayer
 from intrep.grid.training_data import GridStepPredictionDataset
+from intrep.tasks.grid_step_prediction.model import GridStepPredictionModel
 from intrep.vision.training_data import seeded_data_loader
 from intrep.text.language_modeling_training import resolve_training_device
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
-from intrep.core.transformer_core import SharedTransformerCore
+
+
+GridStepPredictor = GridStepPredictionModel
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ class GridStepPredictionResult:
 @dataclass(frozen=True)
 class GridStepTrainingArtifacts:
     result: GridStepPredictionResult
-    model: GridStepPredictor
+    model: GridStepPredictionModel
     config: GridStepPredictionConfig
     grid_size: tuple[int, int]
 
@@ -75,45 +76,6 @@ class _GridStepPredictionMetrics:
     next_cell_accuracy: float
     reward_accuracy: float
     terminated_accuracy: float
-
-
-class GridStepPredictor(nn.Module):
-    def __init__(
-        self,
-        *,
-        height: int,
-        width: int,
-        embedding_dim: int,
-        num_heads: int,
-        hidden_dim: int,
-        num_layers: int,
-        core: SharedTransformerCore | None = None,
-    ) -> None:
-        super().__init__()
-        self.grid_input = GridObservationInputLayer(height=height, width=width, embedding_dim=embedding_dim)
-        self.action_embedding = nn.Embedding(len(GRID_ACTIONS), embedding_dim)
-        self.core = core or SharedTransformerCore(
-            embedding_dim=embedding_dim,
-            num_heads=num_heads,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-        )
-        self.next_cell_output = nn.Linear(embedding_dim, height * width)
-        self.reward_output = nn.Linear(embedding_dim, 3)
-        self.terminated_output = nn.Linear(embedding_dim, 2)
-
-    def forward(self, observations: torch.Tensor, action_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        if action_ids.ndim != 1:
-            raise ValueError("action_ids must have shape [batch]")
-        grid_embeddings = self.grid_input(observations)
-        action_embeddings = self.action_embedding(action_ids).unsqueeze(1)
-        hidden = self.core(torch.cat((grid_embeddings, action_embeddings), dim=1), causal=False)
-        pooled = hidden[:, -1, :]
-        return (
-            self.next_cell_output(pooled),
-            self.reward_output(pooled),
-            self.terminated_output(pooled),
-        )
 
 
 def train_grid_step_predictor(
@@ -151,7 +113,7 @@ def train_grid_step_predictor_with_artifacts(
         if eval_dataset is not None
         else None
     )
-    model = GridStepPredictor(
+    model = GridStepPredictionModel(
         height=dataset.height,
         width=dataset.width,
         embedding_dim=config.embedding_dim,
@@ -223,7 +185,7 @@ def train_grid_step_predictor_with_artifacts(
 
 
 def _evaluate(
-    model: GridStepPredictor,
+    model: GridStepPredictionModel,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
     device: torch.device,
 ) -> _GridStepPredictionMetrics:
