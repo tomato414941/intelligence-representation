@@ -2,17 +2,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from dataclasses import replace
 from pathlib import Path
 from typing import Iterator, Sequence
-
-import shogi.KIF
-
-from intrep.shogi.move_choice import (
-    ShogiMoveChoiceExample,
-    shogi_move_choice_examples_from_usi_moves,
-    shogi_move_choice_examples_from_usi_moves_with_winner,
-)
 
 
 @dataclass(frozen=True)
@@ -61,77 +52,6 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
     if not lines:
         raise ValueError("records must contain at least one non-empty game")
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    examples: list[ShogiMoveChoiceExample] = []
-    for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
-        winner = shogi_game_winner_to_legacy_side(record.winner)
-        if winner is None:
-            game_examples = shogi_move_choice_examples_from_usi_moves(record.moves)
-        else:
-            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=winner)
-        examples.extend(_with_game_metadata(game_examples, game_index=game_index))
-    return examples
-
-
-def _with_game_metadata(
-    examples: Sequence[ShogiMoveChoiceExample],
-    *,
-    game_index: int,
-) -> list[ShogiMoveChoiceExample]:
-    return [
-        replace(example, game_index=game_index, ply_index=ply_index)
-        for ply_index, example in enumerate(examples)
-    ]
-
-
-def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:
-    return load_kif_game_record(path, encoding=encoding)[0]
-
-
-def load_kif_game_record(path: str | Path, *, encoding: str = "cp932") -> tuple[tuple[str, ...], str | None]:
-    text = Path(path).read_text(encoding=encoding)
-    parsed_games = shogi.KIF.Parser.parse_str(text)
-    if not parsed_games:
-        raise ValueError("KIF file must contain at least one game")
-    game = parsed_games[0]
-    winner = game.get("win")
-    if winner not in {"b", "w"}:
-        winner = None
-    return tuple(game["moves"]), winner
-
-
-def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
-    moves, winner = load_kif_game_record(path)
-    return ShogiGameRecord(
-        black_player=PlayerSpec(kind="kif", name="black", settings={}),
-        white_player=PlayerSpec(kind="kif", name="white", settings={}),
-        moves=moves,
-        winner=_legacy_side_to_winner(winner),
-    )
-
-
-def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    moves, winner = load_kif_game_record(path)
-    if winner is None:
-        return shogi_move_choice_examples_from_usi_moves(moves)
-    return shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
-
-
-def convert_kif_files_to_game_records_jsonl(
-    kif_paths: Sequence[str | Path],
-    output_path: str | Path,
-    *,
-    max_games: int | None = None,
-) -> int:
-    records: list[ShogiGameRecord] = []
-    for path in kif_paths:
-        if max_games is not None and len(records) >= max_games:
-            break
-        records.append(load_shogi_game_record_from_kif_file(path))
-    write_shogi_game_records_jsonl(output_path, records)
-    return len(records)
 
 
 def shogi_game_record_to_json(record: ShogiGameRecord) -> dict[str, object]:
@@ -196,7 +116,7 @@ def shogi_game_winner_to_legacy_side(winner: str | None) -> str | None:
     return None
 
 
-def _legacy_side_to_winner(winner: str | None) -> str | None:
+def legacy_side_to_shogi_game_winner(winner: str | None) -> str | None:
     if winner == "b":
         return "black"
     if winner == "w":

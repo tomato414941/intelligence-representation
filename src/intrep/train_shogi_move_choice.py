@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.shogi.game_record import load_shogi_move_choice_examples_from_game_records_jsonl
+from intrep.shogi.move_choice_data import load_shogi_move_choice_examples_from_game_records_jsonl
 from intrep.shogi.move_choice import (
     load_shogi_move_choice_examples_jsonl,
     write_shogi_move_choice_examples_jsonl,
