@@ -50,7 +50,7 @@ def load_shogi_move_choice_checkpoint(path: str | Path, *, device: str = "cpu") 
             value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
         )
     )
-    model.load_state_dict(payload["model_state_dict"], strict=False)
+    model.load_state_dict(payload["model_state_dict"], strict=True)
     model.to(torch.device(device))
     model.eval()
     return model
