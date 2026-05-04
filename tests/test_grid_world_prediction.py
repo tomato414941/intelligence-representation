@@ -5,9 +5,9 @@ import torch
 from intrep.grid.world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
 from intrep.grid.prediction import (
     GridStepPredictionConfig,
-    GridStepPredictor,
     train_grid_step_predictor,
 )
+from intrep.tasks.grid_step_prediction.model import GridStepPredictionModel
 from intrep.grid.training_data import GridStepPredictionDataset
 from intrep.core.transformer_core import SharedTransformerCore
 
@@ -34,7 +34,7 @@ class GridWorldPredictionTest(unittest.TestCase):
         self.assertEqual(int(terminated_id.item()), 0)
 
     def test_predictor_returns_step_logits(self) -> None:
-        model = GridStepPredictor(
+        model = GridStepPredictionModel(
             height=2,
             width=3,
             embedding_dim=8,
@@ -59,7 +59,7 @@ class GridWorldPredictionTest(unittest.TestCase):
             hidden_dim=16,
             num_layers=1,
         )
-        model = GridStepPredictor(
+        model = GridStepPredictionModel(
             height=2,
             width=3,
             embedding_dim=8,

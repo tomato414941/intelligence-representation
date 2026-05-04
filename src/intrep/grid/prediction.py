@@ -17,9 +17,6 @@ from intrep.text.language_modeling_training import resolve_training_device
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
-GridStepPredictor = GridStepPredictionModel
-
-
 @dataclass(frozen=True)
 class GridStepPredictionConfig:
     max_steps: int = 20
