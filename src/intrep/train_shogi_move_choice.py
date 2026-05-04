@@ -78,6 +78,8 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
     )
+    # Periodic artifacts keep long disposable-pod runs from losing all progress
+    # when the process ends before final checkpoint and metrics are written.
     progress_writer = _ProgressArtifactWriter(args)
     result = train_shogi_move_choice_model(
         train_examples,
