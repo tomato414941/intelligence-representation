@@ -122,6 +122,11 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
                 hidden_dim=self.config.hidden_dim,
             )
         )
+        self.candidate_scorer = nn.Sequential(
+            nn.Linear(embedding_dim * 4, self.config.hidden_dim),
+            nn.GELU(),
+            nn.Linear(self.config.hidden_dim, 1),
+        )
 
     def forward(
         self,
@@ -131,9 +136,7 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
     ) -> torch.Tensor:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
-        move_embedding = self.move_model.embed_candidate_moves(candidate_move_features)
-        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.move_model.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
+        logits = self.score_moves(position_hidden, position_embedding, candidate_move_features).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
 
     def forward_policy_value(
@@ -144,9 +147,7 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
-        move_embedding = self.move_model.embed_candidate_moves(candidate_move_features)
-        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.move_model.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
+        logits = self.score_moves(position_hidden, position_embedding, candidate_move_features).squeeze(-1)
         masked_logits = logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
         values = self.move_model.value_head(position_embedding).squeeze(-1)
         return masked_logits, values
@@ -155,3 +156,38 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
         return self.move_model.value_head(position_embedding).squeeze(-1)
+
+    def score_moves(
+        self,
+        position_hidden: torch.Tensor,
+        position_embedding: torch.Tensor,
+        candidate_move_features: torch.Tensor,
+    ) -> torch.Tensor:
+        move_embedding = self.move_model.embed_candidate_moves(candidate_move_features)
+        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
+        from_square_hidden = _candidate_square_hidden(
+            position_hidden,
+            candidate_move_features[..., 0],
+            zero_square_id=NO_FROM_SQUARE_ID,
+        )
+        to_square_hidden = _candidate_square_hidden(position_hidden, candidate_move_features[..., 1])
+        scorer_input = torch.cat(
+            (expanded_position, move_embedding, from_square_hidden, to_square_hidden),
+            dim=-1,
+        )
+        return self.candidate_scorer(scorer_input)
+
+
+def _candidate_square_hidden(
+    position_hidden: torch.Tensor,
+    square_ids: torch.Tensor,
+    *,
+    zero_square_id: int | None = None,
+) -> torch.Tensor:
+    embedding_dim = position_hidden.size(-1)
+    zero_mask = square_ids.eq(zero_square_id) if zero_square_id is not None else torch.zeros_like(square_ids).bool()
+    safe_square_ids = square_ids.masked_fill(zero_mask, 0)
+    token_indices = safe_square_ids + 1
+    gather_indices = token_indices[..., None].expand(-1, -1, embedding_dim)
+    square_hidden = position_hidden.gather(dim=1, index=gather_indices)
+    return square_hidden.masked_fill(zero_mask[..., None], 0.0)
