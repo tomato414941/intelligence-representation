@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -30,28 +29,6 @@ class ShogiGameRecord:
     moves: tuple[str, ...]
     winner: str | None = None
     end_reason: str | None = None
-
-
-def load_usi_move_games(path: str | Path) -> list[tuple[str, ...]]:
-    games: list[tuple[str, ...]] = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        moves = tuple(stripped.split())
-        if not moves:
-            continue
-        games.append(moves)
-    if not games:
-        raise ValueError("USI move file must contain at least one game")
-    return games
-
-
-def load_shogi_move_choice_examples_from_usi_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    examples: list[ShogiMoveChoiceExample] = []
-    for game in load_usi_move_games(path):
-        examples.extend(shogi_move_choice_examples_from_usi_moves(game))
-    return examples
 
 
 def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
@@ -140,29 +117,6 @@ def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[Shog
     if winner is None:
         return shogi_move_choice_examples_from_usi_moves(moves)
     return shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
-
-
-def write_usi_move_games(path: str | Path, games: Sequence[Sequence[str]]) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    lines = [" ".join(game) for game in games if game]
-    if not lines:
-        raise ValueError("games must contain at least one non-empty game")
-    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def convert_kif_files_to_usi_file(
-    kif_paths: Sequence[str | Path],
-    output_path: str | Path,
-    *,
-    max_games: int | None = None,
-) -> int:
-    games: list[tuple[str, ...]] = []
-    for path in kif_paths:
-        if max_games is not None and len(games) >= max_games:
-            break
-        games.append(load_kif_game(path))
-    write_usi_move_games(output_path, games)
-    return len(games)
 
 
 def convert_kif_files_to_game_records_jsonl(
@@ -266,43 +220,3 @@ def _json_scalar(value: object) -> str | int | float | bool | None:
     if value is None or isinstance(value, str | int | float | bool):
         return value
     raise ValueError("player setting values must be JSON scalars")
-
-
-def convert_kif_archive_to_usi_files(
-    archive_path: str | Path,
-    *,
-    train_output_path: str | Path,
-    eval_output_path: str | Path,
-    train_games: int,
-    eval_games: int,
-) -> tuple[int, int]:
-    if train_games <= 0:
-        raise ValueError("train_games must be positive")
-    if eval_games < 0:
-        raise ValueError("eval_games must be non-negative")
-    try:
-        import py7zr
-    except ImportError as error:
-        raise RuntimeError("py7zr is required to convert .7z KIF archives") from error
-
-    total_games = train_games + eval_games
-    with py7zr.SevenZipFile(archive_path, mode="r") as archive:
-        targets = [name for name in archive.getnames() if name.lower().endswith(".kif")][:total_games]
-        if len(targets) < total_games:
-            raise ValueError(f"KIF archive contains only {len(targets)} games, but {total_games} were requested")
-        with tempfile.TemporaryDirectory() as directory:
-            archive.extract(path=directory, targets=targets)
-            extracted_paths = [Path(directory) / target for target in targets]
-            train_count = convert_kif_files_to_usi_file(
-                extracted_paths[:train_games],
-                train_output_path,
-                max_games=train_games,
-            )
-            eval_count = 0
-            if eval_games > 0:
-                eval_count = convert_kif_files_to_usi_file(
-                    extracted_paths[train_games:],
-                    eval_output_path,
-                    max_games=eval_games,
-                )
-            return train_count, eval_count

@@ -8,7 +8,6 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from intrep.shogi.game_record import load_shogi_move_choice_examples_from_usi_file
 from intrep.shogi.move_choice import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
 from intrep.shogi.move_choice_model import (
     SharedCoreShogiMoveChoiceModel,
@@ -359,19 +358,6 @@ def _log_training_progress(
         allocated_mb = torch.cuda.max_memory_allocated(device) / (1024 * 1024)
         parts.append(f"cuda_max_memory_mb={allocated_mb:.1f}")
     print(" ".join(parts), flush=True)
-
-
-def train_shogi_move_choice_model_from_usi_file(
-    path: str,
-    *,
-    eval_path: str | None = None,
-    config: ShogiMoveChoiceTrainingConfig | None = None,
-) -> ShogiMoveChoiceTrainingResult:
-    return train_shogi_move_choice_model(
-        load_shogi_move_choice_examples_from_usi_file(path),
-        eval_examples=load_shogi_move_choice_examples_from_usi_file(eval_path) if eval_path is not None else None,
-        config=config,
-    )
 
 
 def build_shogi_move_choice_model(config: ShogiMoveChoiceTrainingConfig) -> nn.Module:
