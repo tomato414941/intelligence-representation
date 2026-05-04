@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 from intrep.text.byte_tokenizer import ByteTokenizer
 from intrep.text.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
+from intrep.tasks.language_modeling.model import LanguageModelingModel
 from intrep.text.tokenizer import (
     TextTokenizer,
     TextTokenizerKind,
@@ -100,7 +101,7 @@ class LanguageModelingTrainingResult:
 @dataclass(frozen=True)
 class LanguageModelingTrainingArtifacts:
     result: LanguageModelingTrainingResult
-    model: CausalTextModel
+    model: LanguageModelingModel
     tokenizer: TextTokenizer
 
 
@@ -224,11 +225,7 @@ def _train_text_corpus_with_artifacts(
         raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
     if causal_text_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = (
-        initial_model.to(device)
-        if initial_model is not None
-        else CausalTextModel(causal_text_config).to(device)
-    )
+    model = _language_modeling_model(initial_model, causal_text_config).to(device)
     optimizer = build_adamw(
         model,
         learning_rate=config.learning_rate,
@@ -340,7 +337,7 @@ def resolve_training_device(requested_device: LanguageModelingTrainingDevice) ->
 def save_causal_text_checkpoint(
     *,
     path: Path,
-    model: CausalTextModel,
+    model: LanguageModelingModel,
     model_config: CausalTextConfig,
     training_config: LanguageModelingTrainingConfig,
     result: LanguageModelingTrainingResult,
@@ -365,7 +362,7 @@ def save_causal_text_checkpoint(
 
 
 def _evaluate_loss(
-    model: CausalTextModel,
+    model: LanguageModelingModel,
     loss_fn: nn.CrossEntropyLoss,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]] | None,
     device: torch.device,
@@ -447,6 +444,17 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
 def _validate_initial_model_config(model: CausalTextModel, config: CausalTextConfig) -> None:
     if causal_text_config_to_dict(model.config) != causal_text_config_to_dict(config):
         raise ValueError("initial_model config must match model_config")
+
+
+def _language_modeling_model(
+    initial_model: CausalTextModel | None,
+    config: CausalTextConfig,
+) -> LanguageModelingModel:
+    if initial_model is None:
+        return LanguageModelingModel(config)
+    model = LanguageModelingModel(initial_model.config)
+    model.load_state_dict(initial_model.state_dict())
+    return model
 
 
 def language_model_batches(

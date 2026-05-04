@@ -6,6 +6,7 @@ import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
 from intrep.text.causal_model import CausalTextModel, CausalTextConfig
+from intrep.tasks.language_modeling.model import LanguageModelingModel
 from intrep.text.language_modeling_training import (
     LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,
@@ -326,7 +327,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertIsInstance(artifacts, LanguageModelingTrainingArtifacts)
         self.assertIsInstance(artifacts.result.steps, int)
         self.assertEqual(artifacts.result.steps, 2)
-        self.assertIsInstance(artifacts.model, CausalTextModel)
+        self.assertIsInstance(artifacts.model, LanguageModelingModel)
         self.assertIsInstance(artifacts.tokenizer, ByteTokenizer)
 
         token_ids = artifacts.tokenizer.encode("red blue")[:8]
@@ -390,7 +391,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
             initial_model=initial_model,
         )
 
-        self.assertIs(artifacts.model, initial_model)
+        self.assertIsInstance(artifacts.model, LanguageModelingModel)
         self.assertEqual(artifacts.model.config, initial_model.config)
 
     def test_rejects_empty_corpus(self) -> None:
