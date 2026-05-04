@@ -134,6 +134,19 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
                 ),
             )
 
+    def test_rejects_zero_total_loss_weight(self) -> None:
+        examples = shogi_move_choice_examples_from_usi_moves(("7g7f",))
+
+        with self.assertRaisesRegex(ValueError, "at least one loss weight"):
+            train_shogi_move_choice_model(
+                examples,
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    policy_loss_weight=0.0,
+                    value_loss_weight=0.0,
+                ),
+            )
+
     def test_progress_callback_runs_only_on_progress_interval(self) -> None:
         examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
@@ -238,6 +251,41 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertIsNotNone(result.metrics.initial_eval_accuracy)
         self.assertIsNotNone(result.metrics.initial_eval_value_loss)
         self.assertIsNotNone(result.metrics.eval_value_loss)
+
+    def test_value_only_can_improve_on_tiny_game_set(self) -> None:
+        base_examples = tuple(
+            shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
+            + shogi_move_choice_examples_from_usi_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
+        )
+        examples = tuple(
+            ShogiMoveChoiceExample(
+                position_sfen=example.position_sfen,
+                legal_moves=example.legal_moves,
+                chosen_move=example.chosen_move,
+                value_target=1.0 if index % 2 == 0 else -1.0,
+            )
+            for index, example in enumerate(base_examples)
+        )
+
+        result = train_shogi_move_choice_model(
+            examples,
+            config=ShogiMoveChoiceTrainingConfig(
+                max_steps=80,
+                batch_size=4,
+                learning_rate=0.02,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                use_shared_core=False,
+                policy_loss_weight=0.0,
+                value_loss_weight=1.0,
+            ),
+        )
+
+        self.assertEqual(result.config.policy_loss_weight, 0.0)
+        self.assertIsNotNone(result.metrics.initial_value_loss)
+        self.assertIsNotNone(result.metrics.value_loss)
+        self.assertLess(result.metrics.value_loss, result.metrics.initial_value_loss)
 
 
 if __name__ == "__main__":

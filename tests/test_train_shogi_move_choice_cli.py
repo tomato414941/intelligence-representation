@@ -63,6 +63,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertIn("step=1/1", stdout.getvalue())
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["config"]["num_workers"], 0)
+            self.assertEqual(metrics["config"]["policy_loss_weight"], 1.0)
             self.assertEqual(metrics["config"]["value_loss_weight"], 0.0)
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)

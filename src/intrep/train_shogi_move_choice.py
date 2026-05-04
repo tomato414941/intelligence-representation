@@ -39,6 +39,7 @@ def main() -> None:
     parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--num-heads", type=int, default=4)
     parser.add_argument("--num-layers", type=int, default=1)
+    parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=0.0)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-train-eval-examples", type=int)
@@ -70,6 +71,7 @@ def main() -> None:
         num_heads=args.num_heads,
         num_layers=args.num_layers,
         use_shared_core=True,
+        policy_loss_weight=args.policy_loss_weight,
         value_loss_weight=args.value_loss_weight,
         device=args.device,
         max_train_eval_examples=args.max_train_eval_examples,

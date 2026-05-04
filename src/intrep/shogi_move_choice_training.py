@@ -31,6 +31,7 @@ class ShogiMoveChoiceTrainingConfig:
     num_heads: int = 4
     num_layers: int = 1
     use_shared_core: bool = True
+    policy_loss_weight: float = 1.0
     value_loss_weight: float = 0.0
     device: str = "cpu"
     max_train_eval_examples: int | None = None
@@ -111,6 +112,12 @@ def train_shogi_move_choice_model(
         raise ValueError("progress_every must be positive")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+    if training_config.policy_loss_weight < 0.0:
+        raise ValueError("policy_loss_weight must be non-negative")
+    if training_config.value_loss_weight < 0.0:
+        raise ValueError("value_loss_weight must be non-negative")
+    if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight == 0.0:
+        raise ValueError("at least one loss weight must be positive")
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
     dataset = ShogiMoveChoiceDataset(examples)
@@ -160,7 +167,8 @@ def train_shogi_move_choice_model(
             else:
                 logits = model(position_token_ids, candidate_move_features, candidate_mask)
                 value_predictions = None
-            loss = torch.nn.functional.cross_entropy(logits, labels)
+            policy_loss = torch.nn.functional.cross_entropy(logits, labels)
+            loss = training_config.policy_loss_weight * policy_loss
             if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 loss = loss + training_config.value_loss_weight * value_loss
