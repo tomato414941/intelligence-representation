@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock
 
 from intrep.shogi.move_choice import ShogiMoveChoiceExample, shogi_move_choice_examples_from_usi_moves
-from intrep.shogi.move_choice_model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
+from intrep.tasks.shogi_move_choice.model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
 import intrep.shogi.move_choice_training as training
 from intrep.shogi.move_choice_training import (
     ShogiMoveChoiceTrainingConfig,

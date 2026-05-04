@@ -9,7 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from intrep.shogi.move_choice import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
-from intrep.shogi.move_choice_model import (
+from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
     SharedCoreShogiMoveChoiceModelConfig,
     ShogiMoveChoiceModel,

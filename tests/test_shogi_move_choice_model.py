@@ -5,7 +5,7 @@ import torch
 
 from intrep.shogi.move_choice import ShogiMoveChoiceDataset, shogi_move_choice_examples_from_usi_moves
 from intrep.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.shogi.move_choice_model import (
+from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
     SharedCoreShogiMoveChoiceModelConfig,
     ShogiMoveChoiceModel,
