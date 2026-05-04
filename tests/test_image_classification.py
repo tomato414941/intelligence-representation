@@ -22,6 +22,7 @@ from intrep.vision.classification import (
     train_image_classifier,
     train_image_classifier_with_result,
 )
+from intrep.tasks.image_classification.model import ImageClassificationModel
 from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.core.transformer_core import SharedTransformerCore
 
@@ -355,7 +356,7 @@ class ImageClassificationTest(unittest.TestCase):
             )
 
         self.assertEqual(result.metrics.train_case_count, 2)
-        self.assertIsInstance(result.model, SharedMultimodalModel)
+        self.assertIsInstance(result.model, ImageClassificationModel)
         self.assertIsInstance(result.model.image_input_layer, ImagePatchInputLayer)
 
 

@@ -11,12 +11,12 @@ from intrep.vision.classification import (
 )
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.tasks.image_classification.model import ImageClassificationModel
 
 
 @dataclass(frozen=True)
 class ImageClassificationCheckpoint:
-    model: SharedMultimodalModel
+    model: ImageClassificationModel
     config: ImageClassificationConfig
     image_shape: tuple[int, ...]
     label_names: tuple[str, ...]
@@ -55,7 +55,7 @@ def load_image_classification_checkpoint(
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
     label_names = _label_names_from_payload(payload.get("label_names"))
     preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageClassificationModel(
         vocab_size=1,
         text_context_length=1,
         image_size=(image_shape[0], image_shape[1]),

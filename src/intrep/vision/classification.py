@@ -19,7 +19,8 @@ from intrep.vision.training_data import (
     seeded_data_loader,
 )
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import ClassificationHead, SharedMultimodalModel
+from intrep.shared_multimodal_model import ClassificationHead
+from intrep.tasks.image_classification.model import ImageClassificationModel
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
@@ -117,7 +118,7 @@ class ImageClassificationMetrics:
 @dataclass(frozen=True)
 class ImageClassificationTrainingResult:
     metrics: ImageClassificationMetrics
-    model: SharedMultimodalModel
+    model: ImageClassificationModel
     config: ImageClassificationConfig
     image_shape: tuple[int, ...]
     label_names: tuple[str, ...]
@@ -267,7 +268,7 @@ def train_image_classifier_with_result(
         )
 
     preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
-    model = SharedMultimodalModel(
+    model = ImageClassificationModel(
         vocab_size=1,
         text_context_length=1,
         image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
@@ -305,7 +306,7 @@ def train_image_classifier_with_result(
         batch_images = batch_images.to(device)
         batch_labels = batch_labels.to(device)
         optimizer.zero_grad(set_to_none=True)
-        loss = loss_fn(model.image_classification_logits(batch_images), batch_labels)
+        loss = loss_fn(model.class_logits(batch_images), batch_labels)
         loss.backward()
         clip_gradients(model, training_config.max_grad_norm)
         optimizer.step()
@@ -485,7 +486,7 @@ def _validate_config(config: ImageClassificationConfig) -> None:
 
 
 def _loss(
-    model: SharedMultimodalModel,
+    model: ImageClassificationModel,
     loss_fn: nn.CrossEntropyLoss,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
@@ -498,7 +499,7 @@ def _loss(
         for images, labels in data_loader:
             images = images.to(device)
             labels = labels.to(device)
-            loss = loss_fn(model.image_classification_logits(images), labels)
+            loss = loss_fn(model.class_logits(images), labels)
             total_loss += float(loss.item()) * int(labels.numel())
             sample_count += int(labels.numel())
     if was_training:
@@ -507,7 +508,7 @@ def _loss(
 
 
 def _accuracy(
-    model: SharedMultimodalModel,
+    model: ImageClassificationModel,
     data_loader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
 ) -> float:
@@ -519,7 +520,7 @@ def _accuracy(
         for images, labels in data_loader:
             images = images.to(device)
             labels = labels.to(device)
-            predictions = model.image_classification_logits(images).argmax(dim=1)
+            predictions = model.class_logits(images).argmax(dim=1)
             correct_count += int((predictions == labels).sum().item())
             total_count += int(labels.numel())
     if was_training:
