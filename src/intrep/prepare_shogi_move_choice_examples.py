@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.shogi_game_record import iter_shogi_game_records_jsonl
+from intrep.shogi_game_record import iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
 from intrep.shogi_move_choice import (
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,
@@ -46,7 +46,11 @@ def main() -> None:
                 if record.winner is None:
                     examples = shogi_move_choice_examples_from_usi_moves(record.moves)
                 else:
-                    examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=record.winner)
+                    winner = shogi_game_winner_to_legacy_side(record.winner)
+                    if winner is None:
+                        examples = shogi_move_choice_examples_from_usi_moves(record.moves)
+                    else:
+                        examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=winner)
             except Exception as error:
                 if failure_output is None:
                     raise

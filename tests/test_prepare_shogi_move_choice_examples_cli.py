@@ -4,8 +4,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 from intrep.prepare_shogi_move_choice_examples import main
-from intrep.shogi_game_record import ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.shogi_game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
 from intrep.shogi_move_choice import load_shogi_move_choice_examples_jsonl
+
+
+BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
+
+
+def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    return ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, moves, winner)
 
 
 class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
@@ -14,7 +22,7 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             root = Path(directory)
             games_path = root / "games.jsonl"
             examples_path = root / "examples.jsonl"
-            write_shogi_game_records_jsonl(games_path, [ShogiGameRecord(("7g7f", "3c3d"), "w")])
+            write_shogi_game_records_jsonl(games_path, [_record(("7g7f", "3c3d"), "white")])
 
             with patch(
                 "sys.argv",
@@ -43,9 +51,9 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             write_shogi_game_records_jsonl(
                 games_path,
                 [
-                    ShogiGameRecord(("7g7f", "3c3d"), "w"),
-                    ShogiGameRecord(("2g2f", "8c8d"), "b"),
-                    ShogiGameRecord(("7g7f", "8c8d"), "w"),
+                    _record(("7g7f", "3c3d"), "white"),
+                    _record(("2g2f", "8c8d"), "black"),
+                    _record(("7g7f", "8c8d"), "white"),
                 ],
             )
 

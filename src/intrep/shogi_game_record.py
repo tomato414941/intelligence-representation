@@ -17,9 +17,19 @@ from intrep.shogi_move_choice import (
 
 
 @dataclass(frozen=True)
+class PlayerSpec:
+    kind: str
+    name: str
+    settings: dict[str, str | int | float | bool | None]
+
+
+@dataclass(frozen=True)
 class ShogiGameRecord:
+    black_player: PlayerSpec
+    white_player: PlayerSpec
     moves: tuple[str, ...]
     winner: str | None = None
+    end_reason: str | None = None
 
 
 def load_usi_move_games(path: str | Path) -> list[tuple[str, ...]]:
@@ -54,17 +64,14 @@ def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
 
 
 def iter_shogi_game_records_jsonl(path: str | Path) -> Iterator[ShogiGameRecord]:
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        payload = json.loads(stripped)
-        winner = payload.get("winner")
-        if winner not in {"b", "w"}:
-            winner = None
-        moves = tuple(str(move) for move in payload["moves"])
-        if moves:
-            yield ShogiGameRecord(moves=moves, winner=winner)
+    with Path(path).open(encoding="utf-8") as file:
+        for line in file:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            record = shogi_game_record_from_json(json.loads(stripped))
+            if record.moves:
+                yield record
 
 
 def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGameRecord]) -> None:
@@ -73,7 +80,7 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
     for record in records:
         if not record.moves:
             continue
-        lines.append(json.dumps({"winner": record.winner, "moves": list(record.moves)}, separators=(",", ":")))
+        lines.append(json.dumps(shogi_game_record_to_json(record), separators=(",", ":"), sort_keys=True))
     if not lines:
         raise ValueError("records must contain at least one non-empty game")
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -82,10 +89,11 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
 def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
-        if record.winner is None:
+        winner = shogi_game_winner_to_legacy_side(record.winner)
+        if winner is None:
             game_examples = shogi_move_choice_examples_from_usi_moves(record.moves)
         else:
-            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=record.winner)
+            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=winner)
         examples.extend(_with_game_metadata(game_examples, game_index=game_index))
     return examples
 
@@ -119,7 +127,12 @@ def load_kif_game_record(path: str | Path, *, encoding: str = "cp932") -> tuple[
 
 def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
     moves, winner = load_kif_game_record(path)
-    return ShogiGameRecord(moves=moves, winner=winner)
+    return ShogiGameRecord(
+        black_player=PlayerSpec(kind="kif", name="black", settings={}),
+        white_player=PlayerSpec(kind="kif", name="white", settings={}),
+        moves=moves,
+        winner=_legacy_side_to_winner(winner),
+    )
 
 
 def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
@@ -165,6 +178,94 @@ def convert_kif_files_to_game_records_jsonl(
         records.append(load_shogi_game_record_from_kif_file(path))
     write_shogi_game_records_jsonl(output_path, records)
     return len(records)
+
+
+def shogi_game_record_to_json(record: ShogiGameRecord) -> dict[str, object]:
+    return {
+        "black_player": player_spec_to_json(record.black_player),
+        "white_player": player_spec_to_json(record.white_player),
+        "moves": list(record.moves),
+        "winner": record.winner,
+        "end_reason": record.end_reason,
+    }
+
+
+def shogi_game_record_from_json(payload: dict[str, object]) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_player=player_spec_from_json(_object_dict(payload.get("black_player"))),
+        white_player=player_spec_from_json(_object_dict(payload.get("white_player"))),
+        moves=tuple(str(move) for move in _object_list(payload.get("moves"))),
+        winner=_normalize_winner(payload.get("winner")),
+        end_reason=None if payload.get("end_reason") is None else str(payload["end_reason"]),
+    )
+
+
+def player_spec_to_json(spec: PlayerSpec) -> dict[str, object]:
+    return {
+        "kind": spec.kind,
+        "name": spec.name,
+        "settings": spec.settings,
+    }
+
+
+def player_spec_from_json(payload: dict[str, object]) -> PlayerSpec:
+    settings = payload.get("settings", {})
+    if not isinstance(settings, dict):
+        raise ValueError("player settings must be an object")
+    return PlayerSpec(
+        kind=str(payload["kind"]),
+        name=str(payload["name"]),
+        settings={
+            str(key): _json_scalar(value)
+            for key, value in settings.items()
+        },
+    )
+
+
+def _normalize_winner(value: object) -> str | None:
+    if value in {"black", "white"}:
+        return str(value)
+    if value == "b":
+        return "black"
+    if value == "w":
+        return "white"
+    if value is None:
+        return None
+    raise ValueError("winner must be black, white, b, w, or null")
+
+
+def shogi_game_winner_to_legacy_side(winner: str | None) -> str | None:
+    if winner == "black":
+        return "b"
+    if winner == "white":
+        return "w"
+    return None
+
+
+def _legacy_side_to_winner(winner: str | None) -> str | None:
+    if winner == "b":
+        return "black"
+    if winner == "w":
+        return "white"
+    return None
+
+
+def _object_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ValueError("expected object")
+    return value
+
+
+def _object_list(value: object) -> list[object]:
+    if not isinstance(value, list):
+        raise ValueError("expected list")
+    return value
+
+
+def _json_scalar(value: object) -> str | int | float | bool | None:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    raise ValueError("player setting values must be JSON scalars")
 
 
 def convert_kif_archive_to_usi_files(

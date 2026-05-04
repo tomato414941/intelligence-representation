@@ -2,8 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.shogi_game_record import ShogiGameRecord, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.shogi_game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 from intrep.split_shogi_game_records import split_shogi_game_records_jsonl
+
+
+BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
 
 
 class SplitShogiGameRecordsTest(unittest.TestCase):
@@ -14,10 +18,10 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             records = [
-                ShogiGameRecord(("7g7f",), "b"),
-                ShogiGameRecord(("3c3d",), "w"),
-                ShogiGameRecord(("2g2f",), "b"),
-                ShogiGameRecord(("8c8d",), "w"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("7g7f",), "black"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("3c3d",), "white"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("2g2f",), "black"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("8c8d",), "white"),
             ]
             write_shogi_game_records_jsonl(games_path, records)
 
@@ -39,7 +43,10 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             games_path = root / "games.jsonl"
             write_shogi_game_records_jsonl(
                 games_path,
-                [ShogiGameRecord(("7g7f",), "b"), ShogiGameRecord(("3c3d",), "w")],
+                [
+                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("7g7f",), "black"),
+                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("3c3d",), "white"),
+                ],
             )
 
             with self.assertRaisesRegex(ValueError, "eval-ratio"):

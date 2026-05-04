@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from intrep.shogi_game_record import (
+    PlayerSpec,
     ShogiGameRecord,
     convert_kif_files_to_usi_file,
     convert_kif_files_to_game_records_jsonl,
@@ -16,6 +17,10 @@ from intrep.shogi_game_record import (
     write_shogi_game_records_jsonl,
     write_usi_move_games,
 )
+
+
+BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
+WHITE_PLAYER = PlayerSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
 
 
 class ShogiGameRecordTest(unittest.TestCase):
@@ -86,8 +91,20 @@ class ShogiGameRecordTest(unittest.TestCase):
             write_shogi_game_records_jsonl(
                 path,
                 [
-                    ShogiGameRecord(moves=("7g7f", "3c3d"), winner="w"),
-                    ShogiGameRecord(moves=("2g2f",), winner=None),
+                    ShogiGameRecord(
+                        black_player=BLACK_PLAYER,
+                        white_player=WHITE_PLAYER,
+                        moves=("7g7f", "3c3d"),
+                        winner="white",
+                        end_reason="resign",
+                    ),
+                    ShogiGameRecord(
+                        black_player=BLACK_PLAYER,
+                        white_player=WHITE_PLAYER,
+                        moves=("2g2f",),
+                        winner=None,
+                        end_reason="max_plies",
+                    ),
                 ],
             )
             records = load_shogi_game_records_jsonl(path)
@@ -95,15 +112,64 @@ class ShogiGameRecordTest(unittest.TestCase):
         self.assertEqual(
             records,
             [
-                ShogiGameRecord(moves=("7g7f", "3c3d"), winner="w"),
-                ShogiGameRecord(moves=("2g2f",), winner=None),
+                ShogiGameRecord(
+                    black_player=BLACK_PLAYER,
+                    white_player=WHITE_PLAYER,
+                    moves=("7g7f", "3c3d"),
+                    winner="white",
+                    end_reason="resign",
+                ),
+                ShogiGameRecord(
+                    black_player=BLACK_PLAYER,
+                    white_player=WHITE_PLAYER,
+                    moves=("2g2f",),
+                    winner=None,
+                    end_reason="max_plies",
+                ),
+            ],
+        )
+
+    def test_loads_arena_shogi_game_record_jsonl(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            path.write_text(
+                (
+                    '{"black_player":{"kind":"checkpoint","name":"direct","settings":{"checkpoint":"model.pt"}},'
+                    '"white_player":{"kind":"yaneuraou","name":"yaneuraou","settings":{"go_command":"go nodes 1"}},'
+                    '"moves":["2g2f"],"end_reason":"max_plies","winner":null}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            records = load_shogi_game_records_jsonl(path)
+
+        self.assertEqual(
+            records,
+            [
+                ShogiGameRecord(
+                    black_player=PlayerSpec(kind="checkpoint", name="direct", settings={"checkpoint": "model.pt"}),
+                    white_player=PlayerSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"}),
+                    moves=("2g2f",),
+                    winner=None,
+                    end_reason="max_plies",
+                )
             ],
         )
 
     def test_loads_move_choice_examples_from_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
-            write_shogi_game_records_jsonl(path, [ShogiGameRecord(moves=("7g7f", "3c3d"), winner="w")])
+            write_shogi_game_records_jsonl(
+                path,
+                [
+                    ShogiGameRecord(
+                        black_player=BLACK_PLAYER,
+                        white_player=WHITE_PLAYER,
+                        moves=("7g7f", "3c3d"),
+                        winner="white",
+                    )
+                ],
+            )
 
             examples = load_shogi_move_choice_examples_from_game_records_jsonl(path)
 
@@ -163,7 +229,17 @@ class ShogiGameRecordTest(unittest.TestCase):
             count = convert_kif_files_to_game_records_jsonl([kif_path], output_path)
 
             self.assertEqual(count, 1)
-            self.assertEqual(load_shogi_game_records_jsonl(output_path), [ShogiGameRecord(("7g7f", "3c3d"), "w")])
+            self.assertEqual(
+                load_shogi_game_records_jsonl(output_path),
+                [
+                    ShogiGameRecord(
+                        black_player=PlayerSpec(kind="kif", name="black", settings={}),
+                        white_player=PlayerSpec(kind="kif", name="white", settings={}),
+                        moves=("7g7f", "3c3d"),
+                        winner="white",
+                    )
+                ],
+            )
 
 
 if __name__ == "__main__":
