@@ -13,6 +13,8 @@
 - This repository explores representations for intelligence and meaning.
 - Keep notes, experiments, and implementation artifacts separated.
 - Avoid adding broad abstractions before there is a concrete experiment or repeated pattern.
+- Ask for explicit approval before keeping backward compatibility paths, aliases,
+  or deprecated interfaces.
 
 ## Verification
 - Run relevant tests or checks after implementation changes.
