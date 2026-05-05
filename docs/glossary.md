@@ -12,7 +12,12 @@ object or world state
   -> encoding
   -> input embedding
   -> hidden state
-  -> output and objective
+  -> output head
+  -> model output
+
+model output + target
+  -> objective
+  -> loss
 ```
 
 ## Form
@@ -72,6 +77,74 @@ Transformer hidden states are the main current example.
 Hidden states are learned representations, but this glossary keeps the term
 `hidden state` for the concrete model boundary and reserves `representation` for
 broader discussion.
+
+## Output Head
+
+An output head is an output-side module that reads hidden states and produces a
+model output.
+
+Examples:
+
+- classification head
+- language-modeling head
+- candidate scoring head
+- policy head
+- value head
+
+This glossary uses `output head` rather than bare `head` to avoid confusion with
+attention heads inside Transformer layers or read/write heads in memory models.
+
+## Model Output
+
+A model output is the direct value returned by an output head or decoder.
+
+Examples:
+
+- class logits
+- next-token logits
+- candidate scores
+- value estimates
+- reward estimates
+- predicted tensors
+
+Model output is a role, not a representation type. It may describe a form, an
+encoding, a scalar, a tensor, or a distribution over choices.
+
+## Target
+
+A target is the expected value or teacher signal used to evaluate a model
+output during training or evaluation.
+
+Examples:
+
+- class label
+- next token ID
+- selected move
+- next grid state
+- winner or value target
+
+## Objective
+
+An objective defines what should count as a good prediction. It says how model
+outputs and targets should be interpreted for training or evaluation.
+
+Examples:
+
+- next-token prediction
+- candidate move selection
+- image classification
+- next-state prediction
+- value prediction
+
+## Loss
+
+A loss is the numeric quantity optimized for an objective during training.
+
+Examples:
+
+- cross entropy
+- mean squared error
+- binary cross entropy
 
 ## Representation
 
