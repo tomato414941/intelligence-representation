@@ -5,6 +5,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from intrep.tasks.shogi_move_choice.dataset_definition import load_shogi_move_choice_dataset_definition
 from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
 from intrep.train_shogi_move_choice import main
 
@@ -90,16 +91,19 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
             dataset_definition_path = root / "dataset.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             dataset_definition_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
                 )
                 + "\n",
@@ -145,6 +149,33 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertEqual(step_metrics["step"], 2)
             self.assertEqual(step_metrics["max_steps"], 3)
             self.assertIn("loss", step_metrics)
+
+    def test_rejects_unsplit_dataset_definition(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            examples_path = root / "examples.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            examples_path.write_text(
+                '{"position_sfen":"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",'
+                '"legal_moves":["7g7f"],"chosen_move":"7g7f","value_target":null,'
+                '"game_index":0,"ply_index":0}\n',
+                encoding="utf-8",
+            )
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "bad-unsplit",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "examples_jsonl", "path": str(examples_path)}],
+                        "eval_sources": [{"kind": "examples_jsonl", "path": str(examples_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "split"):
+                load_shogi_move_choice_dataset_definition(dataset_definition_path)
 
 
 if __name__ == "__main__":

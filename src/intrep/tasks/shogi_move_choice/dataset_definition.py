@@ -20,26 +20,28 @@ class ShogiMoveChoiceDatasetDefinition:
     name: str
     objective: str
     train_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
-    eval_sources: tuple[ShogiMoveChoiceDatasetSource, ...] = ()
+    eval_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
 
 
 def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoiceDatasetDefinition:
     definition_path = Path(path)
     payload = json.loads(definition_path.read_text(encoding="utf-8"))
     root = definition_path.parent
-    return ShogiMoveChoiceDatasetDefinition(
+    definition = ShogiMoveChoiceDatasetDefinition(
         name=str(payload["name"]),
         objective=str(payload["objective"]),
         train_sources=_sources_from_json(payload.get("train_sources"), root=root),
-        eval_sources=_sources_from_json(payload.get("eval_sources", []), root=root, allow_empty=True),
+        eval_sources=_sources_from_json(payload.get("eval_sources"), root=root),
     )
+    _validate_split(definition)
+    return definition
 
 
 def load_shogi_move_choice_dataset_examples(
     definition: ShogiMoveChoiceDatasetDefinition,
-) -> tuple[list[ShogiMoveChoiceExample], list[ShogiMoveChoiceExample] | None]:
+) -> tuple[list[ShogiMoveChoiceExample], list[ShogiMoveChoiceExample]]:
     train_examples = _load_sources(definition.train_sources)
-    eval_examples = _load_sources(definition.eval_sources) if definition.eval_sources else None
+    eval_examples = _load_sources(definition.eval_sources)
     return train_examples, eval_examples
 
 
@@ -52,15 +54,10 @@ def shogi_move_choice_dataset_definition_to_json(definition: ShogiMoveChoiceData
     }
 
 
-def _sources_from_json(
-    value: object,
-    *,
-    root: Path,
-    allow_empty: bool = False,
-) -> tuple[ShogiMoveChoiceDatasetSource, ...]:
+def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDatasetSource, ...]:
     if not isinstance(value, list):
         raise ValueError("dataset sources must be a list")
-    if not value and not allow_empty:
+    if not value:
         raise ValueError("dataset sources must be a non-empty list")
     sources: list[ShogiMoveChoiceDatasetSource] = []
     for item in value:
@@ -74,6 +71,14 @@ def _sources_from_json(
             source_path = root / source_path
         sources.append(ShogiMoveChoiceDatasetSource(kind=kind, path=source_path))
     return tuple(sources)
+
+
+def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
+    train_sources = {_source_key(source) for source in definition.train_sources}
+    eval_sources = {_source_key(source) for source in definition.eval_sources}
+    overlap = train_sources & eval_sources
+    if overlap:
+        raise ValueError("train and eval dataset sources must be split")
 
 
 def _load_sources(sources: tuple[ShogiMoveChoiceDatasetSource, ...]) -> list[ShogiMoveChoiceExample]:
@@ -95,3 +100,7 @@ def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str]:
         "kind": source.kind,
         "path": str(source.path),
     }
+
+
+def _source_key(source: ShogiMoveChoiceDatasetSource) -> tuple[str, Path]:
+    return source.kind, source.path.resolve()

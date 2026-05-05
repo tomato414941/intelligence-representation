@@ -83,7 +83,7 @@ def main() -> None:
     save_shogi_move_choice_checkpoint(args.checkpoint_path, result)
     metrics = {
         "raw_train_case_count": len(train_examples),
-        "raw_eval_case_count": len(eval_examples) if eval_examples is not None else 0,
+        "raw_eval_case_count": len(eval_examples),
         "used_eval_case_count": result.metrics.eval_case_count,
         "dataset_definition_path": str(args.dataset_definition),
         "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
