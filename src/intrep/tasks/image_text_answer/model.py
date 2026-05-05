@@ -3,10 +3,10 @@ from __future__ import annotations
 import torch
 
 from intrep.core.model_input import concatenate_input_embedding_sequences
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.shared_multimodal_model import ImageTextSharedModel
 
 
-class ImageTextAnswerModel(SharedMultimodalModel):
+class ImageTextAnswerModel(ImageTextSharedModel):
     """Task model for image-conditioned token prediction."""
 
     def token_logits(self, images: torch.Tensor, text_token_ids: torch.Tensor) -> torch.Tensor:

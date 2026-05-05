@@ -6,7 +6,7 @@ import torch
 from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
 
 
-class SharedMultimodalModelTest(unittest.TestCase):
+class ImageTextSharedModelTest(unittest.TestCase):
     def test_outputs_text_and_choice_logits_through_one_core(self) -> None:
         model = ImageTextChoiceModel(
             vocab_size=32,

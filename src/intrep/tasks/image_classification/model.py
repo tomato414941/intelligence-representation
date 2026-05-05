@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.core.transformer_core import SharedTransformerCore
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.shared_multimodal_model import ImageTextSharedModel
 from intrep.vision.input_layer import ImagePatchInputLayer
 
 
@@ -20,7 +20,7 @@ class ClassificationHead(nn.Module):
         return self.output(pooled)
 
 
-class ImageClassificationModel(SharedMultimodalModel):
+class ImageClassificationModel(ImageTextSharedModel):
     """Task model for image-conditioned fixed class prediction."""
 
     def __init__(

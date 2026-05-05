@@ -141,7 +141,7 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(result.image_shape, (2, 2, 3))
         self.assertEqual(result.metrics.train_case_count, 2)
 
-    def test_shared_multimodal_model_outputs_class_logits(self) -> None:
+    def test_image_text_shared_model_outputs_class_logits(self) -> None:
         model = ImageClassificationModel(
             vocab_size=8,
             text_context_length=4,
@@ -159,7 +159,7 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(logits.shape, torch.Size([3, 10]))
         self.assertEqual(model.text_logits(torch.zeros((3, 4), dtype=torch.long)).shape, torch.Size([3, 4, 8]))
 
-    def test_shared_multimodal_model_accepts_rgb_images_for_classification(self) -> None:
+    def test_image_text_shared_model_accepts_rgb_images_for_classification(self) -> None:
         model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,
@@ -243,7 +243,7 @@ class ImageClassificationTest(unittest.TestCase):
                     ),
                 )
 
-    def test_shared_multimodal_model_composes_image_route_core_and_classification_head(self) -> None:
+    def test_image_text_shared_model_composes_image_route_core_and_classification_head(self) -> None:
         model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,
@@ -264,7 +264,7 @@ class ImageClassificationTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(logits, manual_logits))
 
-    def test_shared_multimodal_model_exposes_image_embedding_sequence_path(self) -> None:
+    def test_image_text_shared_model_exposes_image_embedding_sequence_path(self) -> None:
         model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,

@@ -8,7 +8,7 @@ from intrep.vision.input_layer import ImagePatchInputLayer
 from intrep.core.transformer_core import SharedTransformerCore
 
 
-class SharedMultimodalModel(nn.Module):
+class ImageTextSharedModel(nn.Module):
     """Shared image/text input shell used by task-specific models."""
 
     def __init__(
