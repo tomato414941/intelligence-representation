@@ -22,7 +22,7 @@ records should stay close to their source and task.
 ## Terms
 
 Use [Glossary](glossary.md) for the current boundary terms: form, encoding,
-embedding, hidden state, and representation.
+input embedding, hidden state, and representation.
 
 ## Package Responsibilities
 

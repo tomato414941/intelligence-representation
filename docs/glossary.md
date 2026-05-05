@@ -10,7 +10,7 @@ responsibilities.
 object or world state
   -> form
   -> encoding
-  -> embedding
+  -> input embedding
   -> hidden state
   -> output and objective
 ```
@@ -44,9 +44,10 @@ Examples:
 Cached token IDs or tensors are still encodings. They may have a file format on
 disk, but their role in the pipeline is encoded model input preparation.
 
-## Embedding
+## Input Embedding
 
-An embedding maps an encoding into learned continuous vectors.
+An input embedding is a learned continuous vector sequence produced from an
+encoding before it enters the model core.
 
 Examples:
 
@@ -55,8 +56,13 @@ Examples:
 - image patch embeddings
 - action embeddings
 
-Embeddings are the entry point to learned representation. They are distinct
-from token IDs, feature IDs, or raw numeric tensors.
+Input embeddings are the entry point to learned representation. They are
+distinct from token IDs, feature IDs, or raw numeric tensors.
+
+The word `embedding` by itself is broader in common machine-learning usage and
+can also describe sentence, image, or retrieval vectors. This glossary avoids
+using bare `embedding` as a project boundary term. Prefer concrete names such
+as `input embedding`, `token embedding`, `patch embedding`, or `move embedding`.
 
 ## Hidden State
 
@@ -70,9 +76,8 @@ broader discussion.
 ## Representation
 
 Representation is the broadest term. It can refer to any information-carrying
-shape used by the project, including forms, encodings, embeddings, hidden
+shape used by the project, including forms, encodings, input embeddings, hidden
 states, labels, and learned features.
 
 When discussing code boundaries, prefer the narrower terms above. Use
 `representation` when the broader idea is intentional.
-
