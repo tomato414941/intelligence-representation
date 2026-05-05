@@ -13,10 +13,10 @@ from intrep.core.transformer_core import SharedTransformerCore
 class CausalTextConfig:
     vocab_size: int
     context_length: int = 64
-    embedding_dim: int = 32
-    num_heads: int = 4
-    hidden_dim: int = 64
-    num_layers: int = 1
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
     dropout: float = 0.0
 
 
