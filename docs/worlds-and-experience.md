@@ -3,10 +3,16 @@
 This document defines how action-oriented worlds fit into the project. It is a
 boundary document, not a reinforcement-learning algorithm spec.
 
+Use [Glossary](glossary.md) as the source of truth for short boundary-term
+definitions. This document explains world, observation, action, feedback, and
+experience in interaction-oriented settings.
+
 ## World
 
-A world is something that receives actions and returns observations and
-consequences.
+A world is a structured setting with state, entities, relations, changes,
+constraints, and consequences. Some worlds receive actions and return
+observations or feedback. Others are observed or replayed through source
+records.
 
 Examples:
 
@@ -14,7 +20,7 @@ Examples:
 - a web browser session
 - a tool environment
 - a physical or sensor environment
-- an offline dataset replaying recorded interactions
+- an offline source record replaying recorded interactions
 
 The project follows the Gymnasium-style separation at the concept level:
 
@@ -25,6 +31,9 @@ step(action) -> observation, reward, terminated, truncated, info
 
 This does not require depending on Gymnasium. The important point is the
 boundary: `step()` belongs to the world, not to the model.
+
+A world-like interface can expose observations or transitions from a source
+record without supporting free interaction or branching.
 
 ## Experience
 
@@ -43,7 +52,8 @@ Experience is material. It is not yet a model input format.
 
 ## Training Examples
 
-Training examples are cut from experience for a specific objective.
+Training examples are cut from source records for a specific objective. In this
+document, those source records are usually experience.
 
 Examples:
 
@@ -70,8 +80,8 @@ target in one objective and an input in another.
 
 ## Model Input
 
-The model receives tensors, token IDs, or embedding sequences produced from a
-training example.
+The model receives forms, encodings, tensors, token IDs, or input embedding
+sequences produced from a training example.
 
 Examples:
 

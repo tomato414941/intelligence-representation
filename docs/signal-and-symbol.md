@@ -16,7 +16,7 @@ It does not mean the retired `Signal` class.
 The active engineering direction is:
 
 ```text
-raw examples or interaction records
+source records or experience
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
@@ -91,7 +91,7 @@ makes them symbol-like.
 
 ## Representation Principle
 
-The project should keep raw examples close to their source task.
+The project should keep source records close to their source task.
 
 ```text
 text:
@@ -208,7 +208,7 @@ structured text
 Other modalities should be judged by a more general practical question:
 
 ```text
-Can this raw example or interaction record become a learnable model input
+Can this source record or experience become a learnable model input
 sequence with a clear objective or evaluator?
 ```
 
@@ -281,7 +281,7 @@ project wants a fixed ontology.
 Prefer:
 
 ```text
-task-specific raw examples
+task-specific source records
 modality-specific input layers
 token IDs for text or other discrete pre-embedding inputs
 input embedding sequence as the shared model input boundary
@@ -327,6 +327,6 @@ raw data format.
 The replacement principle is:
 
 ```text
-do not commonize raw examples prematurely
+do not commonize source records prematurely
 commonize the model-facing representation boundary
 ```

@@ -8,6 +8,7 @@
 詳細は次の文書に置く。
 
 - [Predictive Representation System](predictive-representation-system.md)
+- [Glossary](glossary.md)
 - [Model Boundaries](model-boundaries.md)
 - [Learning and Execution](learning-and-execution.md)
 - [Representation, Signal, and Symbol](signal-and-symbol.md)
@@ -41,10 +42,10 @@ Predictive Representation System の中核的な評価面に位置づける。
 
 重要なのは、最初から人間が意味カテゴリを固定することではない。
 元データを入力層が扱いやすい形で保持し、
-そこからモデル入力に使える embedding sequence へ変換することである。
+そこからモデル入力に使える input embedding sequence へ変換することである。
 
 ```text
-raw examples
+source records
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
@@ -52,14 +53,14 @@ raw examples
 
 この形なら、テキスト、画像、音声、行動、選択分類、自由記述応答を、
 同じ中間の予測計算へ接続しやすい。
-ただし、入力層、出力層、学習目的まで無理に同一化する必要はない。
+ただし、入力層、output head / decoder、学習目的まで無理に同一化する必要はない。
 
 ## 設計原則
 
 優先するもの:
 
 ```text
-raw examples close to their source
+source records close to their source
 simple input-layer boundaries
 input embedding sequences as shared model input
 next-token or future-token training as smoke objectives
@@ -80,7 +81,9 @@ loss reduction alone as a world-model claim
 
 ## 観測を起点にする
 
-より一般には、入力は observation stream である。
+より一般には、入力は observation stream として扱えることがある。
+ここでの `observation` は [Glossary](glossary.md) の通り役割語であり、
+すべての入力形式を表す共通データ型ではない。
 
 ```text
 Observation Stream
@@ -102,7 +105,7 @@ Observation Stream
 ただし、意味構造そのものを手設計の固定 schema として先に作り込まない。
 
 先に固定してよいのは、学習と評価に必要な境界である。
-たとえば、どの raw example をどの tokenizer / encoder に渡すか、
+たとえば、どの source record をどの tokenizer / encoder に渡すか、
 どの範囲を予測対象にするか、どの評価で読むか、といった境界である。
 
 意味のある内部表現は、データ分布、予測対象、評価圧によって

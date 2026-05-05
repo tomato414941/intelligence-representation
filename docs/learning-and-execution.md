@@ -4,10 +4,14 @@ This document defines how datasets and interactions become model inputs,
 outputs, and learning objectives. It is not a runtime design, an RL framework,
 or a generic raw-data schema.
 
+Use [Glossary](glossary.md) as the source of truth for short boundary-term
+definitions. This document explains how source records are used during learning
+and execution.
+
 The core distinction is:
 
 ```text
-data or interaction record:
+source record:
   what happened or what the dataset provides
 
 model input:
@@ -20,9 +24,9 @@ objective:
   what is optimized or evaluated
 ```
 
-## Records
+## Source Records
 
-Records should stay close to their source.
+Source records should stay close to their source.
 
 Dataset examples can be static:
 
@@ -33,7 +37,7 @@ image with prompt and answer
 audio clip with transcript
 ```
 
-Interaction records can be sequential:
+Experience records can be sequential:
 
 ```text
 observation
@@ -48,7 +52,7 @@ because they need the same raw fields.
 
 ## Model Inputs
 
-Training and inference both construct model inputs from records.
+Training and inference both construct model inputs from source records.
 
 Examples:
 
@@ -85,7 +89,7 @@ evaluators.
 
 ## Learning Objectives
 
-Different objectives can be built from similar records.
+Different objectives can be built from similar source records.
 
 Examples:
 

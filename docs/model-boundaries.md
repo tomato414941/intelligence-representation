@@ -10,14 +10,14 @@ definitions. This document explains how those terms appear in model training.
 
 The project should not force every modality into one raw data format. A
 modality is a kind of input or output form, such as text, image, video, audio,
-discrete action, tool result, or label text. Raw examples should stay close to
-the dataset or interaction they come from.
+discrete action, tool result, or label text. Source records should stay close
+to the dataset or interaction they come from.
 
 Commonization should happen at the input embedding sequence consumed by the
 Transformer core.
 
 ```text
-raw examples
+source records
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
@@ -26,9 +26,9 @@ raw examples
   -> model output
 ```
 
-## Raw Examples
+## Source Records
 
-Raw examples are task-level data items before tokenization or embedding.
+Source records are source-level data items before tokenization or embedding.
 
 Examples:
 
@@ -52,8 +52,8 @@ video or audio tasks:
   task-specific text, labels, or feedback when needed
 ```
 
-The raw example shape should be chosen for the task and source data. Do not add
-generic cross-task fields just to make unrelated tasks look uniform. Add
+The source record shape should be chosen for the task and source data. Do not
+add generic cross-task fields just to make unrelated tasks look uniform. Add
 structure only when a tokenizer, input layer, training objective, or evaluator
 actually uses it.
 
@@ -151,7 +151,7 @@ The core is implemented as a PyTorch `TransformerEncoder` with:
 - batch-first input shape `[batch, sequence, embedding_dim]`
 - GELU activation
 - optional causal mask
-- no tokenizer, modality loader, task head, or loss inside the core itself
+- no tokenizer, modality loader, output head, or loss inside the core itself
 
 The shogi experiments have recently used an even smaller ad hoc setting
 (`embedding_dim=16`, `num_heads=2`, `hidden_dim=32`, `num_layers=1`) to keep CPU

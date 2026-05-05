@@ -1,5 +1,8 @@
 # Predictive Representation System
 
+Use [Glossary](glossary.md) as the source of truth for short boundary-term
+definitions. This document describes the broader project hypothesis.
+
 ## 中心文
 
 ```text
@@ -10,7 +13,7 @@ A predictive representation system for language, perception, action, memory, and
 
 目指しているものは、単に世界状態を予測するモデルではない。自然言語、観測、
 行動、映像、音声、状態、信念、記憶、報酬、誤差、tool use を、それぞれの
-raw example や interaction record からモデル入力に変換し、Transformer /
+source record や experience からモデル入力に変換し、Transformer /
 attention による予測計算を通じて、汎用的な知的計算を実現できるかを調べる。
 
 この上位仮説を、この文書では `Predictive Representation System` と呼ぶ。
@@ -23,7 +26,7 @@ Predictive Representation System:
 ```
 
 ここでの system は、CPU やチューリングマシンのような明示的な命令実行装置ではない。
-より正確には、入力表現、共有モデル、出力層、目的関数、評価を含む学習可能な予測基盤である。
+より正確には、入力表現、共有モデル、output head / decoder、objective、評価を含む学習可能な予測基盤である。
 
 ## 階層
 
@@ -76,8 +79,8 @@ Reward / Error Model:
   報酬、失敗、誤差、修正、更新信号を表現として扱う機能
 ```
 
-これらを別々の symbolic system として手設計するのではなく、raw example や
-interaction record から作るモデル入力表現と予測学習の上に載せる。
+これらを別々の symbolic system として手設計するのではなく、source record や
+experience から作るモデル入力表現と予測学習の上に載せる。
 
 ## 基本演算
 
@@ -133,13 +136,13 @@ plan の後の outcome
 別の入力層を通って embedding sequence になることが多い。
 
 このプロジェクトで今後中心に置くのは、入力前の汎用 envelope schema ではなく、
-raw example / interaction record と、それを input embedding sequence に変換する
+source record / experience と、それを input embedding sequence に変換する
 modality-specific input layers である。
 
 このプロジェクトで積極的に固定してよいのは、主に学習と評価に実際に使う薄い境界である。
 
 ```text
-raw example or interaction record
+source record or experience
 input layer boundary
 input embedding sequence boundary
 loss mask or objective target
@@ -164,7 +167,7 @@ SocialModel
 人間が設計するべきなのは、内部の意味構造そのものではなく、次である。
 
 ```text
-input representation
+model input
 prediction target
 objective
 evaluation pressure
@@ -187,13 +190,13 @@ audio input layer:
   waveform / speech -> audio embeddings
 
 action input layer:
-  tool call / motor command / action record -> action representation
+  tool call / motor command / action form or encoding -> input embedding
 
 state input layer:
-  environment state / event logs -> state representation
+  environment state / event logs -> form or encoding -> input embedding
 
 reward / error input layer:
-  reward, failure, correction -> update-related representation
+  reward, failure, correction -> feedback form or encoding -> input embedding
 ```
 
 新しい入力層を追加することは、新しい感覚器や行動器を追加することに近い。
@@ -208,11 +211,12 @@ reward / error input layer:
 現在の実験基盤は、次の形へ寄せている。
 
 ```text
-raw examples or interaction records
+source records or experience
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
-  -> task-specific output layer and evaluation
+  -> output head / decoder
+  -> model output and evaluation
 ```
 
 現時点でまだ示していないものは次である。
