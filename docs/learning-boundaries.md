@@ -1,120 +1,40 @@
 # Learning Boundaries
 
-This document defines how datasets and interactions become model inputs,
-outputs, and learning objectives. It is not a runtime design, an RL framework,
-or a generic raw-data schema.
-
-Use [Glossary](glossary.md) as the source of truth for short boundary-term
-definitions. This document explains how source records are used during learning
-and execution.
-
-The core distinction is:
-
-```text
-source record:
-  what happened or what the dataset provides
-
-model input:
-  what is passed into the model for one step or window
-
-model output:
-  what the model produces
-
-objective:
-  what is optimized or evaluated
-```
-
-## Dataset Definitions and Runs
-
-A dataset definition is the intended training data boundary. It says which
-source records or derived examples are included for a learning purpose.
-
-A run is an execution that produces artifacts such as raw logs, example caches,
-metrics, or checkpoints. Runs are evidence and material for datasets, but they
-are not themselves the dataset definition.
-
-Training should be explainable in terms of a dataset definition and a training
-configuration, not just a convenient artifact path.
+This document explains how the data and learning terms from
+[Glossary](glossary.md) relate to each other. The glossary is the source of
+truth for term definitions.
 
 ## Source Records
 
-Source records should stay close to their source.
+Source records should stay close to their source. They can produce many
+training examples for different objectives.
 
-Dataset examples can be static:
+Do not force static dataset records and interaction records into one generic
+schema. They are related because both can produce model inputs, not because they
+need the same raw fields.
 
-```text
-text corpus item
-image with label
-image with prompt and answer
-audio clip with transcript
-```
+## Dataset Definitions and Runs
 
-Experience records can be sequential:
+A dataset definition states which source records or training examples are used
+for a learning purpose.
 
-```text
-observation
-action or model output
-feedback, reward, or tool result
-next observation
-```
+A run produces artifacts such as raw logs, example caches, metrics, or
+checkpoints. Runs can provide material for a dataset, but a run artifact is not
+itself the dataset definition.
 
-Do not force these into one generic schema. A static dataset example and an
-environment interaction are related because both can produce model inputs, not
-because they need the same raw fields.
+Training should be explainable by a dataset definition and a training
+configuration, not only by a convenient artifact path.
 
 ## Model Inputs
 
-Training and inference both construct model inputs from source records.
+Training and inference construct model inputs from source records or training
+examples. The shared model boundary is still the input embedding sequence
+described in [Model Boundaries](model-boundaries.md).
 
-Examples:
+## Outputs and Objectives
 
-```text
-language modeling:
-  preceding text tokens
-
-image/text choice:
-  image patch embeddings plus candidate text embeddings
-
-interaction modeling:
-  recent observations, actions, outputs, and feedback
-```
-
-The shared model boundary is still the input embedding sequence described in
-[Model Boundaries](model-boundaries.md).
-
-## Outputs
-
-Model outputs are task-dependent.
-
-Examples:
-
-```text
-next token logits
-choice scores
-generated text
-predicted reward or value
-action distribution
-```
-
-These outputs do not need one shared raw format. They need clear objectives and
-evaluators.
-
-## Learning Objectives
-
-Different objectives can be built from similar source records.
-
-Examples:
-
-```text
-self-supervised:
-  predict the next token, masked span, next patch, or future observation
-
-supervised:
-  predict a label, answer text, transcript, or chosen candidate
-
-reinforcement learning:
-  improve a policy using reward, value, return, or preference feedback
-```
+Model outputs are interpreted by objectives and evaluators. Different
+objectives can be built from similar source records.
 
 Reinforcement learning is different because the target is not just a fixed
 label from the record. It optimizes behavior under feedback. That difference
