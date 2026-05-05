@@ -136,15 +136,14 @@ The current base model is the shared Transformer core plus task-specific input
 layers and output heads. Text, image, grid, and shogi routes can use different
 input layers and heads while keeping the same core shape.
 
-The default base core is intentionally small:
+The project-wide training size is currently:
 
-| Preset | Embedding dim | Heads | Feed-forward hidden dim | Layers | Dropout |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| tiny | 8 | 2 | 16 | 1 | 0.0 |
-| small | 32 | 4 | 64 | 1 | 0.0 |
+| Embedding dim | Heads | Feed-forward hidden dim | Layers | Dropout |
+| ---: | ---: | ---: | ---: | ---: |
+| 256 | 8 | 1024 | 6 | 0.0 |
 
-`small` is the current default base model for regular training configs. `tiny`
-is mainly for tests and very small smoke runs.
+Training configs should store these concrete values, not a shared preset name.
+Tests and smoke runs can use smaller explicit values when runtime is the reason.
 
 The core is implemented as a PyTorch `TransformerEncoder` with:
 
@@ -153,9 +152,7 @@ The core is implemented as a PyTorch `TransformerEncoder` with:
 - optional causal mask
 - no tokenizer, modality loader, output head, or loss inside the core itself
 
-The shogi experiments have recently used an even smaller ad hoc setting
-(`embedding_dim=16`, `num_heads=2`, `hidden_dim=32`, `num_layers=1`) to keep CPU
-runs short. That is an experiment setting, not the base model spec.
+Small model shapes in tests are runtime settings, not project-wide defaults.
 
 ## Token IDs and Loss Masks
 

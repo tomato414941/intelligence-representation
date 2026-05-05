@@ -33,7 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lr-schedule", choices=("constant", "warmup_cosine"), default="constant")
     parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
+    parser.add_argument("--embedding-dim", type=int, default=256)
+    parser.add_argument("--num-heads", type=int, default=8)
+    parser.add_argument("--hidden-dim", type=int, default=1024)
+    parser.add_argument("--num-layers", type=int, default=6)
+    parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
     return parser
@@ -68,7 +72,11 @@ def main(argv: list[str] | None = None) -> None:
             lr_schedule=args.lr_schedule,
             warmup_steps=args.warmup_steps,
             seed=args.seed,
-            model_preset=args.model_preset,
+            embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            dropout=args.dropout,
             device=args.device,
             tokenizer_vocab_size=args.tokenizer_vocab_size,
         ),
@@ -105,7 +113,10 @@ def main(argv: list[str] | None = None) -> None:
         f" initial_loss={result.metrics.train_initial_loss:.4f}"
         f" final_loss={result.metrics.train_final_loss:.4f}"
         f" max_steps={result.metrics.max_steps}"
-        f" model_preset={result.metrics.model_preset}"
+        f" embedding_dim={result.metrics.embedding_dim}"
+        f" hidden_dim={result.metrics.hidden_dim}"
+        f" num_heads={result.metrics.num_heads}"
+        f" num_layers={result.metrics.num_layers}"
     )
 
 

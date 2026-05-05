@@ -23,10 +23,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lr-schedule", choices=("constant", "warmup_cosine"), default="constant")
     parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=31)
-    parser.add_argument("--embedding-dim", type=int, default=32)
-    parser.add_argument("--num-heads", type=int, default=2)
-    parser.add_argument("--hidden-dim", type=int, default=64)
-    parser.add_argument("--num-layers", type=int, default=1)
+    parser.add_argument("--embedding-dim", type=int, default=256)
+    parser.add_argument("--num-heads", type=int, default=8)
+    parser.add_argument("--hidden-dim", type=int, default=1024)
+    parser.add_argument("--num-layers", type=int, default=6)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument(
         "--eval-agent-cell",

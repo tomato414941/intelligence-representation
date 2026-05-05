@@ -20,10 +20,12 @@ class ModelInputBoundariesTest(unittest.TestCase):
         )
         text_model = CausalTextModel(
             build_causal_text_config(
-                preset="tiny",
                 vocab_size=16,
                 context_length=8,
                 embedding_dim=embedding_dim,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
             )
         )
         image_input = ImagePatchInputLayer(
@@ -81,10 +83,12 @@ class ModelInputBoundariesTest(unittest.TestCase):
         )
         text_model = CausalTextModel(
             build_causal_text_config(
-                preset="tiny",
                 vocab_size=16,
                 context_length=8,
                 embedding_dim=embedding_dim,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
             )
         )
         image_input = ImagePatchInputLayer(
@@ -110,10 +114,12 @@ class ModelInputBoundariesTest(unittest.TestCase):
         vocab_size = 16
         text_model = CausalTextModel(
             build_causal_text_config(
-                preset="tiny",
                 vocab_size=vocab_size,
                 context_length=8,
                 embedding_dim=embedding_dim,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
             )
         )
         image_input = ImagePatchInputLayer(
@@ -140,10 +146,12 @@ class ModelInputBoundariesTest(unittest.TestCase):
         vocab_size = 16
         text_model = CausalTextModel(
             build_causal_text_config(
-                preset="tiny",
                 vocab_size=vocab_size,
                 context_length=8,
                 embedding_dim=embedding_dim,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
             )
         )
         image_input = ImagePatchInputLayer(

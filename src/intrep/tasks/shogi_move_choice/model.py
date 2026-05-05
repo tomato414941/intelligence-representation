@@ -18,8 +18,8 @@ DROP_PIECE_VOCAB_SIZE = 8
 
 @dataclass(frozen=True)
 class ShogiMoveChoiceModelConfig:
-    embedding_dim: int = 32
-    hidden_dim: int = 64
+    embedding_dim: int = 256
+    hidden_dim: int = 1024
 
 
 class ShogiMoveChoiceModel(nn.Module):
@@ -85,10 +85,10 @@ class ShogiMoveChoiceModel(nn.Module):
 
 @dataclass(frozen=True)
 class SharedCoreShogiMoveChoiceModelConfig:
-    embedding_dim: int = 32
-    num_heads: int = 4
-    hidden_dim: int = 64
-    num_layers: int = 1
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
     dropout: float = 0.0
 
 

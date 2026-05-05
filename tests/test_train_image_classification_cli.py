@@ -49,7 +49,11 @@ class TrainImageClassificationCLITest(unittest.TestCase):
                 eval_accuracy=1.0,
                 patch_size=config.patch_size,
                 max_steps=config.max_steps,
-                model_preset=config.model_preset,
+                embedding_dim=config.embedding_dim,
+                num_heads=config.num_heads,
+                hidden_dim=config.hidden_dim,
+                num_layers=config.num_layers,
+                dropout=config.dropout,
             )
             model = ImageClassificationModel(
                 vocab_size=1,
@@ -99,7 +103,10 @@ class TrainImageClassificationCLITest(unittest.TestCase):
         self.assertEqual(captured_train_count, 2)
         self.assertEqual(captured_eval_count, 2)
         self.assertEqual(captured_config.patch_size, 4)
-        self.assertEqual(captured_config.model_preset, "tiny")
+        self.assertEqual(captured_config.embedding_dim, 256)
+        self.assertEqual(captured_config.num_heads, 8)
+        self.assertEqual(captured_config.hidden_dim, 1024)
+        self.assertEqual(captured_config.num_layers, 6)
         self.assertEqual(captured_config.max_steps, 20)
         self.assertEqual(captured_config.batch_size, 8)
 
@@ -129,7 +136,11 @@ class TrainImageClassificationCLITest(unittest.TestCase):
                 eval_accuracy=1.0,
                 patch_size=config.patch_size,
                 max_steps=config.max_steps,
-                model_preset=config.model_preset,
+                embedding_dim=config.embedding_dim,
+                num_heads=config.num_heads,
+                hidden_dim=config.hidden_dim,
+                num_layers=config.num_layers,
+                dropout=config.dropout,
             )
             model = ImageClassificationModel(
                 vocab_size=1,

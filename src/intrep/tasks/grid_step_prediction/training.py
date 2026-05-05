@@ -25,10 +25,10 @@ class GridStepPredictionConfig:
     lr_schedule: LearningRateSchedule = "constant"
     warmup_steps: int = 0
     seed: int = 7
-    embedding_dim: int = 32
-    num_heads: int = 2
-    hidden_dim: int = 64
-    num_layers: int = 1
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
     device: str = "auto"
 
 

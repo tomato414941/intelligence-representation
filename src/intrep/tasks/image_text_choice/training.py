@@ -17,7 +17,6 @@ from intrep.text.language_modeling_training import (
     LanguageModelingTrainingDevice,
     resolve_training_device,
 )
-from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.core.shared_state_loading import load_compatible_shared_state
 from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
@@ -36,7 +35,11 @@ class ImageTextChoiceTrainingConfig:
     lr_schedule: LearningRateSchedule = "constant"
     warmup_steps: int = 0
     seed: int = 7
-    model_preset: str = "tiny"
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
+    dropout: float = 0.0
     device: LanguageModelingTrainingDevice = "cpu"
     tokenizer_vocab_size: int = 512
 
@@ -52,7 +55,11 @@ class ImageTextChoiceMetrics:
     text_initial_loss: float | None
     text_final_loss: float | None
     max_steps: int
-    model_preset: str
+    embedding_dim: int
+    num_heads: int
+    hidden_dim: int
+    num_layers: int
+    dropout: float
 
 
 @dataclass(frozen=True)
@@ -170,17 +177,16 @@ def train_image_text_choice_model(
             shuffle=False,
             device=device,
         )
-    preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = ImageTextChoiceModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=training_config.text_context_length,
         image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
         patch_size=training_config.image_patch_size,
-        embedding_dim=int(preset["embedding_dim"]),
-        num_heads=int(preset["num_heads"]),
-        hidden_dim=int(preset["hidden_dim"]),
-        num_layers=int(preset["num_layers"]),
-        dropout=float(preset["dropout"]),
+        embedding_dim=training_config.embedding_dim,
+        num_heads=training_config.num_heads,
+        hidden_dim=training_config.hidden_dim,
+        num_layers=training_config.num_layers,
+        dropout=training_config.dropout,
         channel_count=train_dataset.channel_count,
     ).to(device)
     if initial_model_state_dict is not None:
@@ -290,7 +296,11 @@ def train_image_text_choice_model(
             text_initial_loss=text_initial_loss,
             text_final_loss=text_final_loss,
             max_steps=training_config.max_steps,
-            model_preset=training_config.model_preset,
+            embedding_dim=training_config.embedding_dim,
+            num_heads=training_config.num_heads,
+            hidden_dim=training_config.hidden_dim,
+            num_layers=training_config.num_layers,
+            dropout=training_config.dropout,
         ),
         model=model,
         tokenizer=tokenizer,
@@ -506,8 +516,18 @@ def _validate_config(config: ImageTextChoiceTrainingConfig) -> None:
         raise ValueError("lr_schedule must be one of: constant, warmup_cosine")
     if config.warmup_steps < 0:
         raise ValueError("warmup_steps must be non-negative")
-    if config.model_preset not in TRANSFORMER_CORE_PRESETS:
-        raise ValueError(f"unknown model preset: {config.model_preset}")
+    if config.embedding_dim <= 0:
+        raise ValueError("embedding_dim must be positive")
+    if config.num_heads <= 0:
+        raise ValueError("num_heads must be positive")
+    if config.hidden_dim <= 0:
+        raise ValueError("hidden_dim must be positive")
+    if config.num_layers <= 0:
+        raise ValueError("num_layers must be positive")
+    if not 0.0 <= config.dropout < 1.0:
+        raise ValueError("dropout must be greater than or equal to 0.0 and less than 1.0")
+    if config.embedding_dim % config.num_heads != 0:
+        raise ValueError("embedding_dim must be divisible by num_heads")
     if config.device not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer_vocab_size <= 0:

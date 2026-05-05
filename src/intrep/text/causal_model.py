@@ -6,7 +6,6 @@ from typing import Any
 import torch
 from torch import nn
 
-from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.core.transformer_core import SharedTransformerCore
 
 
@@ -23,28 +22,22 @@ class CausalTextConfig:
 
 def build_causal_text_config(
     *,
-    preset: str = "small",
     vocab_size: int,
     context_length: int,
-    embedding_dim: int | None = None,
-    num_heads: int | None = None,
-    hidden_dim: int | None = None,
-    num_layers: int | None = None,
-    dropout: float | None = None,
+    embedding_dim: int = 256,
+    num_heads: int = 8,
+    hidden_dim: int = 1024,
+    num_layers: int = 6,
+    dropout: float = 0.0,
 ) -> CausalTextConfig:
-    if preset not in TRANSFORMER_CORE_PRESETS:
-        raise ValueError(f"unknown model preset: {preset}")
-    preset_values = TRANSFORMER_CORE_PRESETS[preset]
     values: dict[str, Any] = {
         "vocab_size": vocab_size,
         "context_length": context_length,
-        "embedding_dim": embedding_dim
-        if embedding_dim is not None
-        else preset_values["embedding_dim"],
-        "num_heads": num_heads if num_heads is not None else preset_values["num_heads"],
-        "hidden_dim": hidden_dim if hidden_dim is not None else preset_values["hidden_dim"],
-        "num_layers": num_layers if num_layers is not None else preset_values["num_layers"],
-        "dropout": dropout if dropout is not None else preset_values["dropout"],
+        "embedding_dim": embedding_dim,
+        "num_heads": num_heads,
+        "hidden_dim": hidden_dim,
+        "num_layers": num_layers,
+        "dropout": dropout,
     }
     config = CausalTextConfig(**values)
     validate_causal_text_config(config)

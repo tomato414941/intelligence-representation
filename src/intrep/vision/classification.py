@@ -18,7 +18,6 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.tasks.image_classification.model import ClassificationHead, ImageClassificationModel
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
@@ -80,7 +79,11 @@ class ImageClassificationConfig:
     lr_schedule: LearningRateSchedule = "constant"
     warmup_steps: int = 0
     seed: int = 7
-    model_preset: str = "tiny"
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
+    dropout: float = 0.0
     device: str = "auto"
 
 
@@ -96,7 +99,11 @@ class ImageClassificationMetrics:
     eval_accuracy: float | None
     patch_size: int
     max_steps: int
-    model_preset: str
+    embedding_dim: int
+    num_heads: int
+    hidden_dim: int
+    num_layers: int
+    dropout: float
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -110,7 +117,11 @@ class ImageClassificationMetrics:
             "eval_accuracy": self.eval_accuracy,
             "image_patch_size": self.patch_size,
             "max_steps": self.max_steps,
-            "model_preset": self.model_preset,
+            "embedding_dim": self.embedding_dim,
+            "num_heads": self.num_heads,
+            "hidden_dim": self.hidden_dim,
+            "num_layers": self.num_layers,
+            "dropout": self.dropout,
         }
 
 
@@ -266,17 +277,16 @@ def train_image_classifier_with_result(
             device=device,
         )
 
-    preset = TRANSFORMER_CORE_PRESETS[training_config.model_preset]
     model = ImageClassificationModel(
         vocab_size=1,
         text_context_length=1,
         image_size=(train_dataset.image_shape[0], train_dataset.image_shape[1]),
         patch_size=training_config.patch_size,
-        embedding_dim=int(preset["embedding_dim"]),
-        num_heads=int(preset["num_heads"]),
-        hidden_dim=int(preset["hidden_dim"]),
-        num_layers=int(preset["num_layers"]),
-        dropout=float(preset["dropout"]),
+        embedding_dim=training_config.embedding_dim,
+        num_heads=training_config.num_heads,
+        hidden_dim=training_config.hidden_dim,
+        num_layers=training_config.num_layers,
+        dropout=training_config.dropout,
         channel_count=train_dataset.channel_count,
         num_classes=len(train_dataset.label_names),
     ).to(device)
@@ -329,7 +339,11 @@ def train_image_classifier_with_result(
         eval_accuracy=eval_accuracy,
         patch_size=training_config.patch_size,
         max_steps=training_config.max_steps,
-        model_preset=training_config.model_preset,
+        embedding_dim=training_config.embedding_dim,
+        num_heads=training_config.num_heads,
+        hidden_dim=training_config.hidden_dim,
+        num_layers=training_config.num_layers,
+        dropout=training_config.dropout,
     )
     return ImageClassificationTrainingResult(
         metrics=metrics,
@@ -480,8 +494,18 @@ def _validate_config(config: ImageClassificationConfig) -> None:
         raise ValueError("lr_schedule must be one of: constant, warmup_cosine")
     if config.warmup_steps < 0:
         raise ValueError("warmup_steps must be non-negative")
-    if config.model_preset not in TRANSFORMER_CORE_PRESETS:
-        raise ValueError(f"unknown model preset: {config.model_preset}")
+    if config.embedding_dim <= 0:
+        raise ValueError("embedding_dim must be positive")
+    if config.num_heads <= 0:
+        raise ValueError("num_heads must be positive")
+    if config.hidden_dim <= 0:
+        raise ValueError("hidden_dim must be positive")
+    if config.num_layers <= 0:
+        raise ValueError("num_layers must be positive")
+    if not 0.0 <= config.dropout < 1.0:
+        raise ValueError("dropout must be greater than or equal to 0.0 and less than 1.0")
+    if config.embedding_dim % config.num_heads != 0:
+        raise ValueError("embedding_dim must be divisible by num_heads")
 
 
 def _loss(

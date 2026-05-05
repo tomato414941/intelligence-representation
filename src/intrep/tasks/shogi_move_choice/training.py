@@ -27,10 +27,10 @@ class ShogiMoveChoiceTrainingConfig:
     learning_rate: float = 0.003
     weight_decay: float = 0.0
     seed: int = 7
-    embedding_dim: int = 32
-    hidden_dim: int = 64
-    num_heads: int = 4
-    num_layers: int = 1
+    embedding_dim: int = 256
+    hidden_dim: int = 1024
+    num_heads: int = 8
+    num_layers: int = 6
     use_shared_core: bool = True
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 0.0

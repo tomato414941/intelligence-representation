@@ -31,7 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lr-schedule", choices=("constant", "warmup_cosine"), default="constant")
     parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
+    parser.add_argument("--embedding-dim", type=int, default=256)
+    parser.add_argument("--num-heads", type=int, default=8)
+    parser.add_argument("--hidden-dim", type=int, default=1024)
+    parser.add_argument("--num-layers", type=int, default=6)
+    parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument("--metrics-path", type=Path)
@@ -71,7 +75,11 @@ def main(argv: list[str] | None = None) -> None:
             lr_schedule=args.lr_schedule,
             warmup_steps=args.warmup_steps,
             seed=args.seed,
-            model_preset=args.model_preset,
+            embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            dropout=args.dropout,
             device=args.device,
         ),
     )

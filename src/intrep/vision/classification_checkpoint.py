@@ -10,7 +10,6 @@ from intrep.vision.classification import (
     ImageClassificationTrainingResult,
 )
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
-from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.tasks.image_classification.model import ImageClassificationModel
 
 
@@ -54,17 +53,16 @@ def load_image_classification_checkpoint(
     config = ImageClassificationConfig(**config_payload)
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
     label_names = _label_names_from_payload(payload.get("label_names"))
-    preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
     model = ImageClassificationModel(
         vocab_size=1,
         text_context_length=1,
         image_size=(image_shape[0], image_shape[1]),
         patch_size=config.patch_size,
-        embedding_dim=int(preset["embedding_dim"]),
-        num_heads=int(preset["num_heads"]),
-        hidden_dim=int(preset["hidden_dim"]),
-        num_layers=int(preset["num_layers"]),
-        dropout=float(preset["dropout"]),
+        embedding_dim=config.embedding_dim,
+        num_heads=config.num_heads,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
+        dropout=config.dropout,
         channel_count=1 if len(image_shape) == 2 else image_shape[2],
         num_classes=len(label_names),
     ).to(resolved_device)

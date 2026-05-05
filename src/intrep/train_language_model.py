@@ -38,7 +38,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-steps", type=int, default=0)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    parser.add_argument("--model-preset", choices=("tiny", "small"), default="tiny")
+    parser.add_argument("--embedding-dim", type=int, default=256)
+    parser.add_argument("--num-heads", type=int, default=8)
+    parser.add_argument("--hidden-dim", type=int, default=1024)
+    parser.add_argument("--num-layers", type=int, default=6)
+    parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--tokenizer", choices=("byte", "byte-pair"), default="byte-pair")
     parser.add_argument("--tokenizer-path", type=Path)
     parser.add_argument("--tokenizer-vocab-size", type=int, default=512)
@@ -82,9 +86,13 @@ def main(argv: list[str] | None = None) -> None:
         eval_examples=(LanguageModelingExample(eval_text),),
         training_config=training_config,
         model_config=build_causal_text_config(
-            preset=args.model_preset,
             vocab_size=vocab_size,
             context_length=args.context_length,
+            embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            dropout=args.dropout,
         ),
         tokenizer_override=tokenizer,
     )
@@ -93,7 +101,7 @@ def main(argv: list[str] | None = None) -> None:
         "corpus_paths": [str(path) for path in args.corpus_path],
         "train_char_count": len(train_text),
         "eval_char_count": len(eval_text),
-        "model_preset": args.model_preset,
+        "model_config": asdict(artifacts.model.config),
         "training_config": _training_config_payload(training_config),
         "tokenizer": {
             "source": str(args.tokenizer_path) if args.tokenizer_path is not None else "trained",

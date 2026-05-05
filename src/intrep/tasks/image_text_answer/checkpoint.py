@@ -7,7 +7,6 @@ import torch
 
 from intrep.tasks.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
-from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
 from intrep.tasks.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
@@ -55,17 +54,16 @@ def load_image_text_answer_checkpoint(
         raise ValueError("checkpoint requires config")
     config = ImageTextAnswerTrainingConfig(**config_payload)
     image_shape = _image_shape_from_payload(payload.get("image_shape"))
-    preset = TRANSFORMER_CORE_PRESETS[config.model_preset]
     model = ImageTextAnswerModel(
         vocab_size=tokenizer.vocab_size,
         text_context_length=config.text_context_length,
         image_size=(image_shape[0], image_shape[1]),
         patch_size=config.image_patch_size,
-        embedding_dim=int(preset["embedding_dim"]),
-        num_heads=int(preset["num_heads"]),
-        hidden_dim=int(preset["hidden_dim"]),
-        num_layers=int(preset["num_layers"]),
-        dropout=float(preset["dropout"]),
+        embedding_dim=config.embedding_dim,
+        num_heads=config.num_heads,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
+        dropout=config.dropout,
         channel_count=1 if len(image_shape) == 2 else image_shape[2],
     ).to(resolved_device)
     model.load_state_dict(payload["model"])
