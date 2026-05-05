@@ -19,6 +19,14 @@ Commonization should happen where it helps learning and comparison, especially
 around input embedding sequences, shared cores, task models, and transfer. Raw
 records should stay close to their source and task.
 
+## Terms
+
+A form is an external shape used to store, exchange, display, or prepare an
+object or world state. It does not have to be human-readable. SFEN, KIF, USI
+moves, rendered board images, ASCII grids, PNG files, tensors, raw text, and
+JSONL rows can all be forms when they represent the source object outside the
+model.
+
 ## Package Responsibilities
 
 - `core/`: domain-agnostic representation computation and shared utilities.
