@@ -11,7 +11,7 @@ from intrep.tasks.image_text_answer.training import (
     train_image_text_answer_model,
 )
 from intrep.tasks.image_text_answer.checkpoint import save_image_text_answer_checkpoint
-from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
+from intrep.transfer.shared_core import load_shared_core_initialization
 from intrep.text.tokenizer import load_text_tokenizer
 
 
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit("provide only one of --tokenizer-path or --tokenizer-corpus-path")
     train_examples = load_image_text_answer_examples_jsonl(args.train_path)
     initialization = (
-        load_shared_multimodal_initialization(args.init_checkpoint_path, device=args.device)
+        load_shared_core_initialization(args.init_checkpoint_path, device=args.device)
         if args.init_checkpoint_path is not None
         else None
     )

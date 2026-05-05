@@ -156,7 +156,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
         self.assertGreaterEqual(result.metrics.train_accuracy, 0.0)
 
 
-class SharedMultimodalChoicePathTest(unittest.TestCase):
+class ImageTextChoicePathTest(unittest.TestCase):
     def test_outputs_choice_logits(self) -> None:
         model = ImageTextChoiceModel(
             vocab_size=32,

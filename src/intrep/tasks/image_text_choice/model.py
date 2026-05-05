@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.core.model_input import concatenate_input_embedding_sequences
-from intrep.shared_multimodal_model import ImageTextSharedModel
+from intrep.image_text_shared_model import ImageTextSharedModel
 
 
 class ImageTextChoiceModel(ImageTextSharedModel):

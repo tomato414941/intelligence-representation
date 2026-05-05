@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.core.transformer_core import SharedTransformerCore
-from intrep.shared_multimodal_model import ImageTextSharedModel
+from intrep.image_text_shared_model import ImageTextSharedModel
 from intrep.vision.input_layer import ImagePatchInputLayer
 
 

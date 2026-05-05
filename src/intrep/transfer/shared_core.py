@@ -13,17 +13,17 @@ from intrep.text.tokenizer import TextTokenizer
 
 
 @dataclass(frozen=True)
-class SharedMultimodalInitialization:
+class SharedCoreInitialization:
     model_state_dict: dict[str, torch.Tensor]
     tokenizer: TextTokenizer | None
     source_schema: str
 
 
-def load_shared_multimodal_initialization(
+def load_shared_core_initialization(
     path: str | Path,
     *,
     device: LanguageModelingTrainingDevice = "auto",
-) -> SharedMultimodalInitialization:
+) -> SharedCoreInitialization:
     """Load compatible state from any checkpoint using ImageTextSharedModel."""
     resolved_device = resolve_training_device(device)
     checkpoint_path = Path(path)
@@ -39,8 +39,8 @@ def load_shared_multimodal_initialization(
         checkpoint = load_image_classification_checkpoint(checkpoint_path, device=device)
         tokenizer = None
     else:
-        raise ValueError("checkpoint is not a shared multimodal checkpoint")
-    return SharedMultimodalInitialization(
+        raise ValueError("checkpoint is not a shared core checkpoint")
+    return SharedCoreInitialization(
         model_state_dict=checkpoint.model.state_dict(),
         tokenizer=tokenizer,
         source_schema=schema,

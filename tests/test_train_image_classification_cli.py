@@ -16,7 +16,7 @@ from intrep.vision.classification import (
     ImageClassificationTrainingResult,
 )
 from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
-from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
+from intrep.transfer.shared_core import load_shared_core_initialization
 from intrep.tasks.image_classification.model import ImageClassificationModel
 
 
@@ -216,7 +216,7 @@ class TrainImageClassificationCLITest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
             checkpoint = load_image_classification_checkpoint(checkpoint_path, device="cpu")
-            initialization = load_shared_multimodal_initialization(checkpoint_path, device="cpu")
+            initialization = load_shared_core_initialization(checkpoint_path, device="cpu")
 
         self.assertIn("target=label", output.getvalue())
         self.assertIn("intrep image classification", output.getvalue())

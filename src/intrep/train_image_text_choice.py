@@ -11,7 +11,7 @@ from intrep.tasks.image_text_choice.training import (
     ImageTextChoiceTrainingConfig,
     train_image_text_choice_model,
 )
-from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
+from intrep.transfer.shared_core import load_shared_core_initialization
 from intrep.text.tokenizer import load_text_tokenizer
 
 
@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> None:
         else None
     )
     initialization = (
-        load_shared_multimodal_initialization(args.init_checkpoint_path, device=args.device)
+        load_shared_core_initialization(args.init_checkpoint_path, device=args.device)
         if args.init_checkpoint_path is not None
         else None
     )

@@ -74,7 +74,7 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
         self.assertIn("intrep image text answer", output.getvalue())
         self.assertIn("train_cases=2", output.getvalue())
 
-    def test_initializes_from_compatible_shared_multimodal_checkpoint(self) -> None:
+    def test_initializes_from_compatible_shared_core_checkpoint(self) -> None:
         output = io.StringIO()
         with TemporaryDirectory() as directory:
             root = Path(directory)
