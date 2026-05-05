@@ -26,16 +26,18 @@ Use [Glossary](glossary.md) for the current boundary terms.
 ## Package Responsibilities
 
 - `core/`: domain-agnostic representation computation and shared utilities.
-- `vision/`, `text/`, `shogi/`, `grid/`: external forms, encodings, IO, and
-  conversions for those worlds or representation families.
-- `tasks/`: task-family models and training surfaces that bind interfaces,
-  shared cores, prediction heads, losses, metrics, checkpoints, or evaluation.
+- `vision/`, `text/`, `shogi/`, `grid/`: source-side packages for external
+  forms, encodings, IO, input layers, conversions, and world-like utilities.
+  They are not all the same kind of category: `shogi/` and `grid/` are
+  world-oriented, while `vision/` and `text/` are form/input-oriented.
+- `tasks/`: task packages for objective-bound model surfaces that bind model
+  input construction, shared cores, output heads, targets, losses, metrics,
+  checkpoints, training, or evaluation.
 - `transfer/`: reuse of learned state across task models.
 
-The current `vision/` and `text/` names can mean both external data families and
-representation formats. That is acceptable for now. Do not introduce broader
-`domains/` or `representations/` packages until the existing names block real
-work.
+The current source-side package layout is intentionally flat. Do not introduce
+broader `domains/`, `worlds/`, or `forms/` packages until the existing names
+block real work.
 
 ## Task Layer
 

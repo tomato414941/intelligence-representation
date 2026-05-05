@@ -24,6 +24,35 @@ model output + target
   -> loss
 ```
 
+## Package-Level Terms
+
+### Source-Side Package
+
+A source-side package holds source records, forms, IO, encodings, conversions,
+input layers, or world-like utilities for a source family or representation
+family.
+
+Current source-side packages are intentionally flat and mixed:
+
+- `shogi/` and `grid/` are world-oriented.
+- `vision/` and `text/` are form/input-oriented.
+
+Do not use `domain` as the umbrella term for these packages. They are not all
+the same kind of category.
+
+### Task Package
+
+A task package is an objective-bound model surface. It can bind model input
+construction, output heads, targets, losses, metrics, training, checkpointing,
+and evaluation for a task family.
+
+Examples:
+
+- image classification
+- language modeling
+- grid step prediction
+- shogi move choice
+
 ## Interaction Terms
 
 ### World
