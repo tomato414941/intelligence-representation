@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from intrep.tasks.shogi_move_choice.examples import (
+    ShogiMoveChoiceExample,
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,
 )
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
+from intrep.worlds.shogi.game_replay import replay_shogi_game_record
 
 
 def main() -> None:
@@ -20,6 +23,8 @@ def main() -> None:
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--progress-every", type=int, default=1000)
+    parser.add_argument("--include-player-kind")
+    parser.add_argument("--include-player-name")
     args = parser.parse_args()
     if args.shard_count <= 0:
         raise ValueError("shard-count must be positive")
@@ -52,6 +57,12 @@ def main() -> None:
                         examples = shogi_move_choice_examples_from_usi_moves(moves)
                     else:
                         examples = shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
+                examples = _filter_examples_by_source_player(
+                    record,
+                    examples,
+                    include_player_kind=args.include_player_kind,
+                    include_player_name=args.include_player_name,
+                )
             except Exception as error:
                 if failure_output is None:
                     raise
@@ -82,7 +93,7 @@ def main() -> None:
                             "chosen_move": example.chosen_move,
                             "value_target": example.value_target,
                             "game_index": input_index,
-                            "ply_index": ply_index,
+                            "ply_index": example.ply_index if example.ply_index is not None else ply_index,
                         },
                         separators=(",", ":"),
                     )
@@ -114,6 +125,28 @@ def main() -> None:
 
 def _game_record_moves(record: ShogiGameRecord) -> tuple[str, ...]:
     return tuple(ply.bestmove for ply in record.plies)
+
+
+def _filter_examples_by_source_player(
+    record: ShogiGameRecord,
+    examples: list[ShogiMoveChoiceExample],
+    *,
+    include_player_kind: str | None,
+    include_player_name: str | None,
+) -> list[ShogiMoveChoiceExample]:
+    if include_player_kind is None and include_player_name is None:
+        return examples
+    plies = replay_shogi_game_record(record)
+    if len(plies) != len(examples):
+        raise ValueError("replayed ply count must match example count")
+    filtered: list[ShogiMoveChoiceExample] = []
+    for ply, example in zip(plies, examples):
+        if include_player_kind is not None and ply.source_player.kind != include_player_kind:
+            continue
+        if include_player_name is not None and ply.source_player.name != include_player_name:
+            continue
+        filtered.append(replace(example, ply_index=ply.ply_index))
+    return filtered
 
 
 if __name__ == "__main__":
