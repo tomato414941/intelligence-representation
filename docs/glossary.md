@@ -78,6 +78,24 @@ Examples:
 - generated response that changes later context
 - memory, context, planning, or self-evaluation update
 
+## Feedback
+
+Feedback is information returned from a world, evaluator, user, or process that
+can guide learning, evaluation, correction, or future behavior.
+
+Feedback is a role, not a representation type. It can be carried by forms or
+encodings, and it can appear in experience, targets, metrics, or future context.
+
+Examples:
+
+- reward
+- win/loss
+- correction
+- label
+- user rating
+- error message
+- tool result status
+
 ## Source Record
 
 A source record is a stored source item before it is cut or transformed for a
