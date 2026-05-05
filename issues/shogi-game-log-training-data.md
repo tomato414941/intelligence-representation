@@ -11,6 +11,13 @@ logs, not directly as `ShogiMoveChoiceExample` records.
 games into it too early drops information needed to choose policy targets,
 compare teacher sources, deduplicate positions, and interpret value targets.
 
+This does not mean learning must only consume `ShogiGameRecord`. This project
+should allow different learning forms: image-to-text generation, classification,
+move-choice prediction, value learning, and future reinforcement-learning views
+may all use different training inputs. The distinction here is only between
+source records that preserve what happened and derived training examples or
+caches that serve a particular objective.
+
 ## Responsibility Boundary
 
 `../shogi-arena-agent` owns runtime game generation:
@@ -28,6 +35,8 @@ This repository owns learning data conversion:
 - preserve or aggregate value targets intentionally
 - inspect raw USI info coverage before deriving training signals from it
 - convert selected records into `ShogiMoveChoiceExample`
+- treat `ShogiMoveChoiceExample` JSONL as a derived training input or cache, not
+  the only legitimate learning input format
 - train and evaluate checkpoints
 
 ## Why Raw Logs Matter
