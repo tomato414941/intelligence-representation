@@ -6,7 +6,7 @@ import shogi
 import torch
 from torch.utils.data import DataLoader
 
-from intrep.shogi.move_choice import (
+from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
     load_shogi_move_choice_examples_jsonl,

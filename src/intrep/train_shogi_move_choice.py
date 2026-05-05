@@ -5,16 +5,16 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.shogi.move_choice_data import load_shogi_move_choice_examples_from_game_records_jsonl
-from intrep.shogi.move_choice import (
+from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
+from intrep.tasks.shogi_move_choice.examples import (
     load_shogi_move_choice_examples_jsonl,
     write_shogi_move_choice_examples_jsonl,
 )
-from intrep.shogi.move_choice_checkpoint import (
+from intrep.tasks.shogi_move_choice.checkpoint import (
     save_shogi_move_choice_checkpoint,
     save_shogi_move_choice_model_checkpoint,
 )
-from intrep.shogi.move_choice_training import (
+from intrep.tasks.shogi_move_choice.training import (
     ShogiMoveChoiceTrainingConfig,
     ShogiMoveChoiceTrainingProgress,
     train_shogi_move_choice_model,
