@@ -26,6 +26,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             eval_games_path = root / "eval-games.jsonl"
             dataset_definition_path = root / "dataset.json"
             checkpoint_path = root / "shogi.pt"
+            best_checkpoint_path = root / "shogi-best.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
@@ -50,6 +51,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     str(dataset_definition_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
+                    "--best-checkpoint-path",
+                    str(best_checkpoint_path),
                     "--metrics-path",
                     str(metrics_path),
                     "--max-steps",
@@ -68,6 +71,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     "2",
                     "--log-every",
                     "1",
+                    "--eval-every",
+                    "1",
                     "--num-workers",
                     "0",
                 ],
@@ -75,10 +80,14 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 main()
 
             self.assertTrue(checkpoint_path.exists())
+            self.assertTrue(best_checkpoint_path.exists())
             self.assertTrue(metrics_path.exists())
             self.assertIn("step=1/1", stdout.getvalue())
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["dataset_definition"]["name"], "test-shogi-move-choice")
+            self.assertEqual(metrics["best_checkpoint_path"], str(best_checkpoint_path))
+            self.assertIn(metrics["metrics"]["best_eval_step"], {0, 1})
+            self.assertIsNotNone(metrics["metrics"]["best_eval_loss"])
             self.assertEqual(metrics["config"]["num_workers"], 0)
             self.assertEqual(metrics["config"]["policy_loss_weight"], 1.0)
             self.assertEqual(metrics["config"]["value_loss_weight"], 0.0)

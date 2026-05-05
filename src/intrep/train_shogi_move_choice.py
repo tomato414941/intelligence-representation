@@ -8,6 +8,7 @@ from pathlib import Path
 from intrep.tasks.shogi_move_choice.checkpoint import (
     save_shogi_move_choice_checkpoint,
     save_shogi_move_choice_model_checkpoint,
+    save_shogi_move_choice_state_checkpoint,
 )
 from intrep.tasks.shogi_move_choice.dataset_definition import (
     load_shogi_move_choice_dataset_definition,
@@ -25,6 +26,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train a shogi move-choice policy/value model.")
     parser.add_argument("--dataset-definition", type=Path, required=True)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
+    parser.add_argument("--best-checkpoint-path", type=Path)
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--max-steps", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -40,6 +42,7 @@ def main() -> None:
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
     parser.add_argument("--log-every", type=int)
+    parser.add_argument("--eval-every", type=int)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--checkpoint-every", type=int)
@@ -66,6 +69,7 @@ def main() -> None:
         max_train_eval_examples=args.max_train_eval_examples,
         max_eval_examples=args.max_eval_examples,
         log_every=args.log_every,
+        eval_every=args.eval_every,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         progress_every=_progress_every(args.checkpoint_every, args.metrics_every),
@@ -81,6 +85,9 @@ def main() -> None:
     )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     save_shogi_move_choice_checkpoint(args.checkpoint_path, result)
+    if args.best_checkpoint_path is not None and result.best_model_state_dict is not None:
+        args.best_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        save_shogi_move_choice_state_checkpoint(args.best_checkpoint_path, result.best_model_state_dict, result.config)
     metrics = {
         "raw_train_case_count": len(train_examples),
         "raw_eval_case_count": len(eval_examples),
@@ -88,6 +95,7 @@ def main() -> None:
         "dataset_definition_path": str(args.dataset_definition),
         "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
         "checkpoint_path": str(args.checkpoint_path),
+        "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,
         "config": asdict(result.config),
         "metrics": asdict(result.metrics),
     }

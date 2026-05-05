@@ -16,6 +16,10 @@ def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceT
 
 
 def save_shogi_move_choice_model_checkpoint(path: str | Path, model: nn.Module, config: object) -> None:
+    save_shogi_move_choice_state_checkpoint(path, model.state_dict(), config)
+
+
+def save_shogi_move_choice_state_checkpoint(path: str | Path, state_dict: object, config: object) -> None:
     torch.save(
         {
             "schema_version": SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA,
@@ -28,7 +32,7 @@ def save_shogi_move_choice_model_checkpoint(path: str | Path, model: nn.Module, 
                 "policy_loss_weight": config.policy_loss_weight,
                 "value_loss_weight": config.value_loss_weight,
             },
-            "model_state_dict": model.state_dict(),
+            "model_state_dict": state_dict,
         },
         path,
     )

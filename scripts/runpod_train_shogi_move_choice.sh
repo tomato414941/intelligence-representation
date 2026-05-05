@@ -27,6 +27,7 @@ MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-4096}
 CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-1000}
 METRICS_EVERY=${METRICS_EVERY:-1000}
 KEEP_LAST_N_CHECKPOINTS=${KEEP_LAST_N_CHECKPOINTS:-3}
+EVAL_EVERY=${EVAL_EVERY:-1000}
 EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
@@ -94,10 +95,11 @@ cat > \"$OUTPUT_DIR/dataset-definition.json\" <<JSON
   ]
 }
 JSON
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY\"
 .venv/bin/python -u -m intrep.train_shogi_move_choice \
   --dataset-definition \"$OUTPUT_DIR/dataset-definition.json\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
+  --best-checkpoint-path \"$OUTPUT_DIR/best_checkpoint.pt\" \
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \
   --max-steps \"$MAX_STEPS\" \
   --batch-size \"$BATCH_SIZE\" \
@@ -111,6 +113,7 @@ echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEA
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
   --device cuda \
   --log-every 50 \
+  --eval-every \"$EVAL_EVERY\" \
   --num-workers \"$NUM_WORKERS\" \
   --pin-memory \
   --max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\" \

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import time
 from typing import Callable, Sequence
@@ -8,6 +9,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from intrep.core.training_run import BestMetricTracker
+from intrep.core.training_utils import build_adamw
 from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
 from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
@@ -15,7 +18,6 @@ from intrep.tasks.shogi_move_choice.model import (
     ShogiMoveChoiceModel,
     ShogiMoveChoiceModelConfig,
 )
-from intrep.core.training_utils import build_adamw
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,7 @@ class ShogiMoveChoiceTrainingConfig:
     num_workers: int = 0
     pin_memory: bool = False
     progress_every: int | None = None
+    eval_every: int | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,8 @@ class ShogiMoveChoiceTrainingMetrics:
     eval_mean_correct_move_rank: float | None
     eval_value_loss: float | None
     initial_eval_value_loss: float | None
+    best_eval_loss: float | None
+    best_eval_step: int | None
     max_steps: int
 
 
@@ -83,6 +88,7 @@ class ShogiMoveChoiceTrainingResult:
     model: nn.Module
     config: ShogiMoveChoiceTrainingConfig
     metrics: ShogiMoveChoiceTrainingMetrics
+    best_model_state_dict: dict[str, torch.Tensor] | None = None
 
 
 @dataclass(frozen=True)
@@ -109,6 +115,8 @@ def train_shogi_move_choice_model(
         raise ValueError("log_every must be positive")
     if training_config.progress_every is not None and training_config.progress_every <= 0:
         raise ValueError("progress_every must be positive")
+    if training_config.eval_every is not None and training_config.eval_every <= 0:
+        raise ValueError("eval_every must be positive")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
     if training_config.policy_loss_weight < 0.0:
@@ -133,6 +141,8 @@ def train_shogi_move_choice_model(
         if eval_dataset is not None
         else None
     )
+    if training_config.eval_every is not None and eval_loader is None:
+        raise ValueError("eval examples are required when eval_every is set")
     model = build_shogi_move_choice_model(training_config).to(device)
     optimizer = build_adamw(
         model,
@@ -141,8 +151,12 @@ def train_shogi_move_choice_model(
     )
     initial_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
     initial_eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+    best_eval_tracker = BestMetricTracker(mode="min")
+    best_model_state_dict: dict[str, torch.Tensor] | None = None
     if eval_loader is not None:
         initial_eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+        best_eval_tracker.update(step=0, value=initial_eval_metrics.loss)
+        best_model_state_dict = copy.deepcopy(model.state_dict())
 
     model.train()
     step = 0
@@ -196,6 +210,11 @@ def train_shogi_move_choice_model(
                 )
             if training_config.log_every is not None and step % training_config.log_every == 0:
                 _log_training_progress(step, training_config.max_steps, started, loss, device)
+            if training_config.eval_every is not None and step % training_config.eval_every == 0:
+                eval_step_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+                if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
+                    best_model_state_dict = copy.deepcopy(model.state_dict())
+                model.train()
             if step >= training_config.max_steps:
                 break
 
@@ -203,6 +222,8 @@ def train_shogi_move_choice_model(
     eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
     if eval_loader is not None:
         eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+        if best_eval_tracker.update(step=training_config.max_steps, value=eval_metrics.loss):
+            best_model_state_dict = copy.deepcopy(model.state_dict())
     return ShogiMoveChoiceTrainingResult(
         model=model,
         config=training_config,
@@ -228,8 +249,11 @@ def train_shogi_move_choice_model(
             eval_mean_correct_move_rank=eval_metrics.mean_correct_move_rank if eval_metrics is not None else None,
             eval_value_loss=eval_metrics.value_loss if eval_metrics is not None else None,
             initial_eval_value_loss=initial_eval_metrics.value_loss if initial_eval_metrics is not None else None,
+            best_eval_loss=best_eval_tracker.best.value if best_eval_tracker.best is not None else None,
+            best_eval_step=best_eval_tracker.best.step if best_eval_tracker.best is not None else None,
             max_steps=training_config.max_steps,
         ),
+        best_model_state_dict=best_model_state_dict,
     )
 
 
