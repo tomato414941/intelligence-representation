@@ -82,10 +82,21 @@ for name in ('$TRAIN_CACHE_ZST', '$EVAL_CACHE_ZST'):
         zstd.ZstdDecompressor().copy_stream(f, out)
     print(f'decompressed_bytes={dst.stat().st_size}', flush=True)
 PY
+cat > \"$OUTPUT_DIR/dataset-definition.json\" <<JSON
+{
+  \"name\": \"runpod-qhapaq-split\",
+  \"objective\": \"shogi move-choice policy\",
+  \"train_sources\": [
+    {\"kind\": \"examples_jsonl\", \"path\": \"\$PWD/${TRAIN_CACHE_ZST%.zst}\"}
+  ],
+  \"eval_sources\": [
+    {\"kind\": \"examples_jsonl\", \"path\": \"\$PWD/${EVAL_CACHE_ZST%.zst}\"}
+  ]
+}
+JSON
 echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS\"
 .venv/bin/python -u -m intrep.train_shogi_move_choice \
-  --train-examples-jsonl \"${TRAIN_CACHE_ZST%.zst}\" \
-  --eval-examples-jsonl \"${EVAL_CACHE_ZST%.zst}\" \
+  --dataset-definition \"$OUTPUT_DIR/dataset-definition.json\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \
   --max-steps \"$MAX_STEPS\" \

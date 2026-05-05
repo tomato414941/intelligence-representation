@@ -23,22 +23,30 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            train_examples_path = root / "train-examples.jsonl"
+            dataset_definition_path = root / "dataset.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-move-choice",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             with patch(
                 "sys.argv",
                 [
                     "train_shogi_move_choice",
-                    "--train-games-jsonl",
-                    str(train_games_path),
-                    "--eval-games-jsonl",
-                    str(eval_games_path),
-                    "--write-train-examples-jsonl",
-                    str(train_examples_path),
+                    "--dataset-definition",
+                    str(dataset_definition_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--metrics-path",
@@ -67,9 +75,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
 
             self.assertTrue(checkpoint_path.exists())
             self.assertTrue(metrics_path.exists())
-            self.assertTrue(train_examples_path.exists())
             self.assertIn("step=1/1", stdout.getvalue())
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["dataset_definition"]["name"], "test-shogi-move-choice")
             self.assertEqual(metrics["config"]["num_workers"], 0)
             self.assertEqual(metrics["config"]["policy_loss_weight"], 1.0)
             self.assertEqual(metrics["config"]["value_loss_weight"], 0.0)
@@ -82,16 +90,28 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-move-choice",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             with patch(
                 "sys.argv",
                 [
                     "train_shogi_move_choice",
-                    "--train-games-jsonl",
-                    str(train_games_path),
+                    "--dataset-definition",
+                    str(dataset_definition_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--metrics-path",

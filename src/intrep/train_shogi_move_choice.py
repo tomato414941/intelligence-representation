@@ -5,14 +5,14 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
-from intrep.tasks.shogi_move_choice.examples import (
-    load_shogi_move_choice_examples_jsonl,
-    write_shogi_move_choice_examples_jsonl,
-)
 from intrep.tasks.shogi_move_choice.checkpoint import (
     save_shogi_move_choice_checkpoint,
     save_shogi_move_choice_model_checkpoint,
+)
+from intrep.tasks.shogi_move_choice.dataset_definition import (
+    load_shogi_move_choice_dataset_definition,
+    load_shogi_move_choice_dataset_examples,
+    shogi_move_choice_dataset_definition_to_json,
 )
 from intrep.tasks.shogi_move_choice.training import (
     ShogiMoveChoiceTrainingConfig,
@@ -23,12 +23,7 @@ from intrep.tasks.shogi_move_choice.training import (
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a shogi move-choice policy/value model.")
-    parser.add_argument("--train-games-jsonl", type=Path)
-    parser.add_argument("--eval-games-jsonl", type=Path)
-    parser.add_argument("--train-examples-jsonl", type=Path)
-    parser.add_argument("--eval-examples-jsonl", type=Path)
-    parser.add_argument("--write-train-examples-jsonl", type=Path)
-    parser.add_argument("--write-eval-examples-jsonl", type=Path)
+    parser.add_argument("--dataset-definition", type=Path, required=True)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--max-steps", type=int, default=1000)
@@ -52,14 +47,8 @@ def main() -> None:
     parser.add_argument("--keep-last-n-checkpoints", type=int)
     args = parser.parse_args()
 
-    train_examples = _load_examples(args.train_examples_jsonl, args.train_games_jsonl)
-    eval_examples = _load_examples(args.eval_examples_jsonl, args.eval_games_jsonl) if (
-        args.eval_examples_jsonl is not None or args.eval_games_jsonl is not None
-    ) else None
-    if args.write_train_examples_jsonl is not None:
-        write_shogi_move_choice_examples_jsonl(args.write_train_examples_jsonl, train_examples)
-    if args.write_eval_examples_jsonl is not None and eval_examples is not None:
-        write_shogi_move_choice_examples_jsonl(args.write_eval_examples_jsonl, eval_examples)
+    dataset_definition = load_shogi_move_choice_dataset_definition(args.dataset_definition)
+    train_examples, eval_examples = load_shogi_move_choice_dataset_examples(dataset_definition)
 
     config = ShogiMoveChoiceTrainingConfig(
         max_steps=args.max_steps,
@@ -96,6 +85,8 @@ def main() -> None:
         "raw_train_case_count": len(train_examples),
         "raw_eval_case_count": len(eval_examples) if eval_examples is not None else 0,
         "used_eval_case_count": result.metrics.eval_case_count,
+        "dataset_definition_path": str(args.dataset_definition),
+        "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
         "checkpoint_path": str(args.checkpoint_path),
         "config": asdict(result.config),
         "metrics": asdict(result.metrics),
@@ -103,15 +94,6 @@ def main() -> None:
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(metrics, indent=2))
-
-
-def _load_examples(examples_jsonl: Path | None, games_jsonl: Path | None):
-    if examples_jsonl is not None:
-        return load_shogi_move_choice_examples_jsonl(examples_jsonl)
-    if games_jsonl is not None:
-        return load_shogi_move_choice_examples_from_game_records_jsonl(games_jsonl)
-    raise ValueError("either examples jsonl or games jsonl must be provided")
-
 
 def _progress_every(*values: int | None) -> int | None:
     intervals = [value for value in values if value is not None]
