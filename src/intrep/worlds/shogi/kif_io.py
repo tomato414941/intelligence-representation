@@ -9,6 +9,7 @@ from intrep.worlds.shogi.game_record import (
     PlayerSpec,
     ShogiGameRecord,
     legacy_side_to_shogi_game_winner,
+    shogi_game_ply_records_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
 from intrep.tasks.shogi_move_choice.examples import (
@@ -39,7 +40,7 @@ def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
     return ShogiGameRecord(
         black_player=PlayerSpec(kind="kif", name="black", settings={}),
         white_player=PlayerSpec(kind="kif", name="white", settings={}),
-        moves=moves,
+        plies=shogi_game_ply_records_from_usi_moves(moves),
         winner=legacy_side_to_shogi_game_winner(winner),
     )
 

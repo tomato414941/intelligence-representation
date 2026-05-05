@@ -19,9 +19,12 @@ class ShogiGamePly:
 def replay_shogi_game_record(record: ShogiGameRecord) -> tuple[ShogiGamePly, ...]:
     board = shogi.Board()
     plies: list[ShogiGamePly] = []
-    for ply_index, move in enumerate(record.moves):
+    for ply_index, record_ply in enumerate(record.plies):
         side_to_move = "black" if board.turn == shogi.BLACK else "white"
         legal_moves = {legal_move.usi() for legal_move in board.legal_moves}
+        move = record_ply.bestmove
+        if record_ply.side != side_to_move:
+            raise ValueError(f"wrong side at ply {ply_index}: {record_ply.side}")
         if move not in legal_moves:
             raise ValueError(f"illegal move at ply {ply_index}: {move}")
         plies.append(

@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
@@ -18,10 +18,10 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             records = [
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("7g7f",), "black"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("3c3d",), "white"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("2g2f",), "black"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("8c8d",), "white"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("7g7f",)), "black"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("3c3d",)), "white"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("2g2f",)), "black"),
+                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("8c8d",)), "white"),
             ]
             write_shogi_game_records_jsonl(games_path, records)
 
@@ -44,8 +44,8 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(
                 games_path,
                 [
-                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("7g7f",), "black"),
-                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, ("3c3d",), "white"),
+                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("7g7f",)), "black"),
+                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("3c3d",)), "white"),
                 ],
             )
 

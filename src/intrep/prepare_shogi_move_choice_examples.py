@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
+from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
 from intrep.tasks.shogi_move_choice.examples import (
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,
@@ -42,15 +42,16 @@ def main() -> None:
                 continue
             if args.max_games is not None and game_count >= args.max_games:
                 break
+            moves = _game_record_moves(record)
             try:
                 if record.winner is None:
-                    examples = shogi_move_choice_examples_from_usi_moves(record.moves)
+                    examples = shogi_move_choice_examples_from_usi_moves(moves)
                 else:
                     winner = shogi_game_winner_to_legacy_side(record.winner)
                     if winner is None:
-                        examples = shogi_move_choice_examples_from_usi_moves(record.moves)
+                        examples = shogi_move_choice_examples_from_usi_moves(moves)
                     else:
-                        examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=winner)
+                        examples = shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
             except Exception as error:
                 if failure_output is None:
                     raise
@@ -62,7 +63,7 @@ def main() -> None:
                             "shard_index": args.shard_index,
                             "shard_count": args.shard_count,
                             "winner": record.winner,
-                            "moves": list(record.moves),
+                            "bestmoves": list(moves),
                             "error": type(error).__name__,
                             "message": str(error),
                         },
@@ -109,6 +110,10 @@ def main() -> None:
             }
         )
     )
+
+
+def _game_record_moves(record: ShogiGameRecord) -> tuple[str, ...]:
+    return tuple(ply.bestmove for ply in record.plies)
 
 
 if __name__ == "__main__":

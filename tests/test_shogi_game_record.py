@@ -5,7 +5,9 @@ from pathlib import Path
 from intrep.worlds.shogi.game_record import (
     PlayerSpec,
     ShogiGameRecord,
+    ShogiGamePlyRecord,
     load_shogi_game_records_jsonl,
+    shogi_game_ply_records_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
 
@@ -25,14 +27,14 @@ class ShogiGameRecordTest(unittest.TestCase):
                     ShogiGameRecord(
                         black_player=BLACK_PLAYER,
                         white_player=WHITE_PLAYER,
-                        moves=("7g7f", "3c3d"),
+                        plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
                         winner="white",
                         end_reason="resign",
                     ),
                     ShogiGameRecord(
                         black_player=BLACK_PLAYER,
                         white_player=WHITE_PLAYER,
-                        moves=("2g2f",),
+                        plies=shogi_game_ply_records_from_usi_moves(("2g2f",)),
                         winner=None,
                         end_reason="max_plies",
                     ),
@@ -46,14 +48,14 @@ class ShogiGameRecordTest(unittest.TestCase):
                 ShogiGameRecord(
                     black_player=BLACK_PLAYER,
                     white_player=WHITE_PLAYER,
-                    moves=("7g7f", "3c3d"),
+                    plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
                     winner="white",
                     end_reason="resign",
                 ),
                 ShogiGameRecord(
                     black_player=BLACK_PLAYER,
                     white_player=WHITE_PLAYER,
-                    moves=("2g2f",),
+                    plies=shogi_game_ply_records_from_usi_moves(("2g2f",)),
                     winner=None,
                     end_reason="max_plies",
                 ),
@@ -67,7 +69,9 @@ class ShogiGameRecordTest(unittest.TestCase):
                 (
                     '{"black_player":{"kind":"checkpoint","name":"direct","settings":{"checkpoint":"model.pt"}},'
                     '"white_player":{"kind":"yaneuraou","name":"yaneuraou","settings":{"go_command":"go nodes 1"}},'
-                    '"moves":["2g2f"],"end_reason":"max_plies","winner":null}\n'
+                    '"plies":[{"side":"black","position":"position startpos","bestmove":"2g2f",'
+                    '"ponder":null,"usi_info_lines":["info depth 1 nodes 1 pv 2g2f"]}],'
+                    '"end_reason":"max_plies","winner":null}\n'
                 ),
                 encoding="utf-8",
             )
@@ -80,7 +84,14 @@ class ShogiGameRecordTest(unittest.TestCase):
                 ShogiGameRecord(
                     black_player=PlayerSpec(kind="checkpoint", name="direct", settings={"checkpoint": "model.pt"}),
                     white_player=PlayerSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"}),
-                    moves=("2g2f",),
+                    plies=(
+                        ShogiGamePlyRecord(
+                            side="black",
+                            position="position startpos",
+                            bestmove="2g2f",
+                            usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
+                        ),
+                    ),
                     winner=None,
                     end_reason="max_plies",
                 )

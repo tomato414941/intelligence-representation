@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
 from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
 
 
@@ -20,7 +20,7 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
                     ShogiGameRecord(
                         black_player=BLACK_PLAYER,
                         white_player=WHITE_PLAYER,
-                        moves=("7g7f", "3c3d"),
+                        plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
                         winner="white",
                     )
                 ],
@@ -42,7 +42,11 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
                     '"settings":{"checkpoint":"black.pt","policy":"direct","simulations":null}},'
                     '"white_player":{"kind":"checkpoint","name":"checkpoint-direct-white",'
                     '"settings":{"checkpoint":"white.pt","policy":"direct","simulations":null}},'
-                    '"moves":["7g7f","3c3d"],"end_reason":"resign","winner":"black"}\n'
+                    '"plies":[{"side":"black","position":"position startpos","bestmove":"7g7f",'
+                    '"ponder":"3c3d","usi_info_lines":["info depth 2 nodes 10 pv 7g7f 3c3d"]},'
+                    '{"side":"white","position":"position startpos moves 7g7f","bestmove":"3c3d",'
+                    '"ponder":null,"usi_info_lines":[]}],'
+                    '"end_reason":"resign","winner":"black"}\n'
                 ),
                 encoding="utf-8",
             )

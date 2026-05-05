@@ -5,7 +5,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
 from intrep.train_shogi_move_choice import main
 
 
@@ -14,7 +14,7 @@ WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, moves, winner)
+    return ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(moves), winner)
 
 
 class TrainShogiMoveChoiceCliTest(unittest.TestCase):

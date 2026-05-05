@@ -16,10 +16,11 @@ def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) ->
     examples: list[ShogiMoveChoiceExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
         winner = shogi_game_winner_to_legacy_side(record.winner)
+        moves = tuple(ply.bestmove for ply in record.plies)
         if winner is None:
-            game_examples = shogi_move_choice_examples_from_usi_moves(record.moves)
+            game_examples = shogi_move_choice_examples_from_usi_moves(moves)
         else:
-            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(record.moves, winner=winner)
+            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
         examples.extend(_with_game_metadata(game_examples, game_index=game_index))
     return examples
 

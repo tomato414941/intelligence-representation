@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, load_shogi_game_records_jsonl, shogi_game_ply_records_from_usi_moves
 from intrep.worlds.shogi.kif_io import (
     convert_kif_files_to_game_records_jsonl,
     load_kif_game,
@@ -43,7 +43,7 @@ class ShogiKifIoTest(unittest.TestCase):
                     ShogiGameRecord(
                         black_player=PlayerSpec(kind="kif", name="black", settings={}),
                         white_player=PlayerSpec(kind="kif", name="white", settings={}),
-                        moves=("7g7f", "3c3d"),
+                        plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
                         winner="white",
                     )
                 ],

@@ -1,6 +1,6 @@
 import unittest
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves
 from intrep.worlds.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
 
 
@@ -13,7 +13,7 @@ class ShogiGameReplayTest(unittest.TestCase):
         record = ShogiGameRecord(
             black_player=BLACK_PLAYER,
             white_player=WHITE_PLAYER,
-            moves=("7g7f", "3c3d"),
+            plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
             winner="black",
             end_reason="resign",
         )
@@ -30,7 +30,7 @@ class ShogiGameReplayTest(unittest.TestCase):
         record = ShogiGameRecord(
             black_player=BLACK_PLAYER,
             white_player=WHITE_PLAYER,
-            moves=("7g7f", "7g7f"),
+            plies=shogi_game_ply_records_from_usi_moves(("7g7f", "7g7f")),
         )
 
         with self.assertRaisesRegex(ValueError, "illegal move at ply 1"):
@@ -40,7 +40,7 @@ class ShogiGameReplayTest(unittest.TestCase):
         record = ShogiGameRecord(
             black_player=BLACK_PLAYER,
             white_player=WHITE_PLAYER,
-            moves=("7g7f",),
+            plies=shogi_game_ply_records_from_usi_moves(("7g7f",)),
             winner="black",
             end_reason="max_plies",
         )
