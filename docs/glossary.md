@@ -45,6 +45,21 @@ In agentic settings, an agent is not only an observer. It has a viewpoint,
 action interface, history, constraints, and identity, and its state or outputs
 can become part of the world.
 
+## Observation
+
+An observation is a view, signal, or recorded appearance made available from a
+world to an actor, model, or recorder.
+
+Observation is a role, not a representation type. An observation can be carried
+by many forms or encodings, and it may expose only part of the world.
+
+Examples:
+
+- visible grid from a grid world
+- current board position in a shogi game
+- browser page view, screenshot, DOM, or accessibility tree
+- sensor reading from a physical environment
+
 ## Source Record
 
 A source record is a stored source item before it is cut or transformed for a
