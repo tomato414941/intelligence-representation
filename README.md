@@ -52,7 +52,7 @@ Read these first:
 - [Concept](docs/concept.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Boundaries](docs/model-boundaries.md)
-- [Learning and Execution](docs/learning-and-execution.md)
+- [Learning Boundaries](docs/learning-boundaries.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
 - [Compute Costs](docs/compute-costs.md)

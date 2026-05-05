@@ -19,7 +19,7 @@ source records that preserve what happened and derived training examples or
 caches that serve a particular objective.
 
 Use the dataset/run boundary in
-[`docs/learning-and-execution.md`](../docs/learning-and-execution.md): a shogi
+[`docs/learning-boundaries.md`](../docs/learning-boundaries.md): a shogi
 training dataset is not the same thing as one generated game-log or example-cache
 run.
 

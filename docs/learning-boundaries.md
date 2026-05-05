@@ -1,4 +1,4 @@
-# Learning and Execution
+# Learning Boundaries
 
 This document defines how datasets and interactions become model inputs,
 outputs, and learning objectives. It is not a runtime design, an RL framework,
