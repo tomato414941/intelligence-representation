@@ -5,7 +5,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
 from intrep.train_shogi_move_choice import main
 
 

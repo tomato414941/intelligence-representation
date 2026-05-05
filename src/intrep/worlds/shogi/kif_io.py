@@ -5,7 +5,7 @@ from typing import Sequence
 
 import shogi.KIF
 
-from intrep.shogi.game_record import (
+from intrep.worlds.shogi.game_record import (
     PlayerSpec,
     ShogiGameRecord,
     legacy_side_to_shogi_game_winner,

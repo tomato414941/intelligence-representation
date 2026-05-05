@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.shogi.game_record import iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
+from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
 from intrep.tasks.shogi_move_choice.examples import (
     shogi_move_choice_examples_from_usi_moves,
     shogi_move_choice_examples_from_usi_moves_with_winner,

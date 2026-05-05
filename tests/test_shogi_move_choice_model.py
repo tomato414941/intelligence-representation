@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import torch
 
 from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset, shogi_move_choice_examples_from_usi_moves
-from intrep.shogi.move_encoding import NO_FROM_SQUARE_ID
+from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
     SharedCoreShogiMoveChoiceModelConfig,
@@ -12,7 +12,7 @@ from intrep.tasks.shogi_move_choice.model import (
     ShogiMoveChoiceModelConfig,
     _candidate_square_hidden,
 )
-from intrep.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
 class ShogiMoveChoiceModelTest(unittest.TestCase):

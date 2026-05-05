@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
 from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
 
 

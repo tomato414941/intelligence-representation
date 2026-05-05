@@ -94,8 +94,8 @@ class ShogiMoveChoiceDataset(TorchDataset):
     def __getitem__(self, index: int):
         if torch is None:
             raise RuntimeError("torch is required to materialize ShogiMoveChoiceDataset items")
-        from intrep.shogi.move_encoding import shogi_candidate_move_features
-        from intrep.shogi.position_encoding import shogi_position_token_ids_from_sfen
+        from intrep.worlds.shogi.move_encoding import shogi_candidate_move_features
+        from intrep.worlds.shogi.position_encoding import shogi_position_token_ids_from_sfen
 
         example = self.examples[index]
         position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)

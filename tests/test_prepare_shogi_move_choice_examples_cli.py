@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from intrep.prepare_shogi_move_choice_examples import main
-from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, write_shogi_game_records_jsonl
 from intrep.tasks.shogi_move_choice.examples import load_shogi_move_choice_examples_jsonl
 
 

@@ -32,10 +32,10 @@ A source-side package holds source records, forms, IO, encodings, conversions,
 input layers, or world-like utilities for a source family or representation
 family.
 
-Current source-side packages are intentionally flat and mixed:
+Current source-side packages remain intentionally narrow:
 
-- `shogi/` and `grid/` are world-oriented.
 - `vision/` and `text/` are form/input-oriented.
+- `worlds/shogi/` and `worlds/grid/` are world-oriented.
 
 Do not use `domain` as the umbrella term for these packages. They are not all
 the same kind of category.

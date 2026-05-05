@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Sequence
 
-from intrep.shogi.game_record import load_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
+from intrep.worlds.shogi.game_record import load_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
 from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceExample,
     shogi_move_choice_examples_from_usi_moves,

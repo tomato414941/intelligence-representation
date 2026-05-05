@@ -15,8 +15,8 @@ from intrep.tasks.shogi_move_choice.examples import (
     shogi_move_choice_examples_from_usi_moves_with_winner,
     write_shogi_move_choice_examples_jsonl,
 )
-from intrep.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
-from intrep.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
+from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
 class ShogiMoveChoiceExampleTest(unittest.TestCase):

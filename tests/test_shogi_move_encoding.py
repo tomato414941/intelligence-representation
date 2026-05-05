@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from intrep.shogi.move_encoding import (
+from intrep.worlds.shogi.move_encoding import (
     NO_DROP_PIECE_ID,
     NO_FROM_SQUARE_ID,
     SHOGI_MOVE_FEATURE_COUNT,

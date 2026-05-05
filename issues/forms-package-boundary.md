@@ -8,10 +8,11 @@ Status: open.
 code, but adding it too early would create a broad abstraction before it solves
 a concrete package boundary problem.
 
-The current source-side packages are intentionally mixed:
+The current source-side packages are intentionally split only where concrete
+pressure exists:
 
-- `shogi/` and `grid/` are world-oriented.
 - `vision/` and `text/` are form/input-oriented.
+- `worlds/shogi/` and `worlds/grid/` are world-oriented.
 
 `domain` should not be used as the umbrella term for these packages. The open
 question here is when `vision/`, `text/`, and future form-oriented packages
@@ -22,7 +23,7 @@ should move under a clearer `forms/` boundary.
 Do not introduce `forms/` only because:
 
 - the name looks architecturally cleaner
-- `worlds/` exists or may exist
+- `worlds/` exists
 - a future audio, video, or tabular package might be added someday
 - `vision/` and `text/` can both be described as input forms
 - a document can define the abstraction but no active code decision depends on it

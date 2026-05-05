@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from intrep.grid.world import GridExperienceTransition, GridObservation
+from intrep.worlds.grid.world import GridExperienceTransition, GridObservation
 from intrep.text.examples import LanguageModelingExample
 
 

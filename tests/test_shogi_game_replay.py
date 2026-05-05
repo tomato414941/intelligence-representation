@@ -1,7 +1,7 @@
 import unittest
 
-from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord
-from intrep.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
 
 
 BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})

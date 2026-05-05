@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.shogi.game_record import (
+from intrep.worlds.shogi.game_record import (
     PlayerSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,

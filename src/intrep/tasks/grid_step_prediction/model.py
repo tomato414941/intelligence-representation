@@ -4,8 +4,8 @@ import torch
 from torch import nn
 
 from intrep.core.transformer_core import SharedTransformerCore
-from intrep.grid.layers import GridObservationInputLayer
-from intrep.grid.world import GRID_ACTIONS
+from intrep.worlds.grid.layers import GridObservationInputLayer
+from intrep.worlds.grid.world import GRID_ACTIONS
 
 
 class GridStepPredictionModel(nn.Module):

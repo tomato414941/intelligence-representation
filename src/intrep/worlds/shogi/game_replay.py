@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import shogi
 
-from intrep.shogi.game_record import PlayerSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord
 
 
 @dataclass(frozen=True)
