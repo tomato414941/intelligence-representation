@@ -24,7 +24,9 @@ model output + target
   -> loss
 ```
 
-## World
+## Interaction Terms
+
+### World
 
 A world is a structured setting with state, entities, relations, changes,
 constraints, and consequences. Some worlds are interactable through actions;
@@ -45,7 +47,7 @@ In agentic settings, an agent is not only an observer. It has a viewpoint,
 action interface, history, constraints, and identity, and its state or outputs
 can become part of the world.
 
-## Observation
+### Observation
 
 An observation is a view, signal, or recorded appearance made available from a
 world to an actor, model, or recorder.
@@ -60,7 +62,7 @@ Examples:
 - browser page view, screenshot, DOM, or accessibility tree
 - sensor reading from a physical environment
 
-## Action
+### Action
 
 An action is an intervention by an actor, model, agent, or policy that can
 affect a world, world-like interface, or the actor's own state.
@@ -78,7 +80,7 @@ Examples:
 - generated response that changes later context
 - memory, context, planning, or self-evaluation update
 
-## Feedback
+### Feedback
 
 Feedback is information returned from a world, evaluator, user, or process that
 can guide learning, evaluation, correction, or future behavior.
@@ -96,7 +98,9 @@ Examples:
 - error message
 - tool result status
 
-## Source Record
+## Data Pipeline Terms
+
+### Source Record
 
 A source record is a stored source item before it is cut or transformed for a
 specific objective.
@@ -111,7 +115,7 @@ Examples:
 
 A source record can produce one or more training examples.
 
-## Experience
+### Experience
 
 Experience is a source record produced by interaction with a world. It is
 usually ordered over time and may contain observations, actions, feedback,
@@ -127,7 +131,7 @@ Examples:
 Do not force static datasets to be experience. An image file and label row can
 be a source record without being experience.
 
-## Training Example
+### Training Example
 
 A training example is a unit made from a source record for a specific
 objective. The source record may be static data or experience.
@@ -140,7 +144,7 @@ Examples:
 - image and class label
 - text window and next token targets
 
-## Model Input
+### Model Input
 
 A model input is the input-side value passed to a model for training,
 evaluation, or inference.
@@ -148,7 +152,9 @@ evaluation, or inference.
 Model input is a role, not a representation type. It may contain forms,
 encodings, tensors, masks, candidate sets, or already-built input embeddings.
 
-## Form
+## Representation Boundary Terms
+
+### Form
 
 A form is an external shape used to store, exchange, display, or prepare an
 object or world state. It does not have to be human-readable.
@@ -160,7 +166,7 @@ Examples:
 - images: PNG, PGM, pixels, patches, labels, captions
 - text: raw text, bytes, rendered layout
 
-## Encoding
+### Encoding
 
 An encoding is a form converted into a discrete or numeric structure for a
 specific processor, model, or objective. It is model-facing, but it is not yet a
@@ -177,7 +183,7 @@ Examples:
 Cached token IDs or tensors are still encodings. They may have a file format on
 disk, but their role in the pipeline is encoded model input preparation.
 
-## Input Embedding
+### Input Embedding
 
 An input embedding is a learned continuous vector sequence produced from an
 encoding before it enters the model core.
@@ -197,7 +203,7 @@ can also describe sentence, image, or retrieval vectors. This glossary avoids
 using bare `embedding` as a project boundary term. Prefer concrete names such
 as `input embedding`, `token embedding`, `patch embedding`, or `move embedding`.
 
-## Hidden State
+### Hidden State
 
 A hidden state is a contextual vector produced by a model core from input
 embeddings. Transformer hidden states are the main current example.
@@ -206,7 +212,18 @@ Hidden states are learned representations, but this glossary keeps the term
 `hidden state` for the concrete model boundary and reserves `representation` for
 broader discussion.
 
-## Output Head
+### Representation
+
+Representation is the broadest term. It can refer to any information-carrying
+shape used by the project, including forms, encodings, input embeddings, hidden
+states, labels, and learned features.
+
+When discussing code boundaries, prefer the narrower terms above. Use
+`representation` when the broader idea is intentional.
+
+## Output And Learning Terms
+
+### Output Head
 
 An output head is an output-side module that reads hidden states and produces a
 model output.
@@ -222,7 +239,7 @@ Examples:
 This glossary uses `output head` rather than bare `head` to avoid confusion with
 attention heads inside Transformer layers or read/write heads in memory models.
 
-## Model Output
+### Model Output
 
 A model output is the direct value returned by an output head or decoder.
 
@@ -238,7 +255,7 @@ Examples:
 Model output is a role, not a representation type. It may describe a form, an
 encoding, a scalar, a tensor, or a distribution over choices.
 
-## Target
+### Target
 
 A target is the expected value or teacher signal used to evaluate a model
 output during training or evaluation.
@@ -251,7 +268,7 @@ Examples:
 - next grid state
 - winner or value target
 
-## Objective
+### Objective
 
 An objective defines what should count as a good prediction. It says how model
 outputs and targets should be interpreted for training or evaluation.
@@ -264,7 +281,7 @@ Examples:
 - next-state prediction
 - value prediction
 
-## Loss
+### Loss
 
 A loss is the numeric quantity optimized for an objective during training.
 
@@ -273,12 +290,3 @@ Examples:
 - cross entropy
 - mean squared error
 - binary cross entropy
-
-## Representation
-
-Representation is the broadest term. It can refer to any information-carrying
-shape used by the project, including forms, encodings, input embeddings, hidden
-states, labels, and learned features.
-
-When discussing code boundaries, prefer the narrower terms above. Use
-`representation` when the broader idea is intentional.
