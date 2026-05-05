@@ -39,10 +39,26 @@ Examples:
 
 A source record can produce one or more training examples.
 
+## Experience
+
+Experience is a source record produced by interaction with a world. It is
+usually ordered over time and may contain observations, actions, feedback,
+rewards, or consequences.
+
+Examples:
+
+- grid episode trajectory
+- browser interaction log
+- tool-use trace
+- self-play game record
+
+Do not force static datasets to be experience. An image file and label row can
+be a source record without being experience.
+
 ## Training Example
 
-A training example is a unit made from a source record or experience for a
-specific objective.
+A training example is a unit made from a source record for a specific
+objective. The source record may be static data or experience.
 
 Examples:
 
