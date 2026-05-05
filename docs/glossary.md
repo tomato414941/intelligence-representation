@@ -60,6 +60,24 @@ Examples:
 - browser page view, screenshot, DOM, or accessibility tree
 - sensor reading from a physical environment
 
+## Action
+
+An action is an intervention by an actor, model, agent, or policy that can
+affect a world, world-like interface, or the actor's own state.
+
+Action is a role, not a representation type. It can be carried by forms or
+encodings, and it can appear as model input, target, or model output depending
+on the objective.
+
+Examples:
+
+- shogi move
+- grid movement command
+- browser click or typed text
+- tool call
+- generated response that changes later context
+- memory, context, planning, or self-evaluation update
+
 ## Source Record
 
 A source record is a stored source item before it is cut or transformed for a
