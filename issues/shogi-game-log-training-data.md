@@ -17,7 +17,8 @@ compare teacher sources, deduplicate positions, and interpret value targets.
 
 - run checkpoint models, USI engines, and YaneuraOu
 - play engine-vs-engine games
-- record moves, players, engine settings, winner, end reason, and ply count
+- record plies, players, engine settings, winner, end reason, and ply count
+- preserve raw per-ply USI `info ...` lines when an engine emits them
 - write raw game log JSONL
 
 This repository owns learning data conversion:
@@ -25,6 +26,7 @@ This repository owns learning data conversion:
 - read raw game log JSONL
 - select policy targets by source priority
 - preserve or aggregate value targets intentionally
+- inspect raw USI info coverage before deriving training signals from it
 - convert selected records into `ShogiMoveChoiceExample`
 - train and evaluate checkpoints
 
@@ -46,15 +48,20 @@ teacher move for a position. Value should not be aggressively collapsed at raw
 log time because the same position can appear in games with different later
 outcomes.
 
+USI `info ...` lines are currently source metadata, not training targets. They
+should remain in raw `ShogiGameRecord` plies and be inspectable through stats.
+Do not derive value targets, sample weights, or source priority from `score cp`,
+`depth`, `nodes`, `pv`, or `multipv` until enough raw-log evidence exists to
+justify that conversion rule.
+
 ## Candidate Raw Game Fields
 
 - black player type and settings
 - white player type and settings
-- moves
+- plies with side, position command, bestmove, ponder, and raw USI info lines
 - winner
 - end reason
 - ply count
-- per-move actor/source
 - optional per-move SFEN, if needed for conversion speed or reproducibility
 
 ## Acceptance Criteria
