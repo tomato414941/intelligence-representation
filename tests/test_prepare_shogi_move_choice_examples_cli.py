@@ -3,9 +3,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from intrep.prepare_shogi_move_choice_examples import main
 from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
 from intrep.tasks.shogi_move_choice.examples import load_shogi_move_choice_examples_jsonl
+from intrep.tasks.shogi_move_choice.prepare_examples import main
 
 
 BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
@@ -27,7 +27,7 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "prepare_shogi_move_choice_examples",
+                    "prepare_examples",
                     "--games-jsonl",
                     str(games_path),
                     "--examples-jsonl",
@@ -60,7 +60,7 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "prepare_shogi_move_choice_examples",
+                    "prepare_examples",
                     "--games-jsonl",
                     str(games_path),
                     "--examples-jsonl",

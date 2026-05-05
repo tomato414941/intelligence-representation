@@ -21,9 +21,12 @@ tools are added there by default.
   `scripts/`.
 - Do not add new top-level CLI modules unless they are project-level entrypoints.
 
+## Current State
+
+- `intrep.tasks.shogi_move_choice.prepare_examples` owns shogi move-choice
+  example preparation.
+
 ## Current Follow-up
 
-- `intrep.prepare_shogi_move_choice_examples` is task-specific and can move to
-  `intrep.tasks.shogi_move_choice.prepare_examples` when touched next.
 - `intrep.prepare_fineweb_edu_text` and `intrep.generate_text` should be
   reconsidered when text CLI ownership is next changed.

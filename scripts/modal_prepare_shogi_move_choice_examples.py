@@ -60,7 +60,7 @@ def prepare_shard(
     command = [
         "python",
         "-m",
-        "intrep.prepare_shogi_move_choice_examples",
+        "intrep.tasks.shogi_move_choice.prepare_examples",
         "--games-jsonl",
         games_jsonl,
         "--examples-jsonl",
