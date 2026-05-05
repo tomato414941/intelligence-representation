@@ -24,6 +24,18 @@ objective:
   what is optimized or evaluated
 ```
 
+## Dataset Definitions and Runs
+
+A dataset definition is the intended training data boundary. It says which
+source records or derived examples are included for a learning purpose.
+
+A run is an execution that produces artifacts such as raw logs, example caches,
+metrics, or checkpoints. Runs are evidence and material for datasets, but they
+are not themselves the dataset definition.
+
+Training should be explainable in terms of a dataset definition and a training
+configuration, not just a convenient artifact path.
+
 ## Source Records
 
 Source records should stay close to their source.
