@@ -24,6 +24,27 @@ model output + target
   -> loss
 ```
 
+## World
+
+A world is a structured setting with state, entities, relations, changes,
+constraints, and consequences. Some worlds are interactable through actions;
+others are observed or replayed through source records.
+
+Examples:
+
+- grid simulation
+- shogi game environment
+- browser or tool environment
+- physical or sensor environment
+- replayed trajectory or game record
+
+A world-like interface exposes observations or transitions from a source record
+without necessarily supporting free interaction or branching.
+
+In agentic settings, an agent is not only an observer. It has a viewpoint,
+action interface, history, constraints, and identity, and its state or outputs
+can become part of the world.
+
 ## Source Record
 
 A source record is a stored source item before it is cut or transformed for a
