@@ -7,7 +7,11 @@ responsibilities.
 ## Boundary Chain
 
 ```text
-object or world state
+source record
+  -> training example
+  -> model input
+
+object or world state in a model input
   -> form
   -> encoding
   -> input embedding
@@ -19,6 +23,42 @@ model output + target
   -> objective
   -> loss
 ```
+
+## Source Record
+
+A source record is a stored source item before it is cut or transformed for a
+specific objective.
+
+Examples:
+
+- shogi game record
+- grid episode record
+- image file and label row
+- text document
+- browser interaction log
+
+A source record can produce one or more training examples.
+
+## Training Example
+
+A training example is a unit made from a source record or experience for a
+specific objective.
+
+Examples:
+
+- position and selected move
+- position and winner target
+- grid state, action, and next grid state
+- image and class label
+- text window and next token targets
+
+## Model Input
+
+A model input is the input-side value passed to a model for training,
+evaluation, or inference.
+
+Model input is a role, not a representation type. It may contain forms,
+encodings, tensors, masks, candidate sets, or already-built input embeddings.
 
 ## Form
 
