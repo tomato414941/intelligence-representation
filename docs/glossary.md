@@ -148,8 +148,8 @@ as `input embedding`, `token embedding`, `patch embedding`, or `move embedding`.
 
 ## Hidden State
 
-A hidden state is a contextual vector produced by a model core from embeddings.
-Transformer hidden states are the main current example.
+A hidden state is a contextual vector produced by a model core from input
+embeddings. Transformer hidden states are the main current example.
 
 Hidden states are learned representations, but this glossary keeps the term
 `hidden state` for the concrete model boundary and reserves `representation` for
