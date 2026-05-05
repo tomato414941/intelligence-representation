@@ -5,6 +5,10 @@
 This document defines the conceptual boundary between representation, signal,
 symbol, token, modality, and format in this project.
 
+Use [Glossary](glossary.md) as the source of truth for short boundary-term
+definitions. This document gives conceptual context and should not override the
+glossary.
+
 It is not a data format specification. In particular, "signal" here means a
 conceptual appearance that can be received, generated, predicted, or acted on.
 It does not mean the retired `Signal` class.
@@ -16,7 +20,8 @@ raw examples or interaction records
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
-  -> task-specific output layer and objective
+  -> output head or decoder
+  -> model output and objective
 ```
 
 The project should not make raw data look uniform by wrapping everything in a
@@ -300,14 +305,15 @@ The shared middle of the system should be the model-facing representation:
 modality-specific input layer
   -> input embedding sequence
   -> shared Transformer core
-  -> task-specific output layer / decoder / objective
+  -> output head / decoder
+  -> model output / objective
 ```
 
 For text-only language modeling, the input layer may be a tokenizer plus an
 embedding table. For image/text choice tasks, image patches and candidate text
 embeddings can be fused before a candidate scoring head. For audio-to-text
-tasks, input and output layers can differ while the Transformer core remains
-shareable.
+tasks, input layers and output decoders can differ while the Transformer core
+remains shareable.
 
 ## Retired Direction
 

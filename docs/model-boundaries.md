@@ -5,6 +5,9 @@ It is not a complete ontology of every possible data type. Its purpose is to
 keep the project from mixing raw data, token IDs, embedding vectors, Transformer
 hidden states, and task outputs into one unclear schema.
 
+Use [Glossary](glossary.md) as the source of truth for short boundary-term
+definitions. This document explains how those terms appear in model training.
+
 The project should not force every modality into one raw data format. A
 modality is a kind of input or output form, such as text, image, video, audio,
 discrete action, tool result, or label text. Raw examples should stay close to
@@ -19,7 +22,8 @@ raw examples
   -> input embedding sequence
   -> shared Transformer core
   -> hidden states
-  -> task-specific output layer and objective
+  -> output head
+  -> model output
 ```
 
 ## Raw Examples
@@ -129,8 +133,8 @@ hidden states:
 ## Current Base Transformer Core
 
 The current base model is the shared Transformer core plus task-specific input
-and output layers. Text, image, grid, and shogi routes can use different input
-layers and heads while keeping the same core shape.
+layers and output heads. Text, image, grid, and shogi routes can use different
+input layers and heads while keeping the same core shape.
 
 The default base core is intentionally small:
 
@@ -174,9 +178,9 @@ the text tokenizer path. If a model intentionally uses a learned discrete
 visual or audio tokenizer, that should be treated as a specific modeling choice,
 not as the default common layer.
 
-## Output Layers and Objectives
+## Output Heads and Objectives
 
-Output layers and objectives may remain task-specific.
+Output heads and objectives may remain task-specific.
 
 ```text
 hidden states
