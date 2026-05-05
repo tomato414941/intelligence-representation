@@ -21,11 +21,8 @@ records should stay close to their source and task.
 
 ## Terms
 
-A form is an external shape used to store, exchange, display, or prepare an
-object or world state. It does not have to be human-readable. SFEN, KIF, USI
-moves, rendered board images, ASCII grids, PNG files, tensors, raw text, and
-JSONL rows can all be forms when they represent the source object outside the
-model.
+Use [Glossary](glossary.md) for the current boundary terms: form, encoding,
+embedding, hidden state, and representation.
 
 ## Package Responsibilities
 
