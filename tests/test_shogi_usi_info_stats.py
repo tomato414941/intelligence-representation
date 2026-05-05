@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import patch
 from io import StringIO
 
-from intrep.inspect_shogi_usi_info import main
 from intrep.worlds.shogi.game_record import (
     PlayerSpec,
     ShogiGamePlyRecord,
@@ -13,6 +12,7 @@ from intrep.worlds.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.info_stats import inspect_shogi_usi_info_jsonl
+from intrep.worlds.shogi.inspect_usi_info import main
 
 
 BLACK_PLAYER = PlayerSpec(kind="baseline", name="black", settings={})
