@@ -17,7 +17,6 @@ from intrep.tasks.image_text_choice.training import (
     train_image_text_choice_model,
 )
 from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
-from intrep.shared_multimodal_model import SharedMultimodalModel
 
 
 class ImageTextChoiceTrainingTest(unittest.TestCase):
@@ -159,7 +158,7 @@ class ImageTextChoiceTrainingTest(unittest.TestCase):
 
 class SharedMultimodalChoicePathTest(unittest.TestCase):
     def test_outputs_choice_logits(self) -> None:
-        model = SharedMultimodalModel(
+        model = ImageTextChoiceModel(
             vocab_size=32,
             text_context_length=4,
             image_size=(4, 4),
@@ -170,7 +169,7 @@ class SharedMultimodalChoicePathTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model.image_text_choice_logits(
+        logits = model.choice_logits(
             torch.zeros((2, 4, 4), dtype=torch.float32),
             torch.ones((1,), dtype=torch.long),
             torch.ones((3, 2), dtype=torch.long),

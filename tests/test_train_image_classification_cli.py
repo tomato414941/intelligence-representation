@@ -17,7 +17,7 @@ from intrep.vision.classification import (
 )
 from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
 from intrep.shared_multimodal_checkpoint import load_shared_multimodal_initialization
-from intrep.shared_multimodal_model import SharedMultimodalModel
+from intrep.tasks.image_classification.model import ImageClassificationModel
 
 
 class TrainImageClassificationCLITest(unittest.TestCase):
@@ -51,7 +51,7 @@ class TrainImageClassificationCLITest(unittest.TestCase):
                 max_steps=config.max_steps,
                 model_preset=config.model_preset,
             )
-            model = SharedMultimodalModel(
+            model = ImageClassificationModel(
                 vocab_size=1,
                 text_context_length=1,
                 image_size=(4, 4),
@@ -131,7 +131,7 @@ class TrainImageClassificationCLITest(unittest.TestCase):
                 max_steps=config.max_steps,
                 model_preset=config.model_preset,
             )
-            model = SharedMultimodalModel(
+            model = ImageClassificationModel(
                 vocab_size=1,
                 text_context_length=1,
                 image_size=(2, 2),

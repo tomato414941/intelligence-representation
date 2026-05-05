@@ -19,8 +19,7 @@ from intrep.vision.training_data import (
     seeded_data_loader,
 )
 from intrep.core.model_presets import TRANSFORMER_CORE_PRESETS
-from intrep.shared_multimodal_model import ClassificationHead
-from intrep.tasks.image_classification.model import ImageClassificationModel
+from intrep.tasks.image_classification.model import ClassificationHead, ImageClassificationModel
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 

@@ -23,7 +23,6 @@ from intrep.vision.classification import (
     train_image_classifier_with_result,
 )
 from intrep.tasks.image_classification.model import ImageClassificationModel
-from intrep.shared_multimodal_model import SharedMultimodalModel
 from intrep.core.transformer_core import SharedTransformerCore
 
 
@@ -143,7 +142,7 @@ class ImageClassificationTest(unittest.TestCase):
         self.assertEqual(result.metrics.train_case_count, 2)
 
     def test_shared_multimodal_model_outputs_class_logits(self) -> None:
-        model = SharedMultimodalModel(
+        model = ImageClassificationModel(
             vocab_size=8,
             text_context_length=4,
             image_size=(4, 4),
@@ -155,13 +154,13 @@ class ImageClassificationTest(unittest.TestCase):
             num_classes=10,
         )
 
-        logits = model.image_classification_logits(torch.zeros((3, 4, 4), dtype=torch.float32))
+        logits = model.class_logits(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
         self.assertEqual(model.text_logits(torch.zeros((3, 4), dtype=torch.long)).shape, torch.Size([3, 4, 8]))
 
     def test_shared_multimodal_model_accepts_rgb_images_for_classification(self) -> None:
-        model = SharedMultimodalModel(
+        model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,
             image_size=(4, 4),
@@ -174,7 +173,7 @@ class ImageClassificationTest(unittest.TestCase):
             channel_count=3,
         )
 
-        logits = model.image_classification_logits(torch.zeros((3, 4, 4, 3), dtype=torch.float32))
+        logits = model.class_logits(torch.zeros((3, 4, 4, 3), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
@@ -245,7 +244,7 @@ class ImageClassificationTest(unittest.TestCase):
                 )
 
     def test_shared_multimodal_model_composes_image_route_core_and_classification_head(self) -> None:
-        model = SharedMultimodalModel(
+        model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,
             image_size=(4, 4),
@@ -260,13 +259,13 @@ class ImageClassificationTest(unittest.TestCase):
         images = torch.zeros((3, 4, 4), dtype=torch.float32)
 
         with torch.no_grad():
-            logits = model.image_classification_logits(images)
+            logits = model.class_logits(images)
             manual_logits = model.classify_embeddings(model.encode_images(images))
 
         self.assertTrue(torch.allclose(logits, manual_logits))
 
     def test_shared_multimodal_model_exposes_image_embedding_sequence_path(self) -> None:
-        model = SharedMultimodalModel(
+        model = ImageClassificationModel(
             vocab_size=1,
             text_context_length=1,
             image_size=(4, 4),
