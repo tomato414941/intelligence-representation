@@ -33,6 +33,27 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
         self.assertEqual([example.game_index for example in examples], [0, 0])
         self.assertEqual([example.ply_index for example in examples], [0, 1])
 
+    def test_loads_move_choice_examples_from_arena_game_record_jsonl(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "arena-games.jsonl"
+            path.write_text(
+                (
+                    '{"black_player":{"kind":"checkpoint","name":"checkpoint-direct-black",'
+                    '"settings":{"checkpoint":"black.pt","policy":"direct","simulations":null}},'
+                    '"white_player":{"kind":"checkpoint","name":"checkpoint-direct-white",'
+                    '"settings":{"checkpoint":"white.pt","policy":"direct","simulations":null}},'
+                    '"moves":["7g7f","3c3d"],"end_reason":"resign","winner":"black"}\n'
+                ),
+                encoding="utf-8",
+            )
+
+            records = load_shogi_move_choice_examples_from_game_records_jsonl(path)
+
+        self.assertEqual([record.chosen_move for record in records], ["7g7f", "3c3d"])
+        self.assertEqual([record.value_target for record in records], [1.0, -1.0])
+        self.assertEqual([record.game_index for record in records], [0, 0])
+        self.assertEqual([record.ply_index for record in records], [0, 1])
+
 
 if __name__ == "__main__":
     unittest.main()
