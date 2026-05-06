@@ -1,6 +1,4 @@
-import tempfile
 import unittest
-from pathlib import Path
 
 import shogi
 import torch
@@ -9,9 +7,7 @@ from torch.utils.data import DataLoader
 from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
-    load_shogi_move_choice_examples_jsonl,
     shogi_move_choice_example_from_board,
-    write_shogi_move_choice_examples_jsonl,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
@@ -93,16 +89,6 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         *_, value_target = dataset[0]
 
         self.assertEqual(float(value_target.item()), 1.0)
-
-    def test_round_trips_examples_jsonl(self) -> None:
-        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"), winner="white")
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "examples.jsonl"
-
-            write_shogi_move_choice_examples_jsonl(path, examples)
-            loaded = load_shogi_move_choice_examples_jsonl(path)
-
-        self.assertEqual(loaded, examples)
 
     def test_dataset_can_be_batched(self) -> None:
         examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))

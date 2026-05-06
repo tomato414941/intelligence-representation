@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Sequence
 
 import shogi
@@ -100,60 +98,3 @@ class ShogiMoveChoiceDataset(TorchDataset):
             torch.tensor(value_target, dtype=torch.float32),
         )
 
-
-def write_shogi_move_choice_examples_jsonl(
-    path: str | Path,
-    examples: Sequence[ShogiMoveChoiceExample],
-) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    lines: list[str] = []
-    for example in examples:
-        lines.append(
-            json.dumps(
-                {
-                    "position_sfen": example.position_sfen,
-                    "legal_moves": list(example.legal_moves),
-                    "chosen_move": example.chosen_move,
-                    "policy_targets": example.policy_targets,
-                    "value_target": example.value_target,
-                    "game_index": example.game_index,
-                    "ply_index": example.ply_index,
-                },
-                separators=(",", ":"),
-            )
-        )
-    if not lines:
-        raise ValueError("examples must not be empty")
-    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def load_shogi_move_choice_examples_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    examples: list[ShogiMoveChoiceExample] = []
-    with Path(path).open(encoding="utf-8") as input_file:
-        for line in input_file:
-            stripped = line.strip()
-            if not stripped:
-                continue
-            payload = json.loads(stripped)
-            examples.append(
-                ShogiMoveChoiceExample(
-                    position_sfen=str(payload["position_sfen"]),
-                    legal_moves=tuple(str(move) for move in payload["legal_moves"]),
-                    chosen_move=str(payload["chosen_move"]),
-                    policy_targets=_policy_targets_from_json(payload["policy_targets"]),
-                    value_target=payload.get("value_target"),
-                    game_index=payload.get("game_index"),
-                    ply_index=payload.get("ply_index"),
-                )
-            )
-    if not examples:
-        raise ValueError("shogi move choice examples jsonl must contain at least one example")
-    return examples
-
-
-def _policy_targets_from_json(value: object) -> dict[str, float] | None:
-    if value is None:
-        return None
-    if not isinstance(value, dict):
-        raise ValueError("policy_targets must be an object or null")
-    return {str(move): float(weight) for move, weight in value.items()}

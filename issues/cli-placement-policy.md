@@ -23,8 +23,8 @@ tools are added there by default.
 
 ## Current State
 
-- `intrep.tasks.shogi_move_choice.prepare_examples` owns shogi move-choice
-  example preparation.
+- Shogi move-choice training reads `game_records_jsonl` dataset sources directly;
+  the old shogi move-choice example-preparation CLI has been removed.
 
 ## Current Follow-up
 
