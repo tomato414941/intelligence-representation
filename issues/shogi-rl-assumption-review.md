@@ -10,8 +10,6 @@ project moves toward RL-style generated experience and Training Views.
 Assumptions or stale paths still to review:
 
 - very shallow MCTS, such as MCTS2, as a primary playing-strength signal.
-- checkpoint actor generation, policy, and search settings being hard to trace
-  from accumulated experience data.
 
 ## Why It Matters
 
