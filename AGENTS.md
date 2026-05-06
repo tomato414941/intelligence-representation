@@ -21,8 +21,9 @@
 - For note-only changes, review formatting and repository status.
 
 ## Compute Cost Notes
-- Before and after expensive compute jobs, suggest updating `docs/compute-costs.md`.
-- When adding or changing datasets, suggest updating `docs/datasets.md`.
+- Use `docs/compute-costs.md` to support expensive or remote run decisions, not
+  as a general run log.
+- Keep `docs/datasets.md` aligned when dataset definitions change.
 
 ## Training Model Size
 - Use `d256-h1024-heads8-l6` for training runs unless there is a specific
