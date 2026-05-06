@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample, shogi_move_choice_examples_from_usi_moves
+from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
+from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
 from intrep.tasks.shogi_move_choice.model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
 import intrep.tasks.shogi_move_choice.training as training
 from intrep.tasks.shogi_move_choice.training import (
@@ -12,7 +13,7 @@ from intrep.tasks.shogi_move_choice.training import (
 
 class ShogiMoveChoiceTrainingTest(unittest.TestCase):
     def test_trains_for_one_step(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_move_choice_model(
             examples,
@@ -34,7 +35,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertGreaterEqual(result.metrics.mean_correct_move_rank, 1.0)
 
     def test_can_overfit_tiny_move_sequence(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
 
         result = train_shogi_move_choice_model(
             examples,
@@ -53,8 +54,8 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
     def test_limits_eval_examples(self) -> None:
         examples = tuple(
-            shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
-            + shogi_move_choice_examples_from_usi_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
+            shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
+            + shogi_move_choice_examples_from_test_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
         )
 
         result = train_shogi_move_choice_model(
@@ -75,7 +76,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertEqual(result.metrics.eval_case_count, 2)
 
     def test_rejects_negative_num_workers(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f",))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f",))
 
         with self.assertRaisesRegex(ValueError, "num_workers"):
             train_shogi_move_choice_model(
@@ -87,7 +88,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             )
 
     def test_rejects_zero_total_loss_weight(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f",))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f",))
 
         with self.assertRaisesRegex(ValueError, "at least one loss weight"):
             train_shogi_move_choice_model(
@@ -100,7 +101,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             )
 
     def test_progress_callback_runs_only_on_progress_interval(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
 
         train_shogi_move_choice_model(
@@ -119,7 +120,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertEqual(reported_steps, [2])
 
     def test_progress_callback_is_not_called_without_progress_interval(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
 
         train_shogi_move_choice_model(
@@ -137,7 +138,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertEqual(reported_steps, [])
 
     def test_trains_value_head_when_targets_are_available(self) -> None:
-        base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        base_examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         examples = tuple(
             ShogiMoveChoiceExample(
                 position_sfen=example.position_sfen,
@@ -165,8 +166,8 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
     def test_policy_and_value_can_improve_on_tiny_game_set(self) -> None:
         examples = tuple(
-            shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
-            + shogi_move_choice_examples_from_usi_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
+            shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
+            + shogi_move_choice_examples_from_test_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
         )
         valued_examples = tuple(
             ShogiMoveChoiceExample(
@@ -206,8 +207,8 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
     def test_value_only_can_improve_on_tiny_game_set(self) -> None:
         base_examples = tuple(
-            shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
-            + shogi_move_choice_examples_from_usi_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
+            shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d", "2g2f", "8c8d"))
+            + shogi_move_choice_examples_from_test_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
         )
         examples = tuple(
             ShogiMoveChoiceExample(
@@ -240,7 +241,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         self.assertLess(result.metrics.value_loss, result.metrics.initial_value_loss)
 
     def test_value_only_training_step_skips_policy_forward(self) -> None:
-        base_examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        base_examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         examples = tuple(
             ShogiMoveChoiceExample(
                 position_sfen=example.position_sfen,

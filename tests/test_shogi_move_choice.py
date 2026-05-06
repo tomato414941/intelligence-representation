@@ -11,10 +11,9 @@ from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceExample,
     load_shogi_move_choice_examples_jsonl,
     shogi_move_choice_example_from_board,
-    shogi_move_choice_examples_from_usi_moves,
-    shogi_move_choice_examples_from_usi_moves_with_winner,
     write_shogi_move_choice_examples_jsonl,
 )
+from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
@@ -37,7 +36,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(example.chosen_move, "7g7f")
 
     def test_builds_examples_from_usi_moves(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
 
         self.assertEqual(len(examples), 2)
         self.assertEqual(examples[0].chosen_move, "7g7f")
@@ -45,13 +44,13 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertIn("3c3d", examples[1].legal_moves)
 
     def test_builds_value_targets_from_winner(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves_with_winner(("7g7f", "3c3d"), winner="b")
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"), winner="black")
 
         self.assertEqual(examples[0].value_target, 1.0)
         self.assertEqual(examples[1].value_target, -1.0)
 
     def test_dataset_returns_candidate_mask_and_label_index(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         dataset = ShogiMoveChoiceDataset(examples)
 
         position_token_ids, candidate_move_features, candidate_mask, label_index, value_target = dataset[0]
@@ -78,7 +77,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(float(value_target.item()), 1.0)
 
     def test_round_trips_examples_jsonl(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves_with_winner(("7g7f", "3c3d"), winner="w")
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"), winner="white")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "examples.jsonl"
 
@@ -88,7 +87,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(loaded, examples)
 
     def test_dataset_can_be_batched(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         loader = DataLoader(ShogiMoveChoiceDataset(examples), batch_size=2)
 
         position_token_ids, candidate_move_features, candidate_masks, label_indexes, value_targets = next(iter(loader))

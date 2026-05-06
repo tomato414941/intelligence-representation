@@ -4,14 +4,15 @@ from pathlib import Path
 
 import torch
 
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset, shogi_move_choice_examples_from_usi_moves
+from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset
+from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
 from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint, save_shogi_move_choice_checkpoint
 from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
 
 
 class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
     def test_save_and_load_preserves_logits(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_move_choice_model(
             examples,
             config=ShogiMoveChoiceTrainingConfig(
@@ -38,7 +39,7 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
         self.assertTrue(torch.allclose(actual, expected))
 
     def test_load_rejects_missing_model_weights(self) -> None:
-        examples = shogi_move_choice_examples_from_usi_moves(("7g7f", "3c3d"))
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_move_choice_model(
             examples,
             config=ShogiMoveChoiceTrainingConfig(

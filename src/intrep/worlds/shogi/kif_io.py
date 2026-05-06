@@ -12,11 +12,8 @@ from intrep.worlds.shogi.game_record import (
     shogi_side_code_to_winner,
     write_shogi_game_records_jsonl,
 )
-from intrep.tasks.shogi_move_choice.examples import (
-    ShogiMoveChoiceExample,
-    shogi_move_choice_examples_from_usi_moves,
-    shogi_move_choice_examples_from_usi_moves_with_winner,
-)
+from intrep.tasks.shogi_move_choice.data import shogi_move_choice_examples_from_game_record
+from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
 
 
 def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:
@@ -48,10 +45,7 @@ def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
 
 
 def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
-    moves, winner = load_kif_game_record(path)
-    if winner is None:
-        return shogi_move_choice_examples_from_usi_moves(moves)
-    return shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
+    return shogi_move_choice_examples_from_game_record(load_shogi_game_record_from_kif_file(path))
 
 
 def convert_kif_files_to_game_records_jsonl(
