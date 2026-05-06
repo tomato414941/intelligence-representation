@@ -7,7 +7,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 import shogi
+import torch
 
+from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint
 from intrep.tasks.shogi_move_choice.dataset_definition import load_shogi_move_choice_dataset_definition
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -185,6 +187,92 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertEqual(metrics["train_policy_target_summary"]["mean_nonzero_count"], 1.0)
             self.assertEqual(metrics["eval_policy_target_summary"]["available_count"], 0)
             self.assertEqual(metrics["eval_policy_target_summary"]["missing_count"], 2)
+
+    def test_initializes_from_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            init_checkpoint_path = root / "init.pt"
+            checkpoint_path = root / "shogi.pt"
+            metrics_path = root / "metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-move-choice",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_move_choice",
+                    "--dataset-definition",
+                    str(dataset_definition_path),
+                    "--checkpoint-path",
+                    str(init_checkpoint_path),
+                    "--metrics-path",
+                    str(root / "init-metrics.json"),
+                    "--max-steps",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                    "--num-workers",
+                    "0",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_move_choice",
+                    "--dataset-definition",
+                    str(dataset_definition_path),
+                    "--init-checkpoint-path",
+                    str(init_checkpoint_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--max-steps",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--learning-rate",
+                    "0",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                    "--num-workers",
+                    "0",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["init_checkpoint_path"], str(init_checkpoint_path))
+            init_model = load_shogi_move_choice_checkpoint(init_checkpoint_path)
+            trained_model = load_shogi_move_choice_checkpoint(checkpoint_path)
+            for key, tensor in init_model.state_dict().items():
+                self.assertTrue(torch.equal(tensor, trained_model.state_dict()[key]))
 
     def test_writes_periodic_checkpoints_and_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

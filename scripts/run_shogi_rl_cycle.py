@@ -60,6 +60,7 @@ def main(argv: list[str] | None = None) -> None:
     _write_dataset_definition(dataset_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
     _run_training(
         dataset_json=dataset_json,
+        init_checkpoint_path=args.checkpoint,
         checkpoint_path=checkpoint_path,
         best_checkpoint_path=best_checkpoint_path,
         metrics_path=metrics_path,
@@ -141,6 +142,7 @@ def _write_dataset_definition(path: Path, *, train_jsonl: Path, eval_jsonl: Path
 def _run_training(
     *,
     dataset_json: Path,
+    init_checkpoint_path: Path,
     checkpoint_path: Path,
     best_checkpoint_path: Path,
     metrics_path: Path,
@@ -158,6 +160,8 @@ def _run_training(
         "intrep.train_shogi_move_choice",
         "--dataset-definition",
         str(dataset_json),
+        "--init-checkpoint-path",
+        str(init_checkpoint_path),
         "--checkpoint-path",
         str(checkpoint_path),
         "--best-checkpoint-path",

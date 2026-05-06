@@ -106,6 +106,7 @@ def train_shogi_move_choice_model(
     *,
     eval_examples: Sequence[ShogiMoveChoiceExample] | None = None,
     config: ShogiMoveChoiceTrainingConfig | None = None,
+    initial_state_dict: object | None = None,
     progress_callback: Callable[[ShogiMoveChoiceTrainingProgress], None] | None = None,
 ) -> ShogiMoveChoiceTrainingResult:
     training_config = config or ShogiMoveChoiceTrainingConfig()
@@ -144,6 +145,8 @@ def train_shogi_move_choice_model(
     if training_config.eval_every is not None and eval_loader is None:
         raise ValueError("eval examples are required when eval_every is set")
     model = build_shogi_move_choice_model(training_config).to(device)
+    if initial_state_dict is not None:
+        model.load_state_dict(initial_state_dict, strict=True)
     optimizer = build_adamw(
         model,
         learning_rate=training_config.learning_rate,

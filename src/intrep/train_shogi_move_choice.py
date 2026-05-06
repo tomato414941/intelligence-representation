@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from intrep.tasks.shogi_move_choice.checkpoint import (
+    load_shogi_move_choice_checkpoint_state_dict,
     save_shogi_move_choice_checkpoint,
     save_shogi_move_choice_model_checkpoint,
     save_shogi_move_choice_state_checkpoint,
@@ -26,6 +27,7 @@ from intrep.tasks.shogi_move_choice.training import (
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a shogi move-choice policy/value model.")
     parser.add_argument("--dataset-definition", type=Path, required=True)
+    parser.add_argument("--init-checkpoint-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--best-checkpoint-path", type=Path)
     parser.add_argument("--metrics-path", type=Path, required=True)
@@ -82,6 +84,11 @@ def main() -> None:
         train_examples,
         eval_examples=eval_examples,
         config=config,
+        initial_state_dict=(
+            load_shogi_move_choice_checkpoint_state_dict(args.init_checkpoint_path, device=args.device)
+            if args.init_checkpoint_path is not None
+            else None
+        ),
         progress_callback=progress_writer.write,
     )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,6 +104,7 @@ def main() -> None:
         "eval_policy_target_summary": _policy_target_summary(eval_examples),
         "dataset_definition_path": str(args.dataset_definition),
         "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
+        "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,
         "config": asdict(result.config),
