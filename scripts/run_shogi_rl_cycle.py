@@ -14,6 +14,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
+    parser.add_argument("--opponent", choices=("self", "yaneuraou"), default="self")
+    parser.add_argument("--yaneuraou", help="USI engine command used when --opponent yaneuraou.")
+    parser.add_argument("--engine-go-command", default="go nodes 1")
     parser.add_argument("--games", type=int, default=4)
     parser.add_argument("--max-plies", type=int, default=80)
     parser.add_argument("--simulations", type=int, default=16)
@@ -40,6 +43,9 @@ def main(argv: list[str] | None = None) -> None:
     _run_generate_games(
         arena_repo=args.arena_repo,
         checkpoint=args.checkpoint,
+        opponent=args.opponent,
+        yaneuraou=args.yaneuraou,
+        engine_go_command=args.engine_go_command,
         out=games_jsonl,
         games=args.games,
         max_plies=args.max_plies,
@@ -86,11 +92,17 @@ def _run_generate_games(
     *,
     arena_repo: Path,
     checkpoint: Path,
+    opponent: str,
+    yaneuraou: str | None,
+    engine_go_command: str,
     out: Path,
     games: int,
     max_plies: int,
     simulations: int,
 ) -> None:
+    if opponent == "yaneuraou" and not yaneuraou:
+        raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
+
     command = [
         "uv",
         "run",
@@ -99,7 +111,7 @@ def _run_generate_games(
         "--checkpoint",
         str(checkpoint.resolve()),
         "--opponent",
-        "self",
+        opponent,
         "--policy",
         "mcts",
         "--games",
@@ -111,6 +123,8 @@ def _run_generate_games(
         "--out",
         str(out),
     ]
+    if opponent == "yaneuraou":
+        command.extend(["--yaneuraou", yaneuraou or "", "--engine-go-command", engine_go_command])
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
 
 

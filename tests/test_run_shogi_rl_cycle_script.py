@@ -87,6 +87,52 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertIn("--value-loss-weight", train_command)
             self.assertIn("1.0", train_command)
 
+    def test_passes_yaneuraou_generation_options(self) -> None:
+        module = _load_script_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "cycle"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_checkpoint_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _record(("7g7f", "3c3d"), "black"),
+                            _record(("2g2f", "8c8d"), "white"),
+                        ],
+                    )
+
+            with patch.object(module.subprocess, "run", side_effect=fake_run) as run:
+                module.main(
+                    [
+                        "--checkpoint",
+                        str(checkpoint_path),
+                        "--run-dir",
+                        str(run_dir),
+                        "--arena-repo",
+                        str(arena_repo),
+                        "--opponent",
+                        "yaneuraou",
+                        "--yaneuraou",
+                        "engine-command",
+                        "--engine-go-command",
+                        "go nodes 2",
+                        "--games",
+                        "2",
+                    ]
+                )
+
+            generate_command = run.call_args_list[0].args[0]
+            self.assertEqual(generate_command[generate_command.index("--opponent") + 1], "yaneuraou")
+            self.assertEqual(generate_command[generate_command.index("--yaneuraou") + 1], "engine-command")
+            self.assertEqual(generate_command[generate_command.index("--engine-go-command") + 1], "go nodes 2")
+
 
 def _load_script_module() -> ModuleType:
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_shogi_rl_cycle.py"
