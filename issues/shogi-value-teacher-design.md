@@ -72,16 +72,26 @@ used.
 
 Training now chooses value target source through Dataset Definition:
 
+- `policy_target_source: "chosen_move"` uses the played move as a one-hot
+  policy target.
+- `policy_target_source: "usi_multipv"` derives policy targets from stored
+  raw USI MultiPV lines.
 - `value_target_source: "winner"` uses final winner-derived return targets.
 - `value_target_source: "yaneuraou_best_score"` uses best-line USI score from
   stored `usi_info_lines`.
+- `policy_temperature_cp` and `policy_mate_cp` record how MultiPV policy
+  targets are derived.
 - `score_cp_scale` records how centipawn scores are mapped with
   `tanh(score_cp / score_cp_scale)`.
 - mate scores map directly to `+1.0` or `-1.0`.
 
 This keeps the YaneuraOu value-teacher route available without making it the
-only route. Training metrics include the Dataset Definition, so runs record
-which value source was used.
+only route.
+
+`ShogiGameRecord` no longer stores derived `policy_targets`. It keeps raw
+experience and raw `usi_info_lines`; `ShogiMoveChoiceExample` is where the
+selected policy/value targets appear. Training metrics include the Dataset
+Definition, so runs record which policy and value sources were used.
 
 ## Acceptance Criteria
 

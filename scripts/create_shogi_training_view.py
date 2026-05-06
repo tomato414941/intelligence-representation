@@ -16,6 +16,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/datasets"))
     parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--policy-target-source", choices=("chosen_move", "usi_multipv"), default="chosen_move")
+    parser.add_argument("--policy-temperature-cp", type=float, default=100.0)
+    parser.add_argument("--policy-mate-cp", type=float, default=100000.0)
     parser.add_argument("--value-target-source", choices=("winner", "yaneuraou_best_score"), default="winner")
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
     args = parser.parse_args(argv)
@@ -26,6 +29,9 @@ def main(argv: list[str] | None = None) -> None:
         output_root=args.output_root,
         eval_ratio=args.eval_ratio,
         seed=args.seed,
+        policy_target_source=args.policy_target_source,
+        policy_temperature_cp=args.policy_temperature_cp,
+        policy_mate_cp=args.policy_mate_cp,
         value_target_source=args.value_target_source,
         score_cp_scale=args.score_cp_scale,
     )
@@ -39,6 +45,9 @@ def create_shogi_training_view(
     output_root: Path,
     eval_ratio: float,
     seed: int = 7,
+    policy_target_source: str = "chosen_move",
+    policy_temperature_cp: float = 100.0,
+    policy_mate_cp: float = 100000.0,
     value_target_source: str = "winner",
     score_cp_scale: float = 600.0,
 ) -> dict[str, object]:
@@ -70,6 +79,9 @@ def create_shogi_training_view(
     dataset = {
         "name": name,
         "objective": "shogi move-choice policy/value",
+        "policy_target_source": policy_target_source,
+        "policy_temperature_cp": policy_temperature_cp,
+        "policy_mate_cp": policy_mate_cp,
         "value_target_source": value_target_source,
         "score_cp_scale": score_cp_scale,
         "train_sources": [{"kind": "game_records_jsonl", "path": train_jsonl.name}],
@@ -93,6 +105,9 @@ def create_shogi_training_view(
         "eval_games": eval_count,
         "eval_ratio": eval_ratio,
         "split_seed": seed,
+        "policy_target_source": policy_target_source,
+        "policy_temperature_cp": policy_temperature_cp,
+        "policy_mate_cp": policy_mate_cp,
         "value_target_source": value_target_source,
         "score_cp_scale": score_cp_scale,
         "files": {

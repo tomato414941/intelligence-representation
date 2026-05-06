@@ -133,6 +133,9 @@ def _write_dataset_definition(path: Path, *, train_jsonl: Path, eval_jsonl: Path
     payload = {
         "name": path.parent.name,
         "objective": "shogi move-choice policy/value from self-play records",
+        "policy_target_source": "chosen_move",
+        "policy_temperature_cp": 100.0,
+        "policy_mate_cp": 100000.0,
         "value_target_source": "winner",
         "score_cp_scale": 600.0,
         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_jsonl)}],

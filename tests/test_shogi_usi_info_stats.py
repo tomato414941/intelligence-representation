@@ -98,7 +98,6 @@ def _record() -> ShogiGameRecord:
                 next_position_sfen=second.next_position_sfen,
                 reward=second.reward,
                 done=second.done,
-                policy_targets=second.policy_targets,
                 usi_info_lines=(
                     "info depth 4 nodes 100 score cp 23 pv 3c3d 2g2f",
                     "info multipv 2 depth 3 nodes 80 score mate -5 pv 8c8d",

@@ -1,7 +1,6 @@
 import tempfile
 import unittest
 import json
-from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -34,10 +33,20 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
-def _record_with_policy_targets(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+def _record_with_multipv_info(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     record = _record(moves, winner)
     transitions = tuple(
-        replace(transition, policy_targets={transition.action_usi: 1.0, transition.legal_moves[-1]: 0.0})
+        type(transition)(
+            ply=transition.ply,
+            side=transition.side,
+            position_sfen=transition.position_sfen,
+            legal_moves=transition.legal_moves,
+            action_usi=transition.action_usi,
+            next_position_sfen=transition.next_position_sfen,
+            reward=transition.reward,
+            done=transition.done,
+            usi_info_lines=(f"info multipv 1 score cp 100 pv {transition.action_usi}",),
+        )
         for transition in record.transitions
     )
     return ShogiGameRecord(
@@ -67,6 +76,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
@@ -146,13 +158,16 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             dataset_definition_path = root / "dataset.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
-            write_shogi_game_records_jsonl(train_games_path, [_record_with_policy_targets(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(train_games_path, [_record_with_multipv_info(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             dataset_definition_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "usi_multipv",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
@@ -213,6 +228,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
@@ -300,6 +318,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
@@ -366,6 +387,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "bad-unsplit",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
@@ -388,6 +412,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "bad-source-kind",
                         "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
                         "value_target_source": "winner",
                         "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "examples_jsonl", "path": "train-examples.jsonl"}],

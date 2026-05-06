@@ -25,7 +25,6 @@ class ShogiTransitionRecord:
     next_position_sfen: str
     reward: float
     done: bool
-    policy_targets: dict[str, float] | None
     usi_info_lines: tuple[str, ...] = ()
 
 
@@ -106,7 +105,6 @@ def shogi_transition_record_to_json(record: ShogiTransitionRecord) -> dict[str, 
         "next_position_sfen": record.next_position_sfen,
         "reward": record.reward,
         "done": record.done,
-        "policy_targets": record.policy_targets,
         "usi_info_lines": list(record.usi_info_lines),
     }
 
@@ -121,7 +119,6 @@ def shogi_transition_record_from_json(payload: dict[str, object]) -> ShogiTransi
         next_position_sfen=str(payload["next_position_sfen"]),
         reward=float(payload["reward"]),
         done=bool(payload["done"]),
-        policy_targets=_optional_float_dict(payload["policy_targets"]),
         usi_info_lines=tuple(str(line) for line in _object_list(payload.get("usi_info_lines", []))),
     )
 
@@ -190,7 +187,6 @@ def shogi_game_transitions_from_usi_moves(
                 next_position_sfen=board.sfen(),
                 reward=_transition_reward(side=side, winner=normalized_winner, done=done),
                 done=done,
-                policy_targets=None,
             )
         )
     return tuple(records)
@@ -232,10 +228,3 @@ def _json_scalar(value: object) -> str | int | float | bool | None:
     if value is None or isinstance(value, str | int | float | bool):
         return value
     raise ValueError("actor setting values must be JSON scalars")
-
-
-def _optional_float_dict(value: object) -> dict[str, float] | None:
-    if value is None:
-        return None
-    data = _object_dict(value)
-    return {str(key): float(item) for key, item in data.items()}

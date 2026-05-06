@@ -77,6 +77,7 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                 )
 
             dataset = json.loads((run_dir / "dataset.json").read_text(encoding="utf-8"))
+            self.assertEqual(dataset["policy_target_source"], "chosen_move")
             self.assertEqual(dataset["value_target_source"], "winner")
             self.assertEqual(dataset["train_sources"][0]["kind"], "game_records_jsonl")
             self.assertEqual(dataset["eval_sources"][0]["kind"], "game_records_jsonl")

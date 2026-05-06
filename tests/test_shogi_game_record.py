@@ -74,7 +74,6 @@ class ShogiGameRecordTest(unittest.TestCase):
                                 "next_position_sfen": board.sfen(),
                                 "reward": 0.0,
                                 "done": True,
-                                "policy_targets": {"2g2f": 0.75, "7g7f": 0.25},
                                 "usi_info_lines": ["info depth 1 nodes 1 pv 2g2f"],
                             }
                         ],
@@ -107,7 +106,6 @@ class ShogiGameRecordTest(unittest.TestCase):
                             next_position_sfen=board.sfen(),
                             reward=0.0,
                             done=True,
-                            policy_targets={"2g2f": 0.75, "7g7f": 0.25},
                             usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
                         ),
                     ),
@@ -117,7 +115,7 @@ class ShogiGameRecordTest(unittest.TestCase):
             ],
         )
 
-    def test_rejects_transition_without_policy_targets_field(self) -> None:
+    def test_loads_transition_without_teacher_targets(self) -> None:
         board = shogi.Board()
         legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
         board.push_usi("2g2f")
@@ -150,8 +148,9 @@ class ShogiGameRecordTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaises(KeyError):
-                load_shogi_game_records_jsonl(path)
+            records = load_shogi_game_records_jsonl(path)
+
+        self.assertEqual(records[0].transitions[0].action_usi, "2g2f")
 
 
 if __name__ == "__main__":
