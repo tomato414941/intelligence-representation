@@ -13,6 +13,8 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Create a fixed shogi training view from explicit train/eval game logs.")
     parser.add_argument("--train-games", type=Path, required=True)
     parser.add_argument("--eval-games", type=Path, required=True)
+    parser.add_argument("--max-train-games", type=int)
+    parser.add_argument("--max-eval-games", type=int)
     parser.add_argument("--name", required=True)
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/datasets"))
     parser.add_argument("--policy-target-source", choices=("chosen_move", "usi_multipv"), default="chosen_move")
@@ -25,6 +27,8 @@ def main(argv: list[str] | None = None) -> None:
     result = create_shogi_training_view(
         train_games=args.train_games,
         eval_games=args.eval_games,
+        max_train_games=args.max_train_games,
+        max_eval_games=args.max_eval_games,
         name=args.name,
         output_root=args.output_root,
         policy_target_source=args.policy_target_source,
@@ -42,6 +46,8 @@ def create_shogi_training_view(
     eval_games: Path,
     name: str,
     output_root: Path,
+    max_train_games: int | None = None,
+    max_eval_games: int | None = None,
     policy_target_source: str = "chosen_move",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
@@ -57,9 +63,11 @@ def create_shogi_training_view(
 
     if output_dir.exists():
         raise FileExistsError(f"training view already exists: {output_dir}")
+    _validate_max_games(max_train_games, label="max_train_games")
+    _validate_max_games(max_eval_games, label="max_eval_games")
 
-    train_records = list(iter_shogi_game_records_jsonl(train_games))
-    eval_records = list(iter_shogi_game_records_jsonl(eval_games))
+    train_records = _limit_records(list(iter_shogi_game_records_jsonl(train_games)), max_train_games)
+    eval_records = _limit_records(list(iter_shogi_game_records_jsonl(eval_games)), max_eval_games)
     if not train_records:
         raise ValueError("train games must not be empty")
     if not eval_records:
@@ -80,8 +88,8 @@ def create_shogi_training_view(
         "policy_mate_cp": policy_mate_cp,
         "value_target_source": value_target_source,
         "score_cp_scale": score_cp_scale,
-        "train_sources": [{"kind": "game_records_jsonl", "path": train_jsonl.name}],
-        "eval_sources": [{"kind": "game_records_jsonl", "path": eval_jsonl.name}],
+        "train_sources": [_source_json(train_jsonl.name, max_train_games)],
+        "eval_sources": [_source_json(eval_jsonl.name, max_eval_games)],
     }
     dataset_json.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
 
@@ -92,6 +100,8 @@ def create_shogi_training_view(
         "created_at": datetime.now(UTC).isoformat(),
         "train_source_games_jsonl": str(train_games),
         "eval_source_games_jsonl": str(eval_games),
+        "max_train_games": max_train_games,
+        "max_eval_games": max_eval_games,
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
         "position_stats": shogi_position_stats(records).to_dict(),
@@ -134,6 +144,24 @@ def _actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
         key = f"{record.black_actor.kind}:{record.white_actor.kind}"
         counts[key] = counts.get(key, 0) + 1
     return dict(sorted(counts.items()))
+
+
+def _limit_records(records: list[ShogiGameRecord], max_games: int | None) -> list[ShogiGameRecord]:
+    if max_games is None:
+        return records
+    return records[:max_games]
+
+
+def _source_json(path: str, max_games: int | None) -> dict[str, str | int]:
+    payload: dict[str, str | int] = {"kind": "game_records_jsonl", "path": path}
+    if max_games is not None:
+        payload["max_games"] = max_games
+    return payload
+
+
+def _validate_max_games(value: int | None, *, label: str) -> None:
+    if value is not None and value <= 0:
+        raise ValueError(f"{label} must be positive")
 
 
 if __name__ == "__main__":

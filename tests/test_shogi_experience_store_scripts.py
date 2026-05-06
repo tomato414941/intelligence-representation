@@ -110,13 +110,15 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 eval_games=eval_path,
                 name="main-view-0001",
                 output_root=output_root,
+                max_train_games=1,
+                max_eval_games=1,
             )
 
             view_dir = output_root / "main-view-0001"
             self.assertEqual(result["training_view"], str(view_dir))
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), train_records + eval_records)
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), train_records)
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), eval_records)
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), [train_records[0], eval_records[0]])
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), [train_records[0]])
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), [eval_records[0]])
             definition = load_shogi_move_choice_dataset_definition(view_dir / "dataset.json")
             self.assertEqual(definition.name, "main-view-0001")
             self.assertEqual(definition.policy_target_source, "chosen_move")
@@ -126,19 +128,23 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(definition.score_cp_scale, 600.0)
             self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
             self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
+            self.assertEqual(definition.train_sources[0].max_games, 1)
+            self.assertEqual(definition.eval_sources[0].max_games, 1)
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_training_view_v1")
             self.assertEqual(manifest["train_source_games_jsonl"], str(train_path))
             self.assertEqual(manifest["eval_source_games_jsonl"], str(eval_path))
-            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
-            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
-            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
-            self.assertEqual(manifest["train_games"], 2)
-            self.assertEqual(manifest["eval_games"], 2)
-            self.assertEqual(manifest["train_position_stats"]["transition_count"], 4)
-            self.assertEqual(manifest["eval_position_stats"]["transition_count"], 4)
+            self.assertEqual(manifest["max_train_games"], 1)
+            self.assertEqual(manifest["max_eval_games"], 1)
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2})
+            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(manifest["train_games"], 1)
+            self.assertEqual(manifest["eval_games"], 1)
+            self.assertEqual(manifest["train_position_stats"]["transition_count"], 2)
+            self.assertEqual(manifest["eval_position_stats"]["transition_count"], 2)
             self.assertEqual(manifest["train_eval_position_overlap_count"], 1)
-            self.assertEqual(manifest["position_stats"]["unique_position_count"], 5)
+            self.assertEqual(manifest["position_stats"]["unique_position_count"], 3)
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
 

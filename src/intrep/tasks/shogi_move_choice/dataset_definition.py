@@ -13,6 +13,7 @@ from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
 class ShogiMoveChoiceDatasetSource:
     kind: str
     path: Path
+    max_games: int | None = None
 
 
 @dataclass(frozen=True)
@@ -100,7 +101,12 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDat
         source_path = Path(str(item["path"]))
         if not source_path.is_absolute():
             source_path = root / source_path
-        sources.append(ShogiMoveChoiceDatasetSource(kind=kind, path=source_path))
+        max_games = None
+        if "max_games" in item:
+            max_games = int(item["max_games"])
+            if max_games <= 0:
+                raise ValueError("dataset source max_games must be positive")
+        sources.append(ShogiMoveChoiceDatasetSource(kind=kind, path=source_path, max_games=max_games))
     return tuple(sources)
 
 
@@ -148,6 +154,7 @@ def _load_sources(
                     policy_temperature_cp=policy_temperature_cp,
                     policy_mate_cp=policy_mate_cp,
                     score_cp_scale=score_cp_scale,
+                    max_games=source.max_games,
                 )
             )
         else:
@@ -157,12 +164,15 @@ def _load_sources(
     return examples
 
 
-def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str]:
-    return {
+def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str | int]:
+    payload: dict[str, str | int] = {
         "kind": source.kind,
         "path": str(source.path),
     }
+    if source.max_games is not None:
+        payload["max_games"] = source.max_games
+    return payload
 
 
-def _source_key(source: ShogiMoveChoiceDatasetSource) -> tuple[str, Path]:
-    return source.kind, source.path.resolve()
+def _source_key(source: ShogiMoveChoiceDatasetSource) -> tuple[str, Path, int | None]:
+    return source.kind, source.path.resolve(), source.max_games

@@ -9,7 +9,11 @@ import shogi
 import torch
 
 from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint
-from intrep.tasks.shogi_move_choice.dataset_definition import load_shogi_move_choice_dataset_definition
+from intrep.tasks.shogi_move_choice.dataset_definition import (
+    load_shogi_move_choice_dataset_definition,
+    load_shogi_move_choice_dataset_examples,
+    shogi_move_choice_dataset_definition_to_json,
+)
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -402,6 +406,49 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "split"):
                 load_shogi_move_choice_dataset_definition(dataset_definition_path)
+
+    def test_dataset_source_max_games_limits_loaded_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            write_shogi_game_records_jsonl(
+                train_games_path,
+                [
+                    _record(("7g7f", "3c3d"), "black"),
+                    _record(("2g2f", "8c8d"), "white"),
+                ],
+            )
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("5g5f", "5c5d"), "black")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "max-games",
+                        "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path), "max_games": 1}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path), "max_games": 1}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            definition = load_shogi_move_choice_dataset_definition(dataset_definition_path)
+            train_examples, eval_examples = load_shogi_move_choice_dataset_examples(definition)
+
+        self.assertEqual(definition.train_sources[0].max_games, 1)
+        self.assertEqual(len(train_examples), 2)
+        self.assertEqual(len(eval_examples), 2)
+        self.assertEqual(
+            shogi_move_choice_dataset_definition_to_json(definition)["train_sources"][0]["max_games"],
+            1,
+        )
 
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

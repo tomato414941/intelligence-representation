@@ -21,9 +21,14 @@ def load_shogi_move_choice_examples_from_game_records_jsonl(
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
+    max_games: int | None = None,
 ) -> list[ShogiMoveChoiceExample]:
+    if max_games is not None and max_games <= 0:
+        raise ValueError("max_games must be positive")
     examples: list[ShogiMoveChoiceExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
+        if max_games is not None and game_index >= max_games:
+            break
         game_examples = shogi_move_choice_examples_from_game_record(
             record,
             policy_target_source=policy_target_source,
