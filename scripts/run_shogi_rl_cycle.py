@@ -109,23 +109,45 @@ def _run_generate_games(
         "run",
         "python",
         "scripts/generate_shogi_games.py",
-        "--checkpoint",
+        "--black-kind",
+        "checkpoint",
+        "--black-checkpoint",
         str(checkpoint.resolve()),
-        "--matchup",
-        "checkpoint-self" if opponent == "self" else "checkpoint-yaneuraou",
-        "--policy",
+        "--black-checkpoint-policy",
         "mcts",
+        "--black-checkpoint-simulations",
+        str(simulations),
         "--games",
         str(games),
         "--max-plies",
         str(max_plies),
-        "--simulations",
-        str(simulations),
         "--out",
         str(out),
     ]
     if opponent == "yaneuraou":
-        command.extend(["--yaneuraou", yaneuraou or "", "--engine-go-command", engine_go_command])
+        command.extend(
+            [
+                "--white-kind",
+                "yaneuraou",
+                "--white-yaneuraou-command",
+                yaneuraou or "",
+                "--white-yaneuraou-go-command",
+                engine_go_command,
+            ]
+        )
+    else:
+        command.extend(
+            [
+                "--white-kind",
+                "checkpoint",
+                "--white-checkpoint",
+                str(checkpoint.resolve()),
+                "--white-checkpoint-policy",
+                "mcts",
+                "--white-checkpoint-simulations",
+                str(simulations),
+            ]
+        )
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
 
 

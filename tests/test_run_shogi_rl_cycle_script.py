@@ -84,6 +84,11 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertTrue((run_dir / "train-games.jsonl").exists())
             self.assertTrue((run_dir / "eval-games.jsonl").exists())
             self.assertEqual(run.call_count, 2)
+            generate_command = run.call_args_list[0].args[0]
+            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
+            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
             train_command = run.call_args_list[1].args[0]
             self.assertIn("intrep.train_shogi_move_choice", train_command)
             self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
@@ -132,9 +137,10 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                 )
 
             generate_command = run.call_args_list[0].args[0]
-            self.assertEqual(generate_command[generate_command.index("--matchup") + 1], "checkpoint-yaneuraou")
-            self.assertEqual(generate_command[generate_command.index("--yaneuraou") + 1], "engine-command")
-            self.assertEqual(generate_command[generate_command.index("--engine-go-command") + 1], "go nodes 2")
+            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
+            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "yaneuraou")
+            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-command") + 1], "engine-command")
+            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-go-command") + 1], "go nodes 2")
 
 
 def _load_script_module() -> ModuleType:
