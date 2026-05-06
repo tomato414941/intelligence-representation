@@ -33,6 +33,13 @@
 - Tests and smoke checks may use smaller models when model quality is not being
   evaluated.
 
+## Run Artifacts
+- Treat `runs/` as disposable experiment output that may be deleted at any time.
+- Do not make `runs/` the canonical home for models or datasets that must be
+  kept.
+- Promote any checkpoint that must survive run cleanup into an explicit
+  non-`runs/` location before depending on it.
+
 ## Dependencies
 - PyTorch is an optional dependency so RunPod official PyTorch templates can use
   their system CUDA-compatible torch instead of replacing it from the project
