@@ -15,6 +15,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--name", required=True)
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/datasets"))
     parser.add_argument("--eval-ratio", type=float, default=0.25)
+    parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args(argv)
 
     result = create_shogi_training_view(
@@ -22,6 +23,7 @@ def main(argv: list[str] | None = None) -> None:
         name=args.name,
         output_root=args.output_root,
         eval_ratio=args.eval_ratio,
+        seed=args.seed,
     )
     print(json.dumps(result, indent=2))
 
@@ -32,6 +34,7 @@ def create_shogi_training_view(
     name: str,
     output_root: Path,
     eval_ratio: float,
+    seed: int = 7,
 ) -> dict[str, object]:
     output_dir = output_root / name
     games_jsonl = output_dir / "games.jsonl"
@@ -53,7 +56,10 @@ def create_shogi_training_view(
         train_jsonl=train_jsonl,
         eval_jsonl=eval_jsonl,
         eval_ratio=eval_ratio,
+        seed=seed,
     )
+    train_records = list(iter_shogi_game_records_jsonl(train_jsonl))
+    eval_records = list(iter_shogi_game_records_jsonl(eval_jsonl))
 
     dataset = {
         "name": name,
@@ -73,9 +79,12 @@ def create_shogi_training_view(
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
         "actor_pair_counts": _actor_pair_counts(records),
+        "train_actor_pair_counts": _actor_pair_counts(train_records),
+        "eval_actor_pair_counts": _actor_pair_counts(eval_records),
         "train_games": train_count,
         "eval_games": eval_count,
         "eval_ratio": eval_ratio,
+        "split_seed": seed,
         "files": {
             "games": games_jsonl.name,
             "train": train_jsonl.name,

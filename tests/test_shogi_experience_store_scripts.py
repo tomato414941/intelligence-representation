@@ -21,12 +21,19 @@ from intrep.worlds.shogi.game_record import (
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
 WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"})
 
 
-def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+def _record(
+    moves: tuple[str, ...],
+    winner: str | None,
+    *,
+    black_actor: ShogiActorSpec = BLACK_ACTOR,
+    white_actor: ShogiActorSpec = WHITE_ACTOR,
+) -> ShogiGameRecord:
     return ShogiGameRecord(
-        black_actor=BLACK_ACTOR,
-        white_actor=WHITE_ACTOR,
+        black_actor=black_actor,
+        white_actor=white_actor,
         initial_position_sfen=shogi.Board().sfen(),
         transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
@@ -71,8 +78,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             records = [
                 _record(("7g7f", "3c3d"), "black"),
                 _record(("2g2f", "8c8d"), "white"),
-                _record(("5g5f", "5c5d"), "black"),
-                _record(("6g6f", "6c6d"), "white"),
+                _record(("5g5f", "5c5d"), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("6g6f", "6c6d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
             ]
             write_shogi_game_records_jsonl(input_path, records)
             append_module.append_shogi_experience_store(input_path=input_path, store_dir=store_dir)
@@ -82,13 +89,12 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 name="main-view-0001",
                 output_root=output_root,
                 eval_ratio=0.25,
+                seed=3,
             )
 
             view_dir = output_root / "main-view-0001"
             self.assertEqual(result["training_view"], str(view_dir))
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), records)
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), records[:3])
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), records[3:])
             definition = load_shogi_move_choice_dataset_definition(view_dir / "dataset.json")
             self.assertEqual(definition.name, "main-view-0001")
             self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
@@ -96,7 +102,10 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_training_view_v1")
             self.assertEqual(manifest["store"], str(store_dir))
-            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 4})
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
+            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
+            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
+            self.assertEqual(manifest["split_seed"], 3)
 
     def test_refuses_to_overwrite_existing_training_view(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")

@@ -16,30 +16,45 @@ from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
 WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
+YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={})
 
 
-def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+def _record(
+    moves: tuple[str, ...],
+    winner: str | None,
+    *,
+    black_actor: ShogiActorSpec = BLACK_ACTOR,
+    white_actor: ShogiActorSpec = WHITE_ACTOR,
+) -> ShogiGameRecord:
     return ShogiGameRecord(
-        black_actor=BLACK_ACTOR,
-        white_actor=WHITE_ACTOR,
+        black_actor=black_actor,
+        white_actor=white_actor,
         initial_position_sfen=shogi.Board().sfen(),
         transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 
 
+def _actor_pair_counts(records: tuple[ShogiGameRecord, ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        key = f"{record.black_actor.kind}:{record.white_actor.kind}"
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 class SplitShogiGameRecordsTest(unittest.TestCase):
-    def test_splits_at_game_boundaries(self) -> None:
+    def test_splits_at_game_boundaries_by_actor_pair(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             games_path = root / "games.jsonl"
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             records = [
-                _record(("7g7f",), "black"),
-                _record(("2g2f",), "white"),
-                _record(("2g2f",), "black"),
-                _record(("7g7f",), "white"),
+                _record(("7g7f",), "black", black_actor=BLACK_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("2g2f",), "white", black_actor=BLACK_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("5g5f",), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("6g6f",), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
             ]
             write_shogi_game_records_jsonl(games_path, records)
 
@@ -48,12 +63,49 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
                 train_jsonl=train_path,
                 eval_jsonl=eval_path,
                 eval_ratio=0.25,
+                seed=11,
             )
 
-            self.assertEqual(train_count, 3)
-            self.assertEqual(eval_count, 1)
-            self.assertEqual(load_shogi_game_records_jsonl(train_path), records[:3])
-            self.assertEqual(load_shogi_game_records_jsonl(eval_path), records[3:])
+            train_records = load_shogi_game_records_jsonl(train_path)
+            eval_records = load_shogi_game_records_jsonl(eval_path)
+            self.assertEqual(train_count, 2)
+            self.assertEqual(eval_count, 2)
+            self.assertEqual(_actor_pair_counts(train_records), {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
+            self.assertEqual(_actor_pair_counts(eval_records), {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
+
+    def test_split_is_reproducible_for_seed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            games_path = root / "games.jsonl"
+            records = [
+                _record((move,), "black")
+                for move in ("7g7f", "2g2f", "5g5f", "6g6f", "1g1f", "9g9f")
+            ]
+            write_shogi_game_records_jsonl(games_path, records)
+
+            split_shogi_game_records_jsonl(
+                games_jsonl=games_path,
+                train_jsonl=root / "train-a.jsonl",
+                eval_jsonl=root / "eval-a.jsonl",
+                eval_ratio=0.33,
+                seed=5,
+            )
+            split_shogi_game_records_jsonl(
+                games_jsonl=games_path,
+                train_jsonl=root / "train-b.jsonl",
+                eval_jsonl=root / "eval-b.jsonl",
+                eval_ratio=0.33,
+                seed=5,
+            )
+
+            self.assertEqual(
+                load_shogi_game_records_jsonl(root / "train-a.jsonl"),
+                load_shogi_game_records_jsonl(root / "train-b.jsonl"),
+            )
+            self.assertEqual(
+                load_shogi_game_records_jsonl(root / "eval-a.jsonl"),
+                load_shogi_game_records_jsonl(root / "eval-b.jsonl"),
+            )
 
     def test_rejects_invalid_eval_ratio(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
