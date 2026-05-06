@@ -99,6 +99,7 @@ class ShogiMoveChoiceTrainingProgress:
     elapsed_seconds: float
     model: nn.Module
     config: ShogiMoveChoiceTrainingConfig
+    eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
 
 
 def train_shogi_move_choice_model(
@@ -197,6 +198,14 @@ def train_shogi_move_choice_model(
             loss.backward()
             optimizer.step()
             step += 1
+            if training_config.log_every is not None and step % training_config.log_every == 0:
+                _log_training_progress(step, training_config.max_steps, started, loss, device)
+            eval_step_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+            if training_config.eval_every is not None and step % training_config.eval_every == 0:
+                eval_step_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+                if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
+                    best_model_state_dict = copy.deepcopy(model.state_dict())
+                model.train()
             if (
                 progress_callback is not None
                 and training_config.progress_every is not None
@@ -210,15 +219,9 @@ def train_shogi_move_choice_model(
                         elapsed_seconds=time.monotonic() - started,
                         model=model,
                         config=training_config,
+                        eval_metrics=eval_step_metrics,
                     )
                 )
-            if training_config.log_every is not None and step % training_config.log_every == 0:
-                _log_training_progress(step, training_config.max_steps, started, loss, device)
-            if training_config.eval_every is not None and step % training_config.eval_every == 0:
-                eval_step_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
-                if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
-                    best_model_state_dict = copy.deepcopy(model.state_dict())
-                model.train()
             if step >= training_config.max_steps:
                 break
 

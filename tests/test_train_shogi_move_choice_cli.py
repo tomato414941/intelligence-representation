@@ -321,6 +321,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     "1",
                     "--metrics-every",
                     "2",
+                    "--eval-every",
+                    "2",
                     "--keep-last-n-checkpoints",
                     "2",
                 ],
@@ -336,6 +338,9 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertEqual(step_metrics["step"], 2)
             self.assertEqual(step_metrics["max_steps"], 3)
             self.assertIn("loss", step_metrics)
+            self.assertIn("eval_metrics", step_metrics)
+            self.assertIn("loss", step_metrics["eval_metrics"])
+            self.assertIn("accuracy", step_metrics["eval_metrics"])
 
     def test_rejects_unsplit_dataset_definition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

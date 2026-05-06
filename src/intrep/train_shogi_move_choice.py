@@ -174,6 +174,8 @@ class _ProgressArtifactWriter:
             "elapsed_seconds": progress.elapsed_seconds,
             "config": asdict(progress.config),
         }
+        if progress.eval_metrics is not None:
+            payload["eval_metrics"] = asdict(progress.eval_metrics)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     def _prune_checkpoints(self) -> None:
