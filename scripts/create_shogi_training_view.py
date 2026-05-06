@@ -6,16 +6,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
-from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Create a fixed shogi training view from an experience store.")
-    parser.add_argument("--store", type=Path, default=Path("data/shogi/experiences/main"))
+    parser = argparse.ArgumentParser(description="Create a fixed shogi training view from explicit train/eval game logs.")
+    parser.add_argument("--train-games", type=Path, required=True)
+    parser.add_argument("--eval-games", type=Path, required=True)
     parser.add_argument("--name", required=True)
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/datasets"))
-    parser.add_argument("--eval-ratio", type=float, default=0.25)
-    parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--policy-target-source", choices=("chosen_move", "usi_multipv"), default="chosen_move")
     parser.add_argument("--policy-temperature-cp", type=float, default=100.0)
     parser.add_argument("--policy-mate-cp", type=float, default=100000.0)
@@ -24,11 +22,10 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     result = create_shogi_training_view(
-        store_dir=args.store,
+        train_games=args.train_games,
+        eval_games=args.eval_games,
         name=args.name,
         output_root=args.output_root,
-        eval_ratio=args.eval_ratio,
-        seed=args.seed,
         policy_target_source=args.policy_target_source,
         policy_temperature_cp=args.policy_temperature_cp,
         policy_mate_cp=args.policy_mate_cp,
@@ -40,11 +37,10 @@ def main(argv: list[str] | None = None) -> None:
 
 def create_shogi_training_view(
     *,
-    store_dir: Path,
+    train_games: Path,
+    eval_games: Path,
     name: str,
     output_root: Path,
-    eval_ratio: float,
-    seed: int = 7,
     policy_target_source: str = "chosen_move",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
@@ -57,24 +53,22 @@ def create_shogi_training_view(
     eval_jsonl = output_dir / "eval-games.jsonl"
     dataset_json = output_dir / "dataset.json"
     manifest_path = output_dir / "manifest.json"
-    source_games_jsonl = store_dir / "games.jsonl"
 
     if output_dir.exists():
         raise FileExistsError(f"training view already exists: {output_dir}")
 
-    records = list(iter_shogi_game_records_jsonl(source_games_jsonl))
-    if len(records) < 2:
-        raise ValueError("at least two games are required to create a training view")
+    train_records = list(iter_shogi_game_records_jsonl(train_games))
+    eval_records = list(iter_shogi_game_records_jsonl(eval_games))
+    if not train_records:
+        raise ValueError("train games must not be empty")
+    if not eval_records:
+        raise ValueError("eval games must not be empty")
+    records = train_records + eval_records
+
+    output_dir.mkdir(parents=True)
     write_shogi_game_records_jsonl(games_jsonl, records)
-    train_count, eval_count = split_shogi_game_records_jsonl(
-        games_jsonl=games_jsonl,
-        train_jsonl=train_jsonl,
-        eval_jsonl=eval_jsonl,
-        eval_ratio=eval_ratio,
-        seed=seed,
-    )
-    train_records = list(iter_shogi_game_records_jsonl(train_jsonl))
-    eval_records = list(iter_shogi_game_records_jsonl(eval_jsonl))
+    write_shogi_game_records_jsonl(train_jsonl, train_records)
+    write_shogi_game_records_jsonl(eval_jsonl, eval_records)
 
     dataset = {
         "name": name,
@@ -94,17 +88,15 @@ def create_shogi_training_view(
         "record_schema": "shogi_game_record_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),
-        "store": str(store_dir),
-        "store_games_jsonl": str(source_games_jsonl),
+        "train_source_games_jsonl": str(train_games),
+        "eval_source_games_jsonl": str(eval_games),
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
         "actor_pair_counts": _actor_pair_counts(records),
         "train_actor_pair_counts": _actor_pair_counts(train_records),
         "eval_actor_pair_counts": _actor_pair_counts(eval_records),
-        "train_games": train_count,
-        "eval_games": eval_count,
-        "eval_ratio": eval_ratio,
-        "split_seed": seed,
+        "train_games": len(train_records),
+        "eval_games": len(eval_records),
         "policy_target_source": policy_target_source,
         "policy_temperature_cp": policy_temperature_cp,
         "policy_mate_cp": policy_mate_cp,
@@ -127,8 +119,8 @@ def create_shogi_training_view(
         "eval_jsonl": str(eval_jsonl),
         "manifest": str(manifest_path),
         "game_count": len(records),
-        "train_games": train_count,
-        "eval_games": eval_count,
+        "train_games": len(train_records),
+        "eval_games": len(eval_records),
     }
 
 

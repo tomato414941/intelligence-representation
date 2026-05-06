@@ -82,34 +82,36 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             )
             self.assertEqual(second_history["total_games"], 3)
 
-    def test_creates_fixed_training_view_from_store(self) -> None:
-        append_module = _load_script_module("append_shogi_experience_store")
+    def test_creates_fixed_training_view_from_explicit_train_eval_sources(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            input_path = root / "generated-games.jsonl"
-            store_dir = root / "data" / "shogi" / "experiences" / "main"
+            train_path = root / "train-source.jsonl"
+            eval_path = root / "eval-source.jsonl"
             output_root = root / "data" / "shogi" / "datasets"
-            records = [
+            train_records = [
                 _record(("7g7f", "3c3d"), "black"),
-                _record(("2g2f", "8c8d"), "white"),
                 _record(("5g5f", "5c5d"), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+            ]
+            eval_records = [
+                _record(("2g2f", "8c8d"), "white"),
                 _record(("6g6f", "6c6d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
             ]
-            write_shogi_game_records_jsonl(input_path, records)
-            append_module.append_shogi_experience_store(input_path=input_path, store_dir=store_dir)
+            write_shogi_game_records_jsonl(train_path, train_records)
+            write_shogi_game_records_jsonl(eval_path, eval_records)
 
             result = view_module.create_shogi_training_view(
-                store_dir=store_dir,
+                train_games=train_path,
+                eval_games=eval_path,
                 name="main-view-0001",
                 output_root=output_root,
-                eval_ratio=0.25,
-                seed=3,
             )
 
             view_dir = output_root / "main-view-0001"
             self.assertEqual(result["training_view"], str(view_dir))
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), records)
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), train_records + eval_records)
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), train_records)
+            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), eval_records)
             definition = load_shogi_move_choice_dataset_definition(view_dir / "dataset.json")
             self.assertEqual(definition.name, "main-view-0001")
             self.assertEqual(definition.policy_target_source, "chosen_move")
@@ -121,11 +123,13 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_training_view_v1")
-            self.assertEqual(manifest["store"], str(store_dir))
+            self.assertEqual(manifest["train_source_games_jsonl"], str(train_path))
+            self.assertEqual(manifest["eval_source_games_jsonl"], str(eval_path))
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
-            self.assertEqual(manifest["split_seed"], 3)
+            self.assertEqual(manifest["train_games"], 2)
+            self.assertEqual(manifest["eval_games"], 2)
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
 
@@ -133,20 +137,25 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
         view_module = _load_script_module("create_shogi_training_view")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            store_dir = root / "store"
+            train_path = root / "train.jsonl"
+            eval_path = root / "eval.jsonl"
             output_root = root / "datasets"
             write_shogi_game_records_jsonl(
-                store_dir / "games.jsonl",
-                [_record(("7g7f", "3c3d"), "black"), _record(("2g2f", "8c8d"), "white")],
+                train_path,
+                [_record(("7g7f", "3c3d"), "black")],
+            )
+            write_shogi_game_records_jsonl(
+                eval_path,
+                [_record(("2g2f", "8c8d"), "white")],
             )
             (output_root / "existing").mkdir(parents=True)
 
             with self.assertRaises(FileExistsError):
                 view_module.create_shogi_training_view(
-                    store_dir=store_dir,
+                    train_games=train_path,
+                    eval_games=eval_path,
                     name="existing",
                     output_root=output_root,
-                    eval_ratio=0.25,
                 )
 
 

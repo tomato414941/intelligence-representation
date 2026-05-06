@@ -11,9 +11,10 @@ Shogi Experience Store can now contain multiple actor-pair sources, such as:
 - `yaneuraou:checkpoint`
 - future `checkpoint:checkpoint`
 
-Training View creation currently snapshots the full store. That is fine while
-the store is small, but it will become too coarse once one source dominates the
-store or a run needs a deliberate teacher/student/self-play mix.
+Training View creation now takes explicit train/eval game logs instead of
+splitting the full store directly. That makes heldout evaluation sources
+possible, but it does not yet solve source mix selection: the caller still has
+to produce those train/eval logs intentionally.
 
 ## Why It Matters
 
