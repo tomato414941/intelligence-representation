@@ -175,21 +175,16 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
     def test_rejects_unsplit_dataset_definition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            examples_path = root / "examples.jsonl"
+            games_path = root / "games.jsonl"
             dataset_definition_path = root / "dataset.json"
-            examples_path.write_text(
-                '{"position_sfen":"lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",'
-                '"legal_moves":["7g7f"],"chosen_move":"7g7f","value_target":null,'
-                '"game_index":0,"ply_index":0}\n',
-                encoding="utf-8",
-            )
+            write_shogi_game_records_jsonl(games_path, [_record(("7g7f",), None)])
             dataset_definition_path.write_text(
                 json.dumps(
                     {
                         "name": "bad-unsplit",
                         "objective": "shogi move-choice policy",
-                        "train_sources": [{"kind": "examples_jsonl", "path": str(examples_path)}],
-                        "eval_sources": [{"kind": "examples_jsonl", "path": str(examples_path)}],
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
                     }
                 )
                 + "\n",
@@ -197,6 +192,26 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "split"):
+                load_shogi_move_choice_dataset_definition(dataset_definition_path)
+
+    def test_rejects_example_jsonl_dataset_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dataset_definition_path = root / "dataset.json"
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "bad-source-kind",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "examples_jsonl", "path": "train-examples.jsonl"}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "game_records_jsonl"):
                 load_shogi_move_choice_dataset_definition(dataset_definition_path)
 
 

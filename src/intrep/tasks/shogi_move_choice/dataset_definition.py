@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample, load_shogi_move_choice_examples_jsonl
+from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
 
 
 @dataclass(frozen=True)
@@ -64,8 +64,8 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDat
         if not isinstance(item, dict):
             raise ValueError("dataset source must be an object")
         kind = str(item["kind"])
-        if kind not in {"examples_jsonl", "game_records_jsonl"}:
-            raise ValueError("dataset source kind must be examples_jsonl or game_records_jsonl")
+        if kind != "game_records_jsonl":
+            raise ValueError("dataset source kind must be game_records_jsonl")
         source_path = Path(str(item["path"]))
         if not source_path.is_absolute():
             source_path = root / source_path
@@ -84,9 +84,7 @@ def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
 def _load_sources(sources: tuple[ShogiMoveChoiceDatasetSource, ...]) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
     for source in sources:
-        if source.kind == "examples_jsonl":
-            examples.extend(load_shogi_move_choice_examples_jsonl(source.path))
-        elif source.kind == "game_records_jsonl":
+        if source.kind == "game_records_jsonl":
             examples.extend(load_shogi_move_choice_examples_from_game_records_jsonl(source.path))
         else:
             raise ValueError(f"unsupported dataset source kind: {source.kind}")
