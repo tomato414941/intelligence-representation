@@ -108,7 +108,11 @@ def main() -> None:
 
 
 def _policy_target_summary(examples: list[ShogiMoveChoiceExample]) -> dict[str, float | int]:
-    available_counts = [len(example.policy_targets) for example in examples if example.policy_targets is not None]
+    available_counts = [
+        sum(1 for weight in example.policy_targets.values() if weight > 0.0)
+        for example in examples
+        if example.policy_targets is not None
+    ]
     available_count = len(available_counts)
     total_count = len(examples)
     return {

@@ -35,7 +35,7 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
 def _record_with_policy_targets(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     record = _record(moves, winner)
     transitions = tuple(
-        replace(transition, policy_targets={transition.action_usi: 1.0})
+        replace(transition, policy_targets={transition.action_usi: 1.0, transition.legal_moves[-1]: 0.0})
         for transition in record.transitions
     )
     return ShogiGameRecord(
