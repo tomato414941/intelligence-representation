@@ -5,7 +5,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
@@ -72,6 +72,7 @@ def create_shogi_training_view(
         "store_games_jsonl": str(source_games_jsonl),
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
+        "actor_pair_counts": _actor_pair_counts(records),
         "train_games": train_count,
         "eval_games": eval_count,
         "eval_ratio": eval_ratio,
@@ -95,6 +96,14 @@ def create_shogi_training_view(
         "train_games": train_count,
         "eval_games": eval_count,
     }
+
+
+def _actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        key = f"{record.black_actor.kind}:{record.white_actor.kind}"
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 if __name__ == "__main__":

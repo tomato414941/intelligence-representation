@@ -96,6 +96,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_training_view_v1")
             self.assertEqual(manifest["store"], str(store_dir))
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 4})
 
     def test_refuses_to_overwrite_existing_training_view(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")
