@@ -7,12 +7,9 @@ Status: open.
 Some shogi learning assumptions and older experiment paths need review as the
 project moves toward RL-style generated experience and Training Views.
 
-Assumptions or stale paths to review:
+Assumptions or stale paths still to review:
 
-- Qhapaq-specific RunPod/cost/cache paths that predate the current Training
-  View and Experience Store flow.
 - run output directories as the practical unit of training-data management.
-- winner-derived value as a sufficient value teacher.
 - very shallow MCTS, such as MCTS2, as a primary playing-strength signal.
 - checkpoint actor generation, policy, and search settings being hard to trace
   from accumulated experience data.
