@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 
@@ -64,6 +65,7 @@ def create_shogi_training_view(
     if not eval_records:
         raise ValueError("eval games must not be empty")
     records = train_records + eval_records
+    train_eval_position_stats = shogi_train_eval_position_stats(train_records, eval_records).to_dict()
 
     output_dir.mkdir(parents=True)
     write_shogi_game_records_jsonl(games_jsonl, records)
@@ -92,6 +94,8 @@ def create_shogi_training_view(
         "eval_source_games_jsonl": str(eval_games),
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
+        "position_stats": shogi_position_stats(records).to_dict(),
+        **train_eval_position_stats,
         "actor_pair_counts": _actor_pair_counts(records),
         "train_actor_pair_counts": _actor_pair_counts(train_records),
         "eval_actor_pair_counts": _actor_pair_counts(eval_records),

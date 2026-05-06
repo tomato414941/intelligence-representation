@@ -10,6 +10,7 @@ from intrep.worlds.shogi.game_record import (
     iter_shogi_game_records_jsonl,
     write_shogi_game_records_jsonl,
 )
+from intrep.worlds.shogi.experience_stats import shogi_position_stats
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -34,6 +35,7 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
 
     all_records = existing_records + new_records
     write_shogi_game_records_jsonl(games_jsonl, all_records)
+    total_position_stats = shogi_position_stats(all_records).to_dict()
 
     event = {
         "event": "append",
@@ -47,6 +49,7 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
         "total_transitions": _transition_count(all_records),
         "total_actor_pair_counts": _actor_pair_counts(all_records),
         "total_checkpoint_actor_counts": _checkpoint_actor_counts(all_records),
+        "total_position_stats": total_position_stats,
     }
     history_path.parent.mkdir(parents=True, exist_ok=True)
     with history_path.open("a", encoding="utf-8") as file:
@@ -58,6 +61,7 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
         "updated_at": event["created_at"],
         "game_count": len(all_records),
         "transition_count": event["total_transitions"],
+        "position_stats": total_position_stats,
         "actor_pair_counts": event["total_actor_pair_counts"],
         "checkpoint_actor_counts": event["total_checkpoint_actor_counts"],
         "files": {

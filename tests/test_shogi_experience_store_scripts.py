@@ -67,6 +67,10 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_experience_store_v1")
             self.assertEqual(manifest["game_count"], 3)
+            self.assertEqual(manifest["position_stats"]["transition_count"], 6)
+            self.assertEqual(manifest["position_stats"]["unique_position_count"], 4)
+            self.assertEqual(manifest["position_stats"]["duplicate_position_count"], 2)
+            self.assertEqual(manifest["position_stats"]["max_position_repeat_count"], 3)
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 3})
             self.assertEqual(
                 manifest["checkpoint_actor_counts"],
@@ -81,6 +85,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 1},
             )
             self.assertEqual(second_history["total_games"], 3)
+            self.assertEqual(second_history["total_position_stats"]["unique_position_count"], 4)
 
     def test_creates_fixed_training_view_from_explicit_train_eval_sources(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")
@@ -130,6 +135,10 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
             self.assertEqual(manifest["train_games"], 2)
             self.assertEqual(manifest["eval_games"], 2)
+            self.assertEqual(manifest["train_position_stats"]["transition_count"], 4)
+            self.assertEqual(manifest["eval_position_stats"]["transition_count"], 4)
+            self.assertEqual(manifest["train_eval_position_overlap_count"], 1)
+            self.assertEqual(manifest["position_stats"]["unique_position_count"], 5)
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
 
