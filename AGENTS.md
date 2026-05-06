@@ -25,8 +25,10 @@
 - When adding or changing datasets, suggest updating `docs/datasets.md`.
 
 ## Training Model Size
-- Unless there is a specific reason to use a smaller or larger model, use
-  `d256-h1024-heads8-l6` as the project-wide training size.
+- Use `d256-h1024-heads8-l6` for training runs unless there is a specific
+  reason to use a smaller or larger model.
+- Tests and smoke checks may use smaller models when model quality is not being
+  evaluated.
 
 ## Dependencies
 - PyTorch is an optional dependency so RunPod official PyTorch templates can use
