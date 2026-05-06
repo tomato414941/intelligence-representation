@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import json
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -28,6 +29,22 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
         initial_position_sfen=shogi.Board().sfen(),
         transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
+    )
+
+
+def _record_with_policy_targets(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    record = _record(moves, winner)
+    transitions = tuple(
+        replace(transition, policy_targets={transition.action_usi: 1.0})
+        for transition in record.transitions
+    )
+    return ShogiGameRecord(
+        black_actor=record.black_actor,
+        white_actor=record.white_actor,
+        initial_position_sfen=record.initial_position_sfen,
+        transitions=transitions,
+        winner=record.winner,
+        end_reason=record.end_reason,
     )
 
 
@@ -108,6 +125,66 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertEqual(metrics["raw_eval_case_count"], 2)
             self.assertEqual(metrics["used_eval_case_count"], 2)
             self.assertEqual(metrics["metrics"]["eval_case_count"], 2)
+            self.assertEqual(metrics["train_policy_target_summary"]["available_count"], 0)
+            self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 2)
+            self.assertEqual(metrics["eval_policy_target_summary"]["available_ratio"], 0.0)
+
+    def test_writes_policy_target_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            checkpoint_path = root / "shogi.pt"
+            metrics_path = root / "metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record_with_policy_targets(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-move-choice",
+                        "objective": "shogi move-choice policy",
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_move_choice",
+                    "--dataset-definition",
+                    str(dataset_definition_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--max-steps",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                    "--num-workers",
+                    "0",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["train_policy_target_summary"]["available_count"], 2)
+            self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 0)
+            self.assertEqual(metrics["train_policy_target_summary"]["available_ratio"], 1.0)
+            self.assertEqual(metrics["train_policy_target_summary"]["mean_nonzero_count"], 1.0)
+            self.assertEqual(metrics["eval_policy_target_summary"]["available_count"], 0)
+            self.assertEqual(metrics["eval_policy_target_summary"]["missing_count"], 2)
 
     def test_writes_periodic_checkpoints_and_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

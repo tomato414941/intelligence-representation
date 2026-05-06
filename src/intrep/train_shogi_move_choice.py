@@ -15,6 +15,7 @@ from intrep.tasks.shogi_move_choice.dataset_definition import (
     load_shogi_move_choice_dataset_examples,
     shogi_move_choice_dataset_definition_to_json,
 )
+from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
 from intrep.tasks.shogi_move_choice.training import (
     ShogiMoveChoiceTrainingConfig,
     ShogiMoveChoiceTrainingProgress,
@@ -92,6 +93,8 @@ def main() -> None:
         "raw_train_case_count": len(train_examples),
         "raw_eval_case_count": len(eval_examples),
         "used_eval_case_count": result.metrics.eval_case_count,
+        "train_policy_target_summary": _policy_target_summary(train_examples),
+        "eval_policy_target_summary": _policy_target_summary(eval_examples),
         "dataset_definition_path": str(args.dataset_definition),
         "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
         "checkpoint_path": str(args.checkpoint_path),
@@ -102,6 +105,19 @@ def main() -> None:
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(metrics, indent=2))
+
+
+def _policy_target_summary(examples: list[ShogiMoveChoiceExample]) -> dict[str, float | int]:
+    available_counts = [len(example.policy_targets) for example in examples if example.policy_targets is not None]
+    available_count = len(available_counts)
+    total_count = len(examples)
+    return {
+        "available_count": available_count,
+        "missing_count": total_count - available_count,
+        "available_ratio": available_count / total_count if total_count else 0.0,
+        "mean_nonzero_count": sum(available_counts) / available_count if available_count else 0.0,
+    }
+
 
 def _progress_every(*values: int | None) -> int | None:
     intervals = [value for value in values if value is not None]
