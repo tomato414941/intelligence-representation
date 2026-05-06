@@ -1,6 +1,6 @@
 # Shogi Continued Training Forgetting
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -48,6 +48,16 @@ recorded as initialization, not as a substitute for dataset scope.
 
 ## Acceptance Criteria
 
-This issue can close when shogi training runs record whether they are scratch or
-continued training, and continued-training runs make the retained dataset scope
-explicit.
+This issue can close when shogi training runs have enough metadata to explain
+the training data scope and checkpoint initialization choice without adding a
+second source of truth.
+
+## Resolution
+
+Closed because existing run metadata is sufficient for the current workflow:
+
+- `dataset_definition` records the training data scope.
+- `init_checkpoint_path` records whether the run initialized from a checkpoint.
+
+Do not add a derived scratch/continued field unless result comparison or
+automation actually needs it.
