@@ -6,8 +6,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-TRAIN_CACHE_ZST=${TRAIN_CACHE_ZST:-runs/shogi/qhapaq-train-move-choice-examples.jsonl.zst}
-EVAL_CACHE_ZST=${EVAL_CACHE_ZST:-runs/shogi/qhapaq-eval-move-choice-examples.jsonl.zst}
+TRAIN_GAMES_JSONL=${TRAIN_GAMES_JSONL:-data/qhapaq/processed/qhapaq_train_games.jsonl}
+EVAL_GAMES_JSONL=${EVAL_GAMES_JSONL:-data/qhapaq/processed/qhapaq_eval_games.jsonl}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-split-b512-steps5000}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
@@ -37,12 +37,12 @@ NUM_LAYERS=${NUM_LAYERS:-6}
 # errors during the same workstream.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
-if [[ ! -f "$TRAIN_CACHE_ZST" ]]; then
-  echo "compressed train cache not found: $TRAIN_CACHE_ZST" >&2
+if [[ ! -f "$TRAIN_GAMES_JSONL" ]]; then
+  echo "train games not found: $TRAIN_GAMES_JSONL" >&2
   exit 1
 fi
-if [[ ! -f "$EVAL_CACHE_ZST" ]]; then
-  echo "compressed eval cache not found: $EVAL_CACHE_ZST" >&2
+if [[ ! -f "$EVAL_GAMES_JSONL" ]]; then
+  echo "eval games not found: $EVAL_GAMES_JSONL" >&2
   exit 1
 fi
 
@@ -67,31 +67,20 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --allow-existing-pods \
   --no-cuda-smoke \
   --sync scripts/setup_runpod.sh \
-  --sync "$TRAIN_CACHE_ZST" \
-  --sync "$EVAL_CACHE_ZST" \
+  --sync "$TRAIN_GAMES_JSONL" \
+  --sync "$EVAL_GAMES_JSONL" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \
   --output "$OUTPUT_DIR" \
-  --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"; .venv/bin/python - <<'PY'
-import zstandard as zstd
-from pathlib import Path
-
-for name in ('$TRAIN_CACHE_ZST', '$EVAL_CACHE_ZST'):
-    src = Path(name)
-    dst = src.with_suffix('')
-    print(f'decompressing {src} -> {dst}', flush=True)
-    with src.open('rb') as f, dst.open('wb') as out:
-        zstd.ZstdDecompressor().copy_stream(f, out)
-    print(f'decompressed_bytes={dst.stat().st_size}', flush=True)
-PY
+  --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
 cat > \"$OUTPUT_DIR/dataset-definition.json\" <<JSON
 {
   \"name\": \"runpod-qhapaq-split\",
   \"objective\": \"shogi move-choice policy\",
   \"train_sources\": [
-    {\"kind\": \"examples_jsonl\", \"path\": \"\$PWD/${TRAIN_CACHE_ZST%.zst}\"}
+    {\"kind\": \"game_records_jsonl\", \"path\": \"\$PWD/$TRAIN_GAMES_JSONL\"}
   ],
   \"eval_sources\": [
-    {\"kind\": \"examples_jsonl\", \"path\": \"\$PWD/${EVAL_CACHE_ZST%.zst}\"}
+    {\"kind\": \"game_records_jsonl\", \"path\": \"\$PWD/$EVAL_GAMES_JSONL\"}
   ]
 }
 JSON
