@@ -15,6 +15,8 @@
 - Avoid adding broad abstractions before there is a concrete experiment or repeated pattern.
 - Ask for explicit approval before keeping backward compatibility paths, aliases,
   or deprecated interfaces.
+- ShogiGameRecord schema is mirrored with `../shogi-arena-agent`; update both
+  repositories' read/write/tests together when changing it.
 
 ## Verification
 - Run relevant tests or checks after implementation changes.
