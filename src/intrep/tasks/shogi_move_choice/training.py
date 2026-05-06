@@ -162,11 +162,12 @@ def train_shogi_move_choice_model(
     step = 0
     started = time.monotonic()
     while step < training_config.max_steps:
-        for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
+        for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
             position_token_ids = position_token_ids.to(device)
             candidate_move_features = candidate_move_features.to(device)
             candidate_mask = candidate_mask.to(device)
             labels = labels.to(device)
+            policy_targets = policy_targets.to(device)
             value_targets = value_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
             value_mask = torch.isfinite(value_targets)
@@ -180,12 +181,12 @@ def train_shogi_move_choice_model(
                     candidate_move_features,
                     candidate_mask,
                 )
-                policy_loss = torch.nn.functional.cross_entropy(logits, labels)
+                policy_loss = _policy_target_loss(logits, policy_targets)
                 loss = training_config.policy_loss_weight * policy_loss
             else:
                 logits = model(position_token_ids, candidate_move_features, candidate_mask)
                 value_predictions = None
-                policy_loss = torch.nn.functional.cross_entropy(logits, labels)
+                policy_loss = _policy_target_loss(logits, policy_targets)
                 loss = training_config.policy_loss_weight * policy_loss
             if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
@@ -259,7 +260,7 @@ def train_shogi_move_choice_model(
 
 def evaluate_shogi_move_choice_model(
     model: nn.Module,
-    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
 ) -> tuple[float, float]:
     metrics = evaluate_shogi_move_choice_metrics(model, loader)
     return metrics.loss, metrics.accuracy
@@ -267,7 +268,7 @@ def evaluate_shogi_move_choice_model(
 
 def evaluate_shogi_move_choice_metrics(
     model: nn.Module,
-    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
 ) -> ShogiMoveChoiceEvaluationMetrics:
     model.eval()
     losses: list[float] = []
@@ -280,11 +281,12 @@ def evaluate_shogi_move_choice_metrics(
     total = 0
     device = next(model.parameters()).device
     with torch.no_grad():
-        for position_token_ids, candidate_move_features, candidate_mask, labels, value_targets in loader:
+        for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
             position_token_ids = position_token_ids.to(device)
             candidate_move_features = candidate_move_features.to(device)
             candidate_mask = candidate_mask.to(device)
             labels = labels.to(device)
+            policy_targets = policy_targets.to(device)
             value_targets = value_targets.to(device)
             value_mask = torch.isfinite(value_targets)
             if value_mask.any() and hasattr(model, "predict_value"):
@@ -297,7 +299,7 @@ def evaluate_shogi_move_choice_metrics(
             else:
                 logits = model(position_token_ids, candidate_move_features, candidate_mask)
                 value_predictions = None
-            loss = torch.nn.functional.cross_entropy(logits, labels)
+            loss = _policy_target_loss(logits, policy_targets)
             losses.append(float(loss.item()))
             predictions = logits.argmax(dim=1)
             correct += int((predictions == labels).sum().item())
@@ -328,7 +330,7 @@ def _build_shogi_move_choice_loader(
     config: ShogiMoveChoiceTrainingConfig,
     *,
     shuffle: bool,
-) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
     return DataLoader(
         dataset,
         batch_size=config.batch_size,
@@ -336,6 +338,11 @@ def _build_shogi_move_choice_loader(
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
     )
+
+
+def _policy_target_loss(logits: torch.Tensor, policy_targets: torch.Tensor) -> torch.Tensor:
+    log_probs = torch.nn.functional.log_softmax(logits, dim=1)
+    return -(policy_targets * log_probs).sum(dim=1).mean()
 
 
 def _forward_policy_value(

@@ -57,6 +57,28 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
 
     def test_loads_move_choice_examples_from_game_record_jsonl_text(self) -> None:
         record = _record(("7g7f", "3c3d"), "black")
+        first = record.transitions[0]
+        record = ShogiGameRecord(
+            black_actor=record.black_actor,
+            white_actor=record.white_actor,
+            initial_position_sfen=record.initial_position_sfen,
+            transitions=(
+                type(first)(
+                    ply=first.ply,
+                    side=first.side,
+                    position_sfen=first.position_sfen,
+                    legal_moves=first.legal_moves,
+                    action_usi=first.action_usi,
+                    next_position_sfen=first.next_position_sfen,
+                    reward=first.reward,
+                    done=first.done,
+                    policy_targets={"7g7f": 0.75, "2g2f": 0.25},
+                    usi_info_lines=first.usi_info_lines,
+                ),
+                record.transitions[1],
+            ),
+            winner=record.winner,
+        )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
             path.write_text(
@@ -67,6 +89,7 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
             records = load_shogi_move_choice_examples_from_game_records_jsonl(path)
 
         self.assertEqual([record.chosen_move for record in records], ["7g7f", "3c3d"])
+        self.assertEqual(records[0].policy_targets, {"7g7f": 0.75, "2g2f": 0.25})
         self.assertEqual([record.value_target for record in records], [1.0, -1.0])
         self.assertEqual([record.game_index for record in records], [0, 0])
         self.assertEqual([record.ply_index for record in records], [0, 1])

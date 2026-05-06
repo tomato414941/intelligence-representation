@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import Mock
 
+import torch
+
 from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
 from intrep.tasks.shogi_move_choice.model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
@@ -12,6 +14,18 @@ from intrep.tasks.shogi_move_choice.training import (
 
 
 class ShogiMoveChoiceTrainingTest(unittest.TestCase):
+    def test_policy_target_loss_uses_soft_targets(self) -> None:
+        uniform_loss = training._policy_target_loss(
+            torch.tensor([[0.0, 0.0]]),
+            torch.tensor([[0.75, 0.25]]),
+        )
+        preferred_loss = training._policy_target_loss(
+            torch.tensor([[2.0, 0.0]]),
+            torch.tensor([[0.75, 0.25]]),
+        )
+
+        self.assertLess(float(preferred_loss.item()), float(uniform_loss.item()))
+
     def test_trains_for_one_step(self) -> None:
         examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 

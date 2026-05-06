@@ -25,6 +25,7 @@ def shogi_move_choice_examples_from_game_record(record: ShogiGameRecord) -> list
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,
             chosen_move=transition.action_usi,
+            policy_targets=transition.policy_targets,
             value_target=return_targets[index],
         )
         for index, transition in enumerate(record.transitions)

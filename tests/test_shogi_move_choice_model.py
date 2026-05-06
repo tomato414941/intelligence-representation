@@ -18,7 +18,7 @@ from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 class ShogiMoveChoiceModelTest(unittest.TestCase):
     def test_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
@@ -26,7 +26,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
     def test_model_masks_invalid_candidates(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         candidate_mask[:, -1] = False
         model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
 
@@ -35,7 +35,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
     def test_shared_core_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiMoveChoiceModel(
             SharedCoreShogiMoveChoiceModelConfig(
                 embedding_dim=8,
@@ -50,7 +50,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
     def test_shared_core_model_returns_position_value(self) -> None:
-        position_token_ids, _, _, _, _ = _batch()
+        position_token_ids, _, _, _, _, _ = _batch()
         model = SharedCoreShogiMoveChoiceModel(
             SharedCoreShogiMoveChoiceModelConfig(
                 embedding_dim=8,
@@ -66,7 +66,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertLessEqual(float(values.abs().max().item()), 1.0)
 
     def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _ = _batch()
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiMoveChoiceModel(
             SharedCoreShogiMoveChoiceModelConfig(
                 embedding_dim=8,

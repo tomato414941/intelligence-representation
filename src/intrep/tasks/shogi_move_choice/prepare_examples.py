@@ -80,6 +80,7 @@ def main() -> None:
                             "position_sfen": example.position_sfen,
                             "legal_moves": list(example.legal_moves),
                             "chosen_move": example.chosen_move,
+                            "policy_targets": example.policy_targets,
                             "value_target": example.value_target,
                             "game_index": input_index,
                             "ply_index": example.ply_index if example.ply_index is not None else ply_index,
