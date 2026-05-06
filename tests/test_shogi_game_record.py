@@ -74,6 +74,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                                 "next_position_sfen": board.sfen(),
                                 "reward": 0.0,
                                 "done": True,
+                                "policy_targets": {"2g2f": 0.75, "7g7f": 0.25},
                                 "usi_info_lines": ["info depth 1 nodes 1 pv 2g2f"],
                             }
                         ],
@@ -106,6 +107,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                             next_position_sfen=board.sfen(),
                             reward=0.0,
                             done=True,
+                            policy_targets={"2g2f": 0.75, "7g7f": 0.25},
                             usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
                         ),
                     ),
