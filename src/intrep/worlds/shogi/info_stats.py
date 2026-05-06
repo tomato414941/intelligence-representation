@@ -17,6 +17,14 @@ class ShogiUsiInfoStats:
     info_line_count: int
     score_cp_line_count: int
     score_mate_line_count: int
+    best_score_ply_count: int
+    best_score_cp_line_count: int
+    best_score_mate_line_count: int
+    best_score_cp_min: int | None
+    best_score_cp_max: int | None
+    best_score_cp_mean: float | None
+    best_score_mate_min: int | None
+    best_score_mate_max: int | None
     depth_line_count: int
     nodes_line_count: int
     pv_line_count: int
@@ -36,6 +44,15 @@ class ShogiUsiInfoStats:
             "info_line_count": self.info_line_count,
             "score_cp_line_count": self.score_cp_line_count,
             "score_mate_line_count": self.score_mate_line_count,
+            "best_score_ply_count": self.best_score_ply_count,
+            "best_score_ply_ratio": _ratio(self.best_score_ply_count, self.ply_count),
+            "best_score_cp_line_count": self.best_score_cp_line_count,
+            "best_score_mate_line_count": self.best_score_mate_line_count,
+            "best_score_cp_min": self.best_score_cp_min,
+            "best_score_cp_max": self.best_score_cp_max,
+            "best_score_cp_mean": self.best_score_cp_mean,
+            "best_score_mate_min": self.best_score_mate_min,
+            "best_score_mate_max": self.best_score_mate_max,
             "depth_line_count": self.depth_line_count,
             "nodes_line_count": self.nodes_line_count,
             "pv_line_count": self.pv_line_count,
@@ -60,6 +77,11 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
     info_line_count = 0
     score_cp_line_count = 0
     score_mate_line_count = 0
+    best_score_ply_count = 0
+    best_score_cp_line_count = 0
+    best_score_mate_line_count = 0
+    best_score_cp_values: list[int] = []
+    best_score_mate_values: list[int] = []
     depth_line_count = 0
     nodes_line_count = 0
     pv_line_count = 0
@@ -73,15 +95,26 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
         game_count += 1
         for ply in record.transitions:
             ply_count += 1
+            ply_has_best_score = False
             if ply.usi_info_lines:
                 info_ply_count += 1
             for line in ply.usi_info_lines:
                 info_line_count += 1
                 fields = _parse_info_line(line)
+                score_kind = fields.get("score_kind")
+                score_value = fields.get("score_value")
                 if fields.get("score_kind") == "cp":
                     score_cp_line_count += 1
                 if fields.get("score_kind") == "mate":
                     score_mate_line_count += 1
+                if _is_best_info_line(fields) and isinstance(score_value, int):
+                    ply_has_best_score = True
+                    if score_kind == "cp":
+                        best_score_cp_line_count += 1
+                        best_score_cp_values.append(score_value)
+                    elif score_kind == "mate":
+                        best_score_mate_line_count += 1
+                        best_score_mate_values.append(score_value)
                 if fields.get("depth") is not None:
                     depth_line_count += 1
                     depth_counts[int(fields["depth"])] += 1
@@ -96,6 +129,8 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
                 if fields.get("multipv") is not None:
                     multipv_line_count += 1
                     multipv_counts[int(fields["multipv"])] += 1
+            if ply_has_best_score:
+                best_score_ply_count += 1
 
     return ShogiUsiInfoStats(
         game_count=game_count,
@@ -104,6 +139,14 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
         info_line_count=info_line_count,
         score_cp_line_count=score_cp_line_count,
         score_mate_line_count=score_mate_line_count,
+        best_score_ply_count=best_score_ply_count,
+        best_score_cp_line_count=best_score_cp_line_count,
+        best_score_mate_line_count=best_score_mate_line_count,
+        best_score_cp_min=min(best_score_cp_values) if best_score_cp_values else None,
+        best_score_cp_max=max(best_score_cp_values) if best_score_cp_values else None,
+        best_score_cp_mean=_mean(best_score_cp_values),
+        best_score_mate_min=min(best_score_mate_values) if best_score_mate_values else None,
+        best_score_mate_max=max(best_score_mate_values) if best_score_mate_values else None,
         depth_line_count=depth_line_count,
         nodes_line_count=nodes_line_count,
         pv_line_count=pv_line_count,
@@ -150,6 +193,11 @@ def _parse_info_line(line: str) -> dict[str, object]:
     return fields
 
 
+def _is_best_info_line(fields: dict[str, object]) -> bool:
+    multipv = fields.get("multipv")
+    return multipv is None or multipv == 1
+
+
 def _parse_int(value: str) -> int | None:
     try:
         return int(value)
@@ -161,3 +209,9 @@ def _ratio(numerator: int, denominator: int) -> float | None:
     if denominator == 0:
         return None
     return numerator / denominator
+
+
+def _mean(values: list[int]) -> float | None:
+    if not values:
+        return None
+    return sum(values) / len(values)

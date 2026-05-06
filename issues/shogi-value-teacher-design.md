@@ -45,6 +45,29 @@ This makes value learning hard to interpret:
 - Do not silently mix winner-derived and score-derived value targets without
   recording which source was used.
 
+## Current Evidence
+
+`inspect_shogi_usi_info` now reports best-line score coverage and score ranges
+from stored `usi_info_lines`.
+
+On the current shogi Experience Store, best-line scores exist for most plies:
+
+- 482 games / 28,841 plies
+- best score coverage: 26,861 plies, about 93.1%
+- best cp scores: 26,224 lines, range -15347 to 19410, mean about 318 cp
+- best mate scores: 637 lines, range -2 to 15
+
+The recent `model-reached-g200-n1-mcts8-mpv3-view` Training View has similar
+coverage:
+
+- train: 20,106 / 21,487 plies, about 93.6%
+- eval: 6,755 / 7,354 plies, about 91.9%
+
+This suggests score-derived value targets are practical from the current raw
+records. The remaining design work is not data availability, but sign semantics,
+mate-score scaling, and how the Training View records which value teacher was
+used.
+
 ## Acceptance Criteria
 
 This issue can close when shogi training has an explicit value-teacher policy:
