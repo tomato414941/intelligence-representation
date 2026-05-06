@@ -112,6 +112,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), records)
             definition = load_shogi_move_choice_dataset_definition(view_dir / "dataset.json")
             self.assertEqual(definition.name, "main-view-0001")
+            self.assertEqual(definition.value_target_source, "winner")
+            self.assertEqual(definition.score_cp_scale, 600.0)
             self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
             self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -121,6 +123,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
             self.assertEqual(manifest["split_seed"], 3)
+            self.assertEqual(manifest["value_target_source"], "winner")
 
     def test_refuses_to_overwrite_existing_training_view(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")

@@ -8,6 +8,7 @@ import shogi
 from intrep.tasks.shogi_move_choice.data import (
     load_shogi_move_choice_examples_from_game_records_jsonl,
     shogi_return_targets_from_game_record,
+    shogi_score_targets_from_game_record,
 )
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -48,7 +49,7 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
             path = Path(directory) / "games.jsonl"
             write_shogi_game_records_jsonl(path, [_record(("7g7f", "3c3d"), "white")])
 
-            examples = load_shogi_move_choice_examples_from_game_records_jsonl(path)
+            examples = load_shogi_move_choice_examples_from_game_records_jsonl(path, value_target_source="winner")
 
         self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
         self.assertEqual([example.value_target for example in examples], [-1.0, 1.0])
@@ -86,13 +87,55 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            records = load_shogi_move_choice_examples_from_game_records_jsonl(path)
+            records = load_shogi_move_choice_examples_from_game_records_jsonl(path, value_target_source="winner")
 
         self.assertEqual([record.chosen_move for record in records], ["7g7f", "3c3d"])
         self.assertEqual(records[0].policy_targets, {"7g7f": 0.75, "2g2f": 0.25})
         self.assertEqual([record.value_target for record in records], [1.0, -1.0])
         self.assertEqual([record.game_index for record in records], [0, 0])
         self.assertEqual([record.ply_index for record in records], [0, 1])
+
+    def test_builds_score_targets_from_best_usi_score(self) -> None:
+        record = _record(("7g7f", "3c3d"), "black")
+        first = record.transitions[0]
+        second = record.transitions[1]
+        record = ShogiGameRecord(
+            black_actor=record.black_actor,
+            white_actor=record.white_actor,
+            initial_position_sfen=record.initial_position_sfen,
+            transitions=(
+                type(first)(
+                    ply=first.ply,
+                    side=first.side,
+                    position_sfen=first.position_sfen,
+                    legal_moves=first.legal_moves,
+                    action_usi=first.action_usi,
+                    next_position_sfen=first.next_position_sfen,
+                    reward=first.reward,
+                    done=first.done,
+                    policy_targets=first.policy_targets,
+                    usi_info_lines=("info depth 4 score cp 300 multipv 1 pv 7g7f",),
+                ),
+                type(second)(
+                    ply=second.ply,
+                    side=second.side,
+                    position_sfen=second.position_sfen,
+                    legal_moves=second.legal_moves,
+                    action_usi=second.action_usi,
+                    next_position_sfen=second.next_position_sfen,
+                    reward=second.reward,
+                    done=second.done,
+                    policy_targets=second.policy_targets,
+                    usi_info_lines=("info depth 4 score mate -3 multipv 1 pv 3c3d",),
+                ),
+            ),
+            winner=record.winner,
+        )
+
+        targets = shogi_score_targets_from_game_record(record, score_cp_scale=300.0)
+
+        self.assertAlmostEqual(targets[0] or 0.0, 0.761594, places=5)
+        self.assertEqual(targets[1], -1.0)
 
 
 if __name__ == "__main__":

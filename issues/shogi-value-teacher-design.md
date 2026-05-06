@@ -68,6 +68,21 @@ records. The remaining design work is not data availability, but sign semantics,
 mate-score scaling, and how the Training View records which value teacher was
 used.
 
+## Current Route
+
+Training now chooses value target source through Dataset Definition:
+
+- `value_target_source: "winner"` uses final winner-derived return targets.
+- `value_target_source: "yaneuraou_best_score"` uses best-line USI score from
+  stored `usi_info_lines`.
+- `score_cp_scale` records how centipawn scores are mapped with
+  `tanh(score_cp / score_cp_scale)`.
+- mate scores map directly to `+1.0` or `-1.0`.
+
+This keeps the YaneuraOu value-teacher route available without making it the
+only route. Training metrics include the Dataset Definition, so runs record
+which value source was used.
+
 ## Acceptance Criteria
 
 This issue can close when shogi training has an explicit value-teacher policy:

@@ -19,6 +19,8 @@ class ShogiMoveChoiceDatasetSource:
 class ShogiMoveChoiceDatasetDefinition:
     name: str
     objective: str
+    value_target_source: str
+    score_cp_scale: float
     train_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
     eval_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
 
@@ -30,9 +32,12 @@ def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoi
     definition = ShogiMoveChoiceDatasetDefinition(
         name=str(payload["name"]),
         objective=str(payload["objective"]),
+        value_target_source=str(payload["value_target_source"]),
+        score_cp_scale=float(payload["score_cp_scale"]),
         train_sources=_sources_from_json(payload.get("train_sources"), root=root),
         eval_sources=_sources_from_json(payload.get("eval_sources"), root=root),
     )
+    _validate_value_target_source(definition)
     _validate_split(definition)
     return definition
 
@@ -40,8 +45,16 @@ def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoi
 def load_shogi_move_choice_dataset_examples(
     definition: ShogiMoveChoiceDatasetDefinition,
 ) -> tuple[list[ShogiMoveChoiceExample], list[ShogiMoveChoiceExample]]:
-    train_examples = _load_sources(definition.train_sources)
-    eval_examples = _load_sources(definition.eval_sources)
+    train_examples = _load_sources(
+        definition.train_sources,
+        value_target_source=definition.value_target_source,
+        score_cp_scale=definition.score_cp_scale,
+    )
+    eval_examples = _load_sources(
+        definition.eval_sources,
+        value_target_source=definition.value_target_source,
+        score_cp_scale=definition.score_cp_scale,
+    )
     return train_examples, eval_examples
 
 
@@ -49,6 +62,8 @@ def shogi_move_choice_dataset_definition_to_json(definition: ShogiMoveChoiceData
     return {
         "name": definition.name,
         "objective": definition.objective,
+        "value_target_source": definition.value_target_source,
+        "score_cp_scale": definition.score_cp_scale,
         "train_sources": [_source_to_json(source) for source in definition.train_sources],
         "eval_sources": [_source_to_json(source) for source in definition.eval_sources],
     }
@@ -81,11 +96,29 @@ def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
         raise ValueError("train and eval dataset sources must be split")
 
 
-def _load_sources(sources: tuple[ShogiMoveChoiceDatasetSource, ...]) -> list[ShogiMoveChoiceExample]:
+def _validate_value_target_source(definition: ShogiMoveChoiceDatasetDefinition) -> None:
+    if definition.value_target_source not in {"winner", "yaneuraou_best_score"}:
+        raise ValueError("value_target_source must be winner or yaneuraou_best_score")
+    if definition.score_cp_scale <= 0:
+        raise ValueError("score_cp_scale must be positive")
+
+
+def _load_sources(
+    sources: tuple[ShogiMoveChoiceDatasetSource, ...],
+    *,
+    value_target_source: str,
+    score_cp_scale: float,
+) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
     for source in sources:
         if source.kind == "game_records_jsonl":
-            examples.extend(load_shogi_move_choice_examples_from_game_records_jsonl(source.path))
+            examples.extend(
+                load_shogi_move_choice_examples_from_game_records_jsonl(
+                    source.path,
+                    value_target_source=value_target_source,
+                    score_cp_scale=score_cp_scale,
+                )
+            )
         else:
             raise ValueError(f"unsupported dataset source kind: {source.kind}")
     if not examples:

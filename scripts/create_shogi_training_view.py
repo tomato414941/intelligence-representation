@@ -16,6 +16,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/datasets"))
     parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--value-target-source", choices=("winner", "yaneuraou_best_score"), default="winner")
+    parser.add_argument("--score-cp-scale", type=float, default=600.0)
     args = parser.parse_args(argv)
 
     result = create_shogi_training_view(
@@ -24,6 +26,8 @@ def main(argv: list[str] | None = None) -> None:
         output_root=args.output_root,
         eval_ratio=args.eval_ratio,
         seed=args.seed,
+        value_target_source=args.value_target_source,
+        score_cp_scale=args.score_cp_scale,
     )
     print(json.dumps(result, indent=2))
 
@@ -35,6 +39,8 @@ def create_shogi_training_view(
     output_root: Path,
     eval_ratio: float,
     seed: int = 7,
+    value_target_source: str = "winner",
+    score_cp_scale: float = 600.0,
 ) -> dict[str, object]:
     output_dir = output_root / name
     games_jsonl = output_dir / "games.jsonl"
@@ -64,6 +70,8 @@ def create_shogi_training_view(
     dataset = {
         "name": name,
         "objective": "shogi move-choice policy/value",
+        "value_target_source": value_target_source,
+        "score_cp_scale": score_cp_scale,
         "train_sources": [{"kind": "game_records_jsonl", "path": train_jsonl.name}],
         "eval_sources": [{"kind": "game_records_jsonl", "path": eval_jsonl.name}],
     }
@@ -85,6 +93,8 @@ def create_shogi_training_view(
         "eval_games": eval_count,
         "eval_ratio": eval_ratio,
         "split_seed": seed,
+        "value_target_source": value_target_source,
+        "score_cp_scale": score_cp_scale,
         "files": {
             "games": games_jsonl.name,
             "train": train_jsonl.name,

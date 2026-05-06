@@ -67,6 +67,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -151,6 +153,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -209,6 +213,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -294,6 +300,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-move-choice",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -358,6 +366,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "bad-unsplit",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
                     }
@@ -378,6 +388,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                     {
                         "name": "bad-source-kind",
                         "objective": "shogi move-choice policy",
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
                         "train_sources": [{"kind": "examples_jsonl", "path": "train-examples.jsonl"}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
                     }

@@ -100,7 +100,7 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
                 info_ply_count += 1
             for line in ply.usi_info_lines:
                 info_line_count += 1
-                fields = _parse_info_line(line)
+                fields = parse_shogi_usi_info_line(line)
                 score_kind = fields.get("score_kind")
                 score_value = fields.get("score_value")
                 if fields.get("score_kind") == "cp":
@@ -165,7 +165,7 @@ def write_shogi_usi_info_stats_json(path: str | Path, stats: ShogiUsiInfoStats) 
     output_path.write_text(json.dumps(stats.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _parse_info_line(line: str) -> dict[str, object]:
+def parse_shogi_usi_info_line(line: str) -> dict[str, object]:
     words = line.split()
     if not words or words[0] != "info":
         return {}
