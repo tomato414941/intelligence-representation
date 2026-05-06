@@ -19,15 +19,22 @@ def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) ->
 
 
 def shogi_move_choice_examples_from_game_record(record: ShogiGameRecord) -> list[ShogiMoveChoiceExample]:
+    return_targets = shogi_return_targets_from_game_record(record)
     return [
         ShogiMoveChoiceExample(
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,
             chosen_move=transition.action_usi,
-            value_target=_value_target(record.winner, transition.side),
+            value_target=return_targets[index],
         )
-        for transition in record.transitions
+        for index, transition in enumerate(record.transitions)
     ]
+
+
+def shogi_return_targets_from_game_record(record: ShogiGameRecord) -> tuple[float | None, ...]:
+    if record.winner is None:
+        return tuple(None for _transition in record.transitions)
+    return tuple(1.0 if transition.side == record.winner else -1.0 for transition in record.transitions)
 
 
 def _with_game_metadata(
@@ -39,9 +46,3 @@ def _with_game_metadata(
         replace(example, game_index=game_index, ply_index=ply_index)
         for ply_index, example in enumerate(examples)
     ]
-
-
-def _value_target(winner: str | None, side: str) -> float | None:
-    if winner is None:
-        return None
-    return 1.0 if side == winner else -1.0

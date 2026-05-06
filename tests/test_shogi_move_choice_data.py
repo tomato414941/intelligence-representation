@@ -5,7 +5,10 @@ from pathlib import Path
 
 import shogi
 
-from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
+from intrep.tasks.shogi_move_choice.data import (
+    load_shogi_move_choice_examples_from_game_records_jsonl,
+    shogi_return_targets_from_game_record,
+)
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -30,6 +33,16 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
 
 
 class ShogiMoveChoiceDataTest(unittest.TestCase):
+    def test_builds_return_targets_from_game_outcome(self) -> None:
+        record = _record(("7g7f", "3c3d"), "black")
+
+        self.assertEqual(shogi_return_targets_from_game_record(record), (1.0, -1.0))
+
+    def test_return_targets_are_unknown_without_outcome(self) -> None:
+        record = _record(("7g7f", "3c3d"), None)
+
+        self.assertEqual(shogi_return_targets_from_game_record(record), (None, None))
+
     def test_loads_move_choice_examples_from_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
