@@ -151,6 +151,42 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
 
         self.assertEqual(reported_steps, [])
 
+    def test_early_stopping_stops_after_eval_patience(self) -> None:
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
+
+        result = train_shogi_move_choice_model(
+            examples,
+            eval_examples=examples,
+            config=ShogiMoveChoiceTrainingConfig(
+                max_steps=5,
+                batch_size=2,
+                learning_rate=0.0,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                eval_every=1,
+                early_stopping_patience=1,
+            ),
+        )
+
+        self.assertTrue(result.metrics.stopped_early)
+        self.assertEqual(result.metrics.actual_steps, 1)
+        self.assertEqual(result.metrics.stopped_step, 1)
+        self.assertEqual(result.metrics.early_stopping_patience, 1)
+
+    def test_early_stopping_requires_eval_every(self) -> None:
+        examples = shogi_move_choice_examples_from_test_moves(("7g7f",))
+
+        with self.assertRaisesRegex(ValueError, "eval_every"):
+            train_shogi_move_choice_model(
+                examples,
+                eval_examples=examples,
+                config=ShogiMoveChoiceTrainingConfig(
+                    max_steps=1,
+                    early_stopping_patience=1,
+                ),
+            )
+
     def test_trains_value_head_when_targets_are_available(self) -> None:
         base_examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         examples = tuple(

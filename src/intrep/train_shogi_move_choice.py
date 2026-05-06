@@ -46,6 +46,7 @@ def main() -> None:
     parser.add_argument("--max-eval-examples", type=int)
     parser.add_argument("--log-every", type=int)
     parser.add_argument("--eval-every", type=int)
+    parser.add_argument("--early-stopping-patience", type=int)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--checkpoint-every", type=int)
@@ -73,6 +74,7 @@ def main() -> None:
         max_eval_examples=args.max_eval_examples,
         log_every=args.log_every,
         eval_every=args.eval_every,
+        early_stopping_patience=args.early_stopping_patience,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         progress_every=_progress_every(args.checkpoint_every, args.metrics_every),

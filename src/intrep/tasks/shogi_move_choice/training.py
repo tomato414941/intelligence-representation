@@ -42,6 +42,7 @@ class ShogiMoveChoiceTrainingConfig:
     pin_memory: bool = False
     progress_every: int | None = None
     eval_every: int | None = None
+    early_stopping_patience: int | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,10 @@ class ShogiMoveChoiceTrainingMetrics:
     best_eval_loss: float | None
     best_eval_step: int | None
     max_steps: int
+    actual_steps: int
+    stopped_early: bool
+    stopped_step: int | None
+    early_stopping_patience: int | None
 
 
 @dataclass(frozen=True)
@@ -119,6 +124,10 @@ def train_shogi_move_choice_model(
         raise ValueError("progress_every must be positive")
     if training_config.eval_every is not None and training_config.eval_every <= 0:
         raise ValueError("eval_every must be positive")
+    if training_config.early_stopping_patience is not None and training_config.early_stopping_patience <= 0:
+        raise ValueError("early_stopping_patience must be positive")
+    if training_config.early_stopping_patience is not None and training_config.eval_every is None:
+        raise ValueError("eval_every is required when early_stopping_patience is set")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
     if training_config.policy_loss_weight < 0.0:
@@ -164,6 +173,8 @@ def train_shogi_move_choice_model(
 
     model.train()
     step = 0
+    no_improvement_eval_count = 0
+    stopped_early = False
     started = time.monotonic()
     while step < training_config.max_steps:
         for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
@@ -205,6 +216,9 @@ def train_shogi_move_choice_model(
                 eval_step_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
                 if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
                     best_model_state_dict = copy.deepcopy(model.state_dict())
+                    no_improvement_eval_count = 0
+                else:
+                    no_improvement_eval_count += 1
                 model.train()
             if (
                 progress_callback is not None
@@ -222,14 +236,22 @@ def train_shogi_move_choice_model(
                         eval_metrics=eval_step_metrics,
                     )
                 )
+            if (
+                training_config.early_stopping_patience is not None
+                and no_improvement_eval_count >= training_config.early_stopping_patience
+            ):
+                stopped_early = True
+                break
             if step >= training_config.max_steps:
                 break
+        if stopped_early:
+            break
 
     final_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
     eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
     if eval_loader is not None:
         eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
-        if best_eval_tracker.update(step=training_config.max_steps, value=eval_metrics.loss):
+        if best_eval_tracker.update(step=step, value=eval_metrics.loss):
             best_model_state_dict = copy.deepcopy(model.state_dict())
     return ShogiMoveChoiceTrainingResult(
         model=model,
@@ -259,6 +281,10 @@ def train_shogi_move_choice_model(
             best_eval_loss=best_eval_tracker.best.value if best_eval_tracker.best is not None else None,
             best_eval_step=best_eval_tracker.best.step if best_eval_tracker.best is not None else None,
             max_steps=training_config.max_steps,
+            actual_steps=step,
+            stopped_early=stopped_early,
+            stopped_step=step if stopped_early else None,
+            early_stopping_patience=training_config.early_stopping_patience,
         ),
         best_model_state_dict=best_model_state_dict,
     )
