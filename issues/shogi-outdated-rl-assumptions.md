@@ -7,9 +7,10 @@ Status: open.
 Some shogi learning assumptions are now outdated relative to the current RL and
 Experience Store direction.
 
-Outdated assumptions to review:
+Outdated assumptions or stale paths to review:
 
-- Qhapaq-centered supervised data as the main learning source.
+- Qhapaq-specific RunPod/cost/cache paths that predate the current Training
+  View and Experience Store flow.
 - run output directories as the practical unit of training-data management.
 - winner-derived value as a sufficient value teacher.
 - very shallow MCTS, such as MCTS2, as a primary playing-strength signal.
@@ -29,8 +30,8 @@ instead of a deliberate experience mix.
 
 ## Acceptance Criteria
 
-This issue can close when the outdated assumptions above are either removed,
-replaced, or explicitly kept with a current reason.
+This issue can close when the outdated assumptions or stale paths above are
+either removed, replaced, or explicitly kept with a current reason.
 
 The resolution should not add a broad generic RL framework. Keep the cleanup
 grounded in the current shogi Experience Store, Training View, and battle
