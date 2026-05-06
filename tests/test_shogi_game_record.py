@@ -117,6 +117,42 @@ class ShogiGameRecordTest(unittest.TestCase):
             ],
         )
 
+    def test_rejects_transition_without_policy_targets_field(self) -> None:
+        board = shogi.Board()
+        legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
+        board.push_usi("2g2f")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            path.write_text(
+                json.dumps(
+                    {
+                        "black_actor": {"kind": "checkpoint", "name": "direct", "settings": {}},
+                        "white_actor": {"kind": "yaneuraou", "name": "yaneuraou", "settings": {}},
+                        "initial_position_sfen": shogi.Board().sfen(),
+                        "transitions": [
+                            {
+                                "ply": 0,
+                                "side": "black",
+                                "position_sfen": shogi.Board().sfen(),
+                                "legal_moves": list(legal_moves),
+                                "action_usi": "2g2f",
+                                "next_position_sfen": board.sfen(),
+                                "reward": 0.0,
+                                "done": True,
+                                "usi_info_lines": [],
+                            }
+                        ],
+                        "end_reason": "max_plies",
+                        "winner": None,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(KeyError):
+                load_shogi_game_records_jsonl(path)
+
 
 if __name__ == "__main__":
     unittest.main()

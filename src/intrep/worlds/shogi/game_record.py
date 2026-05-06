@@ -25,7 +25,7 @@ class ShogiTransitionRecord:
     next_position_sfen: str
     reward: float
     done: bool
-    policy_targets: dict[str, float] | None = None
+    policy_targets: dict[str, float] | None
     usi_info_lines: tuple[str, ...] = ()
 
 
@@ -121,7 +121,7 @@ def shogi_transition_record_from_json(payload: dict[str, object]) -> ShogiTransi
         next_position_sfen=str(payload["next_position_sfen"]),
         reward=float(payload["reward"]),
         done=bool(payload["done"]),
-        policy_targets=_optional_float_dict(payload.get("policy_targets")),
+        policy_targets=_optional_float_dict(payload["policy_targets"]),
         usi_info_lines=tuple(str(line) for line in _object_list(payload.get("usi_info_lines", []))),
     )
 
@@ -190,6 +190,7 @@ def shogi_game_transitions_from_usi_moves(
                 next_position_sfen=board.sfen(),
                 reward=_transition_reward(side=side, winner=normalized_winner, done=done),
                 done=done,
+                policy_targets=None,
             )
         )
     return tuple(records)
