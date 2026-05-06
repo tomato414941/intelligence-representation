@@ -19,7 +19,11 @@ from intrep.worlds.shogi.game_record import (
 )
 
 
-BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
+BLACK_ACTOR = ShogiActorSpec(
+    kind="checkpoint",
+    name="black-model",
+    settings={"checkpoint": "runs/shogi/model-a/checkpoint.pt", "policy": "mcts", "simulations": 8},
+)
 WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
 YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"})
 
@@ -63,9 +67,20 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema"], "shogi_experience_store_v1")
             self.assertEqual(manifest["game_count"], 3)
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 3})
+            self.assertEqual(
+                manifest["checkpoint_actor_counts"],
+                {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 3},
+            )
             history_lines = (store_dir / "history.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(history_lines), 2)
-            self.assertEqual(json.loads(history_lines[1])["total_games"], 3)
+            second_history = json.loads(history_lines[1])
+            self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(
+                second_history["added_checkpoint_actor_counts"],
+                {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 1},
+            )
+            self.assertEqual(second_history["total_games"], 3)
 
     def test_creates_fixed_training_view_from_store(self) -> None:
         append_module = _load_script_module("append_shogi_experience_store")

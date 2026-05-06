@@ -41,8 +41,12 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
         "source_path": str(input_path),
         "added_games": len(new_records),
         "added_transitions": _transition_count(new_records),
+        "added_actor_pair_counts": _actor_pair_counts(new_records),
+        "added_checkpoint_actor_counts": _checkpoint_actor_counts(new_records),
         "total_games": len(all_records),
         "total_transitions": _transition_count(all_records),
+        "total_actor_pair_counts": _actor_pair_counts(all_records),
+        "total_checkpoint_actor_counts": _checkpoint_actor_counts(all_records),
     }
     history_path.parent.mkdir(parents=True, exist_ok=True)
     with history_path.open("a", encoding="utf-8") as file:
@@ -54,6 +58,8 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
         "updated_at": event["created_at"],
         "game_count": len(all_records),
         "transition_count": event["total_transitions"],
+        "actor_pair_counts": event["total_actor_pair_counts"],
+        "checkpoint_actor_counts": event["total_checkpoint_actor_counts"],
         "files": {
             "games": games_jsonl.name,
             "history": history_path.name,
@@ -74,6 +80,32 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
 
 def _transition_count(records: list[ShogiGameRecord]) -> int:
     return sum(len(record.transitions) for record in records)
+
+
+def _actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        key = f"{record.black_actor.kind}:{record.white_actor.kind}"
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _checkpoint_actor_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        for actor in (record.black_actor, record.white_actor):
+            if actor.kind != "checkpoint":
+                continue
+            key = _checkpoint_actor_key(actor.settings)
+            counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _checkpoint_actor_key(settings: dict[str, str | int | float | bool | None]) -> str:
+    checkpoint = settings.get("checkpoint", "unknown")
+    policy = settings.get("policy", "unknown")
+    simulations = settings.get("simulations", "unknown")
+    return f"{checkpoint} | policy={policy} | simulations={simulations}"
 
 
 if __name__ == "__main__":
