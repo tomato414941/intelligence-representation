@@ -4,25 +4,30 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Sequence
 
-from intrep.worlds.shogi.game_record import load_shogi_game_records_jsonl, shogi_game_winner_to_legacy_side
 from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceExample,
-    shogi_move_choice_examples_from_usi_moves,
-    shogi_move_choice_examples_from_usi_moves_with_winner,
 )
+from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 
 
 def load_shogi_move_choice_examples_from_game_records_jsonl(path: str | Path) -> list[ShogiMoveChoiceExample]:
     examples: list[ShogiMoveChoiceExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
-        winner = shogi_game_winner_to_legacy_side(record.winner)
-        moves = tuple(ply.bestmove for ply in record.plies)
-        if winner is None:
-            game_examples = shogi_move_choice_examples_from_usi_moves(moves)
-        else:
-            game_examples = shogi_move_choice_examples_from_usi_moves_with_winner(moves, winner=winner)
+        game_examples = shogi_move_choice_examples_from_game_record(record)
         examples.extend(_with_game_metadata(game_examples, game_index=game_index))
     return examples
+
+
+def shogi_move_choice_examples_from_game_record(record: ShogiGameRecord) -> list[ShogiMoveChoiceExample]:
+    return [
+        ShogiMoveChoiceExample(
+            position_sfen=transition.position_sfen,
+            legal_moves=transition.legal_moves,
+            chosen_move=transition.action_usi,
+            value_target=_value_target(record.winner, transition.side),
+        )
+        for transition in record.transitions
+    ]
 
 
 def _with_game_metadata(
@@ -34,3 +39,9 @@ def _with_game_metadata(
         replace(example, game_index=game_index, ply_index=ply_index)
         for ply_index, example in enumerate(examples)
     ]
+
+
+def _value_target(winner: str | None, side: str) -> float | None:
+    if winner is None:
+        return None
+    return 1.0 if side == winner else -1.0

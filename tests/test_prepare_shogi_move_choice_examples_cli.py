@@ -3,18 +3,37 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
+import shogi
+
 from intrep.tasks.shogi_move_choice.examples import load_shogi_move_choice_examples_jsonl
 from intrep.tasks.shogi_move_choice.prepare_examples import main
+from intrep.worlds.shogi.game_record import (
+    ShogiActorSpec,
+    ShogiGameRecord,
+    shogi_game_transitions_from_usi_moves,
+    write_shogi_game_records_jsonl,
+)
 
 
-BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
-WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
-YANEURAOU_PLAYER = PlayerSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"})
+BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
+YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"})
 
 
-def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(moves), winner)
+def _record(
+    moves: tuple[str, ...],
+    winner: str | None,
+    *,
+    black_actor: ShogiActorSpec = BLACK_ACTOR,
+    white_actor: ShogiActorSpec = WHITE_ACTOR,
+) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=black_actor,
+        white_actor=white_actor,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
+        winner=winner,
+    )
 
 
 class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
@@ -80,7 +99,7 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             self.assertEqual(examples[0].game_index, 1)
             self.assertEqual(examples[0].ply_index, 0)
 
-    def test_filters_examples_by_source_player_kind(self) -> None:
+    def test_filters_examples_by_source_actor_kind(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             games_path = root / "games.jsonl"
@@ -88,11 +107,11 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
             write_shogi_game_records_jsonl(
                 games_path,
                 [
-                    ShogiGameRecord(
-                        BLACK_PLAYER,
-                        YANEURAOU_PLAYER,
-                        shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d", "2g2f", "8c8d")),
+                    _record(
+                        ("7g7f", "3c3d", "2g2f", "8c8d"),
                         "white",
+                        black_actor=BLACK_ACTOR,
+                        white_actor=YANEURAOU_ACTOR,
                     )
                 ],
             )
@@ -105,7 +124,7 @@ class PrepareShogiMoveChoiceExamplesCliTest(unittest.TestCase):
                     str(games_path),
                     "--examples-jsonl",
                     str(examples_path),
-                    "--include-player-kind",
+                    "--include-actor-kind",
                     "yaneuraou",
                 ],
             ):

@@ -2,12 +2,30 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, load_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+import shogi
+
+from intrep.worlds.shogi.game_record import (
+    ShogiActorSpec,
+    ShogiGameRecord,
+    load_shogi_game_records_jsonl,
+    shogi_game_transitions_from_usi_moves,
+    write_shogi_game_records_jsonl,
+)
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
-BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
-WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
+BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
+
+
+def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=BLACK_ACTOR,
+        white_actor=WHITE_ACTOR,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
+        winner=winner,
+    )
 
 
 class SplitShogiGameRecordsTest(unittest.TestCase):
@@ -18,10 +36,10 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             records = [
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("7g7f",)), "black"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("3c3d",)), "white"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("2g2f",)), "black"),
-                ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("8c8d",)), "white"),
+                _record(("7g7f",), "black"),
+                _record(("2g2f",), "white"),
+                _record(("2g2f",), "black"),
+                _record(("7g7f",), "white"),
             ]
             write_shogi_game_records_jsonl(games_path, records)
 
@@ -44,8 +62,8 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(
                 games_path,
                 [
-                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("7g7f",)), "black"),
-                    ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(("3c3d",)), "white"),
+                    _record(("7g7f",), "black"),
+                    _record(("2g2f",), "white"),
                 ],
             )
 

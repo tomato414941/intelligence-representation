@@ -1,30 +1,39 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
+import shogi
+
 from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
+from intrep.worlds.shogi.game_record import (
+    ShogiActorSpec,
+    ShogiGameRecord,
+    shogi_game_record_to_json,
+    shogi_game_transitions_from_usi_moves,
+    write_shogi_game_records_jsonl,
+)
 
 
-BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
-WHITE_PLAYER = PlayerSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
+WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+
+
+def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=BLACK_ACTOR,
+        white_actor=WHITE_ACTOR,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
+        winner=winner,
+    )
 
 
 class ShogiMoveChoiceDataTest(unittest.TestCase):
     def test_loads_move_choice_examples_from_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
-            write_shogi_game_records_jsonl(
-                path,
-                [
-                    ShogiGameRecord(
-                        black_player=BLACK_PLAYER,
-                        white_player=WHITE_PLAYER,
-                        plies=shogi_game_ply_records_from_usi_moves(("7g7f", "3c3d")),
-                        winner="white",
-                    )
-                ],
-            )
+            write_shogi_game_records_jsonl(path, [_record(("7g7f", "3c3d"), "white")])
 
             examples = load_shogi_move_choice_examples_from_game_records_jsonl(path)
 
@@ -33,21 +42,12 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
         self.assertEqual([example.game_index for example in examples], [0, 0])
         self.assertEqual([example.ply_index for example in examples], [0, 1])
 
-    def test_loads_move_choice_examples_from_arena_game_record_jsonl(self) -> None:
+    def test_loads_move_choice_examples_from_game_record_jsonl_text(self) -> None:
+        record = _record(("7g7f", "3c3d"), "black")
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "arena-games.jsonl"
+            path = Path(directory) / "games.jsonl"
             path.write_text(
-                (
-                    '{"black_player":{"kind":"checkpoint","name":"checkpoint-direct-black",'
-                    '"settings":{"checkpoint":"black.pt","policy":"direct","simulations":null}},'
-                    '"white_player":{"kind":"checkpoint","name":"checkpoint-direct-white",'
-                    '"settings":{"checkpoint":"white.pt","policy":"direct","simulations":null}},'
-                    '"plies":[{"side":"black","position":"position startpos","bestmove":"7g7f",'
-                    '"ponder":"3c3d","usi_info_lines":["info depth 2 nodes 10 pv 7g7f 3c3d"]},'
-                    '{"side":"white","position":"position startpos moves 7g7f","bestmove":"3c3d",'
-                    '"ponder":null,"usi_info_lines":[]}],'
-                    '"end_reason":"resign","winner":"black"}\n'
-                ),
+                json.dumps(shogi_game_record_to_json(record), separators=(",", ":"), sort_keys=True) + "\n",
                 encoding="utf-8",
             )
 

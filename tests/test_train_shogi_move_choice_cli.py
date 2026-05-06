@@ -5,17 +5,30 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+import shogi
+
 from intrep.tasks.shogi_move_choice.dataset_definition import load_shogi_move_choice_dataset_definition
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord, shogi_game_ply_records_from_usi_moves, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import (
+    ShogiActorSpec,
+    ShogiGameRecord,
+    shogi_game_transitions_from_usi_moves,
+    write_shogi_game_records_jsonl,
+)
 from intrep.train_shogi_move_choice import main
 
 
-BLACK_PLAYER = PlayerSpec(kind="checkpoint", name="black-model", settings={})
-WHITE_PLAYER = PlayerSpec(kind="checkpoint", name="white-model", settings={})
+BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(BLACK_PLAYER, WHITE_PLAYER, shogi_game_ply_records_from_usi_moves(moves), winner)
+    return ShogiGameRecord(
+        black_actor=BLACK_ACTOR,
+        white_actor=WHITE_ACTOR,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
+        winner=winner,
+    )
 
 
 class TrainShogiMoveChoiceCliTest(unittest.TestCase):

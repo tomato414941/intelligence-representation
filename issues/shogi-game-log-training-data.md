@@ -29,8 +29,8 @@ run.
 
 - run checkpoint models, USI engines, and YaneuraOu
 - play engine-vs-engine games
-- record plies, players, engine settings, winner, end reason, and ply count
-- preserve raw per-ply USI `info ...` lines when an engine emits them
+- record transitions, actors, engine settings, winner, end reason, and ply count
+- preserve raw per-transition USI `info ...` lines when an engine emits them
 - write raw game log JSONL
 
 This repository owns learning data conversion:
@@ -63,16 +63,17 @@ log time because the same position can appear in games with different later
 outcomes.
 
 USI `info ...` lines are currently source metadata, not training targets. They
-should remain in raw `ShogiGameRecord` plies and be inspectable through stats.
+should remain in raw `ShogiGameRecord` transitions and be inspectable through stats.
 Do not derive value targets, sample weights, or source priority from `score cp`,
 `depth`, `nodes`, `pv`, or `multipv` until enough raw-log evidence exists to
 justify that conversion rule.
 
 ## Candidate Raw Game Fields
 
-- black player type and settings
-- white player type and settings
-- plies with side, position command, bestmove, ponder, and raw USI info lines
+- black actor type and settings
+- white actor type and settings
+- transitions with state, legal actions, chosen action, next state, reward,
+  done flag, and raw USI info lines
 - winner
 - end reason
 - ply count

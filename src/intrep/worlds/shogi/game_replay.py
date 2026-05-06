@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import shogi
 
-from intrep.worlds.shogi.game_record import PlayerSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord
 
 
 @dataclass(frozen=True)
@@ -13,18 +13,24 @@ class ShogiGamePly:
     position_sfen: str
     side_to_move: str
     move: str
-    source_player: PlayerSpec
+    source_actor: ShogiActorSpec
 
 
 def replay_shogi_game_record(record: ShogiGameRecord) -> tuple[ShogiGamePly, ...]:
-    board = shogi.Board()
+    board = shogi.Board(record.initial_position_sfen)
     plies: list[ShogiGamePly] = []
-    for ply_index, record_ply in enumerate(record.plies):
+    for ply_index, transition in enumerate(record.transitions):
         side_to_move = "black" if board.turn == shogi.BLACK else "white"
         legal_moves = {legal_move.usi() for legal_move in board.legal_moves}
-        move = record_ply.bestmove
-        if record_ply.side != side_to_move:
-            raise ValueError(f"wrong side at ply {ply_index}: {record_ply.side}")
+        move = transition.action_usi
+        if transition.ply != ply_index:
+            raise ValueError(f"wrong ply index at ply {ply_index}: {transition.ply}")
+        if transition.side != side_to_move:
+            raise ValueError(f"wrong side at ply {ply_index}: {transition.side}")
+        if transition.position_sfen != board.sfen():
+            raise ValueError(f"wrong position at ply {ply_index}")
+        if tuple(sorted(legal_moves)) != transition.legal_moves:
+            raise ValueError(f"wrong legal moves at ply {ply_index}")
         if move not in legal_moves:
             raise ValueError(f"illegal move at ply {ply_index}: {move}")
         plies.append(
@@ -33,10 +39,15 @@ def replay_shogi_game_record(record: ShogiGameRecord) -> tuple[ShogiGamePly, ...
                 position_sfen=board.sfen(),
                 side_to_move=side_to_move,
                 move=move,
-                source_player=record.black_player if side_to_move == "black" else record.white_player,
+                source_actor=record.black_actor if side_to_move == "black" else record.white_actor,
             )
         )
         board.push_usi(move)
+        if transition.next_position_sfen != board.sfen():
+            raise ValueError(f"wrong next position at ply {ply_index}")
+        expected_done = ply_index == len(record.transitions) - 1
+        if transition.done != expected_done:
+            raise ValueError(f"wrong done flag at ply {ply_index}")
     return tuple(plies)
 
 

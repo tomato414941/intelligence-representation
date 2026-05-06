@@ -21,7 +21,7 @@ class ShogiUsiInfoStats:
     nodes_line_count: int
     pv_line_count: int
     multipv_line_count: int
-    bestmove_pv_match_count: int
+    action_pv_match_count: int
     multipv_counts: dict[int, int]
     depth_counts: dict[int, int]
     nodes_min: int | None
@@ -40,8 +40,8 @@ class ShogiUsiInfoStats:
             "nodes_line_count": self.nodes_line_count,
             "pv_line_count": self.pv_line_count,
             "multipv_line_count": self.multipv_line_count,
-            "bestmove_pv_match_count": self.bestmove_pv_match_count,
-            "bestmove_pv_match_ratio": _ratio(self.bestmove_pv_match_count, self.pv_line_count),
+            "action_pv_match_count": self.action_pv_match_count,
+            "action_pv_match_ratio": _ratio(self.action_pv_match_count, self.pv_line_count),
             "multipv_counts": {str(key): value for key, value in sorted(self.multipv_counts.items())},
             "depth_counts": {str(key): value for key, value in sorted(self.depth_counts.items())},
             "nodes_min": self.nodes_min,
@@ -64,14 +64,14 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
     nodes_line_count = 0
     pv_line_count = 0
     multipv_line_count = 0
-    bestmove_pv_match_count = 0
+    action_pv_match_count = 0
     multipv_counts: Counter[int] = Counter()
     depth_counts: Counter[int] = Counter()
     nodes_values: list[int] = []
 
     for record in records:
         game_count += 1
-        for ply in record.plies:
+        for ply in record.transitions:
             ply_count += 1
             if ply.usi_info_lines:
                 info_ply_count += 1
@@ -91,8 +91,8 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
                 if fields.get("pv"):
                     pv_line_count += 1
                     pv = fields["pv"]
-                    if isinstance(pv, tuple) and pv and pv[0] == ply.bestmove:
-                        bestmove_pv_match_count += 1
+                    if isinstance(pv, tuple) and pv and pv[0] == ply.action_usi:
+                        action_pv_match_count += 1
                 if fields.get("multipv") is not None:
                     multipv_line_count += 1
                     multipv_counts[int(fields["multipv"])] += 1
@@ -108,7 +108,7 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
         nodes_line_count=nodes_line_count,
         pv_line_count=pv_line_count,
         multipv_line_count=multipv_line_count,
-        bestmove_pv_match_count=bestmove_pv_match_count,
+        action_pv_match_count=action_pv_match_count,
         multipv_counts=dict(multipv_counts),
         depth_counts=dict(depth_counts),
         nodes_min=min(nodes_values) if nodes_values else None,

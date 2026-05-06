@@ -5,28 +5,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Sequence
 
+import shogi
+
 
 @dataclass(frozen=True)
-class PlayerSpec:
+class ShogiActorSpec:
     kind: str
     name: str
     settings: dict[str, str | int | float | bool | None]
 
 
 @dataclass(frozen=True)
-class ShogiGamePlyRecord:
+class ShogiTransitionRecord:
+    ply: int
     side: str
-    position: str
-    bestmove: str
-    ponder: str | None = None
+    position_sfen: str
+    legal_moves: tuple[str, ...]
+    action_usi: str
+    next_position_sfen: str
+    reward: float
+    done: bool
     usi_info_lines: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class ShogiGameRecord:
-    black_player: PlayerSpec
-    white_player: PlayerSpec
-    plies: tuple[ShogiGamePlyRecord, ...]
+    black_actor: ShogiActorSpec
+    white_actor: ShogiActorSpec
+    initial_position_sfen: str
+    transitions: tuple[ShogiTransitionRecord, ...]
     winner: str | None = None
     end_reason: str | None = None
 
@@ -47,7 +54,7 @@ def iter_shogi_game_records_jsonl(path: str | Path) -> Iterator[ShogiGameRecord]
             if not stripped:
                 continue
             record = shogi_game_record_from_json(json.loads(stripped))
-            if record.plies:
+            if record.transitions:
                 yield record
 
 
@@ -55,7 +62,7 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     for record in records:
-        if not record.plies:
+        if not record.transitions:
             continue
         lines.append(json.dumps(shogi_game_record_to_json(record), separators=(",", ":"), sort_keys=True))
     if not lines:
@@ -65,9 +72,10 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
 
 def shogi_game_record_to_json(record: ShogiGameRecord) -> dict[str, object]:
     return {
-        "black_player": player_spec_to_json(record.black_player),
-        "white_player": player_spec_to_json(record.white_player),
-        "plies": [shogi_game_ply_record_to_json(ply) for ply in record.plies],
+        "black_actor": shogi_actor_spec_to_json(record.black_actor),
+        "white_actor": shogi_actor_spec_to_json(record.white_actor),
+        "initial_position_sfen": record.initial_position_sfen,
+        "transitions": [shogi_transition_record_to_json(transition) for transition in record.transitions],
         "winner": record.winner,
         "end_reason": record.end_reason,
     }
@@ -75,35 +83,47 @@ def shogi_game_record_to_json(record: ShogiGameRecord) -> dict[str, object]:
 
 def shogi_game_record_from_json(payload: dict[str, object]) -> ShogiGameRecord:
     return ShogiGameRecord(
-        black_player=player_spec_from_json(_object_dict(payload.get("black_player"))),
-        white_player=player_spec_from_json(_object_dict(payload.get("white_player"))),
-        plies=tuple(shogi_game_ply_record_from_json(_object_dict(ply)) for ply in _object_list(payload.get("plies"))),
+        black_actor=shogi_actor_spec_from_json(_object_dict(payload.get("black_actor"))),
+        white_actor=shogi_actor_spec_from_json(_object_dict(payload.get("white_actor"))),
+        initial_position_sfen=str(payload["initial_position_sfen"]),
+        transitions=tuple(
+            shogi_transition_record_from_json(_object_dict(transition))
+            for transition in _object_list(payload.get("transitions"))
+        ),
         winner=_normalize_winner(payload.get("winner")),
         end_reason=None if payload.get("end_reason") is None else str(payload["end_reason"]),
     )
 
 
-def shogi_game_ply_record_to_json(record: ShogiGamePlyRecord) -> dict[str, object]:
+def shogi_transition_record_to_json(record: ShogiTransitionRecord) -> dict[str, object]:
     return {
+        "ply": record.ply,
         "side": record.side,
-        "position": record.position,
-        "bestmove": record.bestmove,
-        "ponder": record.ponder,
+        "position_sfen": record.position_sfen,
+        "legal_moves": list(record.legal_moves),
+        "action_usi": record.action_usi,
+        "next_position_sfen": record.next_position_sfen,
+        "reward": record.reward,
+        "done": record.done,
         "usi_info_lines": list(record.usi_info_lines),
     }
 
 
-def shogi_game_ply_record_from_json(payload: dict[str, object]) -> ShogiGamePlyRecord:
-    return ShogiGamePlyRecord(
-        side=str(payload["side"]),
-        position=str(payload["position"]),
-        bestmove=str(payload["bestmove"]),
-        ponder=None if payload.get("ponder") is None else str(payload["ponder"]),
+def shogi_transition_record_from_json(payload: dict[str, object]) -> ShogiTransitionRecord:
+    return ShogiTransitionRecord(
+        ply=int(payload["ply"]),
+        side=_normalize_side(payload["side"]),
+        position_sfen=str(payload["position_sfen"]),
+        legal_moves=tuple(str(move) for move in _object_list(payload.get("legal_moves"))),
+        action_usi=str(payload["action_usi"]),
+        next_position_sfen=str(payload["next_position_sfen"]),
+        reward=float(payload["reward"]),
+        done=bool(payload["done"]),
         usi_info_lines=tuple(str(line) for line in _object_list(payload.get("usi_info_lines", []))),
     )
 
 
-def player_spec_to_json(spec: PlayerSpec) -> dict[str, object]:
+def shogi_actor_spec_to_json(spec: ShogiActorSpec) -> dict[str, object]:
     return {
         "kind": spec.kind,
         "name": spec.name,
@@ -111,11 +131,11 @@ def player_spec_to_json(spec: PlayerSpec) -> dict[str, object]:
     }
 
 
-def player_spec_from_json(payload: dict[str, object]) -> PlayerSpec:
+def shogi_actor_spec_from_json(payload: dict[str, object]) -> ShogiActorSpec:
     settings = payload.get("settings", {})
     if not isinstance(settings, dict):
-        raise ValueError("player settings must be an object")
-    return PlayerSpec(
+        raise ValueError("actor settings must be an object")
+    return ShogiActorSpec(
         kind=str(payload["kind"]),
         name=str(payload["name"]),
         settings={
@@ -125,19 +145,7 @@ def player_spec_from_json(payload: dict[str, object]) -> PlayerSpec:
     )
 
 
-def _normalize_winner(value: object) -> str | None:
-    if value in {"black", "white"}:
-        return str(value)
-    if value == "b":
-        return "black"
-    if value == "w":
-        return "white"
-    if value is None:
-        return None
-    raise ValueError("winner must be black, white, b, w, or null")
-
-
-def shogi_game_winner_to_legacy_side(winner: str | None) -> str | None:
+def shogi_winner_to_side_code(winner: str | None) -> str | None:
     if winner == "black":
         return "b"
     if winner == "white":
@@ -145,7 +153,7 @@ def shogi_game_winner_to_legacy_side(winner: str | None) -> str | None:
     return None
 
 
-def legacy_side_to_shogi_game_winner(winner: str | None) -> str | None:
+def shogi_side_code_to_winner(winner: str | None) -> str | None:
     if winner == "b":
         return "black"
     if winner == "w":
@@ -153,15 +161,55 @@ def legacy_side_to_shogi_game_winner(winner: str | None) -> str | None:
     return None
 
 
-def shogi_game_ply_records_from_usi_moves(moves: Sequence[str]) -> tuple[ShogiGamePlyRecord, ...]:
-    previous_moves: list[str] = []
-    records: list[ShogiGamePlyRecord] = []
-    for ply_index, move in enumerate(moves):
-        side = "black" if ply_index % 2 == 0 else "white"
-        position = "position startpos" if not previous_moves else "position startpos moves " + " ".join(previous_moves)
-        records.append(ShogiGamePlyRecord(side=side, position=position, bestmove=move))
-        previous_moves.append(move)
+def shogi_game_transitions_from_usi_moves(
+    moves: Sequence[str],
+    *,
+    winner: str | None = None,
+) -> tuple[ShogiTransitionRecord, ...]:
+    board = shogi.Board()
+    records: list[ShogiTransitionRecord] = []
+    normalized_winner = _normalize_winner(winner)
+    for ply, move in enumerate(moves):
+        side = "black" if board.turn == shogi.BLACK else "white"
+        position_sfen = board.sfen()
+        legal_moves = tuple(sorted(legal_move.usi() for legal_move in board.legal_moves))
+        if move not in legal_moves:
+            raise ValueError(f"illegal move at ply {ply}: {move}")
+        board.push_usi(move)
+        done = ply == len(moves) - 1
+        records.append(
+            ShogiTransitionRecord(
+                ply=ply,
+                side=side,
+                position_sfen=position_sfen,
+                legal_moves=legal_moves,
+                action_usi=move,
+                next_position_sfen=board.sfen(),
+                reward=_transition_reward(side=side, winner=normalized_winner, done=done),
+                done=done,
+            )
+        )
     return tuple(records)
+
+
+def _transition_reward(*, side: str, winner: str | None, done: bool) -> float:
+    if not done or winner is None:
+        return 0.0
+    return 1.0 if side == winner else -1.0
+
+
+def _normalize_side(value: object) -> str:
+    if value in {"black", "white"}:
+        return str(value)
+    raise ValueError("side must be black or white")
+
+
+def _normalize_winner(value: object) -> str | None:
+    if value in {"black", "white"}:
+        return str(value)
+    if value is None:
+        return None
+    raise ValueError("winner must be black, white, or null")
 
 
 def _object_dict(value: object) -> dict[str, object]:
@@ -179,4 +227,4 @@ def _object_list(value: object) -> list[object]:
 def _json_scalar(value: object) -> str | int | float | bool | None:
     if value is None or isinstance(value, str | int | float | bool):
         return value
-    raise ValueError("player setting values must be JSON scalars")
+    raise ValueError("actor setting values must be JSON scalars")
