@@ -1,0 +1,107 @@
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from io import StringIO
+from pathlib import Path
+from unittest.mock import patch
+
+import shogi
+
+from intrep.evaluate_shogi_move_choice import main
+from intrep.tasks.shogi_move_choice.checkpoint import save_shogi_move_choice_model_checkpoint
+from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
+from intrep.worlds.shogi.game_record import (
+    ShogiActorSpec,
+    ShogiGameRecord,
+    shogi_game_transitions_from_usi_moves,
+    write_shogi_game_records_jsonl,
+)
+
+
+BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
+WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
+
+
+def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=BLACK_ACTOR,
+        white_actor=WHITE_ACTOR,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
+        winner=winner,
+    )
+
+
+class EvaluateShogiMoveChoiceCliTest(unittest.TestCase):
+    def test_evaluates_checkpoint_without_training(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            checkpoint_path = root / "checkpoint.pt"
+            metrics_path = root / "eval-metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "black")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "white")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "eval-only-test",
+                        "objective": "shogi move-choice policy/value",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = ShogiMoveChoiceTrainingConfig(
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                num_layers=1,
+                use_shared_core=True,
+            )
+            save_shogi_move_choice_model_checkpoint(checkpoint_path, build_shogi_move_choice_model(config), config)
+
+            with patch(
+                "sys.argv",
+                [
+                    "evaluate_shogi_move_choice",
+                    "--dataset-definition",
+                    str(dataset_definition_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--batch-size",
+                    "2",
+                    "--max-train-examples",
+                    "2",
+                    "--max-eval-examples",
+                    "2",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["dataset_definition"]["name"], "eval-only-test")
+        self.assertEqual(payload["raw_train_case_count"], 2)
+        self.assertEqual(payload["raw_eval_case_count"], 2)
+        self.assertEqual(payload["used_train_case_count"], 2)
+        self.assertEqual(payload["used_eval_case_count"], 2)
+        self.assertEqual(payload["checkpoint_path"], str(checkpoint_path))
+        self.assertIn("loss", payload["train_metrics"])
+        self.assertIn("loss", payload["eval_metrics"])
+
+
+if __name__ == "__main__":
+    unittest.main()
