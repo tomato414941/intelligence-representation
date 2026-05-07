@@ -9,6 +9,9 @@ truth for term definitions.
 Source records should stay close to their source. They can produce many
 training examples for different objectives.
 
+They should preserve source-side meaning instead of being reshaped around one
+objective, model, or run.
+
 Do not force static dataset records and interaction records into one generic
 schema. They are related because both can produce model inputs, not because they
 need the same raw fields.

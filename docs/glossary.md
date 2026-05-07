@@ -134,6 +134,9 @@ Examples:
 A source record is a stored source item before it is cut or transformed for a
 specific objective.
 
+It preserves source-side meaning. It should not be reshaped only to fit one
+objective, model, or run.
+
 Examples:
 
 - shogi game record
