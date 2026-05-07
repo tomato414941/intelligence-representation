@@ -11,6 +11,7 @@ for this project. It is not a downloader guide.
 | WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
 | WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
 | TinyStories | text | over 2M stories | candidate | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
+| Project Gutenberg | text | main mirror about 2.7 TiB | candidate | A public-domain ebook corpus. Use selected raw texts first; do not mirror the full collection without a concrete need. |
 | OpenWebText | text | about 8M documents / 40 GB text | candidate | An open reproduction of GPT-2-style WebText, collected from web pages linked by Reddit posts. |
 | FineWeb-Edu | text | about 1.3T tokens | candidate | A filtered educational subset of FineWeb built from Common Crawl web pages. |
 | FineWeb-Edu score-2 | text | about 5.4T tokens | candidate | A broader FineWeb-Edu variant using a lower educational-score threshold. |
