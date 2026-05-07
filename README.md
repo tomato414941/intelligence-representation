@@ -147,14 +147,14 @@ tasks:
 
 ```sh
 uv run python -m intrep.train_text_tokenizer \
-  --corpus-path data/external/tiny-shakespeare.txt \
+  --corpus-path data/tiny-shakespeare/raw/tiny-shakespeare.txt \
   --tokenizer-path runs/text-tokenizer.json \
   --tokenizer-vocab-size 1024
 ```
 
 ```sh
 uv run python -m intrep.train_language_model \
-  --corpus-path data/external/tiny-shakespeare.txt \
+  --corpus-path data/tiny-shakespeare/raw/tiny-shakespeare.txt \
   --tokenizer-path runs/text-tokenizer.json \
   --metrics-path runs/text.json \
   --checkpoint-path runs/text.pt
