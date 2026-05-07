@@ -31,5 +31,5 @@ for this project. It is not a downloader guide.
 | Local artifacts | Downloaded datasets, generated samples, run metrics, and checkpoints are usually local artifacts under paths such as `data/` or `runs/`. |
 | Large text data | Large datasets can be used through streaming or fixed-size slices before deciding whether full local copies are needed. |
 | Evidence level | Tiny or toy datasets are useful for quick checks, but larger or task-specific datasets are needed for stronger evaluation claims. |
-| Qhapaq raw data | The local raw archive is `data/qhapaq/raw/180913_kif_rota.7z`; source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
+| Qhapaq raw data | Local raw archives live under `data/qhapaq/raw/kiffiles/`; result CSVs live under `data/qhapaq/raw/results/`. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
 | Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval files should be split at game boundaries before generating move-choice examples. |
