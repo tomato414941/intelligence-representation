@@ -18,6 +18,11 @@ need the same raw fields.
 A dataset definition states which source records or training examples are used
 for a learning purpose.
 
+PyTorch `Dataset` objects should stay thinner than dataset definitions. They
+adapt an already-defined training or evaluation set into indexed samples; they
+should not be the source of truth for target generation, split policy, or
+learning intent.
+
 A run produces artifacts such as raw logs, example caches, metrics, or
 checkpoints. Runs can provide material for a dataset, but a run artifact is not
 itself the dataset definition.

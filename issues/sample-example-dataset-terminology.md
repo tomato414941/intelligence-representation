@@ -32,10 +32,17 @@ If these names stay vague, storage and code boundaries can drift:
 
 - Should the general one-item concept be `sample` instead of `example`?
 - Should `example` be reserved for supervised training-ready records?
-- How should glossary entries align with PyTorch `Dataset` / `DataLoader`
-  language?
 - Which existing class names should stay as-is because they are already
   specific and useful?
+
+## Progress
+
+- The glossary now defines PyTorch `Dataset` as an indexed-sample adapter, not
+  the source of truth for raw data, target generation, split policy, or
+  learning intent.
+- `learning-boundaries.md` now states that dataset definitions carry the
+  training/evaluation data boundary, while PyTorch `Dataset` objects adapt that
+  boundary into indexed samples.
 
 ## Acceptance Criteria
 

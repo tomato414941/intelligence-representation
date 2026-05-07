@@ -173,6 +173,12 @@ Examples:
 - image and class label
 - text window and next token targets
 
+### PyTorch Dataset
+
+A PyTorch `Dataset` is an adapter that returns indexed samples for training or
+evaluation. It is not the source of truth for raw data, target generation,
+split policy, or learning intent.
+
 ### Dataset Definition
 
 A dataset definition states which source records or training examples are used
