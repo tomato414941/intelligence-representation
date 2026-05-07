@@ -1,6 +1,6 @@
 # Data Layout Cleanup Summary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -67,14 +67,15 @@ to exist.
   were removed because reusable derived examples should live under
   `processed/` if they are kept.
 
-Remaining focus:
+## Resolution
 
-- close this umbrella issue once the split-out issues are judged sufficient.
+Closed because the broad data-layout cleanup is complete and the remaining
+work has been split into narrower issues.
 
-Split-out issue:
+Remaining focus outside this closed issue:
 
-- [`data-runs-directory.md`](data-runs-directory.md) tracks `data/runs/`.
-- [`data-shogi-directory.md`](data-shogi-directory.md) tracks `data/shogi/`.
+- [`data-runs-directory.md`](../data-runs-directory.md) tracks `data/runs/`.
+- [`data-shogi-directory.md`](../data-shogi-directory.md) tracks `data/shogi/`.
 
 ## Non-Goals
 
