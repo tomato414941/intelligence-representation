@@ -32,6 +32,7 @@ for this project. It is not a downloader guide.
 | Local artifacts | Downloaded datasets, generated samples, run metrics, and checkpoints are usually local artifacts under paths such as `data/` or `runs/`. |
 | Large text data | Large datasets can be used through streaming or fixed-size slices before deciding whether full local copies are needed. |
 | Evidence level | Tiny or toy datasets are useful for quick checks, but larger or task-specific datasets are needed for stronger evaluation claims. |
+| WikiText-2 raw data | Local raw data is `data/wikitext-2/raw/wiki.train.raw.txt`, `data/wikitext-2/raw/wiki.valid.raw.txt`, and `data/wikitext-2/raw/wiki.test.raw.txt` from `Salesforce/wikitext` on Hugging Face. |
 | TinyStories raw data | Local raw data is `data/tinystories/raw/TinyStoriesV2-GPT4-train.txt` and `data/tinystories/raw/TinyStoriesV2-GPT4-valid.txt` from `roneneldan/TinyStories` on Hugging Face. |
 | Qhapaq raw data | Local raw data is partial: `data/qhapaq/raw/results/` contains all fetched `kifdownload` result CSVs, while `data/qhapaq/raw/kiffiles/` contains only selected available `.7z` kif archives. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
 | Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval splits belong in Dataset Definitions or Training Views, not in `processed/`. |

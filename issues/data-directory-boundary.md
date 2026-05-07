@@ -21,10 +21,8 @@ If they are run outputs, they should not live under `data/`.
 it also contains player/runtime configuration such as `player-registry.json`.
 That may exceed the responsibility of a data directory.
 
-`data/external/` is also suspicious because it groups unrelated corpora by
-origin rather than by source/corpus name. It currently contains Tiny
-Shakespeare, Gutenberg, FineWeb-Edu, TinyStories, WikiText-2, and probe or
-failed-download files.
+`data/external/` was suspicious because it grouped unrelated corpora by origin
+rather than by source/corpus name.
 
 ## Why It Matters
 
@@ -60,14 +58,20 @@ to exist.
 - `docs/datasets.md` now records that Qhapaq raw data is partial and that
   train/eval splits belong in Dataset Definitions or Training Views, not
   `processed/`.
+- `data/external/` was removed locally after its contents were either deleted
+  as samples/probes or moved to source-specific top-level directories.
+- Tiny Shakespeare raw text now lives under `data/tiny-shakespeare/raw/`.
+- TinyStories raw train/validation text now lives under `data/tinystories/raw/`.
+- WikiText-2 raw train/validation/test text now lives under
+  `data/wikitext-2/raw/`.
+- Project Gutenberg has a top-level local directory, but no broad raw mirror is
+  downloaded because the main mirror is about 2.7 TiB.
 
-Next focus:
+Remaining focus:
 
-- handle `data/external/` one source at a time
-- remove or move obvious probe/failed-download files
-- decide whether external corpora should become top-level source directories
-  such as `data/tiny-shakespeare/`, `data/tinystories/`, and
-  `data/wikitext-2/`
+- inspect `data/runs/`
+- inspect `data/shogi/`, especially whether player/runtime configuration
+  belongs under `data/`
 
 ## Non-Goals
 
