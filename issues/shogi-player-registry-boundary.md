@@ -43,8 +43,8 @@ The current registry conflicts with newer project boundaries:
 
 - Do not build a full model registry.
 - Do not add parent-run or training-history tracking.
-- Do not solve all `data/` directory layout issues here; that belongs in
-  `data-directory-boundary.md`.
+- Do not solve all `data/` directory layout issues here; the prior cleanup is
+  summarized in `data-layout-cleanup-summary.md`.
 
 ## Acceptance Criteria
 

@@ -1,4 +1,4 @@
-# Data Directory Boundary
+# Data Layout Cleanup Summary
 
 Status: open.
 
@@ -16,8 +16,8 @@ Original examples:
 `data/external/` has been removed. `data/runs/` and `data/shogi/` are now
 tracked by split-out issues.
 
-This issue now records the data-layout cleanup already done and keeps links to
-the remaining narrower issues.
+This issue records the data-layout cleanup already done and keeps links to the
+remaining narrower issues.
 
 ## Why It Matters
 
