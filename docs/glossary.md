@@ -333,8 +333,9 @@ Examples:
 
 ### Objective
 
-An objective defines what should count as a good prediction. It says how model
-outputs and targets should be interpreted for training or evaluation.
+An objective is the goal to optimize or evaluate. It defines what behavior
+counts as good and how model outputs, targets, or feedback are interpreted for
+training or evaluation.
 
 Examples:
 
@@ -347,6 +348,7 @@ Examples:
 ### Loss
 
 A loss is the numeric quantity optimized for an objective during training.
+It is one way to make an objective trainable.
 
 Examples:
 
