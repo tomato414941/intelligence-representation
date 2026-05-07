@@ -168,6 +168,10 @@ be a source record without being experience.
 A training example is a unit made from a source record for a specific
 objective. The source record may be static data or experience.
 
+`Training Example` is the project term for this meaning-level unit. `Example`
+is acceptable as a short code name when the context is already clear. A
+training example may be stored, but storage does not make it the source record.
+
 Examples:
 
 - position and selected move
@@ -175,6 +179,14 @@ Examples:
 - grid state, action, and next grid state
 - image and class label
 - text window and next token targets
+
+### Sample
+
+A sample is the runtime item returned by `Dataset.__getitem__`. It is the
+PyTorch-side item that can be batched by a `DataLoader`.
+
+A sample may be built from a training example, but it may already contain
+tensors, masks, encoded forms, or metadata needed by the training loop.
 
 ### PyTorch Dataset
 

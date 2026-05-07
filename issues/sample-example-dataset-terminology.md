@@ -43,6 +43,9 @@ If these names stay vague, storage and code boundaries can drift:
 - `learning-boundaries.md` now states that dataset definitions carry the
   training/evaluation data boundary, while PyTorch `Dataset` objects adapt that
   boundary into indexed samples.
+- The glossary now distinguishes `Training Example` as the meaning-level
+  objective-shaped unit from `Sample` as the runtime item returned by
+  `Dataset.__getitem__`.
 
 ## Acceptance Criteria
 
