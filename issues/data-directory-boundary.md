@@ -74,9 +74,12 @@ to exist.
 
 Remaining focus:
 
-- inspect `data/runs/`
 - inspect `data/shogi/`, especially whether player/runtime configuration
   belongs under `data/`
+
+Split-out issue:
+
+- [`data-runs-directory.md`](data-runs-directory.md) tracks `data/runs/`.
 
 ## Non-Goals
 
