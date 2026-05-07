@@ -18,8 +18,8 @@ Separate these responsibilities before promoting names into glossary terms:
 - source storage: preserve source-side records without reshaping them around
   one objective, model, or run
 - target availability: identify or store values that can be used as targets
-- data inclusion: decide which source records, training examples, or stored
-  targets are included for training or evaluation
+- Data Selection: decide which source records, training examples, or stored
+  targets are included for a declared use
 - example construction: shape included source records and targets into
   objective-specific training examples
 - runtime sampling: adapt training examples into PyTorch samples
@@ -29,8 +29,15 @@ Separate these responsibilities before promoting names into glossary terms:
 
 ## Current Concern
 
-`Dataset Definition` may be too broad as a name if it absorbs data inclusion,
-example construction, target selection, sampling, or training configuration.
+`Dataset Definition` may be too broad as a name if it absorbs Data Selection,
+example construction, target availability, sampling, or training configuration.
+
+`Data Selection` is the current candidate name for the responsibility of
+deciding what data is included for a declared use. The declared use may be
+training, evaluation, target generation, analysis, comparison, or retrieval
+indexing. Data Selection should not decide how targets are generated, how
+examples are constructed, how samples are batched, or what objective/loss is
+optimized.
 
 The first boundary to decide is responsibility, not the final name.
 
