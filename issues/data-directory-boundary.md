@@ -4,37 +4,32 @@ Status: open.
 
 ## Issue
 
-The top-level `data/` directory mixes dataset/source names with directories that
-look like run or runtime-management artifacts.
+The top-level `data/` directory used to mix dataset/source names with
+directories that looked like run or runtime-management artifacts.
 
-Current examples:
+Original examples:
 
 - `data/runs/`
 - `data/shogi/`
 - `data/external/`
 
-`data/runs/` is especially suspicious because `runs/` is now explicitly
-disposable experiment output. If these files are datasets, the name is unclear.
-If they are run outputs, they should not live under `data/`.
+`data/external/` has been removed. `data/runs/` and `data/shogi/` are now
+tracked by split-out issues.
 
-`data/shogi/` may be valid for shogi source records and experience stores, but
-it also contains player/runtime configuration such as `player-registry.json`.
-That may exceed the responsibility of a data directory.
-
-`data/external/` was suspicious because it grouped unrelated corpora by origin
-rather than by source/corpus name.
+This issue now records the data-layout cleanup already done and keeps links to
+the remaining narrower issues.
 
 ## Why It Matters
 
-`data/` should hold source data, generated datasets, experience stores, and
-training views. It should not become a second run-output tree or a catch-all
-for evaluation/runtime configuration.
+`data/` should hold source data, processed data, durable experience, training
+views, and useful derived data. It should not become a second run-output tree
+or a catch-all for evaluation/runtime configuration.
 
 If this boundary remains unclear, future generated data, model checkpoints,
 player registries, and run summaries may drift into whichever directory happens
 to exist.
 
-## Scope
+## Original Scope
 
 - Inspect what is currently under `data/runs/`.
 - Inspect what is currently under `data/shogi/`.
@@ -74,8 +69,7 @@ to exist.
 
 Remaining focus:
 
-- close this umbrella issue after split-out directory issues are resolved or
-  judged sufficient.
+- close this umbrella issue once the split-out issues are judged sufficient.
 
 Split-out issue:
 
