@@ -320,8 +320,9 @@ encoding, a scalar, a tensor, or a distribution over choices.
 
 ### Target
 
-A target is the expected value or teacher signal used to evaluate a model
-output during training or evaluation.
+A target is the value a model output is compared with or interpreted against
+for training or evaluation. A target is a role: it may be a source record, part
+of a source record, a derived value, or an externally produced teacher signal.
 
 Examples:
 
