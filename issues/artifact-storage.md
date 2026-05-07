@@ -1,5 +1,7 @@
 # Artifact Storage
 
+Status: open.
+
 ## Issue
 
 Large generated artifacts are currently local-only unless explicitly uploaded

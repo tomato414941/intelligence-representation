@@ -1,5 +1,7 @@
 # Text Tokenizer Policy
 
+Status: open.
+
 ## Issue
 
 Text tokenizer defaults, example values, saved tokenizer workflow, and past

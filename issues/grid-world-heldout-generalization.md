@@ -1,5 +1,7 @@
 # GridWorld Held-Out Generalization
 
+Status: open.
+
 ## Issue
 
 The GridWorld step predictor can fit the generated transition table, but it

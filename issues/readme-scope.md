@@ -1,5 +1,7 @@
 # README Scope
 
+Status: open.
+
 ## Issue
 
 `README.md` has started to mix project overview, design framing, environment

@@ -1,7 +1,6 @@
 # Shogi Position Annotation Store
 
-## Status
-Open
+Status: open.
 
 ## Problem
 `ShogiGameRecord.transition.policy_targets` is enough while there is one active teacher annotation, but it will become unclear once the same position needs multiple annotations from different teachers or search settings.
