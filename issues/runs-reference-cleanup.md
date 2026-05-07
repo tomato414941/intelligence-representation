@@ -1,6 +1,6 @@
 # Runs Reference Cleanup
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -50,5 +50,26 @@ is to remove operational dependencies on disposable paths.
 
 ## Acceptance Criteria
 
-This issue can close when deleting `runs/` would not break current intended
-workflows, excluding historical documentation and explicit test fixture strings.
+This issue is closed because current operational dependencies on `runs/` have
+been removed:
+
+- `data/shogi/player-registry.json` no longer points checkpoint players at
+  `runs/shogi/...`.
+- The current player registry validates without requiring `runs/`.
+- The old copied record collection manifest no longer depends on a `runs/`
+  source path; the copied JSONL files in that directory are the usable records.
+
+Remaining `runs/` references are classified as non-operational:
+
+- README and docs examples use `runs/` as disposable output paths.
+- legacy docs and compute-cost records are historical.
+- tests use `runs/` as fixture strings.
+- Experience Store history and raw game-record actor settings may still mention
+  `runs/` as provenance for old generated data.
+
+The last category is intentionally not rewritten here. It belongs to the
+narrower checkpoint/source provenance problem tracked by
+[`shogi-checkpoint-actor-provenance.md`](shogi-checkpoint-actor-provenance.md).
+
+Deleting `runs/` may make old provenance paths non-resolvable, but it should not
+break current intended training, evaluation, or registry validation workflows.
