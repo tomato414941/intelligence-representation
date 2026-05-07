@@ -46,6 +46,15 @@ example. Heavy external target generation, such as running an engine, search, a
 teacher model, or human annotation, should remain outside this responsibility as
 stored target or artifact work.
 
+Training Example Definition should distinguish input/target roles and forms
+from how those values are produced. Construction from existing source records or
+stored targets is different from external target generation by engines, search,
+teacher models, or human annotation.
+
+This issue stops at model input and target construction. Input layers, shared
+cores, hidden states, output heads, and model outputs belong to model-boundary
+documents.
+
 The first boundary to decide is responsibility, not the final name.
 
 ## Acceptance Criteria
