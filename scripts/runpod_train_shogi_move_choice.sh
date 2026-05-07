@@ -6,9 +6,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-TRAIN_GAMES_JSONL=${TRAIN_GAMES_JSONL:-data/qhapaq/processed/qhapaq_train_games.jsonl}
-EVAL_GAMES_JSONL=${EVAL_GAMES_JSONL:-data/qhapaq/processed/qhapaq_eval_games.jsonl}
-OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-qhapaq-split-b512-steps5000}
+DATASET_DEFINITION=${DATASET_DEFINITION:-data/shogi/datasets/current/dataset.json}
+OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-move-choice}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
@@ -37,14 +36,38 @@ NUM_LAYERS=${NUM_LAYERS:-6}
 # errors during the same workstream.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
-if [[ ! -f "$TRAIN_GAMES_JSONL" ]]; then
-  echo "train games not found: $TRAIN_GAMES_JSONL" >&2
+if [[ ! -f "$DATASET_DEFINITION" ]]; then
+  echo "dataset definition not found: $DATASET_DEFINITION" >&2
   exit 1
 fi
-if [[ ! -f "$EVAL_GAMES_JSONL" ]]; then
-  echo "eval games not found: $EVAL_GAMES_JSONL" >&2
-  exit 1
-fi
+
+mapfile -t DATASET_FILES < <(
+  .venv/bin/python - "$DATASET_DEFINITION" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+definition_path = Path(sys.argv[1])
+payload = json.loads(definition_path.read_text(encoding="utf-8"))
+paths = {definition_path}
+for key in ("train_sources", "eval_sources"):
+    for source in payload.get(key, []):
+        if source.get("kind") != "game_records_jsonl":
+            continue
+        source_path = Path(source["path"])
+        if not source_path.is_absolute():
+            source_path = definition_path.parent / source_path
+        paths.add(source_path)
+for path in sorted(paths):
+    if not path.exists():
+        raise SystemExit(f"dataset source not found: {path}")
+    print(path)
+PY
+)
+SYNC_ARGS=()
+for dataset_file in "${DATASET_FILES[@]}"; do
+  SYNC_ARGS+=(--sync "$dataset_file")
+done
 
 python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --repo-root "$PWD" \
@@ -67,26 +90,13 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --allow-existing-pods \
   --no-cuda-smoke \
   --sync scripts/setup_runpod.sh \
-  --sync "$TRAIN_GAMES_JSONL" \
-  --sync "$EVAL_GAMES_JSONL" \
+  "${SYNC_ARGS[@]}" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \
   --output "$OUTPUT_DIR" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-cat > \"$OUTPUT_DIR/dataset-definition.json\" <<JSON
-{
-  \"name\": \"runpod-qhapaq-split\",
-  \"objective\": \"shogi move-choice policy\",
-  \"train_sources\": [
-    {\"kind\": \"game_records_jsonl\", \"path\": \"\$PWD/$TRAIN_GAMES_JSONL\"}
-  ],
-  \"eval_sources\": [
-    {\"kind\": \"game_records_jsonl\", \"path\": \"\$PWD/$EVAL_GAMES_JSONL\"}
-  ]
-}
-JSON
 echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY\"
 .venv/bin/python -u -m intrep.train_shogi_move_choice \
-  --dataset-definition \"$OUTPUT_DIR/dataset-definition.json\" \
+  --dataset-definition \"$DATASET_DEFINITION\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
   --best-checkpoint-path \"$OUTPUT_DIR/best_checkpoint.pt\" \
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \

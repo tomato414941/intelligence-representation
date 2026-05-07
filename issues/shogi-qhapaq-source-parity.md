@@ -1,6 +1,6 @@
 # Shogi Qhapaq Source Parity
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -27,9 +27,16 @@ engine, or self-play.
 
 ## Acceptance Criteria
 
-This issue can close when Qhapaq-derived records can be used through the same
-Experience Store / Training View path as other shogi records, and Qhapaq-specific
-training defaults are either removed or clearly documented as historical.
+This issue is closed because:
 
-Do not add a generic data-source framework for this issue. Keep the change
-limited to putting Qhapaq on equal footing with the current shogi record sources.
+- RunPod shogi training now consumes a caller-selected Dataset Definition
+  through `DATASET_DEFINITION` instead of defaulting to Qhapaq train/eval JSONL.
+- The RunPod script syncs the Dataset Definition and its referenced
+  game-record JSONL sources, so Qhapaq is just one possible Training View
+  source rather than a special training path.
+- Existing compute-cost rows that mention Qhapaq are historical cost evidence,
+  not current source-selection policy.
+
+Qhapaq-derived records can still be used by creating a Training View or Dataset
+Definition that points at Qhapaq game records. Do not reintroduce Qhapaq-specific
+training defaults unless the run is explicitly a Qhapaq historical comparison.
