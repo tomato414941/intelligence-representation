@@ -67,6 +67,10 @@ to exist.
   `data/wikitext-2/raw/`.
 - Project Gutenberg has a top-level local directory, but no broad raw mirror is
   downloaded because the main mirror is about 2.7 TiB.
+- MNIST, Fashion-MNIST, and CIFAR-10 raw files were checked locally. Ambiguous
+  dataset-root JSONL files such as `train-5000.jsonl` and `eval-1000.jsonl`
+  were removed because reusable derived examples should live under
+  `processed/` if they are kept.
 
 Remaining focus:
 
