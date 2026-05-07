@@ -1,6 +1,6 @@
 # Shogi Experience Store Name Scope
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -63,6 +63,24 @@ exception.
 
 The decision should state whether train/eval-like separation belongs at the
 Experience Store level for now, or only at Training View creation time.
+
+## Resolution
+
+Closed on 2026-05-07.
+
+For the current KISS workflow, the project accepts train/eval-like separation
+at the shogi Experience Store level. The local stores were renamed:
+
+```text
+data/shogi/experiences/main/ -> data/shogi/experiences/train/
+data/shogi/experiences/heldout-yaneuraou-self/ -> data/shogi/experiences/eval/
+```
+
+`append_shogi_experience_store.py` now defaults to
+`data/shogi/experiences/train`.
+
+Actor/source details should stay in `manifest.json` rather than the store
+directory name.
 
 ## Non-Goals
 

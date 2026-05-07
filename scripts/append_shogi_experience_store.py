@@ -16,7 +16,7 @@ from intrep.worlds.shogi.experience_stats import shogi_position_stats
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Append shogi game records to an experience store.")
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--store", type=Path, default=Path("data/shogi/experiences/main"))
+    parser.add_argument("--store", type=Path, default=Path("data/shogi/experiences/train"))
     args = parser.parse_args(argv)
 
     result = append_shogi_experience_store(input_path=args.input, store_dir=args.store)
