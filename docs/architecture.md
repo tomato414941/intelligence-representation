@@ -44,7 +44,8 @@ concrete form/input-oriented boundary problem needs it.
 
 `tasks/` is not for dataset instances such as MNIST, CIFAR-10, or one shogi
 corpus run. It is for task families such as image classification, image-text
-choice, language modeling, grid step prediction, and shogi move choice.
+choice, language modeling, retrieval, grid step prediction, and shogi move
+choice.
 
 Dataset-specific configuration, run settings, and generated artifacts should
 stay outside the package code unless they become reusable source definitions.
