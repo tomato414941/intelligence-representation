@@ -1,6 +1,6 @@
 # Shogi Value Teacher Design
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -95,10 +95,19 @@ Definition, so runs record which policy and value sources were used.
 
 ## Acceptance Criteria
 
-This issue can close when shogi training has an explicit value-teacher policy:
-winner-derived return targets, score-derived teacher targets, or a documented
-choice between them.
+This issue is closed because shogi training now has explicit value-teacher
+selection through Dataset Definition:
 
-The implementation should make it clear which value target source a Training
-View used, and should keep policy-target handling separate from value-target
-handling.
+- `value_target_source: "winner"` uses final winner-derived return targets.
+- `value_target_source: "yaneuraou_best_score"` uses best-line USI score from
+  stored `usi_info_lines`.
+- `score_cp_scale` records how centipawn scores are mapped into `[-1.0, 1.0]`.
+- mate scores map to `+1.0` or `-1.0`.
+- metrics record the Dataset Definition used by the run.
+
+Remaining questions are tracked in narrower issues:
+
+- source-level policy/value target selection:
+  [`shogi-source-target-policy-mix.md`](shogi-source-target-policy-mix.md)
+- multiple evidence records for the same position:
+  [`shogi-position-evidence-merge.md`](shogi-position-evidence-merge.md)
