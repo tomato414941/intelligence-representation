@@ -1,6 +1,6 @@
 # Shogi Experience Store Directory Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -59,6 +59,20 @@ This issue can close when:
   removed if no longer needed
 - scripts and docs no longer imply that non-store directories under
   `experiences/` are valid Experience Stores
+
+## Resolution
+
+Closed on 2026-05-07.
+
+Removed the local ignored non-store directory:
+
+```text
+data/shogi/experiences/mixed-g1000-eval-yaneuraou-g100/
+```
+
+It was not tracked by git and was not referenced outside this issue. The
+remaining direct children under `data/shogi/experiences/` follow the expected
+Experience Store shape.
 
 ## Non-Goals
 
