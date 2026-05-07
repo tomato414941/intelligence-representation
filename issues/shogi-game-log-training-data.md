@@ -1,6 +1,6 @@
 # Shogi Game Log Training Data Pipeline
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -81,10 +81,22 @@ justify that conversion rule.
 
 ## Acceptance Criteria
 
-This issue can close when:
+This issue is closed because:
 
 - `shogi-arena-agent` produces a raw game log JSONL format sufficient for
-  multiple engine/model sources, and
+  multiple engine/model sources,
 - this repository can convert that raw log into training-ready shogi move-choice
-  examples without losing source-priority and value-target decisions before the
-  conversion step.
+  examples without treating those examples as source records,
+- shogi Experience Stores and Training Views preserve the raw-record to
+  derived-example boundary, and
+- Dataset Definition records the selected policy and value target sources used
+  during conversion.
+
+Remaining source mix, target policy mix, repeated-position evidence, forgetting,
+and checkpoint provenance questions are tracked in narrower issues:
+
+- [`shogi-training-view-source-mix.md`](shogi-training-view-source-mix.md)
+- [`shogi-source-target-policy-mix.md`](shogi-source-target-policy-mix.md)
+- [`shogi-position-evidence-merge.md`](shogi-position-evidence-merge.md)
+- [`shogi-training-view-forgetting-policy.md`](shogi-training-view-forgetting-policy.md)
+- [`shogi-checkpoint-actor-provenance.md`](shogi-checkpoint-actor-provenance.md)
