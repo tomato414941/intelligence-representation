@@ -1,6 +1,6 @@
 # Shogi MCTS2 Historical Evaluation
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -23,10 +23,18 @@ instead of a deliberate experience mix.
 
 ## Acceptance Criteria
 
-This issue can close when MCTS2-derived runs are either removed from active
-decision-making, split into a concrete battle-evaluation issue, or explicitly
-kept as historical-context documentation.
+This issue is closed because MCTS2-derived runs are explicitly treated as
+historical or smoke evidence unless a current evaluation policy names MCTS2.
 
-The resolution should not add a broad generic RL framework. Keep the cleanup
-grounded in the current shogi Experience Store, Training View, and battle
-evaluation flow.
+Older MCTS2 results should not drive current model-quality decisions because:
+
+- the arena MCTS final-selection value perspective bug has since been fixed,
+- MCTS2 is too shallow to be the default practical search setting, and
+- current battle evaluations should record the exact arena revision, policy
+  mode, simulation count, opponent, and game count.
+
+The current post-fix MCTS2/MCTS8 checks remain useful as contemporary evidence:
+they show that the latest small policy+value model still does not beat
+YaneuraOu nodes1, and that shallow MCTS is not yet improving play. That points
+back to policy/value model strength rather than preserving old MCTS2
+assumptions.
