@@ -74,12 +74,13 @@ to exist.
 
 Remaining focus:
 
-- inspect `data/shogi/`, especially whether player/runtime configuration
-  belongs under `data/`
+- close this umbrella issue after split-out directory issues are resolved or
+  judged sufficient.
 
 Split-out issue:
 
 - [`data-runs-directory.md`](data-runs-directory.md) tracks `data/runs/`.
+- [`data-shogi-directory.md`](data-shogi-directory.md) tracks `data/shogi/`.
 
 ## Non-Goals
 
