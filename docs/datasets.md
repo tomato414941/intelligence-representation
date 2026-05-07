@@ -32,4 +32,4 @@ for this project. It is not a downloader guide.
 | Large text data | Large datasets can be used through streaming or fixed-size slices before deciding whether full local copies are needed. |
 | Evidence level | Tiny or toy datasets are useful for quick checks, but larger or task-specific datasets are needed for stronger evaluation claims. |
 | Qhapaq raw data | Local raw data is partial: `data/qhapaq/raw/results/` contains all fetched `kifdownload` result CSVs, while `data/qhapaq/raw/kiffiles/` contains only selected available `.7z` kif archives. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
-| Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval files should be split at game boundaries before generating move-choice examples. |
+| Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval splits belong in Dataset Definitions or Training Views, not in `processed/`. |
