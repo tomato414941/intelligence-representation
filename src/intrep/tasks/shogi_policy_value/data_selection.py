@@ -20,6 +20,9 @@ class ShogiPolicyValueDataSelectionSource:
 
 @dataclass(frozen=True)
 class ShogiPolicyValueDataSelection:
+    # Target policy is not conceptually Data Selection. It lives here for now
+    # so one small file can define the selected sources and their target
+    # derivation policy until a concrete run needs separate reuse.
     name: str
     objective: str
     policy_target_source: str
