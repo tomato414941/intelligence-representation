@@ -172,8 +172,11 @@ construction, target generation, sampling, or optimization.
 
 ### Training Example
 
-A training example is a unit made from a source record for a specific
-objective. The source record may be static data or experience.
+A training example is an objective-specific unit that defines what is used as
+model input and what is used as target or feedback.
+
+It may be made from a source record, experience, stored target, or a combination
+of them.
 
 `Training Example` is the project term for this meaning-level unit. `Example`
 is acceptable as a short code name when the context is already clear. A

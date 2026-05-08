@@ -77,6 +77,9 @@ rename or split eventually happens.
 - `Dataset Definition` has been removed from `docs/glossary.md` as a formal
   term. Existing `DatasetDefinition` names are implementation names until code
   boundaries are revisited.
+- `Training Example Definition` has not been promoted as a separate glossary
+  term. Instead, `Training Example` now carries the input/target-or-feedback
+  meaning directly.
 
 ## Acceptance Criteria
 
