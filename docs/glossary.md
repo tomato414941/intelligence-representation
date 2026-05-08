@@ -382,6 +382,15 @@ Examples:
 - next-state prediction
 - value prediction
 
+### Training Configuration
+
+A Training Configuration defines how a training run uses data, model parts,
+objectives, losses, optimization, and train/freeze policy.
+
+It may specify which model parts are trained, frozen, adapted, or replaced by
+precomputed representations. It is not a Dataset, Sample Schema, Model, or run
+output.
+
 ### Loss
 
 A loss is the numeric quantity optimized for an objective during training.
