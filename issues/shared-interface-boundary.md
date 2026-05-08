@@ -1,6 +1,6 @@
 # Shared Interface Boundary
 
-Status: open
+Status: open.
 
 ## Issue
 

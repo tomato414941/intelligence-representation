@@ -4,7 +4,7 @@ Status: open.
 
 ## Issue
 
-Shogi move-choice training still rebuilds examples from Training View JSONL
+Shogi policy-value training still rebuilds examples from Training View JSONL
 files on each run.
 
 The ShogiGameRecord source and Training View snapshot should stay as the
@@ -15,14 +15,14 @@ list.
 ## Why It Matters
 
 Training views now give a fixed dataset input for training, but each run still
-loads JSONL, rebuilds move-choice examples, and materializes Python objects.
+loads JSONL, rebuilds policy-value examples, and materializes Python objects.
 This is simple, but it will become slow and memory-heavy as RL-generated shogi
 experience grows.
 
 ## Current Context
 
-The old Modal-based move-choice example cache route was removed when shogi
-move-choice training moved to reading `ShogiGameRecord` dataset sources
+The old Modal-based policy-value example cache route was removed when shogi
+policy-value training moved to reading `ShogiGameRecord` dataset sources
 directly. That cleanup reduced the risk of treating `ShogiMoveChoiceExample`
 JSONL as a second source of truth, but it did not remove the rebuild cost.
 
@@ -41,7 +41,7 @@ Add a derived cache for shogi Training Views when JSONL rebuild cost becomes a
 real blocker. Do not change the ShogiGameRecord source schema for this.
 
 If the cache is added, keep it separate from source-derived records. A location
-such as `data/qhapaq/cache/shogi-move-choice/` or a Training View-specific
+such as `data/qhapaq/cache/shogi-policy-value/` or a Training View-specific
 cache directory is preferable to `runs/`, because reusable caches are not
 run-output artifacts.
 
@@ -55,7 +55,7 @@ Prefer PyTorch mechanisms for runtime sampling and batching:
 ## Acceptance Criteria
 
 This issue can close when shogi Training Views have a PyTorch-native tensorized
-cache or Dataset path that avoids rebuilding all move-choice examples from
+cache or Dataset path that avoids rebuilding all policy-value examples from
 JSONL each run.
 
 ## Non-Goals

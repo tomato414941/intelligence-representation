@@ -12,9 +12,9 @@ evaluation result becomes an input for future work.
 
 | Artifact | Example | Why It Matters |
 | --- | --- | --- |
-| generated dataset | `qhapaq-all-move-choice-examples.jsonl.zst` | Expensive enough to regenerate that local-only storage is fragile. |
+| generated cache | `training-view-cache.pt` | Expensive enough to regenerate that local-only storage is fragile. |
 | source-derived records | `qhapaq_all_games.jsonl` | Smaller than full examples and useful for rebuilding task-specific caches. |
-| failure logs | `qhapaq-all-move-choice-examples.failures.jsonl` | Explains skipped or invalid source records. |
+| failure logs | `qhapaq_all_games_failures.jsonl` | Explains skipped or invalid source records. |
 | model checkpoint | `checkpoint.pt` | Needed to reproduce evaluation and continue training. |
 | training metadata | `metrics.json`, config, git commit, command | Needed to know what a checkpoint means. |
 | tokenizer or encoding config | text tokenizer files, input encoding versions | Needed to make checkpoints usable. |

@@ -1,19 +1,20 @@
 # Shogi Full-Cache Memory Stability
 
-Status: open.
+Status: closed.
 
 ## Issue
 
-The Qhapaq shogi move-choice full cache is currently loaded as a large Python
+The Qhapaq shogi policy-value full cache is currently loaded as a large Python
 object list. This is operationally fragile for long RunPod jobs, especially
 when PyTorch `DataLoader` workers are enabled.
 
 This is separate from raw DataLoader throughput. The immediate throughput
 control path is covered by
-[`closed/shogi-dataloader-throughput.md`](closed/shogi-dataloader-throughput.md).
-This issue tracks memory stability and cache format.
+[`shogi-dataloader-throughput.md`](shogi-dataloader-throughput.md).
+This issue tracked memory stability and cache format before Training View
+tensor cache became the active follow-up.
 RunPod region stability is tracked separately in
-[`runpod-region-stability.md`](runpod-region-stability.md).
+[`../runpod-region-stability.md`](../runpod-region-stability.md).
 
 ## Evidence
 
@@ -37,7 +38,7 @@ The RunPod shogi training script defaults to:
 | Setting | Default | Reason |
 | --- | --- | --- |
 | `NUM_WORKERS` | `0` | Avoid private-copy RAM growth from DataLoader workers. |
-| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default; see [`runpod-region-stability.md`](runpod-region-stability.md) before longer baselines. |
+| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default; see [`../runpod-region-stability.md`](../runpod-region-stability.md) before longer baselines. |
 
 For longer full-cache RunPod baselines, prefer:
 
@@ -59,13 +60,20 @@ Candidate paths:
 | streaming dataset | Avoid loading the whole cache into RAM, with careful shuffle strategy. |
 | periodic checkpoint / metrics | Preserve partial results if a pod becomes unreachable during a longer run. |
 
+## Resolution
+
+The immediate operational risk is mitigated by the RunPod default
+`NUM_WORKERS=0`, which avoids private-copy RAM growth from DataLoader workers.
+The remaining cache-format work is tracked by
+[`../shogi-training-view-tensor-cache.md`](../shogi-training-view-tensor-cache.md).
+
 ## Acceptance Criteria
 
 This issue can close when at least one of these is true:
 
 - full-cache training can safely use DataLoader workers without large CPU RAM
   growth, or
-- worker-free full-cache training is measured as acceptable for the intended
+- [x] worker-free full-cache training is measured as acceptable for the intended
   baseline scale, and the operational default is documented as intentional.
 
 Before increasing `NUM_WORKERS` above zero for full-cache runs, measure CPU RAM

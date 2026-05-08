@@ -81,7 +81,7 @@ deciding the project-level responsibilities:
   dataset.
 - [x] Decide whether grid transition-to-target shaping should stay in the dataset
   or move to an explicit training-example layer.
-- [x] Keep shogi move-choice Data Selection changes in
+- [x] Keep shogi policy-value Data Selection changes in
   `shogi-policy-value-data-selection-boundary.md`.
 - [x] Update docs or code only where the boundary decision is stable.
 

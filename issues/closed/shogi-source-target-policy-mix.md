@@ -27,8 +27,7 @@ Target source is different from source mix.
 Training View. This issue is about how included records are converted into
 policy/value training targets.
 
-`closed/shogi-move-choice-problem-scope.md` tracks the broader question of whether
-policy and value should remain under the `ShogiMoveChoice` problem boundary.
+`closed/shogi-move-choice-problem-scope.md` records the rename from the old `ShogiMoveChoice` package boundary to `ShogiPolicyValue`.
 
 If target source remains global, mixed Training Views either lose useful teacher
 signals or force weak records into a target policy they cannot support.

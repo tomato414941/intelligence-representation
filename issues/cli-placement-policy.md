@@ -1,6 +1,6 @@
 # CLI Placement Policy
 
-Status: open
+Status: open.
 
 ## Problem
 
@@ -23,8 +23,8 @@ tools are added there by default.
 
 ## Current State
 
-- Shogi move-choice training reads `game_records_jsonl` dataset sources directly;
-  the old shogi move-choice example-preparation CLI has been removed.
+- Shogi policy-value training reads `game_records_jsonl` dataset sources directly;
+  the old shogi policy-value example-preparation CLI has been removed.
 
 ## Current Follow-up
 
