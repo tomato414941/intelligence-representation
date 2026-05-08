@@ -1,13 +1,14 @@
-# Replay Buffer Generalization Boundary
+# Source Selection Generalization Boundary
 
 Status: open. Priority: low.
 
 ## Issue
 
-Replay selection is currently implemented only for shogi:
+Source selection for Offline Experience Reuse is currently implemented only for
+shogi:
 
-- `src/intrep/worlds/shogi/replay.py`
-- `scripts/create_shogi_replay_view.py`
+- `src/intrep/worlds/shogi/source_selection.py`
+- `scripts/create_shogi_training_view_from_sources.py`
 
 The concept is broader than shogi, but the current implementation depends on
 shogi-specific records and fields:
@@ -20,10 +21,11 @@ shogi-specific records and fields:
 
 ## Current Policy
 
-Keep Replay Buffer / replay selection shogi-local for now.
+Keep source selection shogi-local for now.
 
-This is intentional KISS. The project has only one concrete replay use case, and
-generic replay abstractions would likely encode shogi assumptions too early.
+This is intentional KISS. The project has only one concrete source-selection
+use case over experience records, and generic abstractions would likely encode
+shogi assumptions too early.
 
 ## Trigger
 

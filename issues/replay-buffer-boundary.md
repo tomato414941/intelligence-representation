@@ -71,8 +71,8 @@ Prefer a PyTorch-compatible shape:
 
 The first implementation is shogi-local and minimal:
 
-- `scripts/create_shogi_replay_view.py`
-- reusable behavior lives in `src/intrep/worlds/shogi/replay.py`
+- `scripts/create_shogi_training_view_from_sources.py`
+- reusable behavior lives in `src/intrep/worlds/shogi/source_selection.py`
 - accepts one or more `--train-games` JSONL sources
 - accepts fixed `--eval-games`
 - supports `--max-train-games`, `--max-eval-games`, and
@@ -81,11 +81,11 @@ The first implementation is shogi-local and minimal:
 - records available counts, selected counts, actor-pair mix, duplicate stats,
   and source paths in `manifest.json`
 
-This is a replay-view builder, not an online RL replay buffer.
+This is a source-selection training-view builder, not an online RL replay buffer.
 
 ## Acceptance Criteria
 
-This issue can close when the minimal replay-view builder is judged sufficient
+This issue can close when the minimal source-selection training-view builder is judged sufficient
 for the current RL loop, or when the project decides an online Replay Buffer /
 PyTorch Sampler layer is now needed.
 

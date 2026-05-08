@@ -4,11 +4,11 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.worlds.shogi.replay import create_shogi_replay_view, parse_shogi_actor_pair_ratios
+from intrep.worlds.shogi.source_selection import create_shogi_training_view_from_sources, parse_shogi_actor_pair_ratios
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Create a fixed shogi training view through replay selection.")
+    parser = argparse.ArgumentParser(description="Create a fixed shogi training view through source selection.")
     parser.add_argument("--train-games", type=Path, action="append", required=True)
     parser.add_argument("--eval-games", type=Path, required=True)
     parser.add_argument("--max-train-games", type=int)
@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
     args = parser.parse_args(argv)
 
-    result = create_shogi_replay_view(
+    result = create_shogi_training_view_from_sources(
         train_games=tuple(args.train_games),
         eval_games=args.eval_games,
         name=args.name,

@@ -20,7 +20,7 @@ from intrep.worlds.shogi.game_record import (
     shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.replay import create_shogi_replay_view
+from intrep.worlds.shogi.source_selection import create_shogi_training_view_from_sources
 from intrep.worlds.shogi.training_view import create_shogi_training_view
 
 
@@ -191,7 +191,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             self.assertTrue((output_root / "cli-view" / "data-selection.json").exists())
 
-    def test_creates_replay_view_from_game_record_sources(self) -> None:
+    def test_creates_training_view_from_selected_game_record_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_a = root / "train-a.jsonl"
@@ -216,10 +216,10 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(train_b, yaneuraou_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
 
-            result = create_shogi_replay_view(
+            result = create_shogi_training_view_from_sources(
                 train_games=(train_a, train_b),
                 eval_games=eval_path,
-                name="replay-current",
+                name="source-selected-current",
                 output_root=output_root,
                 max_train_games=4,
                 max_eval_games=1,
@@ -227,7 +227,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 seed=11,
             )
 
-            view_dir = output_root / "replay-current"
+            view_dir = output_root / "source-selected-current"
             self.assertEqual(result["training_view"], str(view_dir))
             self.assertEqual(result["train_games"], 4)
             self.assertEqual(result["eval_games"], 1)
@@ -237,7 +237,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
             self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schema"], "shogi_replay_view_v1")
+            self.assertEqual(manifest["schema"], "shogi_source_selected_training_view_v1")
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_a), str(train_b)])
             self.assertEqual(manifest["available_train_games"], 6)
             self.assertEqual(manifest["available_eval_games"], 2)
@@ -245,8 +245,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
 
-    def test_replay_view_script_is_thin_cli_wrapper(self) -> None:
-        replay_module = _load_script_module("create_shogi_replay_view")
+    def test_source_selection_script_is_thin_cli_wrapper(self) -> None:
+        source_selection_module = _load_script_module("create_shogi_training_view_from_sources")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
@@ -262,14 +262,14 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(eval_path, [_record(("5g5f", "5c5d"), "black")])
 
             with patch("sys.stdout", new_callable=StringIO):
-                replay_module.main(
+                source_selection_module.main(
                     [
                         "--train-games",
                         str(train_path),
                         "--eval-games",
                         str(eval_path),
                         "--name",
-                        "cli-replay",
+                        "cli-source-selected",
                         "--output-root",
                         str(output_root),
                         "--max-train-games",
@@ -277,7 +277,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                     ]
                 )
 
-            view_dir = output_root / "cli-replay"
+            view_dir = output_root / "cli-source-selected"
             self.assertTrue((view_dir / "data-selection.json").exists())
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["train_games"], 1)

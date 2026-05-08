@@ -10,7 +10,7 @@ from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_tra
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 
-def create_shogi_replay_view(
+def create_shogi_training_view_from_sources(
     *,
     train_games: tuple[Path, ...],
     eval_games: Path,
@@ -33,7 +33,7 @@ def create_shogi_replay_view(
 
     output_dir = output_root / name
     if output_dir.exists():
-        raise FileExistsError(f"replay view already exists: {output_dir}")
+        raise FileExistsError(f"source-selected training view already exists: {output_dir}")
 
     available_train_records = _load_records(train_games)
     available_eval_records = list(iter_shogi_game_records_jsonl(eval_games))
@@ -42,7 +42,7 @@ def create_shogi_replay_view(
     if not available_eval_records:
         raise ValueError("eval games must not be empty")
 
-    train_records = select_shogi_replay_records(
+    train_records = select_shogi_game_records(
         available_train_records,
         max_games=max_train_games,
         actor_pair_ratios=actor_pair_ratios or {},
@@ -50,9 +50,9 @@ def create_shogi_replay_view(
     )
     eval_records = _limit_records(available_eval_records, max_eval_games)
     if not train_records:
-        raise ValueError("replay selection must produce at least one train game")
+        raise ValueError("source selection must produce at least one train game")
     if not eval_records:
-        raise ValueError("replay selection must produce at least one eval game")
+        raise ValueError("source selection must produce at least one eval game")
 
     games_jsonl = output_dir / "games.jsonl"
     train_jsonl = output_dir / "train-games.jsonl"
@@ -81,7 +81,7 @@ def create_shogi_replay_view(
     data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
-        "schema": "shogi_replay_view_v1",
+        "schema": "shogi_source_selected_training_view_v1",
         "record_schema": "shogi_game_record_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),
@@ -128,7 +128,7 @@ def create_shogi_replay_view(
     }
 
 
-def select_shogi_replay_records(
+def select_shogi_game_records(
     records: list[ShogiGameRecord],
     *,
     max_games: int | None,

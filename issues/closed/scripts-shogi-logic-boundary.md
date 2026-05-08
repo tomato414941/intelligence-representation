@@ -4,7 +4,7 @@ Status: closed.
 
 ## Issue
 
-`scripts/` is still small enough to manage, but shogi data/replay/store logic is
+`scripts/` is still small enough to manage, but shogi data/source-selection/store logic is
 starting to live there instead of in importable package code.
 
 Current shogi-heavy scripts include:
@@ -13,14 +13,14 @@ Current shogi-heavy scripts include:
   behavior to `src/intrep/worlds/shogi/experience_store.py`.
 - `scripts/create_shogi_training_view.py` now delegates its reusable behavior
   to `src/intrep/worlds/shogi/training_view.py`.
-- `scripts/create_shogi_replay_view.py` now delegates its reusable behavior to
-  `src/intrep/worlds/shogi/replay.py`.
+- `scripts/create_shogi_training_view_from_sources.py` now delegates its reusable behavior to
+  `src/intrep/worlds/shogi/source_selection.py`.
 
 These files do more than command orchestration. They contain reusable behavior:
 
 - Experience Store append logic
 - Training View creation
-- replay selection
+- source selection
 - manifest creation
 - actor-pair summaries
 - position-stat summaries
@@ -33,7 +33,7 @@ behavior should live in importable package code.
 If shogi learning data logic keeps accumulating under `scripts/`, the project
 will get harder to test and reuse:
 
-- replay selection cannot be reused outside one CLI
+- source selection cannot be reused outside one CLI
 - future PyTorch `Sampler` or online replay work has to copy script logic
 - Training View and Experience Store behavior are harder to import from tests or
   other tools
@@ -48,7 +48,7 @@ edited substantially. Candidate modules:
 
 - `src/intrep/worlds/shogi/experience_store.py`
 - `src/intrep/worlds/shogi/training_view.py`
-- `src/intrep/worlds/shogi/replay.py`
+- `src/intrep/worlds/shogi/source_selection.py`
 
 After that, scripts should mainly parse CLI arguments, call package functions,
 and print JSON results.
@@ -57,7 +57,7 @@ and print JSON results.
 
 - Shogi Experience Store append behavior is importable from package code. [x]
 - Shogi Training View creation behavior is importable from package code. [x]
-- Shogi replay selection / replay-view creation behavior is importable from
+- Shogi source selection / training-view construction behavior is importable from
   package code. [x]
 - The corresponding scripts remain as thin wrappers or are removed if no longer
   needed. [x]
@@ -74,6 +74,6 @@ Shogi reusable logic was moved out of scripts:
 
 - Experience Store append behavior lives in `src/intrep/worlds/shogi/experience_store.py`.
 - Training View creation behavior lives in `src/intrep/worlds/shogi/training_view.py`.
-- Replay selection / replay-view creation behavior lives in `src/intrep/worlds/shogi/replay.py`.
+- Source selection / training-view construction behavior lives in `src/intrep/worlds/shogi/source_selection.py`.
 
 The corresponding scripts remain as thin CLI wrappers.

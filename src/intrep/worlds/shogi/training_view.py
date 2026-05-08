@@ -6,7 +6,7 @@ from pathlib import Path
 
 from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
-from intrep.worlds.shogi.replay import shogi_actor_pair_counts
+from intrep.worlds.shogi.source_selection import shogi_actor_pair_counts
 
 
 def create_shogi_training_view(

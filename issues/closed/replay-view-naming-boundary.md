@@ -1,6 +1,6 @@
 # Replay View Naming Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -57,3 +57,15 @@ later needs one.
 - implement an online Replay Buffer
 - rename every occurrence of "replay"
 - introduce a generic replay abstraction
+
+## Resolution
+
+The fixed Training View builder no longer uses `replay` in its code-level name:
+
+- `src/intrep/worlds/shogi/source_selection.py`
+- `scripts/create_shogi_training_view_from_sources.py`
+- `create_shogi_training_view_from_sources`
+- `select_shogi_game_records`
+- `shogi_source_selected_training_view_v1`
+
+`Replay Buffer` remains reserved for a future training-time sampling component.
