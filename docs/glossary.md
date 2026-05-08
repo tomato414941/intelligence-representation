@@ -209,6 +209,11 @@ This is closer to ordinary data selection than to a Replay Buffer. It may use
 self-play records, teacher records, run outputs, or an Experience Store as
 sources, but the result is a fixed Training View or PyTorch Dataset input.
 
+The training pipeline is not special: once fixed, it is learned from like an
+ordinary dataset. The distinction is that the selected source records are
+experience records, meaning they come from interaction with a world and may
+carry actions, rewards, outcomes, actor identity, or trajectory context.
+
 ### Data Selection
 
 Data Selection decides which source records, training examples, or stored
