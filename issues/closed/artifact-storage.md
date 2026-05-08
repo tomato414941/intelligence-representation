@@ -1,6 +1,6 @@
 # Artifact Storage
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -25,3 +25,24 @@ evaluation result becomes an input for future work.
 Choose a long-lived artifact home. Candidate options include Hugging Face Hub,
 object storage, or another artifact store. GitHub should remain for code,
 documentation, and small metadata rather than large generated files.
+
+## Resolution
+
+This broad issue was closed because it mixed several artifact responsibilities.
+Follow-up work is split into narrower issues:
+
+- [`../model-artifact-policy.md`](../model-artifact-policy.md): what belongs
+  with long-lived model checkpoints under `models/`.
+- [`../source-derived-artifact-policy.md`](../source-derived-artifact-policy.md):
+  how to store source-derived records and failure logs.
+- [`../evaluation-artifact-policy.md`](../evaluation-artifact-policy.md): where
+  evaluation metrics and match outputs belong.
+- [`../long-lived-artifact-home.md`](../long-lived-artifact-home.md): whether
+  large long-lived artifacts should stay local or use an external artifact home.
+
+Existing narrower issues also cover parts of the original list:
+
+- [`../shogi-training-view-tensor-cache.md`](../shogi-training-view-tensor-cache.md)
+  tracks shogi Training View cache format.
+- [`../text-tokenizer-policy.md`](../text-tokenizer-policy.md) tracks tokenizer
+  workflow and saved tokenizer expectations.
