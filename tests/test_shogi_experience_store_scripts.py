@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import shogi
 
-from intrep.tasks.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
+from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,

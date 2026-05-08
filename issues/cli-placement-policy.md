@@ -15,8 +15,8 @@ tools are added there by default.
 - Use top-level `intrep.train_*` only for major experiment training entrypoints.
 - Put world/source-specific inspection or record operations near the source
   package, for example `intrep.worlds.shogi.*`.
-- Put task-specific dataset/example preparation near the task package when that
-  CLI is actively touched.
+- Put problem-specific dataset/example preparation near the problem package when
+  that CLI is actively touched.
 - Keep setup, RunPod, Modal, and other environment/job orchestration in
   `scripts/`.
 - Do not add new top-level CLI modules unless they are project-level entrypoints.

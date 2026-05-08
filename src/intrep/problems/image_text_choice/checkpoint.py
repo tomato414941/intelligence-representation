@@ -5,9 +5,9 @@ from pathlib import Path
 
 import torch
 
-from intrep.tasks.image_text_choice.training import ImageTextChoiceTrainingConfig, ImageTextChoiceTrainingResult
+from intrep.problems.image_text_choice.training import ImageTextChoiceTrainingConfig, ImageTextChoiceTrainingResult
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
-from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
+from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
 

@@ -4,10 +4,10 @@ from pathlib import Path
 
 import torch
 
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
-from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
+from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 
 
 class ShogiPolicyValueCheckpointTest(unittest.TestCase):

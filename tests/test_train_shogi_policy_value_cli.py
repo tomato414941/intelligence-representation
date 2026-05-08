@@ -8,8 +8,8 @@ from unittest.mock import patch
 import shogi
 import torch
 
-from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
-from intrep.tasks.shogi_policy_value.data_selection import (
+from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,

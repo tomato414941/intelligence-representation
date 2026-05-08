@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 from intrep.text.byte_tokenizer import ByteTokenizer
 from intrep.text.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.tasks.language_modeling.model import LanguageModelingModel
+from intrep.problems.language_modeling.model import LanguageModelingModel
 from intrep.text.tokenizer import (
     TextTokenizer,
     TextTokenizerKind,

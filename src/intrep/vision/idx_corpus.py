@@ -16,8 +16,8 @@ from intrep.vision.classification import (
     MNIST_LABELS,
     image_classification_example_to_record,
 )
-from intrep.tasks.image_text_choice.examples import ImageTextChoiceExample, image_text_choice_example_to_record
-from intrep.tasks.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
+from intrep.problems.image_text_choice.examples import ImageTextChoiceExample, image_text_choice_example_to_record
+from intrep.problems.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
 
 
 @dataclass(frozen=True)

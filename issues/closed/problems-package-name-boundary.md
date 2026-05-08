@@ -1,26 +1,26 @@
-# Tasks Package Name Boundary
+# Problems Package Name Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
-`tasks/` remains as a real package name, but the project now treats `task` as an
+`tasks/` remained as a real package name, but the project treated `task` as an
 informal word rather than a precise boundary.
 
-This is different from the closed `task-package-responsibility-boundary.md`
-issue. That issue narrowed what a task package may own. This issue is only about
-whether the package name `tasks/` still fits.
+This is different from the closed `problems-package-responsibility-boundary.md`
+issue. That issue narrowed what a package may own. This issue was only about
+whether the package name `tasks/` still fit.
 
 ## Current State
 
-`docs/glossary.md` says `Task Package` is a historical package name for a
+`docs/glossary.md` said `Task Package` was a historical package name for a
 problem-oriented model surface.
 
 `docs/architecture.md` also says `task` is informal and recommends narrower
 terms such as `Problem`, `Training Example`, `Sample`, `Objective`, and `Loss`
 when precision matters.
 
-The implementation still uses:
+The implementation used:
 
 ```text
 src/intrep/tasks/
@@ -43,24 +43,22 @@ training data bundles, checkpoints, or run outputs.
 
 That would conflict with the current boundary work.
 
-## Current Policy
+## Resolution
 
-Do not rename `tasks/` immediately.
+Renamed `src/intrep/tasks/` to `src/intrep/problems/` without compatibility
+aliases.
 
-Treat `tasks/` as a historical package name for problem-oriented model surfaces
-until a concrete rename makes the code clearer.
+`Problem Package` is now the package-level term. `task` remains an informal
+word in prose, but it is no longer the package boundary.
 
 ## Acceptance Criteria
 
 This issue can close when one of the following is true:
 
-- the project explicitly accepts `tasks/` as a historical package name and the
-  docs make that clear enough, or
-- `tasks/` is renamed to a better package name without compatibility aliases.
+- [x] `tasks/` is renamed to a better package name without compatibility aliases.
 
 ## Non-Goals
 
-- do not rename packages as part of this issue
 - do not introduce a generic task framework
 - do not move source data, generated data, checkpoints, or run artifacts into
-  `tasks/`
+  `problems/`

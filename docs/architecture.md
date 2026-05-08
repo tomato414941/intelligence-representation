@@ -16,7 +16,7 @@ Examples:
 - text as raw text, bytes, token IDs, or rendered layout when needed
 
 Commonization should happen where it helps learning and comparison, especially
-around input embedding sequences, shared cores, task models, and transfer. Raw
+around input embedding sequences, shared cores, problem models, and transfer. Raw
 records should stay close to their source and task.
 
 ## Terms
@@ -31,19 +31,18 @@ Use [Glossary](glossary.md) for the current boundary terms.
 - `worlds/`: source-side packages for world-oriented records, replay,
   observations, actions, transitions, encodings, and world-like utilities.
   Current packages include `worlds/shogi/` and `worlds/grid/`.
-- `tasks/`: historical package name for problem-oriented model surfaces that
-  bind model input construction, shared cores, output heads, losses, metrics,
-  and evaluation when those pieces are tightly tied to one input/target/output
-  shape.
-- `transfer/`: reuse of learned state across task models.
+- `problems/`: problem-oriented model surfaces that bind model input
+  construction, shared cores, output heads, losses, metrics, and evaluation when
+  those pieces are tightly tied to one input/target/output shape.
+- `transfer/`: reuse of learned state across problem models.
 
 Do not introduce `domains/` as an umbrella package. The source-side packages
 are not all the same kind of category. `forms/` remains deferred until a
 concrete form/input-oriented boundary problem needs it.
 
-## Task Layer
+## Problem Layer
 
-`tasks/` is not for dataset instances such as MNIST, CIFAR-10, or one shogi
+`problems/` is not for dataset instances such as MNIST, CIFAR-10, or one shogi
 corpus run. It is for problem families such as image classification,
 image-text choice, language modeling, retrieval, grid step prediction, and
 shogi move choice.
@@ -59,10 +58,10 @@ optimization.
 ## Multi-Task Learning
 
 The structure should not prevent future multi-task learning. Avoid splitting a
-task into many tiny files just to mirror an abstract ontology. A task package
+task into many tiny files just to mirror an abstract ontology. A problem package
 may keep model, loss, metrics, checkpoint, and training code together until a
 real repeated pattern needs extraction.
 
-If multi-task learning becomes active work, prefer small shared boundaries such
-as per-task batch-loss/evaluation entry points over a large common schema for
+If multi-problem learning becomes active work, prefer small shared boundaries
+such as per-problem batch-loss/evaluation entry points over a large common schema for
 all examples.

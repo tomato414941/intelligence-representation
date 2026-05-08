@@ -66,6 +66,6 @@ about target encoders, decoders back to external forms, and losses.
 
 ## Non-Goals
 
-- rename `tasks/`
+- rename `problems/` again
 - implement a generic multi-task trainer now
 - force all data into one token or sequence representation

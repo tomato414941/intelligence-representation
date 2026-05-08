@@ -17,7 +17,7 @@ from intrep.vision.classification import (
 )
 from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
 from intrep.transfer.shared_core import load_shared_core_initialization
-from intrep.tasks.image_classification.model import ImageClassificationModel
+from intrep.problems.image_classification.model import ImageClassificationModel
 
 
 class TrainImageClassificationCLITest(unittest.TestCase):

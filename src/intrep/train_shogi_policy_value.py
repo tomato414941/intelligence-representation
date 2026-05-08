@@ -5,19 +5,19 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.tasks.shogi_policy_value.checkpoint import (
+from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_state_dict,
     save_shogi_policy_value_checkpoint,
     save_shogi_policy_value_model_checkpoint,
     save_shogi_policy_value_state_checkpoint,
 )
-from intrep.tasks.shogi_policy_value.data_selection import (
+from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
-from intrep.tasks.shogi_policy_value.training import (
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
     train_shogi_policy_value_model,

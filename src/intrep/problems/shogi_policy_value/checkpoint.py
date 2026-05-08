@@ -5,10 +5,10 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingResult
+from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 
 
-SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.tasks.shogi_policy_value.checkpoint.v1"
+SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v1"
 
 
 def save_shogi_policy_value_checkpoint(path: str | Path, result: ShogiPolicyValueTrainingResult) -> None:
@@ -49,7 +49,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
-    from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
+    from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
     config_payload = payload["config"]
     model = build_shogi_policy_value_model(

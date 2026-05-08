@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Sequence
 
 from intrep.worlds.grid.world import GridExperienceTransition, GridWorldState, Position, generate_grid_world_transition_table
-from intrep.tasks.grid_step_prediction.checkpoint import save_grid_core_checkpoint
-from intrep.tasks.grid_step_prediction.training import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
+from intrep.problems.grid_step_prediction.checkpoint import save_grid_core_checkpoint
+from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
 
 
 def build_parser() -> argparse.ArgumentParser:

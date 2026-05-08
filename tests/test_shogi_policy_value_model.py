@@ -3,10 +3,10 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.tasks.shogi_policy_value.model import (
+from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     ShogiPolicyValueModel,

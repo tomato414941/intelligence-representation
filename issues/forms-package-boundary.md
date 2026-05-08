@@ -45,7 +45,7 @@ Creating `forms/` becomes appropriate when at least one of these is true:
   layers from task objectives.
 - A source record can intentionally be represented through multiple forms, and
   the code needs one place to express those form conversions without making a
-  task package or world package own them.
+  problem package or world package own them.
 - Audio, video, tabular, rendered layout, or other non-text/non-image inputs are
   implemented, and their package placement would otherwise repeat the
   `vision/` / `text/` ambiguity.

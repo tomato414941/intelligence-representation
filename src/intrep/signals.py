@@ -9,5 +9,5 @@ class Signal:
 
     def __post_init__(self) -> None:
         raise RuntimeError(
-            "Signal is retired; use task-specific raw example types before tokenization"
+            "Signal is retired; use problem-specific raw example types before tokenization"
         )

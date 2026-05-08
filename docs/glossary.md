@@ -41,14 +41,14 @@ Current source-side packages remain intentionally narrow:
 Do not use `domain` as the umbrella term for these packages. They are not all
 the same kind of category.
 
-### Task Package
+### Problem Package
 
-A task package is a historical package name for a problem-oriented model
-surface. It groups code that is tightly tied to one input/target/output shape,
-such as model input construction, output heads, losses, metrics, and evaluation.
+A problem package groups code that is tightly tied to one problem-oriented model
+surface and one input/target/output shape, such as model input construction,
+output heads, losses, metrics, and evaluation.
 
-Use `task` informally when convenient, but do not treat it as a precise project
-boundary. Use narrower terms such as `Problem`, `Training Example`, `Sample`,
+Use `task` informally when convenient, but do not use it as a package boundary.
+Use narrower terms such as `Problem`, `Training Example`, `Sample`,
 `Objective`, or `Loss` when that distinction matters.
 
 Examples:

@@ -9,7 +9,7 @@ from intrep.core.transformer_core import SharedTransformerCore
 
 
 class ImageTextSharedModel(nn.Module):
-    """Shared image/text input shell used by task-specific models."""
+    """Shared image/text input shell used by problem-specific models."""
 
     def __init__(
         self,

@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from intrep.tasks.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
 
 
 @dataclass(frozen=True)

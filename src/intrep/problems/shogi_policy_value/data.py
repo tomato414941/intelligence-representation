@@ -6,7 +6,7 @@ from math import exp
 from pathlib import Path
 from typing import Sequence
 
-from intrep.tasks.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.examples import (
     ShogiMoveChoiceExample,
     ShogiPolicyValueExample,
     ShogiPositionValueExample,

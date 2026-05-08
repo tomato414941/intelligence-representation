@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.tasks.image_text_choice.examples import ImageTextChoiceExample
+from intrep.problems.image_text_choice.examples import ImageTextChoiceExample
 from intrep.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
@@ -18,7 +18,7 @@ from intrep.text.language_modeling_training import (
     resolve_training_device,
 )
 from intrep.core.shared_state_loading import load_compatible_shared_state
-from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
+from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 

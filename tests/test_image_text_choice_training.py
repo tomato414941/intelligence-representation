@@ -5,18 +5,18 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.vision.classification import FASHION_MNIST_LABELS
-from intrep.tasks.image_text_choice.examples import ImageTextChoiceExample
-from intrep.tasks.image_text_choice.checkpoint import (
+from intrep.problems.image_text_choice.examples import ImageTextChoiceExample
+from intrep.problems.image_text_choice.checkpoint import (
     load_image_text_choice_checkpoint,
     save_image_text_choice_checkpoint,
 )
-from intrep.tasks.image_text_choice.training import (
+from intrep.problems.image_text_choice.training import (
     ImageTextChoiceDataset,
     ImageTextChoiceTrainingConfig,
     evaluate_image_text_choice_model,
     train_image_text_choice_model,
 )
-from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
+from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 
 
 class ImageTextChoiceTrainingTest(unittest.TestCase):

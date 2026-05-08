@@ -23,7 +23,7 @@ This lifecycle may also apply to future RL, self-supervised, or generated-data
 work outside shogi. Without an explicit boundary, the project can drift into
 either of two bad states:
 
-- duplicate task-specific store/view implementations
+- duplicate problem-specific store/view implementations
 - premature generic abstractions shaped only by shogi
 
 ## Initial Policy
@@ -45,7 +45,7 @@ This issue can close when one of the following is true:
 - a second concrete task uses the same lifecycle and the project introduces a
   minimal shared boundary from both implementations
 - the project decides that store/view lifecycle should intentionally remain
-  task-specific and documents that decision with examples
+  problem-specific and documents that decision with examples
 
 ## Non-Goals
 

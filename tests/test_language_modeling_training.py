@@ -6,7 +6,7 @@ import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
 from intrep.text.causal_model import CausalTextModel, CausalTextConfig
-from intrep.tasks.language_modeling.model import LanguageModelingModel
+from intrep.problems.language_modeling.model import LanguageModelingModel
 from intrep.text.language_modeling_training import (
     LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,

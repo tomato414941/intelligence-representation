@@ -4,7 +4,7 @@ import shogi
 import torch
 from torch.utils.data import DataLoader
 
-from intrep.tasks.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.examples import (
     ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
     ShogiPolicyValueDataset,

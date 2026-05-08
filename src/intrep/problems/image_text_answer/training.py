@@ -16,7 +16,7 @@ from intrep.vision.training_data import (
 )
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.core.shared_state_loading import load_compatible_shared_state
-from intrep.tasks.image_text_answer.model import ImageTextAnswerModel
+from intrep.problems.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.text.token_scoring import next_token_loss
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients

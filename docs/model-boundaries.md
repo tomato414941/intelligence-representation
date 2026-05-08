@@ -49,7 +49,7 @@ image/text choice:
 
 video or audio tasks:
   media path or reference
-  task-specific text, labels, or feedback when needed
+  problem-specific text, labels, or feedback when needed
 ```
 
 The source record shape should be chosen for the task and source data. Do not
@@ -132,7 +132,7 @@ hidden states:
 
 ## Current Base Transformer Core
 
-The current base model is the shared Transformer core plus task-specific input
+The current base model is the shared Transformer core plus problem-specific input
 embedding modules and output heads. Text, image, grid, and shogi routes can use
 different input embedding modules and heads while keeping the same core shape.
 
@@ -177,7 +177,7 @@ not as the default common layer.
 
 ## Output Heads and Objectives
 
-Output heads and objectives may remain task-specific.
+Output heads and objectives may remain problem-specific.
 
 ```text
 hidden states

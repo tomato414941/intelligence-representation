@@ -5,12 +5,12 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.tasks.image_text_answer.training import (
+from intrep.problems.image_text_answer.training import (
     ImageTextAnswerTrainingConfig,
     load_image_text_answer_examples_jsonl,
     train_image_text_answer_model,
 )
-from intrep.tasks.image_text_answer.checkpoint import save_image_text_answer_checkpoint
+from intrep.problems.image_text_answer.checkpoint import save_image_text_answer_checkpoint
 from intrep.transfer.shared_core import load_shared_core_initialization
 from intrep.text.tokenizer import load_text_tokenizer
 

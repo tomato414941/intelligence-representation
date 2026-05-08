@@ -19,7 +19,7 @@ raw examples
   -> modality-specific input layers
   -> input embedding sequence
   -> shared Transformer core
-  -> task-specific output layer
+  -> problem-specific output layer
 ```
 
 World modeling is one evaluation surface inside this broader frame. It concerns
@@ -67,7 +67,7 @@ Prefer:
 
 ```text
 raw examples before premature schemas
-task-specific input layers
+problem-specific input layers
 shared predictive computation where it is actually useful
 loss curves as smoke metrics
 task and future-prediction metrics for stronger claims
@@ -136,7 +136,7 @@ not a temporary/permanent hierarchy. Choice is useful for matching, retrieval,
 and multiple-choice tasks. Answer is useful for token-generating image/text
 tasks.
 
-The shared multimodal model is a shell with task-specific routes and heads over
+The shared multimodal model is a shell with problem-specific routes and heads over
 one shared Transformer core. A task may leave some routes unused; unused
 tokenizer, text embedding, image input, token output, choice scoring, or
 classification components do not make that task secondary.

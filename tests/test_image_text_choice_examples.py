@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep.vision.classification import FASHION_MNIST_LABELS
-from intrep.tasks.image_text_choice.examples import (
+from intrep.problems.image_text_choice.examples import (
     ImageTextChoiceExample,
     image_text_choice_example_to_record,
     load_image_text_choice_examples_jsonl,

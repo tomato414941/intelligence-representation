@@ -22,7 +22,7 @@ from intrep.vision.classification import (
     train_image_classifier,
     train_image_classifier_with_result,
 )
-from intrep.tasks.image_classification.model import ImageClassificationModel
+from intrep.problems.image_classification.model import ImageClassificationModel
 from intrep.core.transformer_core import SharedTransformerCore
 
 

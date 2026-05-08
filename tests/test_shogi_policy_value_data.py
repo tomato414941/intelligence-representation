@@ -5,7 +5,7 @@ from pathlib import Path
 
 import shogi
 
-from intrep.tasks.shogi_policy_value.data import (
+from intrep.problems.shogi_policy_value.data import (
     load_shogi_policy_value_examples_from_game_records_jsonl,
     shogi_policy_targets_from_game_record,
     shogi_return_targets_from_game_record,

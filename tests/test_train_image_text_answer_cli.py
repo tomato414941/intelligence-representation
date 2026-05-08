@@ -5,12 +5,12 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.tasks.image_text_answer.checkpoint import load_image_text_answer_checkpoint
-from intrep.tasks.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
-from intrep.tasks.image_text_choice.checkpoint import save_image_text_choice_checkpoint
-from intrep.tasks.image_text_choice.training import ImageTextChoiceTrainingConfig, train_image_text_choice_model
+from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
+from intrep.problems.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
+from intrep.problems.image_text_choice.checkpoint import save_image_text_choice_checkpoint
+from intrep.problems.image_text_choice.training import ImageTextChoiceTrainingConfig, train_image_text_choice_model
 from intrep.vision.classification import FASHION_MNIST_LABELS
-from intrep.tasks.image_text_choice.examples import ImageTextChoiceExample
+from intrep.problems.image_text_choice.examples import ImageTextChoiceExample
 from intrep.text.tokenizer import build_text_tokenizer, save_text_tokenizer
 from intrep.train_image_text_answer import main
 

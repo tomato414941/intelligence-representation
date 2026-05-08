@@ -10,7 +10,7 @@ still easy to blur.
 
 ## Why It Matters
 
-Source-derived records can be smaller and easier to audit than task-specific
+Source-derived records can be smaller and easier to audit than problem-specific
 caches. Failure logs can explain skipped inputs. If these artifacts are treated
 like disposable run output, future dataset rebuilding becomes harder. If they
 are treated like raw source data, the source of truth becomes unclear.

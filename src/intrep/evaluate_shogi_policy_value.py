@@ -7,14 +7,14 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
-from intrep.tasks.shogi_policy_value.data_selection import (
+from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
-from intrep.tasks.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
 def main() -> None:

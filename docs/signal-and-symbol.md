@@ -283,7 +283,7 @@ project wants a fixed ontology.
 Prefer:
 
 ```text
-task-specific source records
+problem-specific source records
 modality-specific input interfaces / input embedding modules
 token IDs for text or other discrete pre-embedding inputs
 input embedding sequence as the shared model input boundary

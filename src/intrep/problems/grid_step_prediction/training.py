@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 from intrep.worlds.grid.world import GridExperienceTransition
-from intrep.tasks.grid_step_prediction.dataset import GridStepPredictionDataset
-from intrep.tasks.grid_step_prediction.model import GridStepPredictionModel
+from intrep.problems.grid_step_prediction.dataset import GridStepPredictionDataset
+from intrep.problems.grid_step_prediction.model import GridStepPredictionModel
 from intrep.text.language_modeling_training import resolve_training_device
 from intrep.vision.training_data import seeded_data_loader
 

@@ -16,7 +16,7 @@ The related lifecycle is also currently shogi-local:
 
 - append generated records to an Experience Store
 - create a fixed Training Data Bundle
-- train through Data Selection or a task-specific training input definition
+- train through Data Selection or a problem-specific training input definition
 
 The current shogi-local placement is acceptable for KISS/YAGNI: shogi is the
 only concrete implementation, and extracting a shared abstraction now would be
@@ -54,7 +54,7 @@ This issue can close when one of the following is true:
 - a second concrete Experience Store use case exists and a minimal shared
   boundary is extracted from both implementations
 - the project decides Experience Store should intentionally remain
-  world/task-specific and documents why
+  world/problem-specific and documents why
 - the term Experience Store is replaced by a clearer project-wide concept
 
 ## Non-Goals

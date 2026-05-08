@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
-from intrep.tasks.shogi_policy_value.model import (
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     ShogiPolicyValueModel,

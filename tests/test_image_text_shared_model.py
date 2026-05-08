@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import torch
 
-from intrep.tasks.image_text_choice.model import ImageTextChoiceModel
+from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 
 
 class ImageTextSharedModelTest(unittest.TestCase):

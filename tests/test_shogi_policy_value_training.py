@@ -3,11 +3,11 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.tasks.shogi_policy_value.model import ShogiPolicyValueModel, ShogiPolicyValueModelConfig
-import intrep.tasks.shogi_policy_value.training as training
-from intrep.tasks.shogi_policy_value.training import (
+from intrep.problems.shogi_policy_value.model import ShogiPolicyValueModel, ShogiPolicyValueModelConfig
+import intrep.problems.shogi_policy_value.training as training
+from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     train_shogi_policy_value_model,
 )
