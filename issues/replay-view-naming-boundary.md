@@ -4,13 +4,13 @@ Status: open.
 
 ## Issue
 
-The current implementation is closer to replay selection / replay-view creation
-than to a reinforcement-learning Replay Buffer.
+The current implementation is closer to Offline Experience Reuse than to Online
+Experience Replay or a reinforcement-learning Replay Buffer.
 
 General RL usage usually treats a Replay Buffer as a training-time component
-that stores transitions and samples minibatches during training. It may support
-capacity limits, recency, random sampling, prioritized replay, and continuous
-append / sample behavior.
+for Online Experience Replay. It stores transitions and samples minibatches
+during training. It may support capacity limits, recency, random sampling,
+prioritized replay, and continuous append / sample behavior.
 
 The current shogi implementation instead:
 
@@ -36,9 +36,9 @@ discussions can become confused:
 
 Keep implementation names close to what exists:
 
-- `replay selection`
-- `replay view`
-- `replay view builder`
+- `offline experience reuse`
+- `source selection`
+- `training view construction`
 
 Reserve `Replay Buffer` for a real training-time replay component if the project
 later needs one.
@@ -46,7 +46,7 @@ later needs one.
 ## Acceptance Criteria
 
 - Current code and docs do not describe the fixed view builder itself as a
-  Replay Buffer.
+  Replay Buffer or Online Experience Replay.
 - The boundary issue may still discuss Replay Buffer as a possible future
   component.
 - Naming makes clear whether a component samples once before training or samples

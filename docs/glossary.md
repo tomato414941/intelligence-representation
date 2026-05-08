@@ -179,6 +179,36 @@ fixed Training View derived from the store.
 Experience Store records should remain close to the source experience and
 should not be reshaped around one objective, run, or model.
 
+### Online Experience Replay
+
+Online Experience Replay is a training-time reinforcement-learning method where
+new experience is added during learning and older experience is sampled again
+for model updates.
+
+This term implies a dynamic learner-facing component. It is the right concept
+when training samples repeatedly from changing experience, often through a
+Replay Buffer.
+
+### Replay Buffer
+
+A Replay Buffer is the dynamic storage / sampling component used for Online
+Experience Replay.
+
+It usually supports appending new experience, sampling training batches, and
+some policy for capacity, recency, priority, or replacement.
+
+Do not use this term for a static file or for one-time Training View
+construction.
+
+### Offline Experience Reuse
+
+Offline Experience Reuse means using previously collected experience records to
+build a fixed training or evaluation set before training starts.
+
+This is closer to ordinary data selection than to a Replay Buffer. It may use
+self-play records, teacher records, run outputs, or an Experience Store as
+sources, but the result is a fixed Training View or PyTorch Dataset input.
+
 ### Data Selection
 
 Data Selection decides which source records, training examples, or stored

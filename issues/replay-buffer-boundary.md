@@ -4,8 +4,12 @@ Status: open.
 
 ## Issue
 
-The project should treat replay as a learning-time sampling layer over reusable
-experience records, not as another name for Experience Store.
+The project should distinguish Online Experience Replay from Offline Experience
+Reuse.
+
+Online Experience Replay is a training-time RL method backed by a dynamic
+Replay Buffer. Offline Experience Reuse is pre-training data selection over
+previously collected experience records.
 
 The current shogi flow can read fixed game-record JSONL sources and build fixed
 Training Views, but it has no explicit Replay Buffer layer:
@@ -20,11 +24,11 @@ game-record sources
 
 Those game-record sources may come from an Experience Store, run outputs,
 teacher-only records, Qhapaq-derived records, or other generated record sets.
-The replay concern is the sampling policy over these sources, not the storage
-location that produced them.
+The current implementation is Offline Experience Reuse: it selects records once
+and writes a fixed Training View before training starts.
 
 The current fixed-view flow works for supervised-style datasets, but it leaves
-RL replay behavior implicit in view creation.
+Online Experience Replay behavior unimplemented.
 
 The missing replay questions are:
 
@@ -34,7 +38,7 @@ The missing replay questions are:
 - whether weak historical model experience should still affect training
 - how to sample enough diverse positions without manually rebuilding views
 
-Those are not storage problems. They are replay-policy and sampling problems.
+Those are not storage problems. They are sampling-policy problems.
 
 ## Why It Matters
 
@@ -51,13 +55,15 @@ between stored experience and training batches.
 Do not rename Experience Store to Replay Buffer.
 
 Experience Store should remain one durable source of generated experience.
-Replay Buffer should describe how training samples from reusable experience
+Replay Buffer should describe training-time sampling from reusable experience
 records. It must not require Experience Store as its input.
 
 Prefer a PyTorch-compatible shape:
 
 - keep records close to source form in source storage
-- let Replay Buffer produce selected records or training examples
+- let Offline Experience Reuse produce fixed selected records or training
+  examples
+- reserve Replay Buffer for training-time sampling
 - use PyTorch `Dataset` for indexed samples
 - use PyTorch `Sampler` when sampling weights or ordering matter
 - avoid a generic multi-domain replay framework until a second concrete replay
