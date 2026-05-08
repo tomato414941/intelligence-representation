@@ -71,6 +71,10 @@ Treat existing `DatasetDefinition` names as current implementation names until
 the code boundary is revisited. Do not introduce compatibility aliases when the
 rename or split eventually happens.
 
+## Progress
+
+- `Data Selection` has been promoted to `docs/glossary.md`.
+
 ## Acceptance Criteria
 
 - Decide which responsibilities need project-level names.

@@ -164,6 +164,12 @@ Examples:
 Do not force static datasets to be experience. An image file and label row can
 be a source record without being experience.
 
+### Data Selection
+
+Data Selection decides which source records, training examples, or stored
+targets are included for a declared use. It is about inclusion, not example
+construction, target generation, sampling, or optimization.
+
 ### Training Example
 
 A training example is a unit made from a source record for a specific
@@ -200,6 +206,8 @@ split policy, or learning intent.
 A dataset definition states which source records or training examples are used
 for a learning purpose. It is the meaning and boundary of the training data,
 not a generated artifact path by itself.
+
+Prefer `Data Selection` when the concern is which data is included.
 
 Examples:
 
