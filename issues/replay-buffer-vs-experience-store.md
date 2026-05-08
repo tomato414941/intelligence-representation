@@ -1,14 +1,46 @@
-# Replay Buffer vs Experience Store
+# Replay Buffer Architecture Gap
 
 Status: open.
 
 ## Issue
 
-The current shogi data flow may have solved persistence before solving the
-learning-time sampling problem.
+The project should introduce Replay Buffer as a learning-time sampling layer,
+not as another name for Experience Store.
 
-Experience Store is useful for durable generated experience, but recent
-questions are more about Replay Buffer behavior:
+Ideal responsibility split:
+
+```text
+Experience Source
+  -> Replay Buffer
+  -> Training Batch
+  -> Learner
+  -> Policy / Value Model
+  -> Actor / Environment
+  -> Experience Source
+```
+
+- Experience Source stores what happened.
+- Replay Buffer decides what experience is reused for learning.
+- Sample Construction turns selected experience into input/target meaning.
+- PyTorch `Dataset` / `Sampler` / `DataLoader` turn samples into tensor batches.
+- Objective / Learner decides what loss to optimize.
+- Actor / Environment generates new experience.
+
+The current shogi flow has durable storage and fixed views, but no explicit
+Replay Buffer layer:
+
+```text
+Experience Store
+  -> Training View
+  -> Data Selection
+  -> PyTorch Dataset
+  -> Training Loop
+```
+
+This works for supervised-style fixed datasets, but it leaves RL replay behavior
+implicit in view creation.
+
+The missing replay questions are:
 
 - how much recent vs old experience to train on
 - how to mix teacher-vs-teacher, teacher-vs-model, and model-vs-model games
@@ -16,8 +48,7 @@ questions are more about Replay Buffer behavior:
 - whether weak historical model experience should still affect training
 - how to sample enough diverse positions without manually rebuilding views
 
-Those are not primarily storage problems. They are sampling and replay-policy
-problems.
+Those are not storage problems. They are replay-policy and sampling problems.
 
 ## Why It Matters
 
@@ -29,25 +60,48 @@ replayed, mixed, and partially forgotten over time.
 The project should decide whether it needs a Replay Buffer or Sampler layer
 between stored experience and training batches.
 
-## Initial Policy
+The distinction also matters for coexistence with supervised and self-supervised
+learning:
+
+- supervised learning can use Data Selection without replay
+- self-supervised learning can use Data Selection plus derived targets
+- reinforcement learning needs Replay Buffer when experience is repeatedly
+  generated, mixed, sampled, and partially forgotten
+
+## Direction
 
 Do not rename Experience Store to Replay Buffer.
 
 Experience Store should remain the durable source of generated experience.
-Replay Buffer, if introduced, should describe how training samples from stored
-experience. Prefer PyTorch-compatible `Dataset` / `Sampler` concepts over a
-custom framework unless a concrete RL loop needs more.
+Replay Buffer should describe how training samples from stored experience.
+
+Prefer a PyTorch-compatible shape:
+
+- keep records close to source form in the Experience Store
+- let Replay Buffer produce selected records or training examples
+- use PyTorch `Dataset` for indexed samples
+- use PyTorch `Sampler` when sampling weights or ordering matter
+- avoid a generic multi-domain replay framework until a second concrete replay
+  use case exists
+
+The first implementation should likely be shogi-local and minimal. A clean KISS
+entry point is a replay policy that creates or feeds a Training View while
+recording the source mix, recency policy, duplicate policy, and maximum sample
+count.
 
 ## Acceptance Criteria
 
-This issue can close when the project has decided one of the following:
+This issue can close when a minimal Replay Buffer design has been implemented
+or explicitly rejected.
 
-- Experience Store + fixed Training View is enough for the current RL loop
-- a minimal Replay Buffer / Sampler layer is needed and implemented
-- the same need is covered by a simpler Training View sampling policy
+The decision must explain what owns:
 
-The decision should explain what owns source mix, duplicate handling, recency,
-and maximum sample count.
+- source mix
+- duplicate handling
+- recency
+- maximum sample count
+- relationship to PyTorch `Dataset` / `Sampler`
+- relationship to fixed Training Views
 
 ## Non-Goals
 
