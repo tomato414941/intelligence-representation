@@ -12,23 +12,19 @@ It currently contains:
 - Data Selection: `train_sources`, `eval_sources`, source `kind`, `path`, and
   `max_games`
 - Training Example meaning: `objective`
-- target policy and shaping: `policy_target_source`, `value_target_source`,
-  `policy_temperature_cp`, `policy_mate_cp`, and `score_cp_scale`
+- target policy and shaping defaults: `policy_target_source`,
+  `value_target_source`, `policy_temperature_cp`, `policy_mate_cp`, and
+  `score_cp_scale`
+- source-level target policy overrides on individual sources
 
 `load_shogi_move_choice_dataset_examples()` also uses that combined structure to
 select records and construct `ShogiMoveChoiceExample` values in one step.
 
 ## Why It Matters
 
-This is workable for simple runs, but it becomes awkward when different sources
-need different target policies.
-
-Examples:
-
-- YaneuraOu-annotated records may want `usi_multipv` policy targets and
-  `yaneuraou_best_score` value targets.
-- Plain self-play records may want `chosen_move` policy targets and `winner`
-  value targets.
+Source-level target policy now works, so the remaining concern is narrower:
+record selection and `ShogiMoveChoiceExample` construction still happen through
+one `DatasetDefinition` loader.
 
 The broader responsibility issue was closed in
 `closed/training-example-responsibility-mixing.md`. This issue tracks the shogi
@@ -47,8 +43,8 @@ right problem boundary for policy/value/data-construction responsibilities.
 
 ## Direction
 
-Do not refactor immediately. The first concrete refactor should likely happen
-when a mixed-source shogi run requires source-level target policy.
+Do not refactor immediately. Source-level target policy has been implemented,
+and a broader problem-scope question remains open.
 
 Possible future shape:
 
@@ -64,11 +60,11 @@ Avoid compatibility aliases when this is eventually renamed or split.
 
 - Decide whether the current `ShogiMoveChoiceDatasetDefinition` name should be
   replaced.
-- Decide whether target policy belongs globally, per source, or both with a
+- [x] Decide whether target policy belongs globally, per source, or both with a
   default/inheritance rule.
 - Decide whether record selection and `ShogiMoveChoiceExample` construction
   should remain one loader step or become separate steps.
-- Update code and tests only after the boundary decision is needed by a concrete
+- [x] Update code and tests only after the boundary decision is needed by a concrete
   mixed-source run.
 
 ## Non-Goals
