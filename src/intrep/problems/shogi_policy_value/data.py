@@ -13,6 +13,7 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
+from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
 
 
 def load_shogi_policy_value_examples_from_game_records_jsonl(
@@ -41,6 +42,10 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
         )
         examples.extend(_with_game_metadata(game_examples, game_index=game_index))
     return examples
+
+
+def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[ShogiMoveChoiceExample]:
+    return shogi_move_choice_examples_from_game_record(load_shogi_game_record_from_kif_file(path))
 
 
 def shogi_policy_value_examples_from_game_record(

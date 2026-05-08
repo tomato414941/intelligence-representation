@@ -27,9 +27,10 @@ If this keeps growing unchecked:
 - data lifecycle code may hide learning assumptions inside world code
 - CLI entrypoints may creep back into package modules
 
-The clearest current smell is `kif_io.py` importing from
-`intrep.problems.shogi_policy_value`. World/source code should generally not know a
-specific learning task.
+The previous clearest smell was `kif_io.py` importing from
+`intrep.problems.shogi_policy_value`. That dependency has been removed:
+`kif_io.py` now stops at `ShogiGameRecord`, and KIF-to-problem-example
+conversion lives under `problems/shogi_policy_value/data.py`.
 
 ## Current Policy
 
@@ -45,7 +46,6 @@ Possible future split:
 
 - keep shogi rules, records, replay validation, KIF/USI record IO, and
   board/move encodings under `worlds/shogi/`
-- move problem-specific example construction out of `kif_io.py`
 - keep Experience Store / Training Data Bundle / Replay code either under
   `worlds/shogi/` with explicit lifecycle naming, or move it only if another
   concrete world needs the same lifecycle
@@ -56,7 +56,7 @@ Possible future split:
 
 - Decide whether `worlds/shogi/` intentionally owns shogi learning-data
   lifecycle code.
-- Remove or justify problem-specific imports from `worlds/shogi/`.
+- Keep `worlds/shogi/` free of problem-specific imports.
 - Decide whether package-local `main()` functions are acceptable here.
 
 ## Non-Goals

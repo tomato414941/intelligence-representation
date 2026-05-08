@@ -14,7 +14,6 @@ from intrep.worlds.shogi.kif_io import (
     convert_kif_files_to_game_records_jsonl,
     load_kif_game,
     load_kif_game_record,
-    load_shogi_move_choice_examples_from_kif_file,
 )
 
 
@@ -26,12 +25,10 @@ class ShogiKifIoTest(unittest.TestCase):
 
             moves = load_kif_game(path)
             record_moves, winner = load_kif_game_record(path)
-            examples = load_shogi_move_choice_examples_from_kif_file(path)
 
         self.assertEqual(moves, ("7g7f", "3c3d"))
         self.assertEqual(record_moves, ("7g7f", "3c3d"))
         self.assertEqual(winner, "w")
-        self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
 
     def test_converts_kif_files_to_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
