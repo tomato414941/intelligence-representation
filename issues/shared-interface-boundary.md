@@ -1,6 +1,6 @@
 # Shared Interface Boundary
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
@@ -25,9 +25,12 @@ composes `ImagePatchInputLayer`, `SharedTransformerCore`, and
 `ClassificationHead` directly.
 
 Moving it into `core/` as-is would make `core/` depend on concrete image/text
-interfaces. Calling this area `multimodal/` is also premature because the future
-boundary may need to cover shogi, grid, audio, video, and other interfaces, not
-just image and text.
+interfaces.
+
+Do not assume a future `multimodal/` package. If shared cross-interface code
+appears, name the package by responsibility, such as routing, fusion, alignment,
+or interface composition, not by the broad fact that multiple modalities are
+involved.
 
 ## Current Boundary
 
