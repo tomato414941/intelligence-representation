@@ -41,6 +41,9 @@ issue is broader: it asks whether the current shogi `DatasetDefinition`
 implementation should be split or renamed now that `Data Selection` is the
 formal inclusion-boundary term.
 
+`shogi-move-choice-problem-scope.md` tracks whether `ShogiMoveChoice` is the
+right problem boundary for policy/value/data-construction responsibilities.
+
 ## Direction
 
 Do not refactor immediately. The first concrete refactor should likely happen
