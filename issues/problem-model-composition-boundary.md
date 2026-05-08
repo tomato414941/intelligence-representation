@@ -54,8 +54,12 @@ Share the core interface where useful:
 input embedding sequence -> shared core -> hidden state sequence
 ```
 
-Leave input embedding modules and output heads problem-specific unless a second
-concrete problem needs the same code.
+Input embedding modules and output heads start near the problem model that needs
+them. When two or more concrete problems need the same input or output boundary,
+promote that module or head as a reusable component.
+
+Sharing should happen at the module/head level, not by growing one universal
+model class.
 
 ## Acceptance Criteria
 
@@ -65,6 +69,7 @@ This issue can close when the project documents or implements a stable rule for:
 - what the shared core interface requires
 - when an input embedding module should be shared
 - when an output head should be shared
+- where shared input modules and output heads should live
 - whether `ImageTextSharedModel` remains a temporary image/text shell or is split
   into smaller reusable pieces
 
