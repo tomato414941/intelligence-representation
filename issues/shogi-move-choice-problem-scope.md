@@ -43,6 +43,15 @@ intended:
 
 Avoid compatibility aliases if this boundary is renamed or split.
 
+Names should stay easy to change. Do not make problem or package names the
+long-term identity of artifacts. Prefer explicit manifests and configurations
+that describe Sample Schema, model shape, objectives, target policy, and
+training settings.
+
+Use names as readable hints, not strict ontology rules. Avoid names that are so
+broad that they absorb unrelated responsibilities, but do not block useful work
+on naming precision alone.
+
 ## Acceptance Criteria
 
 - Decide whether `ShogiMoveChoiceExample` should remain policy/value or become
@@ -51,6 +60,8 @@ Avoid compatibility aliases if this boundary is renamed or split.
   separate position-value problem.
 - Decide where source-local target policy should live before adding more target
   generation behavior to `shogi_move_choice`.
+- Decide which artifact fields describe meaning independently from package
+  names.
 - Update related issue names or references if this boundary changes.
 
 ## Non-Goals
