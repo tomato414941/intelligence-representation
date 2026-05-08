@@ -20,6 +20,8 @@ which boundary is actually unified:
   payload
 - a unified core input schema unifies the representation passed into the shared
   core
+- a unified representation-to-representation schema represents both input and
+  target/output sides as representation sequences
 - a unified sample schema unifies the sample fields and meanings themselves
 
 These are different claims. Treating them as the same would make model routing,
@@ -42,12 +44,19 @@ Core-only or core-focused training from precomputed unified core inputs may be a
 valid speed strategy, but it should not be described as end-to-end unification
 of input embedding modules and output heads.
 
+Longer term, the project may try representation-to-representation training:
+input-side data becomes a representation sequence, and target/output-side data
+also becomes a representation sequence. That could make the shared core closer
+to a general representation transformer, but it requires separate decisions
+about target encoders, decoders back to external forms, and losses.
+
 ## Acceptance Criteria
 
 - Decide whether the first mixed-schema experiment should use schema-homogeneous
   batches or mixed-schema batches.
 - Decide whether the first unification target is envelope schema, unified core
-  input schema, or unified sample schema.
+  input schema, representation-to-representation schema, or unified sample
+  schema.
 - Document the chosen boundary before implementing shared routing or collation.
 
 ## Non-Goals
