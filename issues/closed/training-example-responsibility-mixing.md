@@ -1,6 +1,6 @@
 # Training Example Responsibility Mixing
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -47,8 +47,12 @@ Shogi move choice is the clearest pressure point:
 
 - The shogi-specific Data Selection boundary problem has been split into
   `shogi-move-choice-data-selection-boundary.md`.
-- Remaining concrete concerns here are language-modeling windowing and grid
-  transition-to-target shaping.
+- Language-modeling windowing is intentionally kept in the PyTorch dataset
+  because the next-token windows are deterministic and cheap to rebuild from
+  token IDs.
+- Grid transition-to-target shaping is intentionally kept in the PyTorch dataset
+  because next-cell, reward, and termination targets are deterministic and cheap
+  to derive from each transition.
 
 ## Why It Matters
 
@@ -73,13 +77,19 @@ deciding the project-level responsibilities:
 
 ## Acceptance Criteria
 
-- Decide whether language-modeling windowing belongs outside the PyTorch
+- [x] Decide whether language-modeling windowing belongs outside the PyTorch
   dataset.
-- Decide whether grid transition-to-target shaping should stay in the dataset
+- [x] Decide whether grid transition-to-target shaping should stay in the dataset
   or move to an explicit training-example layer.
-- Keep shogi move-choice Data Selection changes in
+- [x] Keep shogi move-choice Data Selection changes in
   `shogi-move-choice-data-selection-boundary.md`.
-- Update docs or code only where the boundary decision is stable.
+- [x] Update docs or code only where the boundary decision is stable.
+
+## Resolution
+
+Close this issue. The general boundary terms are now documented, the two small
+runtime-sampling exceptions are documented in code, and the remaining shogi
+pressure point has its own issue.
 
 ## Non-Goals
 

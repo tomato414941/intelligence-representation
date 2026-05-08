@@ -30,9 +30,9 @@ Examples:
 - Plain self-play records may want `chosen_move` policy targets and `winner`
   value targets.
 
-The broader responsibility issue is tracked in
-`training-example-responsibility-mixing.md`. This issue tracks the shogi move
-choice concrete case.
+The broader responsibility issue was closed in
+`closed/training-example-responsibility-mixing.md`. This issue tracks the shogi
+move-choice concrete case.
 
 ## Related Issue
 
