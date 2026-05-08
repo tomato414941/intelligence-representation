@@ -106,6 +106,13 @@ class LanguageModelingTrainingArtifacts:
 
 
 class LanguageModelingDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    """Returns deterministic next-token windows directly as runtime samples.
+
+    Storing every window as a separate Training Example would be larger and
+    less useful because the input/target relation is standard and cheap to
+    rebuild from token IDs.
+    """
+
     def __init__(
         self,
         token_ids: list[int],
