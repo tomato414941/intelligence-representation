@@ -1,6 +1,6 @@
 # Image Classification Shared Shell Dependency
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -43,10 +43,20 @@ reason appears to split it further.
 
 ## Acceptance Criteria
 
-- `ImageClassificationModel` no longer inherits from `ImageTextSharedModel`.
-- Image classification still uses `ImagePatchInputLayer`, `SharedTransformerCore`,
+- [x] `ImageClassificationModel` no longer inherits from `ImageTextSharedModel`.
+- [x] Image classification still uses `ImagePatchInputLayer`, `SharedTransformerCore`,
   and `ClassificationHead`.
-- Existing image classification tests pass.
+- [x] Existing image classification tests pass.
+
+## Resolution
+
+`ImageClassificationModel` now composes only the pieces it needs:
+
+- `ImagePatchInputLayer`
+- `SharedTransformerCore`
+- `ClassificationHead`
+
+It no longer inherits the image/text shell or exposes text/token routes.
 
 ## Non-Goals
 

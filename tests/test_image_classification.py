@@ -160,7 +160,6 @@ class ImageClassificationTest(unittest.TestCase):
         logits = model.class_logits(torch.zeros((3, 4, 4), dtype=torch.float32))
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
-        self.assertEqual(model.text_logits(torch.zeros((3, 4), dtype=torch.long)).shape, torch.Size([3, 4, 8]))
 
     def test_image_text_shared_model_accepts_rgb_images_for_classification(self) -> None:
         model = ImageClassificationModel(
