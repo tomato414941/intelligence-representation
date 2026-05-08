@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
+from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
 from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
     SharedCoreShogiMoveChoiceModelConfig,
@@ -108,9 +108,9 @@ class ShogiMoveChoiceTrainingProgress:
 
 
 def train_shogi_move_choice_model(
-    examples: Sequence[ShogiMoveChoiceExample],
+    examples: Sequence[ShogiPolicyValueExample],
     *,
-    eval_examples: Sequence[ShogiMoveChoiceExample] | None = None,
+    eval_examples: Sequence[ShogiPolicyValueExample] | None = None,
     config: ShogiMoveChoiceTrainingConfig | None = None,
     initial_state_dict: object | None = None,
     progress_callback: Callable[[ShogiMoveChoiceTrainingProgress], None] | None = None,
@@ -138,15 +138,15 @@ def train_shogi_move_choice_model(
         raise ValueError("at least one loss weight must be positive")
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
-    dataset = ShogiMoveChoiceDataset(examples)
+    dataset = ShogiPolicyValueDataset(examples)
     loader = _build_shogi_move_choice_loader(dataset, training_config, shuffle=True)
     train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
-    train_eval_dataset = ShogiMoveChoiceDataset(train_eval_examples)
+    train_eval_dataset = ShogiPolicyValueDataset(train_eval_examples)
     train_eval_loader = _build_shogi_move_choice_loader(train_eval_dataset, training_config, shuffle=False)
     limited_eval_examples = (
         _limit_examples(eval_examples, training_config.max_eval_examples) if eval_examples is not None else None
     )
-    eval_dataset = ShogiMoveChoiceDataset(limited_eval_examples) if limited_eval_examples is not None else None
+    eval_dataset = ShogiPolicyValueDataset(limited_eval_examples) if limited_eval_examples is not None else None
     eval_loader = (
         _build_shogi_move_choice_loader(eval_dataset, training_config, shuffle=False)
         if eval_dataset is not None
@@ -358,7 +358,7 @@ def evaluate_shogi_move_choice_metrics(
 
 
 def _build_shogi_move_choice_loader(
-    dataset: ShogiMoveChoiceDataset,
+    dataset: ShogiPolicyValueDataset,
     config: ShogiMoveChoiceTrainingConfig,
     *,
     shuffle: bool,
@@ -391,9 +391,9 @@ def _forward_policy_value(
 
 
 def _limit_examples(
-    examples: Sequence[ShogiMoveChoiceExample],
+    examples: Sequence[ShogiPolicyValueExample],
     max_examples: int | None,
-) -> Sequence[ShogiMoveChoiceExample]:
+) -> Sequence[ShogiPolicyValueExample]:
     if max_examples is None:
         return examples
     if max_examples <= 0:

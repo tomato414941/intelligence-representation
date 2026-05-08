@@ -6,7 +6,7 @@ Status: closed.
 
 Shogi value targets currently come from the final game winner only.
 
-`ShogiMoveChoiceExample.value_target` is derived during conversion from
+`ShogiPolicyValueExample.value_target` is derived during conversion from
 `ShogiGameRecord.winner`: positions where the side to move later wins get
 `+1.0`, and positions where the side to move later loses get `-1.0`. Positions
 from games without a winner have no value target.
@@ -89,7 +89,7 @@ This keeps the YaneuraOu value-teacher route available without making it the
 only route.
 
 `ShogiGameRecord` no longer stores derived `policy_targets`. It keeps raw
-experience and raw `usi_info_lines`; `ShogiMoveChoiceExample` is where the
+experience and raw `usi_info_lines`; `ShogiPolicyValueExample` is where the
 selected policy/value targets appear. Training metrics include the Dataset
 Definition, so runs record which policy and value sources were used.
 

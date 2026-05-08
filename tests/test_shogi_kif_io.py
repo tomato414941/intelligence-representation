@@ -32,7 +32,6 @@ class ShogiKifIoTest(unittest.TestCase):
         self.assertEqual(record_moves, ("7g7f", "3c3d"))
         self.assertEqual(winner, "w")
         self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
-        self.assertEqual([example.value_target for example in examples], [-1.0, 1.0])
 
     def test_converts_kif_files_to_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

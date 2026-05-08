@@ -13,7 +13,7 @@ from intrep.tasks.shogi_move_choice.dataset_definition import (
     load_shogi_move_choice_dataset_examples,
     shogi_move_choice_dataset_definition_to_json,
 )
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset, ShogiMoveChoiceExample
+from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
 from intrep.tasks.shogi_move_choice.training import evaluate_shogi_move_choice_metrics
 
 
@@ -93,14 +93,14 @@ def evaluate_shogi_move_choice_checkpoint(
 
 
 def _loader(
-    examples: list[ShogiMoveChoiceExample],
+    examples: list[ShogiPolicyValueExample],
     *,
     batch_size: int,
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
     return DataLoader(
-        ShogiMoveChoiceDataset(examples),
+        ShogiPolicyValueDataset(examples),
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
@@ -109,11 +109,11 @@ def _loader(
 
 
 def _limit_examples(
-    examples: list[ShogiMoveChoiceExample],
+    examples: list[ShogiPolicyValueExample],
     max_examples: int | None,
     *,
     label: str,
-) -> list[ShogiMoveChoiceExample]:
+) -> list[ShogiPolicyValueExample]:
     if max_examples is None:
         return examples
     if max_examples <= 0:
@@ -121,7 +121,7 @@ def _limit_examples(
     return examples[:max_examples]
 
 
-def _policy_target_summary(examples: list[ShogiMoveChoiceExample]) -> dict[str, float | int]:
+def _policy_target_summary(examples: list[ShogiPolicyValueExample]) -> dict[str, float | int]:
     available_counts = [
         sum(1 for weight in example.policy_targets.values() if weight > 0.0)
         for example in examples

@@ -16,7 +16,7 @@ from intrep.tasks.shogi_move_choice.dataset_definition import (
     load_shogi_move_choice_dataset_examples,
     shogi_move_choice_dataset_definition_to_json,
 )
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
+from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueExample
 from intrep.tasks.shogi_move_choice.training import (
     ShogiMoveChoiceTrainingConfig,
     ShogiMoveChoiceTrainingProgress,
@@ -117,7 +117,7 @@ def main() -> None:
     print(json.dumps(metrics, indent=2))
 
 
-def _policy_target_summary(examples: list[ShogiMoveChoiceExample]) -> dict[str, float | int]:
+def _policy_target_summary(examples: list[ShogiPolicyValueExample]) -> dict[str, float | int]:
     available_counts = [
         sum(1 for weight in example.policy_targets.values() if weight > 0.0)
         for example in examples

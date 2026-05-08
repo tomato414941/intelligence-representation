@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
+from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueExample
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoi
 
 def load_shogi_move_choice_dataset_examples(
     definition: ShogiMoveChoiceDatasetDefinition,
-) -> tuple[list[ShogiMoveChoiceExample], list[ShogiMoveChoiceExample]]:
+) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
     train_examples = _load_sources(
         definition.train_sources,
         policy_target_source=definition.policy_target_source,
@@ -168,8 +168,8 @@ def _load_sources(
     policy_temperature_cp: float,
     policy_mate_cp: float,
     score_cp_scale: float,
-) -> list[ShogiMoveChoiceExample]:
-    examples: list[ShogiMoveChoiceExample] = []
+) -> list[ShogiPolicyValueExample]:
+    examples: list[ShogiPolicyValueExample] = []
     for source in sources:
         if source.kind == "game_records_jsonl":
             examples.extend(

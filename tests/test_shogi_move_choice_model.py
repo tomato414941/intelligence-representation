@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceDataset
-from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves
+from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset
+from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.tasks.shogi_move_choice.model import (
     SharedCoreShogiMoveChoiceModel,
@@ -116,8 +116,8 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
 
 def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
-    dataset = ShogiMoveChoiceDataset(examples)
+    examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+    dataset = ShogiPolicyValueDataset(examples)
     rows = [dataset[index] for index in range(len(dataset))]
     return tuple(torch.stack(values) for values in zip(*rows))  # type: ignore[return-value]
 

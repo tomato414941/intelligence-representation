@@ -8,6 +8,8 @@ from typing import Sequence
 
 from intrep.tasks.shogi_move_choice.examples import (
     ShogiMoveChoiceExample,
+    ShogiPolicyValueExample,
+    ShogiPositionValueExample,
 )
 from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
@@ -22,14 +24,14 @@ def load_shogi_move_choice_examples_from_game_records_jsonl(
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
     max_games: int | None = None,
-) -> list[ShogiMoveChoiceExample]:
+) -> list[ShogiPolicyValueExample]:
     if max_games is not None and max_games <= 0:
         raise ValueError("max_games must be positive")
-    examples: list[ShogiMoveChoiceExample] = []
+    examples: list[ShogiPolicyValueExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
         if max_games is not None and game_index >= max_games:
             break
-        game_examples = shogi_move_choice_examples_from_game_record(
+        game_examples = shogi_policy_value_examples_from_game_record(
             record,
             policy_target_source=policy_target_source,
             value_target_source=value_target_source,
@@ -41,7 +43,7 @@ def load_shogi_move_choice_examples_from_game_records_jsonl(
     return examples
 
 
-def shogi_move_choice_examples_from_game_record(
+def shogi_policy_value_examples_from_game_record(
     record: ShogiGameRecord,
     *,
     policy_target_source: str = "chosen_move",
@@ -49,7 +51,7 @@ def shogi_move_choice_examples_from_game_record(
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
-) -> list[ShogiMoveChoiceExample]:
+) -> list[ShogiPolicyValueExample]:
     policy_targets = shogi_policy_targets_from_game_record(
         record,
         source=policy_target_source,
@@ -62,11 +64,55 @@ def shogi_move_choice_examples_from_game_record(
         score_cp_scale=score_cp_scale,
     )
     return [
+        ShogiPolicyValueExample(
+            position_sfen=transition.position_sfen,
+            legal_moves=transition.legal_moves,
+            chosen_move=transition.action_usi,
+            policy_targets=policy_targets[index],
+            value_target=value_targets[index],
+        )
+        for index, transition in enumerate(record.transitions)
+    ]
+
+
+def shogi_move_choice_examples_from_game_record(
+    record: ShogiGameRecord,
+    *,
+    policy_target_source: str = "chosen_move",
+    policy_temperature_cp: float = 100.0,
+    policy_mate_cp: float = 100000.0,
+) -> list[ShogiMoveChoiceExample]:
+    policy_targets = shogi_policy_targets_from_game_record(
+        record,
+        source=policy_target_source,
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+    )
+    return [
         ShogiMoveChoiceExample(
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,
             chosen_move=transition.action_usi,
             policy_targets=policy_targets[index],
+        )
+        for index, transition in enumerate(record.transitions)
+    ]
+
+
+def shogi_position_value_examples_from_game_record(
+    record: ShogiGameRecord,
+    *,
+    value_target_source: str = "winner",
+    score_cp_scale: float = 600.0,
+) -> list[ShogiPositionValueExample]:
+    value_targets = shogi_value_targets_from_game_record(
+        record,
+        source=value_target_source,
+        score_cp_scale=score_cp_scale,
+    )
+    return [
+        ShogiPositionValueExample(
+            position_sfen=transition.position_sfen,
             value_target=value_targets[index],
         )
         for index, transition in enumerate(record.transitions)
@@ -181,10 +227,10 @@ def _score_cp_from_fields(fields: dict[str, object], *, mate_cp: float) -> float
 
 
 def _with_game_metadata(
-    examples: Sequence[ShogiMoveChoiceExample],
+    examples: Sequence[ShogiPolicyValueExample],
     *,
     game_index: int,
-) -> list[ShogiMoveChoiceExample]:
+) -> list[ShogiPolicyValueExample]:
     return [
         replace(example, game_index=game_index, ply_index=ply_index)
         for ply_index, example in enumerate(examples)

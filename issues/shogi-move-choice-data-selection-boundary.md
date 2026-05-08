@@ -18,12 +18,12 @@ It currently contains:
 - source-level target policy overrides on individual sources
 
 `load_shogi_move_choice_dataset_examples()` also uses that combined structure to
-select records and construct `ShogiMoveChoiceExample` values in one step.
+select records and construct `ShogiPolicyValueExample` values in one step.
 
 ## Why It Matters
 
 Source-level target policy now works, so the remaining concern is narrower:
-record selection and `ShogiMoveChoiceExample` construction still happen through
+record selection and `ShogiPolicyValueExample` construction still happen through
 one `DatasetDefinition` loader.
 
 The broader responsibility issue was closed in
@@ -62,7 +62,7 @@ Avoid compatibility aliases when this is eventually renamed or split.
   replaced.
 - [x] Decide whether target policy belongs globally, per source, or both with a
   default/inheritance rule.
-- Decide whether record selection and `ShogiMoveChoiceExample` construction
+- Decide whether record selection and `ShogiPolicyValueExample` construction
   should remain one loader step or become separate steps.
 - [x] Update code and tests only after the boundary decision is needed by a concrete
   mixed-source run.
