@@ -29,8 +29,8 @@ model output + target
 ### Source-Side Package
 
 A source-side package holds source records, forms, IO, encodings, conversions,
-input layers, or world-like utilities for a source family or representation
-family.
+input preparation utilities, or world-like utilities for a source family or
+representation family.
 
 Current source-side packages remain intentionally narrow:
 
@@ -245,6 +245,14 @@ Examples:
 
 Cached token IDs or tensors are still encodings. They may have a file format on
 disk, but their role in the pipeline is encoded model input preparation.
+
+### Input Embedding Module
+
+An input embedding module is a model-side module that converts model inputs or
+encodings into input embedding sequences for the shared core.
+
+Use this term when precision matters. `Input layer` is acceptable in informal
+discussion, but it is too broad as a project boundary term.
 
 ### Input Embedding
 

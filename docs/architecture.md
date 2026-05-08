@@ -27,7 +27,7 @@ Use [Glossary](glossary.md) for the current boundary terms.
 
 - `core/`: domain-agnostic representation computation and shared utilities.
 - `vision/`, `text/`: source-side packages for form/input-oriented external
-  forms, encodings, IO, input layers, and conversions.
+  forms, encodings, IO, and conversions.
 - `worlds/`: source-side packages for world-oriented records, replay,
   observations, actions, transitions, encodings, and world-like utilities.
   Current packages include `worlds/shogi/` and `worlds/grid/`.

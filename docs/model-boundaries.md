@@ -18,7 +18,7 @@ Transformer core.
 
 ```text
 source records
-  -> modality-specific input layers
+  -> modality-specific input embedding modules
   -> input embedding sequence
   -> shared Transformer core
   -> hidden states
@@ -54,13 +54,13 @@ video or audio tasks:
 
 The source record shape should be chosen for the task and source data. Do not
 add generic cross-task fields just to make unrelated tasks look uniform. Add
-structure only when a tokenizer, input layer, training objective, or evaluator
-actually uses it.
+structure only when a tokenizer, input embedding module, training objective, or
+evaluator actually uses it.
 
-## Input Layers
+## Input Embedding Modules
 
-Input layers are the modality-specific path from raw data to model input
-vectors.
+Input embedding modules are the model-side path from model inputs or encodings
+to input embedding sequences.
 
 For text, the path usually has a tokenizer and an embedding layer.
 
@@ -93,10 +93,10 @@ image-text-choice JSONL
   -> candidate score
 ```
 
-Other modalities can use their own input layers. A full text, image, audio, or
-video encoder may include both input layers and a Transformer or CNN body. This
-document names the boundary explicitly because `encoder` is often used at
-multiple levels of granularity.
+Other modalities can use their own input embedding modules. A full text, image,
+audio, or video encoder may include both input embedding modules and a
+Transformer or CNN body. This document names the boundary explicitly because
+`encoder` is often used at multiple levels of granularity.
 
 ## Input Embedding Sequence
 
@@ -133,8 +133,8 @@ hidden states:
 ## Current Base Transformer Core
 
 The current base model is the shared Transformer core plus task-specific input
-layers and output heads. Text, image, grid, and shogi routes can use different
-input layers and heads while keeping the same core shape.
+embedding modules and output heads. Text, image, grid, and shogi routes can use
+different input embedding modules and heads while keeping the same core shape.
 
 The project-wide training size is currently:
 
@@ -187,5 +187,5 @@ hidden states
 
 Selection classification can be implemented with a classification head, a text
 decoder, candidate scoring, or another objective. The important boundary is that
-each input modality reaches the shared core through an appropriate input layer,
-not through a forced raw-data schema.
+each input modality reaches the shared core through an appropriate input
+embedding module, not through a forced raw-data schema.
