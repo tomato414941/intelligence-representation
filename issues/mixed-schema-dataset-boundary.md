@@ -38,6 +38,8 @@ When this becomes concrete, first decide:
 - whether unification happens at the envelope, shared core input, or full sample
   schema boundary
 - which input embedding modules and output heads remain schema-specific
+- which model parts are trained, frozen, adapted, or replaced by precomputed
+  representations
 - how losses and metrics are computed and reported per schema
 
 Core-only or core-focused training from precomputed unified core inputs may be a
@@ -57,6 +59,8 @@ about target encoders, decoders back to external forms, and losses.
 - Decide whether the first unification target is envelope schema, unified core
   input schema, representation-to-representation schema, or unified sample
   schema.
+- Decide the train/freeze policy for input embedding modules, shared core,
+  output heads, adapters, and precomputed representations.
 - Document the chosen boundary before implementing shared routing or collation.
 
 ## Non-Goals
