@@ -61,8 +61,8 @@ or become hard to interpret.
 - Do not introduce a broad model registry before a concrete need exists.
 - Do not require long-lived storage for every local checkpoint as part of this
   issue.
-- Do not solve source-mix selection here; that belongs in
-  `shogi-training-view-source-mix.md`.
+- Do not solve future source-mix controls here; source-mix observability is
+  covered by `closed/shogi-training-view-source-mix.md`.
 
 ## Acceptance Criteria
 
