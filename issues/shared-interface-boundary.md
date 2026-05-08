@@ -17,9 +17,12 @@ It knows concrete external interfaces:
 
 It is currently shared by:
 
-- `problems/image_classification/model.py`
 - `problems/image_text_choice/model.py`
 - `problems/image_text_answer/model.py`
+
+`problems/image_classification/model.py` was split out of this shell and now
+composes `ImagePatchInputLayer`, `SharedTransformerCore`, and
+`ClassificationHead` directly.
 
 Moving it into `core/` as-is would make `core/` depend on concrete image/text
 interfaces. Calling this area `multimodal/` is also premature because the future
