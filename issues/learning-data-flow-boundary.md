@@ -60,7 +60,7 @@ boundary map for concrete supervised, self-supervised, and RL implementations.
 
 ## Related
 
-- [`replay-buffer-vs-experience-store.md`](replay-buffer-vs-experience-store.md)
+- [`replay-buffer-boundary.md`](replay-buffer-boundary.md)
   tracks the concrete Replay Buffer side of this boundary.
 - [`shogi-target-policy-boundary.md`](shogi-target-policy-boundary.md) tracks
   the current shogi target-policy compromise.
