@@ -148,6 +148,61 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
 
+    def test_creates_replay_view_from_game_record_sources(self) -> None:
+        replay_module = _load_script_module("create_shogi_replay_view")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_a = root / "train-a.jsonl"
+            train_b = root / "train-b.jsonl"
+            eval_path = root / "eval.jsonl"
+            output_root = root / "datasets"
+            checkpoint_records = [
+                _record(("7g7f", "3c3d"), "black"),
+                _record(("2g2f", "8c8d"), "white"),
+                _record(("5g5f", "5c5d"), "black"),
+            ]
+            yaneuraou_records = [
+                _record(("6g6f", "6c6d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("4g4f", "4c4d"), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("3g3f", "3c3d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+            ]
+            eval_records = [
+                _record(("8g8f", "8c8d"), "black"),
+                _record(("9g9f", "9c9d"), "white"),
+            ]
+            write_shogi_game_records_jsonl(train_a, checkpoint_records)
+            write_shogi_game_records_jsonl(train_b, yaneuraou_records)
+            write_shogi_game_records_jsonl(eval_path, eval_records)
+
+            result = replay_module.create_shogi_replay_view(
+                train_games=(train_a, train_b),
+                eval_games=eval_path,
+                name="replay-current",
+                output_root=output_root,
+                max_train_games=4,
+                max_eval_games=1,
+                actor_pair_ratios={"checkpoint:yaneuraou": 0.5, "yaneuraou:yaneuraou": 0.5},
+                seed=11,
+            )
+
+            view_dir = output_root / "replay-current"
+            self.assertEqual(result["training_view"], str(view_dir))
+            self.assertEqual(result["train_games"], 4)
+            self.assertEqual(result["eval_games"], 1)
+            train_records = load_shogi_game_records_jsonl(view_dir / "train-games.jsonl")
+            self.assertEqual(len(train_records), 4)
+            definition = load_shogi_policy_value_data_selection(view_dir / "data-selection.json")
+            self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
+            self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
+            manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema"], "shogi_replay_view_v1")
+            self.assertEqual(manifest["train_source_games_jsonl"], [str(train_a), str(train_b)])
+            self.assertEqual(manifest["available_train_games"], 6)
+            self.assertEqual(manifest["available_eval_games"], 2)
+            self.assertEqual(manifest["actor_pair_ratios"], {"checkpoint:yaneuraou": 0.5, "yaneuraou:yaneuraou": 0.5})
+            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
+            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+
     def test_refuses_to_overwrite_existing_training_view(self) -> None:
         view_module = _load_script_module("create_shogi_training_view")
         with tempfile.TemporaryDirectory() as directory:

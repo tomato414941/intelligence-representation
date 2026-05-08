@@ -46,7 +46,10 @@ between stored experience and training batches.
 Do not rename Experience Store to Replay Buffer.
 
 Experience Store should remain the durable source of generated experience.
-Replay Buffer should describe how training samples from stored experience.
+Replay Buffer should describe how training samples from reusable experience.
+It should not require Experience Store as its only input; Experience Store is
+one possible source of game-record JSONL, alongside run outputs, Qhapaq-derived
+records, teacher-only records, or other generated records.
 
 Prefer a PyTorch-compatible shape:
 
@@ -57,15 +60,24 @@ Prefer a PyTorch-compatible shape:
 - avoid a generic multi-domain replay framework until a second concrete replay
   use case exists
 
-The first implementation should likely be shogi-local and minimal. A clean KISS
-entry point is a replay policy that creates or feeds a Training View while
-recording the source mix, recency policy, duplicate policy, and maximum sample
-count.
+The first implementation is shogi-local and minimal:
+
+- `scripts/create_shogi_replay_view.py`
+- accepts one or more `--train-games` JSONL sources
+- accepts fixed `--eval-games`
+- supports `--max-train-games`, `--max-eval-games`, and
+  `--actor-pair-ratio`
+- outputs a fixed Training View plus `data-selection.json`
+- records available counts, selected counts, actor-pair mix, duplicate stats,
+  and source paths in `manifest.json`
+
+This is a replay-view builder, not an online RL replay buffer.
 
 ## Acceptance Criteria
 
-This issue can close when a minimal Replay Buffer design has been implemented
-or explicitly rejected.
+This issue can close when the minimal replay-view builder is judged sufficient
+for the current RL loop, or when the project decides an online Replay Buffer /
+PyTorch Sampler layer is now needed.
 
 The decision must explain what owns:
 
@@ -82,6 +94,7 @@ The decision must explain what owns:
 - introduce a generic multi-domain replay framework
 - change ShogiGameRecord schema
 - remove Experience Store persistence
+- implement online replay sampling inside the training loop
 
 ## Related
 
