@@ -14,6 +14,8 @@ class ShogiMoveChoiceDatasetSource:
     kind: str
     path: Path
     max_games: int | None = None
+    policy_target_source: str | None = None
+    value_target_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,23 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDat
             max_games = int(item["max_games"])
             if max_games <= 0:
                 raise ValueError("dataset source max_games must be positive")
-        sources.append(ShogiMoveChoiceDatasetSource(kind=kind, path=source_path, max_games=max_games))
+        policy_target_source = None
+        if "policy_target_source" in item:
+            policy_target_source = str(item["policy_target_source"])
+            _validate_policy_target_source_value(policy_target_source)
+        value_target_source = None
+        if "value_target_source" in item:
+            value_target_source = str(item["value_target_source"])
+            _validate_value_target_source_value(value_target_source)
+        sources.append(
+            ShogiMoveChoiceDatasetSource(
+                kind=kind,
+                path=source_path,
+                max_games=max_games,
+                policy_target_source=policy_target_source,
+                value_target_source=value_target_source,
+            )
+        )
     return tuple(sources)
 
 
@@ -119,19 +137,27 @@ def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
 
 
 def _validate_value_target_source(definition: ShogiMoveChoiceDatasetDefinition) -> None:
-    if definition.value_target_source not in {"winner", "yaneuraou_best_score"}:
-        raise ValueError("value_target_source must be winner or yaneuraou_best_score")
+    _validate_value_target_source_value(definition.value_target_source)
     if definition.score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
 
 
 def _validate_policy_target_source(definition: ShogiMoveChoiceDatasetDefinition) -> None:
-    if definition.policy_target_source not in {"chosen_move", "usi_multipv"}:
-        raise ValueError("policy_target_source must be chosen_move or usi_multipv")
+    _validate_policy_target_source_value(definition.policy_target_source)
     if definition.policy_temperature_cp <= 0:
         raise ValueError("policy_temperature_cp must be positive")
     if definition.policy_mate_cp <= 0:
         raise ValueError("policy_mate_cp must be positive")
+
+
+def _validate_value_target_source_value(value: str) -> None:
+    if value not in {"winner", "yaneuraou_best_score"}:
+        raise ValueError("value_target_source must be winner or yaneuraou_best_score")
+
+
+def _validate_policy_target_source_value(value: str) -> None:
+    if value not in {"chosen_move", "usi_multipv"}:
+        raise ValueError("policy_target_source must be chosen_move or usi_multipv")
 
 
 def _load_sources(
@@ -149,8 +175,8 @@ def _load_sources(
             examples.extend(
                 load_shogi_move_choice_examples_from_game_records_jsonl(
                     source.path,
-                    policy_target_source=policy_target_source,
-                    value_target_source=value_target_source,
+                    policy_target_source=source.policy_target_source or policy_target_source,
+                    value_target_source=source.value_target_source or value_target_source,
                     policy_temperature_cp=policy_temperature_cp,
                     policy_mate_cp=policy_mate_cp,
                     score_cp_scale=score_cp_scale,
@@ -171,6 +197,10 @@ def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str | int
     }
     if source.max_games is not None:
         payload["max_games"] = source.max_games
+    if source.policy_target_source is not None:
+        payload["policy_target_source"] = source.policy_target_source
+    if source.value_target_source is not None:
+        payload["value_target_source"] = source.value_target_source
     return payload
 
 

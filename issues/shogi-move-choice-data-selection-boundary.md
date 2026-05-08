@@ -36,10 +36,11 @@ move-choice concrete case.
 
 ## Related Issue
 
-`shogi-source-target-policy-mix.md` tracks the target-policy mix problem. This
-issue is broader: it asks whether the current shogi `DatasetDefinition`
-implementation should be split or renamed now that `Data Selection` is the
-formal inclusion-boundary term.
+`closed/shogi-source-target-policy-mix.md` resolved the target-policy mix
+problem by allowing source-level target policy overrides. This issue is broader:
+it asks whether the current shogi `DatasetDefinition` implementation should be
+split or renamed now that `Data Selection` is the formal inclusion-boundary
+term.
 
 `shogi-move-choice-problem-scope.md` tracks whether `ShogiMoveChoice` is the
 right problem boundary for policy/value/data-construction responsibilities.

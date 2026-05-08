@@ -1,6 +1,6 @@
 # Shogi Source Target Policy Mix
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -33,12 +33,12 @@ policy and value should remain under the `ShogiMoveChoice` problem boundary.
 If target source remains global, mixed Training Views either lose useful teacher
 signals or force weak records into a target policy they cannot support.
 
-## Initial Direction
+## Resolution
 
-Do not implement this until a concrete mixed-source run needs it.
+Implemented source-level target policy in the current shogi `DatasetDefinition`
+implementation.
 
-The likely shape is source-level target policy in the current shogi
-`DatasetDefinition` implementation, or its eventual replacement:
+Each source may now override the global default with:
 
 ```json
 {
@@ -59,8 +59,10 @@ The likely shape is source-level target policy in the current shogi
 }
 ```
 
-Before implementing, decide whether target policy belongs only at source level
-or whether a Training View should also allow a default inherited by each source.
+If a source omits those fields, it inherits the global
+`policy_target_source` / `value_target_source` defaults from the definition.
+
+The implementation does not store derived targets in `ShogiGameRecord`.
 
 ## Non-Goals
 
@@ -70,9 +72,6 @@ or whether a Training View should also allow a default inherited by each source.
 
 ## Acceptance Criteria
 
-This issue can close when we either:
-
-- decide the global Training View target policy is enough, or
-- implement source-level target policy with tests showing different sources can
+- [x] implement source-level target policy with tests showing different sources can
   derive different policy/value targets without storing derived targets in
   `ShogiGameRecord`.

@@ -450,6 +450,61 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             1,
         )
 
+    def test_dataset_source_target_policy_overrides_global_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            teacher_games_path = root / "teacher-games.jsonl"
+            self_play_games_path = root / "self-play-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            dataset_definition_path = root / "dataset.json"
+            write_shogi_game_records_jsonl(
+                teacher_games_path,
+                [_record_with_multipv_info(("7g7f",), "black")],
+            )
+            write_shogi_game_records_jsonl(self_play_games_path, [_record(("2g2f",), "black")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("5g5f",), "black")])
+            dataset_definition_path.write_text(
+                json.dumps(
+                    {
+                        "name": "source-local-target-policy",
+                        "objective": "shogi move-choice policy",
+                        "policy_target_source": "chosen_move",
+                        "policy_temperature_cp": 100.0,
+                        "policy_mate_cp": 100000.0,
+                        "value_target_source": "winner",
+                        "score_cp_scale": 600.0,
+                        "train_sources": [
+                            {
+                                "kind": "game_records_jsonl",
+                                "path": str(teacher_games_path),
+                                "policy_target_source": "usi_multipv",
+                                "value_target_source": "yaneuraou_best_score",
+                            },
+                            {"kind": "game_records_jsonl", "path": str(self_play_games_path)},
+                        ],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            definition = load_shogi_move_choice_dataset_definition(dataset_definition_path)
+            train_examples, eval_examples = load_shogi_move_choice_dataset_examples(definition)
+
+        self.assertEqual(definition.train_sources[0].policy_target_source, "usi_multipv")
+        self.assertEqual(definition.train_sources[0].value_target_source, "yaneuraou_best_score")
+        self.assertEqual(train_examples[0].policy_targets, {"7g7f": 1.0})
+        self.assertIsNotNone(train_examples[0].value_target)
+        self.assertNotEqual(train_examples[0].value_target, 1.0)
+        self.assertIsNone(train_examples[1].policy_targets)
+        self.assertEqual(train_examples[1].value_target, 1.0)
+        self.assertIsNone(eval_examples[0].policy_targets)
+        self.assertEqual(eval_examples[0].value_target, 1.0)
+        source_json = shogi_move_choice_dataset_definition_to_json(definition)["train_sources"][0]
+        self.assertEqual(source_json["policy_target_source"], "usi_multipv")
+        self.assertEqual(source_json["value_target_source"], "yaneuraou_best_score")
+
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
