@@ -7,7 +7,11 @@ def load_compatible_shared_state(
     model: torch.nn.Module,
     state_dict: dict[str, torch.Tensor],
 ) -> tuple[str, ...]:
-    """Load matching components and skip missing or shape-incompatible state."""
+    """Initialize matching components from another model state.
+
+    This is a transfer-initialization helper, not a checkpoint restore path.
+    Full checkpoint loads should use strict state dict loading.
+    """
     current_state = model.state_dict()
     compatible_state = {
         name: value
