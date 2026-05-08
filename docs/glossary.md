@@ -202,6 +202,18 @@ PyTorch-side item that can be batched by a `DataLoader`.
 A sample may be built from a training example, but it may already contain
 tensors, masks, encoded forms, or metadata needed by the training loop.
 
+### Sample Schema
+
+A Sample Schema defines the fields and meanings of a sample. Samples with the
+same schema can usually share collation, model routing, loss, and metrics.
+
+The schema is semantic, not only structural. Two samples with the same tensor
+shapes may still have different schemas if their fields mean different things.
+
+A dataset may contain one Sample Schema or multiple Sample Schemas. Mixed-schema
+datasets are allowed conceptually, but they require explicit routing,
+collation, loss, and metric handling.
+
 ### PyTorch Dataset
 
 A PyTorch `Dataset` is an adapter that returns indexed samples for training or
