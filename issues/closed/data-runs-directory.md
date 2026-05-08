@@ -34,9 +34,9 @@ the data tree.
 
 ## Resolution
 
-`data/runs/` was removed. Its 37 local files were moved to
-`runs/data-runs-archive/` because they are historical run outputs or ad-hoc
-run-local train/eval JSONL files, not durable source data.
+`data/runs/` was removed. Its 37 local files were historical run outputs or
+ad-hoc run-local train/eval JSONL files, not durable source data. They were
+temporarily moved under `runs/` for review and then deleted.
 
 No code or docs outside this issue referenced those file names. The project
 root `runs/` directory remains the disposable run-output location.
