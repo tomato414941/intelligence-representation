@@ -25,3 +25,18 @@ Each entry should include:
   elements rather than blend all elements.
 - Status: note only. Do not implement until the current data, evaluation, and
   model-management basics are stable.
+
+## Modular Memory Is the Key to Continual Learning Agents
+
+- Source: https://arxiv.org/abs/2603.01761
+- Topic: continual learning agents; modular memory; in-weight learning and
+  in-context learning.
+- Why it matters: continual adaptation should not rely only on updating model
+  weights. External memory can accumulate experience quickly, while weight
+  updates can absorb stable capabilities more slowly.
+- Possible project relevance: supports keeping generated experience as durable
+  source material, selecting Training Views from it, and considering future
+  retrieval or memory-based use instead of forcing every experience directly
+  into checkpoints.
+- Status: note only. Use as design context for Experience Store, Training View,
+  and continual-learning boundaries.
