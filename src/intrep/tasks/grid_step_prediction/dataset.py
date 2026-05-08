@@ -10,6 +10,13 @@ from intrep.worlds.grid.world import GridExperienceTransition
 
 
 class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
+    """Returns deterministic transition-prediction samples from grid experience.
+
+    The next-cell, reward, and terminated targets are cheap to derive from each
+    transition, so this dataset materializes them as runtime samples instead of
+    storing separate Training Example records.
+    """
+
     def __init__(self, examples: Sequence[GridExperienceTransition]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
