@@ -10,7 +10,8 @@ starting to live there instead of in importable package code.
 Current shogi-heavy scripts include:
 
 - `scripts/append_shogi_experience_store.py`
-- `scripts/create_shogi_training_view.py`
+- `scripts/create_shogi_training_view.py` now delegates its reusable behavior
+  to `src/intrep/worlds/shogi/training_view.py`.
 - `scripts/create_shogi_replay_view.py` now delegates its reusable behavior to
   `src/intrep/worlds/shogi/replay.py`.
 
@@ -54,7 +55,7 @@ and print JSON results.
 ## Acceptance Criteria
 
 - Shogi Experience Store append behavior is importable from package code.
-- Shogi Training View creation behavior is importable from package code.
+- Shogi Training View creation behavior is importable from package code. [x]
 - Shogi replay selection / replay-view creation behavior is importable from
   package code. [x]
 - The corresponding scripts remain as thin wrappers or are removed if no longer

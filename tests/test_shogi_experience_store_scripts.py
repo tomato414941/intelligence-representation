@@ -20,6 +20,7 @@ from intrep.worlds.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.replay import create_shogi_replay_view
+from intrep.worlds.shogi.training_view import create_shogi_training_view
 
 
 BLACK_ACTOR = ShogiActorSpec(
@@ -91,7 +92,6 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(second_history["total_position_stats"]["unique_position_count"], 4)
 
     def test_creates_fixed_training_view_from_explicit_train_eval_sources(self) -> None:
-        view_module = _load_script_module("create_shogi_training_view")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train-source.jsonl"
@@ -108,7 +108,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(train_path, train_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
 
-            result = view_module.create_shogi_training_view(
+            result = create_shogi_training_view(
                 train_games=train_path,
                 eval_games=eval_path,
                 name="main-view-0001",
@@ -150,6 +150,32 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["position_stats"]["unique_position_count"], 3)
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
+
+    def test_training_view_script_is_thin_cli_wrapper(self) -> None:
+        view_module = _load_script_module("create_shogi_training_view")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train.jsonl"
+            eval_path = root / "eval.jsonl"
+            output_root = root / "datasets"
+            write_shogi_game_records_jsonl(train_path, [_record(("7g7f", "3c3d"), "black")])
+            write_shogi_game_records_jsonl(eval_path, [_record(("2g2f", "8c8d"), "white")])
+
+            with patch("sys.stdout", new_callable=StringIO):
+                view_module.main(
+                    [
+                        "--train-games",
+                        str(train_path),
+                        "--eval-games",
+                        str(eval_path),
+                        "--name",
+                        "cli-view",
+                        "--output-root",
+                        str(output_root),
+                    ]
+                )
+
+            self.assertTrue((output_root / "cli-view" / "data-selection.json").exists())
 
     def test_creates_replay_view_from_game_record_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -243,7 +269,6 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["train_games"], 1)
 
     def test_refuses_to_overwrite_existing_training_view(self) -> None:
-        view_module = _load_script_module("create_shogi_training_view")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
@@ -260,7 +285,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             (output_root / "existing").mkdir(parents=True)
 
             with self.assertRaises(FileExistsError):
-                view_module.create_shogi_training_view(
+                create_shogi_training_view(
                     train_games=train_path,
                     eval_games=eval_path,
                     name="existing",
