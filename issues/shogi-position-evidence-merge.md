@@ -1,6 +1,6 @@
 # Shogi Position Evidence Merge
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
@@ -37,6 +37,10 @@ useful higher-quality annotations.
 ## Initial Policy
 
 Do not merge evidence in the raw Experience Store.
+
+Current Training Views may keep repeated positions as repeated samples. This is
+acceptable while duplicate/evidence effects are visible through manifest stats
+and no concrete run needs a merge policy.
 
 Do not implement a generic annotation framework yet. Keep this issue focused on
 shogi positions and only implement a merge policy when a concrete Training View
