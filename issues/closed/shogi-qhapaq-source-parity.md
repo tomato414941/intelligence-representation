@@ -5,7 +5,7 @@ Status: closed.
 ## Issue
 
 Qhapaq should be treated as one shogi data source in the same Experience Store
-and Training View flow, not as a special training path.
+and Training Data Bundle flow, not as a special training path.
 
 Current stale paths still treat Qhapaq specially:
 
@@ -32,11 +32,11 @@ This issue is closed because:
 - RunPod shogi training now consumes a caller-selected Dataset Definition
   through `DATASET_DEFINITION` instead of defaulting to Qhapaq train/eval JSONL.
 - The RunPod script syncs the Dataset Definition and its referenced
-  game-record JSONL sources, so Qhapaq is just one possible Training View
+  game-record JSONL sources, so Qhapaq is just one possible Training Data Bundle
   source rather than a special training path.
 - Existing compute-cost rows that mention Qhapaq are historical cost evidence,
   not current source-selection policy.
 
-Qhapaq-derived records can still be used by creating a Training View or Dataset
+Qhapaq-derived records can still be used by creating a Training Data Bundle or Dataset
 Definition that points at Qhapaq game records. Do not reintroduce Qhapaq-specific
 training defaults unless the run is explicitly a Qhapaq historical comparison.

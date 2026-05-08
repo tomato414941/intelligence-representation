@@ -5,7 +5,7 @@ Status: closed.
 ## Issue
 
 `data/shogi/` contains several shogi-specific data areas, including generated
-experience, training views, copied records, and possibly runtime/player
+experience, training data bundles, copied records, and possibly runtime/player
 configuration.
 
 Some of this belongs under `data/`, but the directory should not become a
@@ -14,11 +14,11 @@ catch-all for shogi runtime configuration or historical run artifacts.
 ## Why It Matters
 
 The project now treats `data/` as the home for source data, processed data,
-durable experience, training views, and useful derived data. Runtime
+durable experience, training data bundles, and useful derived data. Runtime
 configuration and disposable run output should live elsewhere.
 
 If `data/shogi/` stays broad, future shogi work may put player picks, checkpoint
-references, run summaries, generated records, training views, and caches in the
+references, run summaries, generated records, training data bundles, and caches in the
 same place without clear responsibility.
 
 ## Scope
@@ -36,9 +36,9 @@ same place without clear responsibility.
 - [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md)
   later removed the player registry.
 - [`../experience-store-generalization-boundary.md`](../experience-store-generalization-boundary.md)
-  tracks whether Experience Store and its Training View lifecycle should
+  tracks whether Experience Store and its Training Data Bundle lifecycle should
   generalize beyond shogi.
-- [`shogi-training-view-tensor-cache.md`](shogi-training-view-tensor-cache.md)
+- [`shogi-training-data-bundle-tensor-cache.md`](shogi-training-data-bundle-tensor-cache.md)
   tracks shogi training cache performance.
 
 ## Acceptance Criteria
@@ -51,7 +51,7 @@ tracked by a narrower open issue.
 
 The current direct children under `data/shogi/` were inspected:
 
-- `datasets/`: durable Training Views / Dataset Snapshots.
+- `datasets/`: durable Training Data Bundles / Dataset Snapshots.
 - `experiences/`: shogi Experience Stores.
 - `records/`: source-derived copied record sets.
 - `player-registry.json`: removed by
@@ -66,5 +66,5 @@ data directory is tracked separately in
 
 - redesign shogi Experience Store
 - reintroduce player registry policy
-- introduce a generic Experience Store or Training View abstraction
+- introduce a generic Experience Store or Training Data Bundle abstraction
 - move Qhapaq data into `data/shogi/`

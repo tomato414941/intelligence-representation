@@ -1,20 +1,20 @@
-# Shogi Training View Tensor Cache
+# Shogi Training Data Bundle Tensor Cache
 
 Status: open.
 
 ## Issue
 
-Shogi policy-value training still rebuilds examples from Training View JSONL
+Shogi policy-value training still rebuilds examples from Training Data Bundle JSONL
 files on each run.
 
-The ShogiGameRecord source and Training View snapshot should stay as the
+The ShogiGameRecord source and Training Data Bundle snapshot should stay as the
 auditable source format, but repeated training should not always need to parse
 JSONL, regenerate legal-move features, and materialize a large Python object
 list.
 
 ## Why It Matters
 
-Training views now give a fixed dataset input for training, but each run still
+Training data bundles now give a fixed dataset input for training, but each run still
 loads JSONL, rebuilds policy-value examples, and materializes Python objects.
 This is simple, but it will become slow and memory-heavy as RL-generated shogi
 experience grows.
@@ -37,11 +37,11 @@ location.
 
 ## Initial Policy
 
-Add a derived cache for shogi Training Views when JSONL rebuild cost becomes a
+Add a derived cache for shogi Training Data Bundles when JSONL rebuild cost becomes a
 real blocker. Do not change the ShogiGameRecord source schema for this.
 
 If the cache is added, keep it separate from source-derived records. A location
-such as `data/qhapaq/cache/shogi-policy-value/` or a Training View-specific
+such as `data/qhapaq/cache/shogi-policy-value/` or a Training Data Bundle-specific
 cache directory is preferable to `runs/`, because reusable caches are not
 run-output artifacts.
 
@@ -54,7 +54,7 @@ Prefer PyTorch mechanisms for runtime sampling and batching:
 
 ## Acceptance Criteria
 
-This issue can close when shogi Training Views have a PyTorch-native tensorized
+This issue can close when shogi Training Data Bundles have a PyTorch-native tensorized
 cache or Dataset path that avoids rebuilding all policy-value examples from
 JSONL each run.
 

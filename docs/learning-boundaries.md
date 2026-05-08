@@ -23,7 +23,7 @@ are included for a declared use.
 
 Experience Stores are source storage for generated or collected experience.
 They are not PyTorch Datasets and should not be the direct learning boundary.
-Training should use explicit Data Selection or a fixed Training View derived
+Training should use explicit Data Selection or a fixed Training Data Bundle derived
 from them.
 
 PyTorch `Dataset` objects should stay thinner than Data Selection. They adapt

@@ -1,10 +1,10 @@
-# Experience Store Training View Boundary
+# Experience Store Training Data Bundle Boundary
 
 Status: closed.
 
 ## Issue
 
-Experience Store and Training View lifecycle support exists only for shogi.
+Experience Store and Training Data Bundle lifecycle support exists only for shogi.
 
 That may be correct for the first implementation, but the project is expected
 to learn from many kinds of generated experience. If grid, image, text, or other
@@ -16,8 +16,8 @@ workflow only inside shogi scripts will become a project-structure problem.
 The current shogi lifecycle is:
 
 - append generated ShogiGameRecord data to an Experience Store
-- create an immutable Training View
-- train from the Training View through Data Selection or the current shogi
+- create an immutable Training Data Bundle
+- train from the Training Data Bundle through Data Selection or the current shogi
   `DatasetDefinition` implementation
 
 This lifecycle may also apply to future RL, self-supervised, or generated-data
@@ -50,7 +50,7 @@ This issue can close when one of the following is true:
 
 ## Non-Goals
 
-- optimize shogi Training View loading performance
+- optimize shogi Training Data Bundle loading performance
 - add tensorized shogi caches
 - introduce a generic store/view framework before a second concrete use case
 
@@ -62,7 +62,7 @@ This issue was merged into
 The distinction between the two issues was too small to justify separate
 tracking:
 
-- this issue covered generalizing the Experience Store -> Training View ->
+- this issue covered generalizing the Experience Store -> Training Data Bundle ->
   training lifecycle
 - the remaining issue covers generalizing Experience Store and, when needed,
-  its Training View lifecycle together
+  its Training Data Bundle lifecycle together

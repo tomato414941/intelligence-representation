@@ -10,7 +10,7 @@ from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_tra
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 
-def create_shogi_training_view(
+def create_shogi_training_data_bundle(
     *,
     train_games: Path | tuple[Path, ...],
     eval_games: Path,
@@ -34,7 +34,7 @@ def create_shogi_training_view(
     manifest_path = output_dir / "manifest.json"
 
     if output_dir.exists():
-        raise FileExistsError(f"training view already exists: {output_dir}")
+        raise FileExistsError(f"training data bundle already exists: {output_dir}")
     _validate_max_games(max_train_games, label="max_train_games")
     _validate_max_games(max_eval_games, label="max_eval_games")
 
@@ -54,9 +54,9 @@ def create_shogi_training_view(
     )
     eval_records = _limit_records(available_eval_records, max_eval_games)
     if not train_records:
-        raise ValueError("training view selection must produce at least one train game")
+        raise ValueError("training data bundle selection must produce at least one train game")
     if not eval_records:
-        raise ValueError("training view selection must produce at least one eval game")
+        raise ValueError("training data bundle selection must produce at least one eval game")
     records = train_records + eval_records
     train_eval_position_stats = shogi_train_eval_position_stats(train_records, eval_records).to_dict()
 
@@ -79,7 +79,7 @@ def create_shogi_training_view(
     data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
-        "schema": "shogi_training_view_v1",
+        "schema": "shogi_training_data_bundle_v1",
         "record_schema": "shogi_game_record_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),
@@ -115,7 +115,7 @@ def create_shogi_training_view(
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     return {
-        "training_view": str(output_dir),
+        "training_data_bundle": str(output_dir),
         "data_selection_json": str(data_selection_json),
         "games_jsonl": str(games_jsonl),
         "train_jsonl": str(train_jsonl),

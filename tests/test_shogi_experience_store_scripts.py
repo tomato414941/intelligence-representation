@@ -20,7 +20,7 @@ from intrep.worlds.shogi.game_record import (
     shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.training_view import create_shogi_training_view
+from intrep.worlds.shogi.training_data_bundle import create_shogi_training_data_bundle
 
 
 BLACK_ACTOR = ShogiActorSpec(
@@ -104,7 +104,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertTrue((store_dir / "games.jsonl").exists())
             self.assertTrue((store_dir / "manifest.json").exists())
 
-    def test_creates_fixed_training_view_from_explicit_train_eval_sources(self) -> None:
+    def test_creates_fixed_training_data_bundle_from_explicit_train_eval_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train-source.jsonl"
@@ -121,7 +121,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(train_path, train_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
 
-            result = create_shogi_training_view(
+            result = create_shogi_training_data_bundle(
                 train_games=train_path,
                 eval_games=eval_path,
                 name="main-view-0001",
@@ -131,7 +131,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             )
 
             view_dir = output_root / "main-view-0001"
-            self.assertEqual(result["training_view"], str(view_dir))
+            self.assertEqual(result["training_data_bundle"], str(view_dir))
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), [train_records[0], eval_records[0]])
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), [train_records[0]])
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), [eval_records[0]])
@@ -147,7 +147,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(definition.train_sources[0].max_games, 1)
             self.assertEqual(definition.eval_sources[0].max_games, 1)
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schema"], "shogi_training_view_v1")
+            self.assertEqual(manifest["schema"], "shogi_training_data_bundle_v1")
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_path)])
             self.assertEqual(manifest["eval_source_games_jsonl"], str(eval_path))
             self.assertEqual(manifest["max_train_games"], 1)
@@ -164,8 +164,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["policy_target_source"], "chosen_move")
             self.assertEqual(manifest["value_target_source"], "winner")
 
-    def test_training_view_script_is_thin_cli_wrapper(self) -> None:
-        view_module = _load_script_module("create_shogi_training_view")
+    def test_training_data_bundle_script_is_thin_cli_wrapper(self) -> None:
+        view_module = _load_script_module("create_shogi_training_data_bundle")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
@@ -190,7 +190,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             self.assertTrue((output_root / "cli-view" / "data-selection.json").exists())
 
-    def test_creates_training_view_from_selected_game_record_sources(self) -> None:
+    def test_creates_training_data_bundle_from_selected_game_record_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_a = root / "train-a.jsonl"
@@ -215,7 +215,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(train_b, yaneuraou_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
 
-            result = create_shogi_training_view(
+            result = create_shogi_training_data_bundle(
                 train_games=(train_a, train_b),
                 eval_games=eval_path,
                 name="main-view-selected",
@@ -227,7 +227,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             )
 
             view_dir = output_root / "main-view-selected"
-            self.assertEqual(result["training_view"], str(view_dir))
+            self.assertEqual(result["training_data_bundle"], str(view_dir))
             self.assertEqual(result["train_games"], 4)
             self.assertEqual(result["eval_games"], 1)
             train_records = load_shogi_game_records_jsonl(view_dir / "train-games.jsonl")
@@ -236,7 +236,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
             self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schema"], "shogi_training_view_v1")
+            self.assertEqual(manifest["schema"], "shogi_training_data_bundle_v1")
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_a), str(train_b)])
             self.assertEqual(manifest["available_train_games"], 6)
             self.assertEqual(manifest["available_eval_games"], 2)
@@ -244,8 +244,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
 
-    def test_training_view_script_selects_from_input_games(self) -> None:
-        view_module = _load_script_module("create_shogi_training_view")
+    def test_training_data_bundle_script_selects_from_input_games(self) -> None:
+        view_module = _load_script_module("create_shogi_training_data_bundle")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
@@ -281,7 +281,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["train_games"], 1)
 
-    def test_refuses_to_overwrite_existing_training_view(self) -> None:
+    def test_refuses_to_overwrite_existing_training_data_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_path = root / "train.jsonl"
@@ -298,7 +298,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             (output_root / "existing").mkdir(parents=True)
 
             with self.assertRaises(FileExistsError):
-                create_shogi_training_view(
+                create_shogi_training_data_bundle(
                     train_games=train_path,
                     eval_games=eval_path,
                     name="existing",

@@ -11,7 +11,7 @@ when PyTorch `DataLoader` workers are enabled.
 This is separate from raw DataLoader throughput. The immediate throughput
 control path is covered by
 [`shogi-dataloader-throughput.md`](shogi-dataloader-throughput.md).
-This issue tracked memory stability and cache format before Training View
+This issue tracked memory stability and cache format before Training Data Bundle
 tensor cache became the active follow-up.
 RunPod region stability is tracked separately in
 [`../runpod-region-stability.md`](../runpod-region-stability.md).
@@ -65,7 +65,7 @@ Candidate paths:
 The immediate operational risk is mitigated by the RunPod default
 `NUM_WORKERS=0`, which avoids private-copy RAM growth from DataLoader workers.
 The remaining cache-format work is tracked by
-[`../shogi-training-view-tensor-cache.md`](../shogi-training-view-tensor-cache.md).
+[`../shogi-training-data-bundle-tensor-cache.md`](../shogi-training-data-bundle-tensor-cache.md).
 
 ## Acceptance Criteria
 

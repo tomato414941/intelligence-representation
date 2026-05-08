@@ -1,10 +1,10 @@
-# Training View Naming Boundary
+# Training Data Bundle Naming Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
-`Training View` may not be the best name for the current artifact.
+`Training View` was not the best name for the current artifact.
 
 The artifact is not a virtual view over source records. It is materialized on
 disk and contains files such as:
@@ -14,8 +14,8 @@ disk and contains files such as:
 - `data-selection.json`
 - `manifest.json`
 
-That makes it closer to a fixed training data bundle, selected record set, or
-materialized training slice.
+That made it closer to a fixed training data bundle, selected record set, or
+materialized training slice than to a virtual view.
 
 ## Why It Matters
 
@@ -26,8 +26,7 @@ The name should make the artifact's responsibility clear:
 - it is not necessarily a virtual view
 - it is a fixed input prepared for training / evaluation
 
-If the name stays `Training View`, docs should clearly explain that it is a
-materialized fixed view, not only a reference.
+The chosen name is `Training Data Bundle`.
 
 ## Questions
 
@@ -45,6 +44,20 @@ materialized fixed view, not only a reference.
 
 ## Non-Goals
 
-- decide whether Training View should be generalized
-- redesign the shogi Training View format
+- decide whether Training Data Bundle should be generalized
+- redesign the shogi Training Data Bundle format
 - introduce a PyTorch Dataset abstraction
+
+## Resolution
+
+Renamed `Training View` to `Training Data Bundle` without compatibility aliases.
+
+Updated code-level names include:
+
+- `src/intrep/worlds/shogi/training_data_bundle.py`
+- `scripts/create_shogi_training_data_bundle.py`
+- `create_shogi_training_data_bundle`
+- `shogi_training_data_bundle_v1`
+
+The glossary now defines Training Data Bundle as a materialized, fixed
+collection of training and evaluation inputs derived from source records.

@@ -1,4 +1,4 @@
-# Shogi Training View Source Mix
+# Shogi Training Data Bundle Source Mix
 
 Status: closed.
 
@@ -11,17 +11,17 @@ Shogi Experience Store can now contain multiple actor-pair sources, such as:
 - `yaneuraou:checkpoint`
 - future `checkpoint:checkpoint`
 
-Training View creation now takes explicit train/eval game logs instead of
+Training Data Bundle creation now takes explicit train/eval game logs instead of
 splitting the full store directly. That makes heldout evaluation sources
 possible, but it does not yet solve source mix selection: the caller still has
 to produce those train/eval logs intentionally.
 
 ## Why It Matters
 
-Experience Store should keep generated shogi experience. Training View should
+Experience Store should keep generated shogi experience. Training Data Bundle should
 define what a model trains on for a specific run.
 
-If Training View source mix is not visible, experiments may accidentally train
+If Training Data Bundle source mix is not visible, experiments may accidentally train
 on "whatever is currently in the store" without noticing the actual composition.
 
 ## Initial Policy
@@ -40,14 +40,14 @@ examples:
 
 ## Acceptance Criteria
 
-This issue can close when Training View manifests clearly record source mix,
+This issue can close when Training Data Bundle manifests clearly record source mix,
 and source-mix selection remains manual until a concrete experiment needs
 controls.
 
 ## Resolution
 
 Source mix control is not needed yet. The current requirement is observability:
-a Training View must show what source mix it contains.
+a Training Data Bundle must show what source mix it contains.
 
 Current manifests already record this with:
 

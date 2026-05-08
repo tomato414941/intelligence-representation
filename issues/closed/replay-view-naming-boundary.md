@@ -16,7 +16,7 @@ The current shogi implementation instead:
 
 - reads fixed `ShogiGameRecord` JSONL sources
 - selects records once before training
-- writes a fixed Training View
+- writes a fixed Training Data Bundle
 - lets the normal PyTorch Dataset / training loop consume that fixed view
 
 That is useful, but calling the implementation a Replay Buffer would be
@@ -38,7 +38,7 @@ Keep implementation names close to what exists:
 
 - `offline experience reuse`
 - `source selection`
-- `training view construction`
+- `training data bundle construction`
 
 Reserve `Replay Buffer` for a real training-time replay component if the project
 later needs one.
@@ -60,12 +60,12 @@ later needs one.
 
 ## Resolution
 
-The fixed Training View builder no longer uses `replay` in its code-level name:
+The fixed Training Data Bundle builder no longer uses `replay` in its code-level name:
 
-- `src/intrep/worlds/shogi/training_view.py`
-- `scripts/create_shogi_training_view.py`
-- `create_shogi_training_view`
+- `src/intrep/worlds/shogi/training_data_bundle.py`
+- `scripts/create_shogi_training_data_bundle.py`
+- `create_shogi_training_data_bundle`
 - `select_shogi_game_records`
-- `shogi_training_view_v1`
+- `shogi_training_data_bundle_v1`
 
 `Replay Buffer` remains reserved for a future training-time sampling component.

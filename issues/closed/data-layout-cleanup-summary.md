@@ -35,7 +35,7 @@ to exist.
 - Inspect what is currently under `data/shogi/`.
 - Inspect what is currently under `data/external/`.
 - Decide which entries are source data, derived datasets, experience stores,
-  training views, runtime/player configuration, or disposable run output.
+  training data bundles, runtime/player configuration, or disposable run output.
 - Rename, move, or delete only after the responsibility is clear.
 
 ## Progress
@@ -53,7 +53,7 @@ to exist.
 - `data/qhapaq/processed/` was reduced to source-derived records:
   `qhapaq_all_games.jsonl` and `qhapaq_all_games_failures.jsonl`.
 - `docs/datasets.md` now records that Qhapaq raw data is partial and that
-  train/eval splits belong in Dataset Definitions or Training Views, not
+  train/eval splits belong in Dataset Definitions or Training Data Bundles, not
   `processed/`.
 - `data/external/` was removed locally after its contents were either deleted
   as samples/probes or moved to source-specific top-level directories.

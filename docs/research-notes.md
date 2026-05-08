@@ -35,8 +35,8 @@ Each entry should include:
   weights. External memory can accumulate experience quickly, while weight
   updates can absorb stable capabilities more slowly.
 - Possible project relevance: supports keeping generated experience as durable
-  source material, selecting Training Views from it, and considering future
+  source material, selecting Training Data Bundles from it, and considering future
   retrieval or memory-based use instead of forcing every experience directly
   into checkpoints.
-- Status: note only. Use as design context for Experience Store, Training View,
+- Status: note only. Use as design context for Experience Store, Training Data Bundle,
   and continual-learning boundaries.

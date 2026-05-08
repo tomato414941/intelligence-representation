@@ -36,7 +36,7 @@ view material.
 That weakens the boundary between:
 
 - Experience Store: persistent raw experience
-- Training View: fixed train/eval snapshot
+- Training Data Bundle: fixed train/eval snapshot
 - run output or ad hoc source files: disposable or intermediate material
 
 ## Initial Policy
@@ -79,4 +79,4 @@ Experience Store shape.
 - rename Experience Store
 - implement Replay Buffer or sampling policy
 - change ShogiGameRecord schema
-- redesign Training View
+- redesign Training Data Bundle

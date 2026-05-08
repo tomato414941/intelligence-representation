@@ -8,10 +8,10 @@ in [datasets.md](datasets.md).
 - `data/<source>/raw/` holds externally acquired source files.
 - `data/<source>/processed/` holds reusable source-derived records and failure
   logs.
-- `data/shogi/datasets/<name>/` holds durable shogi Training Views / Dataset
+- `data/shogi/training-data-bundles/<name>/` holds durable shogi Training Data Bundles / Dataset
   Snapshots.
-- Keep `data/shogi/datasets/current/` as the normal active Training View. Use
-  `runs/` for temporary views, and add another durable view only when it has a
+- Keep `data/shogi/training-data-bundles/current/` as the normal active Training Data Bundle. Use
+  `runs/` for temporary bundles, and add another durable bundle only when it has a
   concrete reuse reason.
 - `runs/` holds run-specific inputs, outputs, metrics, and temporary
   checkpoints.
@@ -33,4 +33,4 @@ is worth storing when it is a stable training or evaluation input, expensive
 enough to rebuild, or needed to explain skipped source records.
 
 `cache/` is not a source of truth. It should be rebuildable from `raw/`,
-`processed/`, or a documented data selection / training view.
+`processed/`, or a documented data selection / training data bundle.

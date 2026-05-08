@@ -10,7 +10,7 @@ Current responsibilities include:
 
 - source / record representation: `game_record.py`, `game_replay.py`, `kif_io.py`
 - board and move encoding: `position_encoding.py`, `move_encoding.py`
-- learning-data lifecycle: `experience_store.py`, `training_view.py`,
+- learning-data lifecycle: `experience_store.py`, `training_data_bundle.py`,
   `replay.py`, `experience_stats.py`, `game_split.py`
 - USI info inspection: `info_stats.py`, `inspect_usi_info.py`
 - a few package modules with CLI-style `main()` functions
@@ -46,7 +46,7 @@ Possible future split:
 - keep shogi rules, records, replay validation, KIF/USI record IO, and
   board/move encodings under `worlds/shogi/`
 - move task-specific example construction out of `kif_io.py`
-- keep Experience Store / Training View / Replay code either under
+- keep Experience Store / Training Data Bundle / Replay code either under
   `worlds/shogi/` with explicit lifecycle naming, or move it only if another
   concrete world needs the same lifecycle
 - keep package modules importable; put CLI wrappers in scripts or proper module
@@ -63,4 +63,4 @@ Possible future split:
 
 - move files immediately
 - introduce generic world data lifecycle abstractions
-- redesign Experience Store, Training View, or Replay Buffer
+- redesign Experience Store, Training Data Bundle, or Replay Buffer

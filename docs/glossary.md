@@ -174,7 +174,7 @@ An Experience Store is durable source storage for generated or collected
 experience.
 
 It is not a PyTorch Dataset. Training should use explicit Data Selection or a
-fixed Training View derived from the store.
+fixed Training Data Bundle derived from the store.
 
 Experience Store records should remain close to the source experience and
 should not be reshaped around one objective, run, or model.
@@ -197,7 +197,7 @@ Experience Replay.
 It usually supports appending new experience, sampling training batches, and
 some policy for capacity, recency, priority, or replacement.
 
-Do not use this term for a static file or for one-time Training View
+Do not use this term for a static file or for one-time Training Data Bundle
 construction.
 
 ### Offline Experience Reuse
@@ -207,12 +207,22 @@ build a fixed training or evaluation set before training starts.
 
 This is closer to ordinary data selection than to a Replay Buffer. It may use
 self-play records, teacher records, run outputs, or an Experience Store as
-sources, but the result is a fixed Training View or PyTorch Dataset input.
+sources, but the result is a fixed Training Data Bundle or PyTorch Dataset input.
 
 The training pipeline is not special: once fixed, it is learned from like an
 ordinary dataset. The distinction is that the selected source records are
 experience records, meaning they come from interaction with a world and may
 carry actions, rewards, outcomes, actor identity, or trajectory context.
+
+### Training Data Bundle
+
+A Training Data Bundle is a materialized, fixed collection of training and
+evaluation inputs derived from source records.
+
+It is not source data and not a PyTorch `Dataset`. It may contain selected
+records, split files, target-source metadata, data selection metadata, and a
+manifest. The bundle is the artifact a training run can consume without relying
+on run-local generated files as the source of truth.
 
 ### Data Selection
 

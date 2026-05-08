@@ -7,7 +7,7 @@ Status: closed.
 The project does not clearly define whether an Experience Store is a Dataset.
 
 Current shogi data can look ambiguous because both Experience Store and
-Training View directories may contain `games.jsonl`, and both contain data that
+Training Data Bundle directories may contain `games.jsonl`, and both contain data that
 could eventually be used for training.
 
 The intended distinction should be made explicit:
@@ -15,7 +15,7 @@ The intended distinction should be made explicit:
 - Experience Store: durable source storage for generated or collected
   experience
 - Data Selection: a declared-use data inclusion boundary
-- Training View: a fixed source snapshot used by Data Selection or training
+- Training Data Bundle: a fixed source snapshot used by Data Selection or training
 
 Under this interpretation, an Experience Store is source material for datasets,
 not a dataset by itself.
@@ -27,7 +27,7 @@ on "whatever is currently in the store." That makes train/eval boundaries,
 target source selection, source mix, and reproducibility unclear.
 
 If Experience Store is treated only as source storage, training must go through
-explicit Data Selection or a fixed Training View. That keeps the learning
+explicit Data Selection or a fixed Training Data Bundle. That keeps the learning
 contract clearer even when generated experience grows over time.
 
 This also affects non-shogi data:
@@ -68,10 +68,10 @@ Current boundary:
 
 - Experience Store: durable source storage for generated or collected
   experience.
-- Training View: fixed source snapshot used by Data Selection or training.
+- Training Data Bundle: fixed source snapshot used by Data Selection or training.
 - Data Selection: inclusion boundary for a declared use.
 - PyTorch Dataset: runtime adapter that returns indexed samples.
 
 Training should not depend directly on "whatever is currently in the store."
-It should use explicit Data Selection or a fixed Training View derived from the
+It should use explicit Data Selection or a fixed Training Data Bundle derived from the
 store.

@@ -62,7 +62,7 @@ policy and the current store names either follow it or are explicitly kept as an
 exception.
 
 The decision should state whether train/eval-like separation belongs at the
-Experience Store level for now, or only at Training View creation time.
+Experience Store level for now, or only at Training Data Bundle creation time.
 
 ## Resolution
 
@@ -87,4 +87,4 @@ directory name.
 - redesign Experience Store
 - merge train/eval source stores
 - introduce a store registry
-- solve Dataset / Training View naming
+- solve Dataset / Training Data Bundle naming

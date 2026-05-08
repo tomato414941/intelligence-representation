@@ -8,18 +8,18 @@ The project needs a clear boundary for Replay Buffer before adding one.
 
 Online Experience Replay is a training-time RL method backed by a dynamic
 Replay Buffer. It is different from Offline Experience Reuse, which selects
-previously collected records once and builds a fixed Training View before
+previously collected records once and builds a fixed Training Data Bundle before
 training starts.
 
 A Replay Buffer should mean training-time sampling from reusable experience, not
-durable source storage and not one-time Training View construction.
+durable source storage and not one-time Training Data Bundle construction.
 
 ## Why It Matters
 
 Without this boundary, future RL work can mix up four different responsibilities:
 
 - durable experience storage
-- fixed source selection / Training View construction
+- fixed source selection / Training Data Bundle construction
 - PyTorch `Dataset` / `Sampler`
 - training-time replay sampling
 
@@ -48,7 +48,7 @@ that explains what owns:
 - recency or priority
 - duplicate handling
 - relationship to PyTorch `Dataset` / `Sampler`
-- relationship to Experience Store and fixed Training Views
+- relationship to Experience Store and fixed Training Data Bundles
 
 ## Non-Goals
 

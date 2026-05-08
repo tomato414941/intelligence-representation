@@ -5,7 +5,7 @@ Status: closed.
 ## Issue
 
 The current shogi `DatasetDefinition` implementation chooses one policy target
-source and one value target source for the whole Training View.
+source and one value target source for the whole Training Data Bundle.
 
 That is simple, but it cannot express cases where different record sources need
 different target derivation rules.
@@ -23,13 +23,13 @@ Examples:
 
 Target source is different from source mix.
 
-`shogi-training-view-source-mix.md` is about which records are included in a
-Training View. This issue is about how included records are converted into
+`shogi-training-data-bundle-source-mix.md` is about which records are included in a
+Training Data Bundle. This issue is about how included records are converted into
 policy/value training targets.
 
 `closed/shogi-move-choice-problem-scope.md` records the rename from the old `ShogiMoveChoice` package boundary to `ShogiPolicyValue`.
 
-If target source remains global, mixed Training Views either lose useful teacher
+If target source remains global, mixed Training Data Bundles either lose useful teacher
 signals or force weak records into a target policy they cannot support.
 
 ## Resolution

@@ -5,7 +5,7 @@ Status: closed.
 ## Issue
 
 The project uses terms such as `Example`, `Dataset`, `Experience`, `Record`,
-`Training View`, and `Data Selection`, but the boundaries are still easy to
+`Training Data Bundle`, and `Data Selection`, but the boundaries are still easy to
 blur.
 
 The current concern is that `example` may be too narrow as the general name for
@@ -70,7 +70,7 @@ This issue can close when the glossary and data layout docs clearly distinguish:
 - sample
 - supervised training example
 - PyTorch `Dataset`
-- file-backed dataset or training view
+- file-backed dataset or training data bundle
 - cache
 
 ## Non-Goals

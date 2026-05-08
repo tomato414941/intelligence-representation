@@ -13,7 +13,7 @@ evaluation policy explicitly chooses MCTS2.
 ## Why It Matters
 
 The current direction is to grow a persistent shogi Experience Store, create
-intentional Training Views, and improve policy/value from generated games and
+intentional Training Data Bundles, and improve policy/value from generated games and
 teacher annotations.
 
 Keeping unreviewed assumptions around makes the next experiments harder to interpret.

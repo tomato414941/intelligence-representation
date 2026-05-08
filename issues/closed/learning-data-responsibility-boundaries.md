@@ -7,7 +7,7 @@ Status: closed.
 The project needs clearer responsibilities between source data and training.
 Naming should follow responsibility, not the other way around.
 
-This matters because names such as `Dataset Definition`, `Training View`, and
+This matters because names such as `Dataset Definition`, `Training Data Bundle`, and
 `Example` can become too broad if they are assigned before the responsibilities
 are separated.
 

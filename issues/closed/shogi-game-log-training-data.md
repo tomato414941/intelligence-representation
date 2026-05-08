@@ -87,7 +87,7 @@ This issue is closed because:
   multiple engine/model sources,
 - this repository can convert that raw log into training-ready shogi move-choice
   examples without treating those examples as source records,
-- shogi Experience Stores and Training Views preserve the raw-record to
+- shogi Experience Stores and Training Data Bundles preserve the raw-record to
   derived-example boundary, and
 - Dataset Definition records the selected policy and value target sources used
   during conversion.
@@ -95,8 +95,8 @@ This issue is closed because:
 Remaining source mix, target policy mix, repeated-position evidence, forgetting,
 and checkpoint provenance questions are tracked in narrower issues:
 
-- [`shogi-training-view-source-mix.md`](shogi-training-view-source-mix.md)
+- [`shogi-training-data-bundle-source-mix.md`](shogi-training-data-bundle-source-mix.md)
 - [`shogi-source-target-policy-mix.md`](shogi-source-target-policy-mix.md)
 - [`shogi-position-evidence-merge.md`](shogi-position-evidence-merge.md)
-- [`shogi-training-view-forgetting-policy.md`](shogi-training-view-forgetting-policy.md)
+- [`shogi-training-data-bundle-forgetting-policy.md`](shogi-training-data-bundle-forgetting-policy.md)
 - [`shogi-checkpoint-actor-provenance.md`](shogi-checkpoint-actor-provenance.md)

@@ -12,7 +12,7 @@ evaluation result becomes an input for future work.
 
 | Artifact | Example | Why It Matters |
 | --- | --- | --- |
-| generated cache | `training-view-cache.pt` | Expensive enough to regenerate that local-only storage is fragile. |
+| generated cache | `training-data-bundle-cache.pt` | Expensive enough to regenerate that local-only storage is fragile. |
 | source-derived records | `qhapaq_all_games.jsonl` | Smaller than full examples and useful for rebuilding task-specific caches. |
 | failure logs | `qhapaq_all_games_failures.jsonl` | Explains skipped or invalid source records. |
 | model checkpoint | `checkpoint.pt` | Needed to reproduce evaluation and continue training. |
@@ -42,7 +42,7 @@ Follow-up work is split into narrower issues:
 
 Existing narrower issues also cover parts of the original list:
 
-- [`../shogi-training-view-tensor-cache.md`](../shogi-training-view-tensor-cache.md)
-  tracks shogi Training View cache format.
+- [`../shogi-training-data-bundle-tensor-cache.md`](../shogi-training-data-bundle-tensor-cache.md)
+  tracks shogi Training Data Bundle cache format.
 - [`../text-tokenizer-policy.md`](../text-tokenizer-policy.md) tracks tokenizer
   workflow and saved tokenizer expectations.

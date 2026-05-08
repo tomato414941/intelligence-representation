@@ -1,10 +1,10 @@
-# Shogi Training View Input File Boundary
+# Shogi Training Data Bundle Input File Boundary
 
 Status: open.
 
 ## Issue
 
-Shogi Training View creation can accept multiple training game-record files, but
+Shogi Training Data Bundle creation can accept multiple training game-record files, but
 unbounded multi-file inputs can make source file management harder.
 
 Multiple inputs are useful because they avoid creating ad-hoc combined JSONL
@@ -30,20 +30,20 @@ The default path should be:
 ```text
 many generated files
   -> append / consolidate into a stable record set
-  -> create Training View from that stable record set
+  -> create Training Data Bundle from that stable record set
 ```
 
-Training View manifests should still record all input files when multiple files
+Training Data Bundle manifests should still record all input files when multiple files
 are used.
 
 ## Acceptance Criteria
 
-- Decide whether `create_shogi_training_view.py` should accept multiple
+- Decide whether `create_shogi_training_data_bundle.py` should accept multiple
   training game-record files.
 - If multiple inputs remain supported, document that stable record sets are the
   preferred normal input.
 - Avoid requiring users to create ad-hoc combined JSONL files only to build a
-  Training View.
+  Training Data Bundle.
 
 ## Non-Goals
 

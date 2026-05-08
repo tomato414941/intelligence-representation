@@ -11,7 +11,7 @@ For example, a checkpoint trained on model-vs-YaneuraOu correction positions may
 lose that behavior if it is continued only on YaneuraOu-vs-YaneuraOu games.
 This is different from scratch training on a newly defined dataset.
 
-Experience Store and Training View now reduce this risk by making training data
+Experience Store and Training Data Bundle now reduce this risk by making training data
 explainable through an explicit dataset definition. The issue is not that
 continued training is impossible; it is that continued-training runs still need
 to make the retained dataset scope and initialization choice explicit.

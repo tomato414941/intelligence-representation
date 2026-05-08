@@ -5,7 +5,7 @@ Status: open.
 ## Issue
 
 `data/shogi/` is currently acceptable as the local home for shogi generated
-experience, Training Views, and copied record sets, but the boundary still feels
+experience, Training Data Bundles, and copied record sets, but the boundary still feels
 awkward.
 
 The discomfort is that `shogi` is a world/domain name, not a concrete data
@@ -17,7 +17,7 @@ things:
 - generated self-play experience
 - YaneuraOu-vs-YaneuraOu records
 - model-vs-engine records
-- Training Views
+- Training Data Bundles
 - copied record sets
 - future position annotations
 
@@ -43,12 +43,12 @@ tracks only the broader naming and boundary discomfort.
 ## Questions
 
 - Should shogi generated data eventually live under separate top-level
-  directories such as `data/shogi-experiences/`, `data/shogi-training-views/`,
+  directories such as `data/shogi-experiences/`, `data/shogi-training-data-bundles/`,
   and `data/shogi-records/`?
 - Should source-first naming be preferred instead, such as `data/yaneuraou/` or
   `data/model-selfplay/`?
 - Should world-level directories be allowed under `data/` only for generated
-  experience and Training Views?
+  experience and Training Data Bundles?
 - What concrete pain would justify moving files out of `data/shogi/`?
 
 ## Acceptance Criteria
@@ -63,5 +63,5 @@ This issue can close when one of the following is true:
 ## Non-Goals
 
 - move files immediately
-- redesign Experience Store or Training View
+- redesign Experience Store or Training Data Bundle
 - introduce a generic generated-data directory framework

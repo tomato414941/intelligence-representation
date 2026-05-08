@@ -37,7 +37,7 @@ Examples:
 
 These produce different position distributions and different policy/value
 signals. If the store cannot clearly explain which checkpoint generation and
-search settings produced each slice of experience, later Training Views may
+search settings produced each slice of experience, later Training Data Bundles may
 mix weak, stale, or incompatible data without that being obvious.
 
 The risk grows when local `runs/.../checkpoint.pt` paths are deleted, renamed,
@@ -53,7 +53,7 @@ or become hard to interpret.
 - Decide whether per-game generated/append time should remain reconstructable
   from history ranges, or whether record/manifest metadata needs a simpler
   durable identity.
-- Decide what Training View needs in order to include, exclude, or cap
+- Decide what Training Data Bundle needs in order to include, exclude, or cap
   checkpoint-generated experience by generation or search settings.
 
 ## Non-Goals
@@ -62,11 +62,11 @@ or become hard to interpret.
 - Do not require long-lived storage for every local checkpoint as part of this
   issue.
 - Do not solve future source-mix controls here; source-mix observability is
-  covered by `closed/shogi-training-view-source-mix.md`.
+  covered by `closed/shogi-training-data-bundle-source-mix.md`.
 
 ## Acceptance Criteria
 
 This issue can close when checkpoint-generated shogi experience has a clear,
-durable provenance policy, and Experience Store / Training View metadata can
+durable provenance policy, and Experience Store / Training Data Bundle metadata can
 explain which checkpoint generation and search settings a training slice came
 from.

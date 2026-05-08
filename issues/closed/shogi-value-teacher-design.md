@@ -36,7 +36,7 @@ This makes value learning hard to interpret:
 - Define how score-derived value should be scaled into `[-1.0, 1.0]`.
 - Decide whether score-derived value belongs directly in `ShogiGameRecord` or
   in a separate annotation path.
-- Ensure Training View can make the chosen value-teacher source explicit.
+- Ensure Training Data Bundle can make the chosen value-teacher source explicit.
 
 ## Non-Goals
 
@@ -57,7 +57,7 @@ On the current shogi Experience Store, best-line scores exist for most plies:
 - best cp scores: 26,224 lines, range -15347 to 19410, mean about 318 cp
 - best mate scores: 637 lines, range -2 to 15
 
-The recent `model-reached-g200-n1-mcts8-mpv3-view` Training View has similar
+The recent `model-reached-g200-n1-mcts8-mpv3-view` Training Data Bundle has similar
 coverage:
 
 - train: 20,106 / 21,487 plies, about 93.6%
@@ -65,7 +65,7 @@ coverage:
 
 This suggests score-derived value targets are practical from the current raw
 records. The remaining design work is not data availability, but sign semantics,
-mate-score scaling, and how the Training View records which value teacher was
+mate-score scaling, and how the Training Data Bundle records which value teacher was
 used.
 
 ## Current Route

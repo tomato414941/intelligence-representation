@@ -15,7 +15,7 @@ boundaries.
 The related lifecycle is also currently shogi-local:
 
 - append generated records to an Experience Store
-- create a fixed Training View
+- create a fixed Training Data Bundle
 - train through Data Selection or a task-specific training input definition
 
 The current shogi-local placement is acceptable for KISS/YAGNI: shogi is the
@@ -28,7 +28,7 @@ Experience Store means durable storage for generated or collected experience.
 That responsibility is broader than shogi game records, even if the current
 schema is shogi-specific.
 
-The same caution applies to the Experience Store -> Training View lifecycle.
+The same caution applies to the Experience Store -> Training Data Bundle lifecycle.
 It may become useful beyond shogi, but extracting a shared abstraction from one
 implementation would be premature.
 
@@ -45,7 +45,7 @@ durable generated experience.
 
 When a second implementation exists, compare the two concrete stores and extract
 only the shared boundary that is actually needed. If the second area also needs
-fixed Training Views, include that lifecycle in the comparison.
+fixed Training Data Bundles, include that lifecycle in the comparison.
 
 ## Acceptance Criteria
 
@@ -65,6 +65,6 @@ This issue can close when one of the following is true:
 
 ## Related
 
-The narrower Training View lifecycle issue was merged into this issue:
+The narrower Training Data Bundle lifecycle issue was merged into this issue:
 
-- [`closed/experience-store-training-view-boundary.md`](closed/experience-store-training-view-boundary.md)
+- [`closed/experience-store-training-data-bundle-boundary.md`](closed/experience-store-training-data-bundle-boundary.md)

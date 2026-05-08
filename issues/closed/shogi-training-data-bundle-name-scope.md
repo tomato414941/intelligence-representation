@@ -1,10 +1,10 @@
-# Shogi Training View Name Scope
+# Shogi Training Data Bundle Name Scope
 
 Status: closed.
 
 ## Issue
 
-Shogi Training View directory names are starting to encode too much experiment
+Shogi Training Data Bundle directory names are starting to encode too much experiment
 detail.
 
 Recent examples include names such as:
@@ -19,7 +19,7 @@ already belongs in `dataset.json` and `manifest.json`, such as source paths,
 
 ## Why It Matters
 
-Training View names should identify the view without becoming the source of
+Training Data Bundle names should identify the view without becoming the source of
 truth for the experiment. The source of truth should remain the dataset
 definition and manifest.
 
@@ -41,21 +41,21 @@ Avoid names that try to encode the whole source mix, target policy, and limits.
 
 ## Acceptance Criteria
 
-This issue can close when the project has a simple Training View directory name
-policy and `create_shogi_training_view.py` usage follows it without introducing
+This issue can close when the project has a simple Training Data Bundle directory name
+policy and `create_shogi_training_data_bundle.py` usage follows it without introducing
 a separate view registry.
 
 ## Resolution
 
-The local Training View set was reduced to one active durable view:
+The local Training Data Bundle set was reduced to one active durable view:
 
-- `data/shogi/datasets/current/`
+- `data/shogi/training-data-bundles/current/`
 
 The policy is:
 
-- keep `current/` as the normal active Training View
+- keep `current/` as the normal active Training Data Bundle
 - use `runs/` for temporary views
-- add another durable Training View only when it has a concrete reuse reason
+- add another durable Training Data Bundle only when it has a concrete reuse reason
 - keep details such as source mix, target policy, limits, and actor pairs in
   `dataset.json` and `manifest.json`, not in the directory name
 

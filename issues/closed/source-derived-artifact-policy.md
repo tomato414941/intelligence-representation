@@ -26,7 +26,7 @@ are treated like raw source data, the source of truth becomes unclear.
 
 - Do not redesign `data/` layout broadly.
 - Do not add a generic artifact store.
-- Do not solve shogi Training View tensor caching.
+- Do not solve shogi Training Data Bundle tensor caching.
 
 ## Acceptance Criteria
 

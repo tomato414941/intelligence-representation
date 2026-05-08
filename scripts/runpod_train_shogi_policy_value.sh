@@ -6,7 +6,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-DATA_SELECTION=${DATA_SELECTION:-data/shogi/datasets/current/data-selection.json}
+DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/current/data-selection.json}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
