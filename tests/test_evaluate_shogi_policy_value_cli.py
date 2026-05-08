@@ -40,12 +40,12 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             checkpoint_path = root / "checkpoint.pt"
             metrics_path = root / "eval-metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "black")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "white")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "eval-only-test",
@@ -75,8 +75,8 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "evaluate_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--metrics-path",
@@ -93,7 +93,7 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
 
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(payload["dataset_definition"]["name"], "eval-only-test")
+        self.assertEqual(payload["data_selection"]["name"], "eval-only-test")
         self.assertEqual(payload["raw_train_case_count"], 2)
         self.assertEqual(payload["raw_eval_case_count"], 2)
         self.assertEqual(payload["used_train_case_count"], 2)

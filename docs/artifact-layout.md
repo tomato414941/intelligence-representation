@@ -33,4 +33,4 @@ is worth storing when it is a stable training or evaluation input, expensive
 enough to rebuild, or needed to explain skipped source records.
 
 `cache/` is not a source of truth. It should be rebuildable from `raw/`,
-`processed/`, or a documented dataset/training view.
+`processed/`, or a documented data selection / training view.

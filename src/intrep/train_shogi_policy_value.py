@@ -11,10 +11,10 @@ from intrep.tasks.shogi_policy_value.checkpoint import (
     save_shogi_policy_value_model_checkpoint,
     save_shogi_policy_value_state_checkpoint,
 )
-from intrep.tasks.shogi_policy_value.dataset_definition import (
-    load_shogi_policy_value_dataset_definition,
-    load_shogi_policy_value_dataset_examples,
-    shogi_policy_value_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.data_selection import (
+    load_shogi_policy_value_data_selection,
+    load_shogi_policy_value_data_selection_examples,
+    shogi_policy_value_data_selection_to_json,
 )
 from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
 from intrep.tasks.shogi_policy_value.training import (
@@ -26,7 +26,7 @@ from intrep.tasks.shogi_policy_value.training import (
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a shogi policy/value model.")
-    parser.add_argument("--dataset-definition", type=Path, required=True)
+    parser.add_argument("--data-selection", type=Path, required=True)
     parser.add_argument("--init-checkpoint-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--best-checkpoint-path", type=Path)
@@ -54,8 +54,8 @@ def main() -> None:
     parser.add_argument("--keep-last-n-checkpoints", type=int)
     args = parser.parse_args()
 
-    dataset_definition = load_shogi_policy_value_dataset_definition(args.dataset_definition)
-    train_examples, eval_examples = load_shogi_policy_value_dataset_examples(dataset_definition)
+    data_selection = load_shogi_policy_value_data_selection(args.data_selection)
+    train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
 
     config = ShogiPolicyValueTrainingConfig(
         max_steps=args.max_steps,
@@ -104,8 +104,8 @@ def main() -> None:
         "used_eval_case_count": result.metrics.eval_case_count,
         "train_policy_target_summary": _policy_target_summary(train_examples),
         "eval_policy_target_summary": _policy_target_summary(eval_examples),
-        "dataset_definition_path": str(args.dataset_definition),
-        "dataset_definition": shogi_policy_value_dataset_definition_to_json(dataset_definition),
+        "data_selection_path": str(args.data_selection),
+        "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
         "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,

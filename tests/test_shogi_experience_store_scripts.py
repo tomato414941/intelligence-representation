@@ -9,7 +9,7 @@ from types import ModuleType
 
 import shogi
 
-from intrep.tasks.shogi_policy_value.dataset_definition import load_shogi_policy_value_dataset_definition
+from intrep.tasks.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -119,7 +119,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), [train_records[0], eval_records[0]])
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), [train_records[0]])
             self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), [eval_records[0]])
-            definition = load_shogi_policy_value_dataset_definition(view_dir / "dataset.json")
+            definition = load_shogi_policy_value_data_selection(view_dir / "data-selection.json")
             self.assertEqual(definition.name, "main-view-0001")
             self.assertEqual(definition.policy_target_source, "chosen_move")
             self.assertEqual(definition.policy_temperature_cp, 100.0)

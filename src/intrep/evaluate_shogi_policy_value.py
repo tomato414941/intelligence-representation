@@ -8,10 +8,10 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 
 from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
-from intrep.tasks.shogi_policy_value.dataset_definition import (
-    load_shogi_policy_value_dataset_definition,
-    load_shogi_policy_value_dataset_examples,
-    shogi_policy_value_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.data_selection import (
+    load_shogi_policy_value_data_selection,
+    load_shogi_policy_value_data_selection_examples,
+    shogi_policy_value_data_selection_to_json,
 )
 from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
 from intrep.tasks.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
@@ -19,7 +19,7 @@ from intrep.tasks.shogi_policy_value.training import evaluate_shogi_policy_value
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate a shogi move-choice checkpoint without training.")
-    parser.add_argument("--dataset-definition", type=Path, required=True)
+    parser.add_argument("--data-selection", type=Path, required=True)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -31,7 +31,7 @@ def main() -> None:
     args = parser.parse_args()
 
     payload = evaluate_shogi_policy_value_checkpoint(
-        dataset_definition_path=args.dataset_definition,
+        data_selection_path=args.data_selection,
         checkpoint_path=args.checkpoint_path,
         batch_size=args.batch_size,
         device=args.device,
@@ -47,7 +47,7 @@ def main() -> None:
 
 def evaluate_shogi_policy_value_checkpoint(
     *,
-    dataset_definition_path: Path,
+    data_selection_path: Path,
     checkpoint_path: Path,
     batch_size: int = 128,
     device: str = "cpu",
@@ -60,8 +60,8 @@ def evaluate_shogi_policy_value_checkpoint(
         raise ValueError("batch_size must be positive")
     if num_workers < 0:
         raise ValueError("num_workers must be non-negative")
-    dataset_definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
-    train_examples, eval_examples = load_shogi_policy_value_dataset_examples(dataset_definition)
+    data_selection = load_shogi_policy_value_data_selection(data_selection_path)
+    train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
     used_train_examples = _limit_examples(train_examples, max_train_examples, label="max train examples")
     used_eval_examples = _limit_examples(eval_examples, max_eval_examples, label="max eval examples")
     model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
@@ -80,8 +80,8 @@ def evaluate_shogi_policy_value_checkpoint(
         "used_eval_case_count": len(used_eval_examples),
         "train_policy_target_summary": _policy_target_summary(train_examples),
         "eval_policy_target_summary": _policy_target_summary(eval_examples),
-        "dataset_definition_path": str(dataset_definition_path),
-        "dataset_definition": shogi_policy_value_dataset_definition_to_json(dataset_definition),
+        "data_selection_path": str(data_selection_path),
+        "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
         "checkpoint_path": str(checkpoint_path),
         "batch_size": batch_size,
         "device": device,

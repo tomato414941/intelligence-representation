@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> None:
     games_jsonl = run_dir / "generated-games.jsonl"
     train_jsonl = run_dir / "train-games.jsonl"
     eval_jsonl = run_dir / "eval-games.jsonl"
-    dataset_json = run_dir / "dataset.json"
+    data_selection_json = run_dir / "data-selection.json"
     checkpoint_path = run_dir / "checkpoint.pt"
     best_checkpoint_path = run_dir / "best-checkpoint.pt"
     metrics_path = run_dir / "metrics.json"
@@ -57,9 +57,9 @@ def main(argv: list[str] | None = None) -> None:
         eval_jsonl=eval_jsonl,
         eval_ratio=args.eval_ratio,
     )
-    _write_dataset_definition(dataset_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
+    _write_data_selection(data_selection_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
     _run_training(
-        dataset_json=dataset_json,
+        data_selection_json=data_selection_json,
         init_checkpoint_path=args.checkpoint,
         checkpoint_path=checkpoint_path,
         best_checkpoint_path=best_checkpoint_path,
@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> None:
                 "generated_games_jsonl": str(games_jsonl),
                 "train_games": train_count,
                 "eval_games": eval_count,
-                "dataset_definition": str(dataset_json),
+                "data_selection": str(data_selection_json),
                 "checkpoint": str(checkpoint_path),
                 "best_checkpoint": str(best_checkpoint_path),
                 "metrics": str(metrics_path),
@@ -151,7 +151,7 @@ def _run_generate_games(
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
 
 
-def _write_dataset_definition(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
+def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
     payload = {
         "name": path.parent.name,
         "objective": "shogi policy/value from self-play records",
@@ -168,7 +168,7 @@ def _write_dataset_definition(path: Path, *, train_jsonl: Path, eval_jsonl: Path
 
 def _run_training(
     *,
-    dataset_json: Path,
+    data_selection_json: Path,
     init_checkpoint_path: Path,
     checkpoint_path: Path,
     best_checkpoint_path: Path,
@@ -185,8 +185,8 @@ def _run_training(
         sys.executable,
         "-m",
         "intrep.train_shogi_policy_value",
-        "--dataset-definition",
-        str(dataset_json),
+        "--data-selection",
+        str(data_selection_json),
         "--init-checkpoint-path",
         str(init_checkpoint_path),
         "--checkpoint-path",

@@ -23,7 +23,7 @@ tools are added there by default.
 
 ## Current State
 
-- Shogi policy-value training reads `game_records_jsonl` dataset sources directly;
+- Shogi policy-value training reads `game_records_jsonl` data-selection sources directly;
   the old shogi policy-value example-preparation CLI has been removed.
 
 ## Current Follow-up

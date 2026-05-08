@@ -22,7 +22,7 @@ experience grows.
 ## Current Context
 
 The old Modal-based policy-value example cache route was removed when shogi
-policy-value training moved to reading `ShogiGameRecord` dataset sources
+policy-value training moved to reading `ShogiGameRecord` data-selection sources
 directly. That cleanup reduced the risk of treating `ShogiMoveChoiceExample`
 JSONL as a second source of truth, but it did not remove the rebuild cost.
 

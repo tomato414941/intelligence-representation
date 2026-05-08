@@ -9,10 +9,10 @@ import shogi
 import torch
 
 from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
-from intrep.tasks.shogi_policy_value.dataset_definition import (
-    load_shogi_policy_value_dataset_definition,
-    load_shogi_policy_value_dataset_examples,
-    shogi_policy_value_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.data_selection import (
+    load_shogi_policy_value_data_selection,
+    load_shogi_policy_value_data_selection_examples,
+    shogi_policy_value_data_selection_to_json,
 )
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -69,13 +69,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             checkpoint_path = root / "shogi.pt"
             best_checkpoint_path = root / "shogi-best.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-policy-value",
@@ -97,8 +97,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "train_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--best-checkpoint-path",
@@ -136,7 +136,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue(metrics_path.exists())
             self.assertIn("step=1/1", stdout.getvalue())
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["dataset_definition"]["name"], "test-shogi-policy-value")
+            self.assertEqual(metrics["data_selection"]["name"], "test-shogi-policy-value")
             self.assertEqual(metrics["best_checkpoint_path"], str(best_checkpoint_path))
             self.assertIn(metrics["metrics"]["best_eval_step"], {0, 1})
             self.assertIsNotNone(metrics["metrics"]["best_eval_loss"])
@@ -159,12 +159,12 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record_with_multipv_info(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-policy-value",
@@ -186,8 +186,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "train_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--metrics-path",
@@ -221,13 +221,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             init_checkpoint_path = root / "init.pt"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-policy-value",
@@ -248,8 +248,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "train_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--checkpoint-path",
                     str(init_checkpoint_path),
                     "--metrics-path",
@@ -274,8 +274,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "train_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--init-checkpoint-path",
                     str(init_checkpoint_path),
                     "--checkpoint-path",
@@ -312,12 +312,12 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "test-shogi-policy-value",
@@ -339,8 +339,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 "sys.argv",
                 [
                     "train_shogi_policy_value",
-                    "--dataset-definition",
-                    str(dataset_definition_path),
+                    "--data-selection",
+                    str(data_selection_path),
                     "--checkpoint-path",
                     str(checkpoint_path),
                     "--metrics-path",
@@ -380,13 +380,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertIn("loss", step_metrics["eval_metrics"])
             self.assertIn("accuracy", step_metrics["eval_metrics"])
 
-    def test_rejects_unsplit_dataset_definition(self) -> None:
+    def test_rejects_unsplit_data_selection(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             games_path = root / "games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             write_shogi_game_records_jsonl(games_path, [_record(("7g7f",), None)])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "bad-unsplit",
@@ -405,14 +405,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "split"):
-                load_shogi_policy_value_dataset_definition(dataset_definition_path)
+                load_shogi_policy_value_data_selection(data_selection_path)
 
     def test_dataset_source_max_games_limits_loaded_examples(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             write_shogi_game_records_jsonl(
                 train_games_path,
                 [
@@ -421,7 +421,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 ],
             )
             write_shogi_game_records_jsonl(eval_games_path, [_record(("5g5f", "5c5d"), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "max-games",
@@ -439,14 +439,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
-            train_examples, eval_examples = load_shogi_policy_value_dataset_examples(definition)
+            definition = load_shogi_policy_value_data_selection(data_selection_path)
+            train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(definition)
 
         self.assertEqual(definition.train_sources[0].max_games, 1)
         self.assertEqual(len(train_examples), 2)
         self.assertEqual(len(eval_examples), 2)
         self.assertEqual(
-            shogi_policy_value_dataset_definition_to_json(definition)["train_sources"][0]["max_games"],
+            shogi_policy_value_data_selection_to_json(definition)["train_sources"][0]["max_games"],
             1,
         )
 
@@ -456,14 +456,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             teacher_games_path = root / "teacher-games.jsonl"
             self_play_games_path = root / "self-play-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
-            dataset_definition_path = root / "dataset.json"
+            data_selection_path = root / "data-selection.json"
             write_shogi_game_records_jsonl(
                 teacher_games_path,
                 [_record_with_multipv_info(("7g7f",), "black")],
             )
             write_shogi_game_records_jsonl(self_play_games_path, [_record(("2g2f",), "black")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("5g5f",), "black")])
-            dataset_definition_path.write_text(
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "source-local-target-policy",
@@ -489,8 +489,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
-            train_examples, eval_examples = load_shogi_policy_value_dataset_examples(definition)
+            definition = load_shogi_policy_value_data_selection(data_selection_path)
+            train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(definition)
 
         self.assertEqual(definition.train_sources[0].policy_target_source, "usi_multipv")
         self.assertEqual(definition.train_sources[0].value_target_source, "yaneuraou_best_score")
@@ -501,15 +501,15 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
         self.assertEqual(train_examples[1].value_target, 1.0)
         self.assertIsNone(eval_examples[0].policy_targets)
         self.assertEqual(eval_examples[0].value_target, 1.0)
-        source_json = shogi_policy_value_dataset_definition_to_json(definition)["train_sources"][0]
+        source_json = shogi_policy_value_data_selection_to_json(definition)["train_sources"][0]
         self.assertEqual(source_json["policy_target_source"], "usi_multipv")
         self.assertEqual(source_json["value_target_source"], "yaneuraou_best_score")
 
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            dataset_definition_path = root / "dataset.json"
-            dataset_definition_path.write_text(
+            data_selection_path = root / "data-selection.json"
+            data_selection_path.write_text(
                 json.dumps(
                     {
                         "name": "bad-source-kind",
@@ -528,7 +528,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "game_records_jsonl"):
-                load_shogi_policy_value_dataset_definition(dataset_definition_path)
+                load_shogi_policy_value_data_selection(data_selection_path)
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ def create_shogi_training_view(
     games_jsonl = output_dir / "games.jsonl"
     train_jsonl = output_dir / "train-games.jsonl"
     eval_jsonl = output_dir / "eval-games.jsonl"
-    dataset_json = output_dir / "dataset.json"
+    data_selection_json = output_dir / "data-selection.json"
     manifest_path = output_dir / "manifest.json"
 
     if output_dir.exists():
@@ -80,7 +80,7 @@ def create_shogi_training_view(
     write_shogi_game_records_jsonl(train_jsonl, train_records)
     write_shogi_game_records_jsonl(eval_jsonl, eval_records)
 
-    dataset = {
+    data_selection = {
         "name": name,
         "objective": "shogi move-choice policy/value",
         "policy_target_source": policy_target_source,
@@ -91,7 +91,7 @@ def create_shogi_training_view(
         "train_sources": [_source_json(train_jsonl.name, max_train_games)],
         "eval_sources": [_source_json(eval_jsonl.name, max_eval_games)],
     }
-    dataset_json.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
+    data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
         "schema": "shogi_training_view_v1",
@@ -120,14 +120,14 @@ def create_shogi_training_view(
             "games": games_jsonl.name,
             "train": train_jsonl.name,
             "eval": eval_jsonl.name,
-            "dataset": dataset_json.name,
+            "data_selection": data_selection_json.name,
         },
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
     return {
         "training_view": str(output_dir),
-        "dataset_json": str(dataset_json),
+        "data_selection_json": str(data_selection_json),
         "games_jsonl": str(games_jsonl),
         "train_jsonl": str(train_jsonl),
         "eval_jsonl": str(eval_jsonl),
