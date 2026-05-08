@@ -196,16 +196,21 @@ Examples:
 
 ### Sample
 
-A sample is the runtime item returned by `Dataset.__getitem__`. It is the
-PyTorch-side item that can be batched by a `DataLoader`.
+A sample is one runtime item consumed by training or evaluation. In PyTorch
+code, it is usually the item returned by `Dataset.__getitem__` and batched by a
+`DataLoader`.
 
-A sample may be built from a training example, but it may already contain
-tensors, masks, encoded forms, or metadata needed by the training loop.
+A sample may be built from a training example, but it may also contain tensors,
+masks, encoded forms, targets, weights, or metadata needed by the training or
+evaluation loop.
 
 ### Sample Schema
 
 A Sample Schema defines the fields and meanings of a sample. Samples with the
 same schema can usually share collation, model routing, loss, and metrics.
+
+It may include model inputs, targets, masks, weights, and metadata. It is
+broader than a model input schema.
 
 The schema is semantic, not only structural. Two samples with the same tensor
 shapes may still have different schemas if their fields mean different things.
