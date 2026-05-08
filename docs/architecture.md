@@ -31,9 +31,10 @@ Use [Glossary](glossary.md) for the current boundary terms.
 - `worlds/`: source-side packages for world-oriented records, replay,
   observations, actions, transitions, encodings, and world-like utilities.
   Current packages include `worlds/shogi/` and `worlds/grid/`.
-- `tasks/`: task packages for objective-bound model surfaces that bind model
-  input construction, shared cores, output heads, targets, losses, metrics,
-  checkpoints, training, or evaluation.
+- `tasks/`: historical package name for problem-oriented model surfaces that
+  bind model input construction, shared cores, output heads, losses, metrics,
+  and evaluation when those pieces are tightly tied to one input/target/output
+  shape.
 - `transfer/`: reuse of learned state across task models.
 
 Do not introduce `domains/` as an umbrella package. The source-side packages
@@ -43,12 +44,17 @@ concrete form/input-oriented boundary problem needs it.
 ## Task Layer
 
 `tasks/` is not for dataset instances such as MNIST, CIFAR-10, or one shogi
-corpus run. It is for task families such as image classification, image-text
-choice, language modeling, retrieval, grid step prediction, and shogi move
-choice.
+corpus run. It is for problem families such as image classification,
+image-text choice, language modeling, retrieval, grid step prediction, and
+shogi move choice.
 
 Dataset-specific configuration, run settings, and generated artifacts should
 stay outside the package code unless they become reusable source definitions.
+
+The word `task` is informal here. Prefer narrower terms when precision matters:
+`Problem` for what is being solved, `Training Example` for one input/target
+relationship, `Sample` for a PyTorch runtime item, and `Objective`/`Loss` for
+optimization.
 
 ## Multi-Task Learning
 

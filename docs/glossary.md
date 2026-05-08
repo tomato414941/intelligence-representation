@@ -43,9 +43,13 @@ the same kind of category.
 
 ### Task Package
 
-A task package is an objective-bound model surface. It can bind model input
-construction, output heads, targets, losses, metrics, training, checkpointing,
-and evaluation for a task family.
+A task package is a historical package name for a problem-oriented model
+surface. It groups code that is tightly tied to one input/target/output shape,
+such as model input construction, output heads, losses, metrics, and evaluation.
+
+Use `task` informally when convenient, but do not treat it as a precise project
+boundary. Use narrower terms such as `Problem`, `Training Example`, `Sample`,
+`Objective`, or `Loss` when that distinction matters.
 
 Examples:
 

@@ -1,6 +1,6 @@
 # Task Package Responsibility Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -39,11 +39,19 @@ everything" drift.
 
 ## Acceptance Criteria
 
-- Decide whether the glossary definition should be narrowed.
-- Decide whether `targets`, `training`, and `checkpointing` should remain in
+- [x] Decide whether the glossary definition should be narrowed.
+- [x] Decide whether `targets`, `training`, and `checkpointing` should remain in
   the definition, be qualified, or be removed.
-- Keep `tasks/` separate from dataset instances, run outputs, and generated
+- [x] Keep `tasks/` separate from dataset instances, run outputs, and generated
   artifacts.
+
+## Resolution
+
+The glossary now treats `Task Package` as a historical package name for a
+problem-oriented model surface, not as a precise project boundary. It no longer
+claims ownership of targets, training, checkpointing, artifact storage, or data
+selection. `docs/architecture.md` now says `task` is informal and points readers
+to narrower terms when precision matters.
 
 ## Non-Goals
 
