@@ -1,4 +1,4 @@
-# Replay Buffer Architecture Gap
+# Replay Buffer Boundary
 
 Status: open.
 
@@ -6,25 +6,6 @@ Status: open.
 
 The project should introduce Replay Buffer as a learning-time sampling layer,
 not as another name for Experience Store.
-
-Ideal responsibility split:
-
-```text
-Experience Source
-  -> Replay Buffer
-  -> Training Batch
-  -> Learner
-  -> Policy / Value Model
-  -> Actor / Environment
-  -> Experience Source
-```
-
-- Experience Source stores what happened.
-- Replay Buffer decides what experience is reused for learning.
-- Sample Construction turns selected experience into input/target meaning.
-- PyTorch `Dataset` / `Sampler` / `DataLoader` turn samples into tensor batches.
-- Objective / Learner decides what loss to optimize.
-- Actor / Environment generates new experience.
 
 The current shogi flow has durable storage and fixed views, but no explicit
 Replay Buffer layer:
@@ -59,14 +40,6 @@ replayed, mixed, and partially forgotten over time.
 
 The project should decide whether it needs a Replay Buffer or Sampler layer
 between stored experience and training batches.
-
-The distinction also matters for coexistence with supervised and self-supervised
-learning:
-
-- supervised learning can use Data Selection without replay
-- self-supervised learning can use Data Selection plus derived targets
-- reinforcement learning needs Replay Buffer when experience is repeatedly
-  generated, mixed, sampled, and partially forgotten
 
 ## Direction
 
@@ -109,3 +82,9 @@ The decision must explain what owns:
 - introduce a generic multi-domain replay framework
 - change ShogiGameRecord schema
 - remove Experience Store persistence
+
+## Related
+
+- [`learning-data-flow-boundary.md`](learning-data-flow-boundary.md) tracks the
+  broader supervised / self-supervised / reinforcement-learning data-flow
+  boundary.
