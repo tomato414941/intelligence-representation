@@ -1,6 +1,6 @@
 # Scripts Shogi Logic Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -9,7 +9,8 @@ starting to live there instead of in importable package code.
 
 Current shogi-heavy scripts include:
 
-- `scripts/append_shogi_experience_store.py`
+- `scripts/append_shogi_experience_store.py` now delegates its reusable
+  behavior to `src/intrep/worlds/shogi/experience_store.py`.
 - `scripts/create_shogi_training_view.py` now delegates its reusable behavior
   to `src/intrep/worlds/shogi/training_view.py`.
 - `scripts/create_shogi_replay_view.py` now delegates its reusable behavior to
@@ -54,15 +55,25 @@ and print JSON results.
 
 ## Acceptance Criteria
 
-- Shogi Experience Store append behavior is importable from package code.
+- Shogi Experience Store append behavior is importable from package code. [x]
 - Shogi Training View creation behavior is importable from package code. [x]
 - Shogi replay selection / replay-view creation behavior is importable from
   package code. [x]
 - The corresponding scripts remain as thin wrappers or are removed if no longer
-  needed.
+  needed. [x]
 
 ## Non-Goals
 
 - remove RunPod/setup scripts
 - create a generic multi-domain replay framework
 - move all CLI entrypoints at once
+
+## Resolution
+
+Shogi reusable logic was moved out of scripts:
+
+- Experience Store append behavior lives in `src/intrep/worlds/shogi/experience_store.py`.
+- Training View creation behavior lives in `src/intrep/worlds/shogi/training_view.py`.
+- Replay selection / replay-view creation behavior lives in `src/intrep/worlds/shogi/replay.py`.
+
+The corresponding scripts remain as thin CLI wrappers.

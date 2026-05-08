@@ -12,6 +12,7 @@ from unittest.mock import patch
 import shogi
 
 from intrep.tasks.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
+from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -51,7 +52,6 @@ def _record(
 
 class ShogiExperienceStoreScriptsTest(unittest.TestCase):
     def test_appends_records_to_mutable_store(self) -> None:
-        append_module = _load_script_module("append_shogi_experience_store")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             first_input = root / "run-1.jsonl"
@@ -62,8 +62,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             write_shogi_game_records_jsonl(first_input, first_records)
             write_shogi_game_records_jsonl(second_input, second_records)
 
-            first_result = append_module.append_shogi_experience_store(input_path=first_input, store_dir=store_dir)
-            second_result = append_module.append_shogi_experience_store(input_path=second_input, store_dir=store_dir)
+            first_result = append_shogi_experience_store(input_path=first_input, store_dir=store_dir)
+            second_result = append_shogi_experience_store(input_path=second_input, store_dir=store_dir)
 
             self.assertEqual(first_result["added_games"], 2)
             self.assertEqual(second_result["added_games"], 1)
@@ -90,6 +90,20 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             )
             self.assertEqual(second_history["total_games"], 3)
             self.assertEqual(second_history["total_position_stats"]["unique_position_count"], 4)
+
+    def test_append_experience_store_script_is_thin_cli_wrapper(self) -> None:
+        append_module = _load_script_module("append_shogi_experience_store")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "games.jsonl"
+            store_dir = root / "store"
+            write_shogi_game_records_jsonl(input_path, [_record(("7g7f", "3c3d"), "black")])
+
+            with patch("sys.stdout", new_callable=StringIO):
+                append_module.main(["--input", str(input_path), "--store", str(store_dir)])
+
+            self.assertTrue((store_dir / "games.jsonl").exists())
+            self.assertTrue((store_dir / "manifest.json").exists())
 
     def test_creates_fixed_training_view_from_explicit_train_eval_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
