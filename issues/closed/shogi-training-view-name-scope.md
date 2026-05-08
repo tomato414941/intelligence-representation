@@ -1,6 +1,6 @@
 # Shogi Training View Name Scope
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -45,3 +45,21 @@ This issue can close when the project has a simple Training View directory name
 policy and `create_shogi_training_view.py` usage follows it without introducing
 a separate view registry.
 
+## Resolution
+
+The local Training View set was reduced to one active durable view:
+
+- `data/shogi/datasets/current/`
+
+The policy is:
+
+- keep `current/` as the normal active Training View
+- use `runs/` for temporary views
+- add another durable Training View only when it has a concrete reuse reason
+- keep details such as source mix, target policy, limits, and actor pairs in
+  `dataset.json` and `manifest.json`, not in the directory name
+
+This avoids a registry or numbered sequence for now.
+
+The placement rule is recorded in
+[`../../docs/artifact-layout.md`](../../docs/artifact-layout.md).
