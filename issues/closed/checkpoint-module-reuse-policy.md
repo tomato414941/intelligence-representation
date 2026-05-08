@@ -1,6 +1,9 @@
 # Checkpoint Module Reuse Policy
 
-Status: open.
+Status: closed.
+
+Resolution: transfer initialization now selects reusable modules by module name.
+Full checkpoint loading remains strict.
 
 ## Issue
 
@@ -19,11 +22,11 @@ management cost.
 The current middle path is to save whole problem model checkpoints, while making
 reuse happen explicitly at the module level.
 
-Today, `load_compatible_shared_state()` initializes a model from another model
-state by loading keys that have the same name and shape. That makes the reuse
-boundary implicit. A future model could accidentally reuse a key name and shape
-for a problem-specific head or adapter, and that component would be initialized
-even if the transfer was intended to reuse only shared parts.
+Previously, `load_compatible_shared_state()` initialized a model from another
+model state by loading keys that had the same name and shape. That made the
+reuse boundary implicit. A future model could accidentally reuse a key name and
+shape for a problem-specific head or adapter, and that component would be
+initialized even if the transfer was intended to reuse only shared parts.
 
 ## Desired Direction
 
@@ -54,8 +57,8 @@ while making it clear which modules may be reused.
 
 ## Acceptance Criteria
 
-- full checkpoint loading remains strict
-- transfer initialization does not silently load arbitrary matching keys
-- reusable modules are selected by module name at the call site
-- the project has not prematurely committed to separate module artifacts or one
+- [x] full checkpoint loading remains strict
+- [x] transfer initialization does not silently load arbitrary matching keys
+- [x] reusable modules are selected by module name at the call site
+- [x] the project has not prematurely committed to separate module artifacts or one
   universal multi-interface checkpoint

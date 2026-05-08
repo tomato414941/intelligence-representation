@@ -17,7 +17,7 @@ from intrep.text.language_modeling_training import (
     LanguageModelingTrainingDevice,
     resolve_training_device,
 )
-from intrep.core.shared_state_loading import load_compatible_shared_state
+from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
@@ -190,7 +190,11 @@ def train_image_text_choice_model(
         channel_count=train_dataset.channel_count,
     ).to(device)
     if initial_model_state_dict is not None:
-        load_compatible_shared_state(model, initial_model_state_dict)
+        load_compatible_module_state(
+            model,
+            initial_model_state_dict,
+            module_names=("core", "image_input_layer"),
+        )
     prompt_token_ids = prompt_token_ids.to(device)
     prompt_token_options = [row.to(device) for row in prompt_token_options]
     choice_token_ids = choice_token_ids.to(device)

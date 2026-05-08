@@ -15,7 +15,7 @@ from intrep.vision.training_data import (
     seeded_data_loader,
 )
 from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
-from intrep.core.shared_state_loading import load_compatible_shared_state
+from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.problems.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.text.token_scoring import next_token_loss
@@ -162,7 +162,11 @@ def train_image_text_answer_model(
         channel_count=train_dataset.channel_count,
     ).to(device)
     if initial_model_state_dict is not None:
-        load_compatible_shared_state(model, initial_model_state_dict)
+        load_compatible_module_state(
+            model,
+            initial_model_state_dict,
+            module_names=("core", "image_input_layer"),
+        )
 
     optimizer = build_adamw(
         model,
