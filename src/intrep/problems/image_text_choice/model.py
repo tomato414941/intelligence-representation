@@ -4,15 +4,55 @@ import torch
 from torch import nn
 
 from intrep.core.model_input import concatenate_input_embedding_sequences
-from intrep.image_text_shared_model import ImageTextSharedModel
+from intrep.core.transformer_core import SharedTransformerCore
+from intrep.text.causal_model import TokenOutputHead
+from intrep.text.input_layer import TextTokenInputLayer
+from intrep.vision.input_layer import ImagePatchInputLayer
 
 
-class ImageTextChoiceModel(ImageTextSharedModel):
+class ImageTextChoiceModel(nn.Module):
     """Task model for image-conditioned fixed choice scoring."""
 
-    def __init__(self, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-        self.choice_score_head = nn.Linear(self.token_embedding.embedding_dim, 1)
+    def __init__(
+        self,
+        *,
+        vocab_size: int,
+        text_context_length: int,
+        image_size: tuple[int, int],
+        patch_size: int,
+        embedding_dim: int,
+        num_heads: int,
+        hidden_dim: int,
+        num_layers: int,
+        channel_count: int = 1,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+        self.text_context_length = text_context_length
+        self.image_input_layer = ImagePatchInputLayer(
+            image_size=image_size,
+            patch_size=patch_size,
+            embedding_dim=embedding_dim,
+            channel_count=channel_count,
+        )
+        self.text_input_layer = TextTokenInputLayer(
+            vocab_size=vocab_size,
+            context_length=text_context_length,
+            embedding_dim=embedding_dim,
+        )
+        self.core = SharedTransformerCore(
+            embedding_dim=embedding_dim,
+            num_heads=num_heads,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        self.token_output = TokenOutputHead(embedding_dim=embedding_dim, vocab_size=vocab_size)
+        self.choice_score_head = nn.Linear(embedding_dim, 1)
+
+    def text_logits(self, token_ids: torch.Tensor) -> torch.Tensor:
+        embeddings = self.text_input_layer(token_ids)
+        return self.token_output(self.core(embeddings, causal=True))
 
     def choice_logits(
         self,
@@ -30,8 +70,8 @@ class ImageTextChoiceModel(ImageTextSharedModel):
         if prompt_token_ids.size(0) + choice_token_ids.size(1) > self.text_context_length:
             raise ValueError("prompt plus choice token length must not exceed text_context_length")
         image_embeddings = self.image_input_layer(images)
-        prompt_embeddings = self._text_embeddings(prompt_token_ids.unsqueeze(0))
-        choice_embeddings = self._text_embeddings(
+        prompt_embeddings = self.text_input_layer(prompt_token_ids.unsqueeze(0))
+        choice_embeddings = self.text_input_layer(
             choice_token_ids,
             position_offset=prompt_token_ids.size(0),
         )

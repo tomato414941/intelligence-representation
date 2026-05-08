@@ -24,7 +24,7 @@ def load_shared_core_initialization(
     *,
     device: LanguageModelingTrainingDevice = "auto",
 ) -> SharedCoreInitialization:
-    """Load compatible state from any checkpoint using ImageTextSharedModel."""
+    """Load compatible shared-core state from supported checkpoints."""
     resolved_device = resolve_training_device(device)
     checkpoint_path = Path(path)
     payload = torch.load(checkpoint_path, map_location=resolved_device, weights_only=False)

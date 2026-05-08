@@ -1,10 +1,13 @@
 # Shared Interface Boundary
 
-Status: open. Priority: low.
+Status: closed.
+
+Resolution: `image_text_shared_model.py` was removed. Image/text problem models
+now compose image input, text input, shared core, and output heads directly.
 
 ## Issue
 
-`image_text_shared_model.py` sits at the top level because its responsibility is
+`image_text_shared_model.py` sat at the top level because its responsibility was
 not clean enough to move into `core/`, but it is also not a single problem
 model.
 
@@ -15,7 +18,7 @@ It knows concrete external interfaces:
 - token output
 - shared Transformer core wiring
 
-It is currently shared by:
+It was shared by:
 
 - `problems/image_text_choice/model.py`
 - `problems/image_text_answer/model.py`
@@ -41,18 +44,16 @@ involved.
 - `problems/<problem>/model.py` wraps the interfaces, shared core, and
   prediction head for one concrete task.
 
-`image_text_shared_model.py` is a temporary image/text shared model shell. New
-problem-specific model entry points should live under `problems/<problem>/model.py`.
-Do not add more public routes to `ImageTextSharedModel` unless at least two
-current image/text problems need the same route.
+Problem-specific model entry points live under `problems/<problem>/model.py`.
+Shared behavior should be extracted as named input modules, output heads, or core
+interfaces instead of a broad image/text shell.
 
 ## Acceptance Criteria
 
 - `core/` does not import from `vision`, `text`, `shogi`, `grid`, or `problems`.
-- The concrete adapters and reusable routes inside `image_text_shared_model.py`
-  are identified before moving files.
-- Any new package name matches the actual responsibility and is not a broad
-  abstraction created ahead of need.
-- `image_text_shared_model.py` is either kept as an explicit image/text shared
-  shell, split by responsibility, or moved only after a clearer package boundary
-  exists.
+- [x] `core/` does not import from `vision`, `text`, `shogi`, `grid`, or
+  `problems`.
+- [x] The concrete adapters and reusable routes inside `image_text_shared_model.py`
+  were split by responsibility.
+- [x] No broad `multimodal/` package was introduced.
+- [x] `image_text_shared_model.py` was removed.

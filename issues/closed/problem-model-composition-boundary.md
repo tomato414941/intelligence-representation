@@ -1,6 +1,9 @@
 # Problem Model Composition Boundary
 
-Status: open.
+Status: closed.
+
+Resolution: problem models compose input embedding modules, shared core, and
+output heads directly. The image/text shared shell was removed.
 
 ## Issue
 
@@ -29,8 +32,8 @@ Examples:
 - shogi policy/value: shogi position input, shared core, policy/value heads
 - grid step prediction: grid input, shared core, prediction heads
 
-`ImageTextSharedModel` is a useful image/text shell, but it should not become
-the place where every future interface is added.
+The former image/text shared shell was split into concrete problem models and
+reusable input/output components.
 
 ## Why It Matters
 
@@ -63,15 +66,13 @@ model class.
 
 ## Acceptance Criteria
 
-This issue can close when the project documents or implements a stable rule for:
-
-- what a problem model owns
-- what the shared core interface requires
-- when an input embedding module should be shared
-- when an output head should be shared
-- where shared input modules and output heads should live
-- whether `ImageTextSharedModel` remains a temporary image/text shell or is split
-  into smaller reusable pieces
+- [x] problem models own concrete composition for their problem
+- [x] the shared core interface is embedding sequence -> hidden state sequence
+- [x] input embedding modules are shared when they are reusable concrete
+  boundaries
+- [x] output heads are shared when they are reusable concrete boundaries
+- [x] shared input modules and output heads live near their interface
+- [x] `ImageTextSharedModel` was split into smaller reusable pieces
 
 ## Non-Goals
 
