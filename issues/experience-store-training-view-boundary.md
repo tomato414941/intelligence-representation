@@ -1,6 +1,6 @@
 # Experience Store Training View Boundary
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
@@ -31,6 +31,9 @@ either of two bad states:
 
 Do not introduce a shared ExperienceStore or TrainingView abstraction from shogi
 alone.
+
+This is intentionally deferred until a second concrete task needs the same
+lifecycle.
 
 Keep the shogi implementation concrete until a second task needs the same
 lifecycle. When that happens, compare both concrete implementations and extract
