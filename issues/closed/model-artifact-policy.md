@@ -1,6 +1,6 @@
 # Model Artifact Policy
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -32,3 +32,18 @@ source data scope can still be unclear.
 
 This issue can close when `models/` has a documented minimal structure and the
 current long-lived checkpoint follows it.
+
+## Resolution
+
+The minimal model artifact policy is now documented in
+[`../../docs/artifact-layout.md`](../../docs/artifact-layout.md):
+
+- `models/<model-name>/checkpoint.pt` is the long-lived model artifact.
+- The checkpoint must contain the schema, model config, and state dict needed to
+  load it.
+- Metrics, run logs, player presets, and lineage registries do not belong under
+  `models/`.
+
+The current checkpoint at `models/d32-h64-heads4-l1/checkpoint.pt` follows this
+policy and was verified to load with the current shogi policy-value checkpoint
+loader.

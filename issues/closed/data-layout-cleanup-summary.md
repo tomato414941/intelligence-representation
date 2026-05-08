@@ -42,7 +42,8 @@ to exist.
 
 2026-05-07:
 
-- `docs/data-layout.md` now records the basic `data/` placement rules.
+- `docs/artifact-layout.md` now records the basic local artifact placement
+  rules.
 - Qhapaq raw data was organized under `data/qhapaq/raw/kiffiles/` and
   `data/qhapaq/raw/results/`.
 - The broken `Rota_orqha1018_2739Games.7z` 403 HTML file and duplicate raw-root

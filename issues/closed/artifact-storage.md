@@ -31,7 +31,7 @@ documentation, and small metadata rather than large generated files.
 This broad issue was closed because it mixed several artifact responsibilities.
 Follow-up work is split into narrower issues:
 
-- [`../model-artifact-policy.md`](../model-artifact-policy.md): what belongs
+- [`model-artifact-policy.md`](model-artifact-policy.md): what belongs
   with long-lived model checkpoints under `models/`.
 - [`../source-derived-artifact-policy.md`](../source-derived-artifact-policy.md):
   how to store source-derived records and failure logs.

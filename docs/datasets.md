@@ -3,7 +3,7 @@
 This document records datasets that are already supported or under discussion
 for this project. It is not a downloader guide.
 
-Local data placement rules live in [data-layout.md](data-layout.md).
+Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 
 ## Supported And Candidate Datasets
 
