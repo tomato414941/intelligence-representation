@@ -36,7 +36,7 @@ Grid step prediction is also mixed:
 
 Shogi move choice is the clearest pressure point:
 
-- `ShogiMoveChoiceDatasetDefinition` contains train/eval sources and `max_games`
+- `ShogiPolicyValueDatasetDefinition` contains train/eval sources and `max_games`
   style Data Selection.
 - It also contains objective and policy/value target-source settings, which are
   closer to Training Example Definition.
@@ -46,7 +46,7 @@ Shogi move choice is the clearest pressure point:
 ## Progress
 
 - The shogi-specific Data Selection boundary problem has been split into
-  `shogi-move-choice-data-selection-boundary.md`.
+  `shogi-policy-value-data-selection-boundary.md`.
 - Language-modeling windowing is intentionally kept in the PyTorch dataset
   because the next-token windows are deterministic and cheap to rebuild from
   token IDs.
@@ -82,7 +82,7 @@ deciding the project-level responsibilities:
 - [x] Decide whether grid transition-to-target shaping should stay in the dataset
   or move to an explicit training-example layer.
 - [x] Keep shogi move-choice Data Selection changes in
-  `shogi-move-choice-data-selection-boundary.md`.
+  `shogi-policy-value-data-selection-boundary.md`.
 - [x] Update docs or code only where the boundary decision is stable.
 
 ## Resolution

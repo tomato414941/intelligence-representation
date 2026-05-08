@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from intrep.tasks.shogi_move_choice.data import load_shogi_move_choice_examples_from_game_records_jsonl
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceDatasetSource:
+class ShogiPolicyValueDatasetSource:
     kind: str
     path: Path
     max_games: int | None = None
@@ -19,7 +19,7 @@ class ShogiMoveChoiceDatasetSource:
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceDatasetDefinition:
+class ShogiPolicyValueDatasetDefinition:
     name: str
     objective: str
     policy_target_source: str
@@ -27,15 +27,15 @@ class ShogiMoveChoiceDatasetDefinition:
     policy_mate_cp: float
     value_target_source: str
     score_cp_scale: float
-    train_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
-    eval_sources: tuple[ShogiMoveChoiceDatasetSource, ...]
+    train_sources: tuple[ShogiPolicyValueDatasetSource, ...]
+    eval_sources: tuple[ShogiPolicyValueDatasetSource, ...]
 
 
-def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoiceDatasetDefinition:
+def load_shogi_policy_value_dataset_definition(path: str | Path) -> ShogiPolicyValueDatasetDefinition:
     definition_path = Path(path)
     payload = json.loads(definition_path.read_text(encoding="utf-8"))
     root = definition_path.parent
-    definition = ShogiMoveChoiceDatasetDefinition(
+    definition = ShogiPolicyValueDatasetDefinition(
         name=str(payload["name"]),
         objective=str(payload["objective"]),
         policy_target_source=str(payload["policy_target_source"]),
@@ -52,8 +52,8 @@ def load_shogi_move_choice_dataset_definition(path: str | Path) -> ShogiMoveChoi
     return definition
 
 
-def load_shogi_move_choice_dataset_examples(
-    definition: ShogiMoveChoiceDatasetDefinition,
+def load_shogi_policy_value_dataset_examples(
+    definition: ShogiPolicyValueDatasetDefinition,
 ) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
     train_examples = _load_sources(
         definition.train_sources,
@@ -74,7 +74,7 @@ def load_shogi_move_choice_dataset_examples(
     return train_examples, eval_examples
 
 
-def shogi_move_choice_dataset_definition_to_json(definition: ShogiMoveChoiceDatasetDefinition) -> dict[str, Any]:
+def shogi_policy_value_dataset_definition_to_json(definition: ShogiPolicyValueDatasetDefinition) -> dict[str, Any]:
     return {
         "name": definition.name,
         "objective": definition.objective,
@@ -88,12 +88,12 @@ def shogi_move_choice_dataset_definition_to_json(definition: ShogiMoveChoiceData
     }
 
 
-def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDatasetSource, ...]:
+def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiPolicyValueDatasetSource, ...]:
     if not isinstance(value, list):
         raise ValueError("dataset sources must be a list")
     if not value:
         raise ValueError("dataset sources must be a non-empty list")
-    sources: list[ShogiMoveChoiceDatasetSource] = []
+    sources: list[ShogiPolicyValueDatasetSource] = []
     for item in value:
         if not isinstance(item, dict):
             raise ValueError("dataset source must be an object")
@@ -117,7 +117,7 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDat
             value_target_source = str(item["value_target_source"])
             _validate_value_target_source_value(value_target_source)
         sources.append(
-            ShogiMoveChoiceDatasetSource(
+            ShogiPolicyValueDatasetSource(
                 kind=kind,
                 path=source_path,
                 max_games=max_games,
@@ -128,7 +128,7 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiMoveChoiceDat
     return tuple(sources)
 
 
-def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
+def _validate_split(definition: ShogiPolicyValueDatasetDefinition) -> None:
     train_sources = {_source_key(source) for source in definition.train_sources}
     eval_sources = {_source_key(source) for source in definition.eval_sources}
     overlap = train_sources & eval_sources
@@ -136,13 +136,13 @@ def _validate_split(definition: ShogiMoveChoiceDatasetDefinition) -> None:
         raise ValueError("train and eval dataset sources must be split")
 
 
-def _validate_value_target_source(definition: ShogiMoveChoiceDatasetDefinition) -> None:
+def _validate_value_target_source(definition: ShogiPolicyValueDatasetDefinition) -> None:
     _validate_value_target_source_value(definition.value_target_source)
     if definition.score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
 
 
-def _validate_policy_target_source(definition: ShogiMoveChoiceDatasetDefinition) -> None:
+def _validate_policy_target_source(definition: ShogiPolicyValueDatasetDefinition) -> None:
     _validate_policy_target_source_value(definition.policy_target_source)
     if definition.policy_temperature_cp <= 0:
         raise ValueError("policy_temperature_cp must be positive")
@@ -161,7 +161,7 @@ def _validate_policy_target_source_value(value: str) -> None:
 
 
 def _load_sources(
-    sources: tuple[ShogiMoveChoiceDatasetSource, ...],
+    sources: tuple[ShogiPolicyValueDatasetSource, ...],
     *,
     policy_target_source: str,
     value_target_source: str,
@@ -173,7 +173,7 @@ def _load_sources(
     for source in sources:
         if source.kind == "game_records_jsonl":
             examples.extend(
-                load_shogi_move_choice_examples_from_game_records_jsonl(
+                load_shogi_policy_value_examples_from_game_records_jsonl(
                     source.path,
                     policy_target_source=source.policy_target_source or policy_target_source,
                     value_target_source=source.value_target_source or value_target_source,
@@ -190,7 +190,7 @@ def _load_sources(
     return examples
 
 
-def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str | int]:
+def _source_to_json(source: ShogiPolicyValueDatasetSource) -> dict[str, str | int]:
     payload: dict[str, str | int] = {
         "kind": source.kind,
         "path": str(source.path),
@@ -204,5 +204,5 @@ def _source_to_json(source: ShogiMoveChoiceDatasetSource) -> dict[str, str | int
     return payload
 
 
-def _source_key(source: ShogiMoveChoiceDatasetSource) -> tuple[str, Path, int | None]:
+def _source_key(source: ShogiPolicyValueDatasetSource) -> tuple[str, Path, int | None]:
     return source.kind, source.path.resolve(), source.max_games

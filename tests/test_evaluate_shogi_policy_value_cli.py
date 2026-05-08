@@ -9,9 +9,9 @@ from unittest.mock import patch
 
 import shogi
 
-from intrep.evaluate_shogi_move_choice import main
-from intrep.tasks.shogi_move_choice.checkpoint import save_shogi_move_choice_model_checkpoint
-from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
+from intrep.evaluate_shogi_policy_value import main
+from intrep.tasks.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
+from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -34,7 +34,7 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
-class EvaluateShogiMoveChoiceCliTest(unittest.TestCase):
+class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
     def test_evaluates_checkpoint_without_training(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -62,19 +62,19 @@ class EvaluateShogiMoveChoiceCliTest(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            config = ShogiMoveChoiceTrainingConfig(
+            config = ShogiPolicyValueTrainingConfig(
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
                 num_layers=1,
                 use_shared_core=True,
             )
-            save_shogi_move_choice_model_checkpoint(checkpoint_path, build_shogi_move_choice_model(config), config)
+            save_shogi_policy_value_model_checkpoint(checkpoint_path, build_shogi_policy_value_model(config), config)
 
             with patch(
                 "sys.argv",
                 [
-                    "evaluate_shogi_move_choice",
+                    "evaluate_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--checkpoint-path",

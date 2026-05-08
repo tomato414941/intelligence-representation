@@ -8,11 +8,11 @@ from unittest.mock import patch
 import shogi
 import torch
 
-from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint
-from intrep.tasks.shogi_move_choice.dataset_definition import (
-    load_shogi_move_choice_dataset_definition,
-    load_shogi_move_choice_dataset_examples,
-    shogi_move_choice_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.tasks.shogi_policy_value.dataset_definition import (
+    load_shogi_policy_value_dataset_definition,
+    load_shogi_policy_value_dataset_examples,
+    shogi_policy_value_dataset_definition_to_json,
 )
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -20,7 +20,7 @@ from intrep.worlds.shogi.game_record import (
     shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.train_shogi_move_choice import main
+from intrep.train_shogi_policy_value import main
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
@@ -63,7 +63,7 @@ def _record_with_multipv_info(moves: tuple[str, ...], winner: str | None) -> Sho
     )
 
 
-class TrainShogiMoveChoiceCliTest(unittest.TestCase):
+class TrainShogiPolicyValueCliTest(unittest.TestCase):
     def test_trains_from_game_records_and_writes_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -78,8 +78,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             dataset_definition_path.write_text(
                 json.dumps(
                     {
-                        "name": "test-shogi-move-choice",
-                        "objective": "shogi move-choice policy",
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -96,7 +96,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "train_shogi_move_choice",
+                    "train_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--checkpoint-path",
@@ -136,7 +136,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             self.assertTrue(metrics_path.exists())
             self.assertIn("step=1/1", stdout.getvalue())
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["dataset_definition"]["name"], "test-shogi-move-choice")
+            self.assertEqual(metrics["dataset_definition"]["name"], "test-shogi-policy-value")
             self.assertEqual(metrics["best_checkpoint_path"], str(best_checkpoint_path))
             self.assertIn(metrics["metrics"]["best_eval_step"], {0, 1})
             self.assertIsNotNone(metrics["metrics"]["best_eval_loss"])
@@ -167,8 +167,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             dataset_definition_path.write_text(
                 json.dumps(
                     {
-                        "name": "test-shogi-move-choice",
-                        "objective": "shogi move-choice policy",
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "usi_multipv",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -185,7 +185,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "train_shogi_move_choice",
+                    "train_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--checkpoint-path",
@@ -230,8 +230,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             dataset_definition_path.write_text(
                 json.dumps(
                     {
-                        "name": "test-shogi-move-choice",
-                        "objective": "shogi move-choice policy",
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -247,7 +247,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "train_shogi_move_choice",
+                    "train_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--checkpoint-path",
@@ -273,7 +273,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "train_shogi_move_choice",
+                    "train_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--init-checkpoint-path",
@@ -302,8 +302,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["init_checkpoint_path"], str(init_checkpoint_path))
-            init_model = load_shogi_move_choice_checkpoint(init_checkpoint_path)
-            trained_model = load_shogi_move_choice_checkpoint(checkpoint_path)
+            init_model = load_shogi_policy_value_checkpoint(init_checkpoint_path)
+            trained_model = load_shogi_policy_value_checkpoint(checkpoint_path)
             for key, tensor in init_model.state_dict().items():
                 self.assertTrue(torch.equal(tensor, trained_model.state_dict()[key]))
 
@@ -320,8 +320,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             dataset_definition_path.write_text(
                 json.dumps(
                     {
-                        "name": "test-shogi-move-choice",
-                        "objective": "shogi move-choice policy",
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -338,7 +338,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "train_shogi_move_choice",
+                    "train_shogi_policy_value",
                     "--dataset-definition",
                     str(dataset_definition_path),
                     "--checkpoint-path",
@@ -390,7 +390,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 json.dumps(
                     {
                         "name": "bad-unsplit",
-                        "objective": "shogi move-choice policy",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -405,7 +405,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "split"):
-                load_shogi_move_choice_dataset_definition(dataset_definition_path)
+                load_shogi_policy_value_dataset_definition(dataset_definition_path)
 
     def test_dataset_source_max_games_limits_loaded_examples(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -425,7 +425,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 json.dumps(
                     {
                         "name": "max-games",
-                        "objective": "shogi move-choice policy",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -439,14 +439,14 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            definition = load_shogi_move_choice_dataset_definition(dataset_definition_path)
-            train_examples, eval_examples = load_shogi_move_choice_dataset_examples(definition)
+            definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
+            train_examples, eval_examples = load_shogi_policy_value_dataset_examples(definition)
 
         self.assertEqual(definition.train_sources[0].max_games, 1)
         self.assertEqual(len(train_examples), 2)
         self.assertEqual(len(eval_examples), 2)
         self.assertEqual(
-            shogi_move_choice_dataset_definition_to_json(definition)["train_sources"][0]["max_games"],
+            shogi_policy_value_dataset_definition_to_json(definition)["train_sources"][0]["max_games"],
             1,
         )
 
@@ -467,7 +467,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 json.dumps(
                     {
                         "name": "source-local-target-policy",
-                        "objective": "shogi move-choice policy",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -489,8 +489,8 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            definition = load_shogi_move_choice_dataset_definition(dataset_definition_path)
-            train_examples, eval_examples = load_shogi_move_choice_dataset_examples(definition)
+            definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
+            train_examples, eval_examples = load_shogi_policy_value_dataset_examples(definition)
 
         self.assertEqual(definition.train_sources[0].policy_target_source, "usi_multipv")
         self.assertEqual(definition.train_sources[0].value_target_source, "yaneuraou_best_score")
@@ -501,7 +501,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
         self.assertEqual(train_examples[1].value_target, 1.0)
         self.assertIsNone(eval_examples[0].policy_targets)
         self.assertEqual(eval_examples[0].value_target, 1.0)
-        source_json = shogi_move_choice_dataset_definition_to_json(definition)["train_sources"][0]
+        source_json = shogi_policy_value_dataset_definition_to_json(definition)["train_sources"][0]
         self.assertEqual(source_json["policy_target_source"], "usi_multipv")
         self.assertEqual(source_json["value_target_source"], "yaneuraou_best_score")
 
@@ -513,7 +513,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
                 json.dumps(
                     {
                         "name": "bad-source-kind",
-                        "objective": "shogi move-choice policy",
+                        "objective": "shogi policy-value",
                         "policy_target_source": "chosen_move",
                         "policy_temperature_cp": 100.0,
                         "policy_mate_cp": 100000.0,
@@ -528,7 +528,7 @@ class TrainShogiMoveChoiceCliTest(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "game_records_jsonl"):
-                load_shogi_move_choice_dataset_definition(dataset_definition_path)
+                load_shogi_policy_value_dataset_definition(dataset_definition_path)
 
 
 if __name__ == "__main__":

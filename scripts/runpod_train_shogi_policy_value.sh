@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DATASET_DEFINITION=${DATASET_DEFINITION:-data/shogi/datasets/current/dataset.json}
-OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-move-choice}
+OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
@@ -71,7 +71,7 @@ done
 
 python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --repo-root "$PWD" \
-  --name intrep-shogi-move-choice \
+  --name intrep-shogi-policy-value \
   --secure-cloud \
   --gpu-type "NVIDIA GeForce RTX 4090" \
   --image runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404 \
@@ -95,7 +95,7 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --output "$OUTPUT_DIR" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
 echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY\"
-.venv/bin/python -u -m intrep.train_shogi_move_choice \
+.venv/bin/python -u -m intrep.train_shogi_policy_value \
   --dataset-definition \"$DATASET_DEFINITION\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
   --best-checkpoint-path \"$OUTPUT_DIR/best_checkpoint.pt\" \

@@ -1,10 +1,10 @@
 import shogi
 
-from intrep.tasks.shogi_move_choice.data import (
+from intrep.tasks.shogi_policy_value.data import (
     shogi_move_choice_examples_from_game_record,
     shogi_policy_value_examples_from_game_record,
 )
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample, ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.examples import ShogiMoveChoiceExample, ShogiPolicyValueExample
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,

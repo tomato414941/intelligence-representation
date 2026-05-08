@@ -7,14 +7,14 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint
-from intrep.tasks.shogi_move_choice.dataset_definition import (
-    load_shogi_move_choice_dataset_definition,
-    load_shogi_move_choice_dataset_examples,
-    shogi_move_choice_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.tasks.shogi_policy_value.dataset_definition import (
+    load_shogi_policy_value_dataset_definition,
+    load_shogi_policy_value_dataset_examples,
+    shogi_policy_value_dataset_definition_to_json,
 )
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
-from intrep.tasks.shogi_move_choice.training import evaluate_shogi_move_choice_metrics
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
 def main() -> None:
@@ -30,7 +30,7 @@ def main() -> None:
     parser.add_argument("--pin-memory", action="store_true")
     args = parser.parse_args()
 
-    payload = evaluate_shogi_move_choice_checkpoint(
+    payload = evaluate_shogi_policy_value_checkpoint(
         dataset_definition_path=args.dataset_definition,
         checkpoint_path=args.checkpoint_path,
         batch_size=args.batch_size,
@@ -45,7 +45,7 @@ def main() -> None:
     print(json.dumps(payload, indent=2))
 
 
-def evaluate_shogi_move_choice_checkpoint(
+def evaluate_shogi_policy_value_checkpoint(
     *,
     dataset_definition_path: Path,
     checkpoint_path: Path,
@@ -60,16 +60,16 @@ def evaluate_shogi_move_choice_checkpoint(
         raise ValueError("batch_size must be positive")
     if num_workers < 0:
         raise ValueError("num_workers must be non-negative")
-    dataset_definition = load_shogi_move_choice_dataset_definition(dataset_definition_path)
-    train_examples, eval_examples = load_shogi_move_choice_dataset_examples(dataset_definition)
+    dataset_definition = load_shogi_policy_value_dataset_definition(dataset_definition_path)
+    train_examples, eval_examples = load_shogi_policy_value_dataset_examples(dataset_definition)
     used_train_examples = _limit_examples(train_examples, max_train_examples, label="max train examples")
     used_eval_examples = _limit_examples(eval_examples, max_eval_examples, label="max eval examples")
-    model = load_shogi_move_choice_checkpoint(checkpoint_path, device=device)
-    train_metrics = evaluate_shogi_move_choice_metrics(
+    model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
+    train_metrics = evaluate_shogi_policy_value_metrics(
         model,
         _loader(used_train_examples, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory),
     )
-    eval_metrics = evaluate_shogi_move_choice_metrics(
+    eval_metrics = evaluate_shogi_policy_value_metrics(
         model,
         _loader(used_eval_examples, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory),
     )
@@ -81,7 +81,7 @@ def evaluate_shogi_move_choice_checkpoint(
         "train_policy_target_summary": _policy_target_summary(train_examples),
         "eval_policy_target_summary": _policy_target_summary(eval_examples),
         "dataset_definition_path": str(dataset_definition_path),
-        "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
+        "dataset_definition": shogi_policy_value_dataset_definition_to_json(dataset_definition),
         "checkpoint_path": str(checkpoint_path),
         "batch_size": batch_size,
         "device": device,

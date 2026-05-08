@@ -3,17 +3,17 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.tasks.shogi_move_choice.model import ShogiMoveChoiceModel, ShogiMoveChoiceModelConfig
-import intrep.tasks.shogi_move_choice.training as training
-from intrep.tasks.shogi_move_choice.training import (
-    ShogiMoveChoiceTrainingConfig,
-    train_shogi_move_choice_model,
+from intrep.tasks.shogi_policy_value.model import ShogiPolicyValueModel, ShogiPolicyValueModelConfig
+import intrep.tasks.shogi_policy_value.training as training
+from intrep.tasks.shogi_policy_value.training import (
+    ShogiPolicyValueTrainingConfig,
+    train_shogi_policy_value_model,
 )
 
 
-class ShogiMoveChoiceTrainingTest(unittest.TestCase):
+class ShogiPolicyValueTrainingTest(unittest.TestCase):
     def test_policy_target_loss_uses_soft_targets(self) -> None:
         uniform_loss = training._policy_target_loss(
             torch.tensor([[0.0, 0.0]]),
@@ -29,9 +29,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
     def test_trains_for_one_step(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -51,9 +51,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
     def test_can_overfit_tiny_move_sequence(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=80,
                 batch_size=2,
                 learning_rate=0.02,
@@ -72,10 +72,10 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             + shogi_policy_value_examples_from_test_moves(("2g2f", "8c8d", "2f2e", "8d8e"))
         )
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
             eval_examples=examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -93,9 +93,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         examples = shogi_policy_value_examples_from_test_moves(("7g7f",))
 
         with self.assertRaisesRegex(ValueError, "num_workers"):
-            train_shogi_move_choice_model(
+            train_shogi_policy_value_model(
                 examples,
-                config=ShogiMoveChoiceTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(
                     max_steps=1,
                     num_workers=-1,
                 ),
@@ -105,9 +105,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         examples = shogi_policy_value_examples_from_test_moves(("7g7f",))
 
         with self.assertRaisesRegex(ValueError, "at least one loss weight"):
-            train_shogi_move_choice_model(
+            train_shogi_policy_value_model(
                 examples,
-                config=ShogiMoveChoiceTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(
                     max_steps=1,
                     policy_loss_weight=0.0,
                     value_loss_weight=0.0,
@@ -118,9 +118,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
 
-        train_shogi_move_choice_model(
+        train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=3,
                 batch_size=2,
                 embedding_dim=8,
@@ -137,9 +137,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
 
-        train_shogi_move_choice_model(
+        train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=3,
                 batch_size=2,
                 embedding_dim=8,
@@ -154,10 +154,10 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
     def test_early_stopping_stops_after_eval_patience(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
             eval_examples=examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=5,
                 batch_size=2,
                 learning_rate=0.0,
@@ -178,10 +178,10 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
         examples = shogi_policy_value_examples_from_test_moves(("7g7f",))
 
         with self.assertRaisesRegex(ValueError, "eval_every"):
-            train_shogi_move_choice_model(
+            train_shogi_policy_value_model(
                 examples,
                 eval_examples=examples,
-                config=ShogiMoveChoiceTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(
                     max_steps=1,
                     early_stopping_patience=1,
                 ),
@@ -199,9 +199,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             for index, example in enumerate(base_examples)
         )
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=2,
                 batch_size=2,
                 embedding_dim=8,
@@ -229,10 +229,10 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             for index, example in enumerate(examples)
         )
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             valued_examples,
             eval_examples=valued_examples[:2],
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=80,
                 batch_size=4,
                 learning_rate=0.02,
@@ -270,9 +270,9 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             for index, example in enumerate(base_examples)
         )
 
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=80,
                 batch_size=4,
                 learning_rate=0.02,
@@ -301,16 +301,16 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
             )
             for example in base_examples
         )
-        model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
+        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
         model.forward_policy_value = Mock(wraps=model.forward_policy_value)
         model.predict_value = Mock(wraps=model.predict_value)
 
-        original_build_model = training.build_shogi_move_choice_model
-        training.build_shogi_move_choice_model = lambda config: model
+        original_build_model = training.build_shogi_policy_value_model
+        training.build_shogi_policy_value_model = lambda config: model
         try:
-            train_shogi_move_choice_model(
+            train_shogi_policy_value_model(
                 examples,
-                config=ShogiMoveChoiceTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(
                     max_steps=1,
                     batch_size=2,
                     embedding_dim=8,
@@ -322,7 +322,7 @@ class ShogiMoveChoiceTrainingTest(unittest.TestCase):
                 ),
             )
         finally:
-            training.build_shogi_move_choice_model = original_build_model
+            training.build_shogi_policy_value_model = original_build_model
 
         self.assertGreaterEqual(model.predict_value.call_count, 1)
         self.assertEqual(model.forward_policy_value.call_count, 2)

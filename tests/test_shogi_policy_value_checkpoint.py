@@ -4,18 +4,18 @@ from pathlib import Path
 
 import torch
 
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.tasks.shogi_move_choice.checkpoint import load_shogi_move_choice_checkpoint, save_shogi_move_choice_checkpoint
-from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingConfig, train_shogi_move_choice_model
+from intrep.tasks.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
+from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 
 
-class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
+class ShogiPolicyValueCheckpointTest(unittest.TestCase):
     def test_save_and_load_preserves_logits(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=2,
                 batch_size=2,
                 embedding_dim=8,
@@ -29,8 +29,8 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "shogi.pt"
-            save_shogi_move_choice_checkpoint(path, result)
-            loaded = load_shogi_move_choice_checkpoint(path)
+            save_shogi_policy_value_checkpoint(path, result)
+            loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
             expected = result.model(position_token_ids, candidate_move_features, candidate_mask)
@@ -40,9 +40,9 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
 
     def test_load_rejects_missing_model_weights(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-        result = train_shogi_move_choice_model(
+        result = train_shogi_policy_value_model(
             examples,
-            config=ShogiMoveChoiceTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -53,13 +53,13 @@ class ShogiMoveChoiceCheckpointTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "shogi.pt"
-            save_shogi_move_choice_checkpoint(path, result)
+            save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
             payload["model_state_dict"].pop(next(iter(payload["model_state_dict"])))
             torch.save(payload, path)
 
             with self.assertRaisesRegex(RuntimeError, "Missing key"):
-                load_shogi_move_choice_checkpoint(path)
+                load_shogi_policy_value_checkpoint(path)
 
 
 if __name__ == "__main__":

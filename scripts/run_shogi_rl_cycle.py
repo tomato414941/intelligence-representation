@@ -154,7 +154,7 @@ def _run_generate_games(
 def _write_dataset_definition(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
     payload = {
         "name": path.parent.name,
-        "objective": "shogi move-choice policy/value from self-play records",
+        "objective": "shogi policy/value from self-play records",
         "policy_target_source": "chosen_move",
         "policy_temperature_cp": 100.0,
         "policy_mate_cp": 100000.0,
@@ -184,7 +184,7 @@ def _run_training(
     command = [
         sys.executable,
         "-m",
-        "intrep.train_shogi_move_choice",
+        "intrep.train_shogi_policy_value",
         "--dataset-definition",
         str(dataset_json),
         "--init-checkpoint-path",

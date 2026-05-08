@@ -1,10 +1,10 @@
-# Shogi Move Choice Data Selection Boundary
+# Shogi Policy Value Data Selection Boundary
 
 Status: open.
 
 ## Issue
 
-The current `ShogiMoveChoiceDatasetDefinition` implementation combines multiple
+The current `ShogiPolicyValueDatasetDefinition` implementation combines multiple
 responsibilities that are now separate project concepts.
 
 It currently contains:
@@ -17,7 +17,7 @@ It currently contains:
   `score_cp_scale`
 - source-level target policy overrides on individual sources
 
-`load_shogi_move_choice_dataset_examples()` also uses that combined structure to
+`load_shogi_policy_value_dataset_examples()` also uses that combined structure to
 select records and construct `ShogiPolicyValueExample` values in one step.
 
 ## Why It Matters
@@ -28,7 +28,7 @@ one `DatasetDefinition` loader.
 
 The broader responsibility issue was closed in
 `closed/training-example-responsibility-mixing.md`. This issue tracks the shogi
-move-choice concrete case.
+policy-value concrete case.
 
 ## Related Issue
 
@@ -38,27 +38,27 @@ it asks whether the current shogi `DatasetDefinition` implementation should be
 split or renamed now that `Data Selection` is the formal inclusion-boundary
 term.
 
-`shogi-move-choice-problem-scope.md` tracks whether `ShogiMoveChoice` is the
-right problem boundary for policy/value/data-construction responsibilities.
+`closed/shogi-move-choice-problem-scope.md` tracks that the old
+`ShogiMoveChoice` package boundary has been renamed to `ShogiPolicyValue`.
 
 ## Direction
 
 Do not refactor immediately. Source-level target policy has been implemented,
-and a broader problem-scope question remains open.
+and the package boundary has been renamed to `shogi_policy_value`.
 
 Possible future shape:
 
-- `ShogiMoveChoiceDataSelection`: train/eval source inclusion
-- `ShogiMoveChoiceSourceSelection`: source kind/path/max_games and optional
+- `ShogiPolicyValueDataSelection`: train/eval source inclusion
+- `ShogiPolicyValueSourceSelection`: source kind/path/max_games and optional
   source-local target policy
-- `ShogiMoveChoiceTrainingExampleSpec`: objective and default target policy /
+- `ShogiPolicyValueTrainingExampleSpec`: objective and default target policy /
   shaping settings
 
 Avoid compatibility aliases when this is eventually renamed or split.
 
 ## Acceptance Criteria
 
-- Decide whether the current `ShogiMoveChoiceDatasetDefinition` name should be
+- Decide whether the current `ShogiPolicyValueDatasetDefinition` name should be
   replaced.
 - [x] Decide whether target policy belongs globally, per source, or both with a
   default/inheritance rule.

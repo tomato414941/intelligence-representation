@@ -3,23 +3,23 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.tasks.shogi_move_choice.model import (
-    SharedCoreShogiMoveChoiceModel,
-    SharedCoreShogiMoveChoiceModelConfig,
-    ShogiMoveChoiceModel,
-    ShogiMoveChoiceModelConfig,
+from intrep.tasks.shogi_policy_value.model import (
+    SharedCoreShogiPolicyValueModel,
+    SharedCoreShogiPolicyValueModelConfig,
+    ShogiPolicyValueModel,
+    ShogiPolicyValueModelConfig,
     _candidate_square_hidden,
 )
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
-class ShogiMoveChoiceModelTest(unittest.TestCase):
+class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_model_returns_candidate_logits(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
-        model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
+        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
 
@@ -28,7 +28,7 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
     def test_model_masks_invalid_candidates(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         candidate_mask[:, -1] = False
-        model = ShogiMoveChoiceModel(ShogiMoveChoiceModelConfig(embedding_dim=8, hidden_dim=16))
+        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
 
@@ -36,8 +36,8 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
     def test_shared_core_model_returns_candidate_logits(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
-        model = SharedCoreShogiMoveChoiceModel(
-            SharedCoreShogiMoveChoiceModelConfig(
+        model = SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
                 num_heads=2,
                 hidden_dim=16,
@@ -51,8 +51,8 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
     def test_shared_core_model_returns_position_value(self) -> None:
         position_token_ids, _, _, _, _, _ = _batch()
-        model = SharedCoreShogiMoveChoiceModel(
-            SharedCoreShogiMoveChoiceModelConfig(
+        model = SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
                 num_heads=2,
                 hidden_dim=16,
@@ -67,8 +67,8 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
 
     def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
-        model = SharedCoreShogiMoveChoiceModel(
-            SharedCoreShogiMoveChoiceModelConfig(
+        model = SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
                 num_heads=2,
                 hidden_dim=16,
@@ -84,8 +84,8 @@ class ShogiMoveChoiceModelTest(unittest.TestCase):
         self.assertEqual(model.core.forward.call_count, 1)
 
     def test_shared_core_candidate_scorer_uses_position_and_square_hidden(self) -> None:
-        model = SharedCoreShogiMoveChoiceModel(
-            SharedCoreShogiMoveChoiceModelConfig(
+        model = SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
                 num_heads=2,
                 hidden_dim=16,

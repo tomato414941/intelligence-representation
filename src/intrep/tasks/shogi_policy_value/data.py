@@ -6,7 +6,7 @@ from math import exp
 from pathlib import Path
 from typing import Sequence
 
-from intrep.tasks.shogi_move_choice.examples import (
+from intrep.tasks.shogi_policy_value.examples import (
     ShogiMoveChoiceExample,
     ShogiPolicyValueExample,
     ShogiPositionValueExample,
@@ -15,7 +15,7 @@ from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_rec
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
 
 
-def load_shogi_move_choice_examples_from_game_records_jsonl(
+def load_shogi_policy_value_examples_from_game_records_jsonl(
     path: str | Path,
     *,
     policy_target_source: str,

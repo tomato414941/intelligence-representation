@@ -90,7 +90,7 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
             train_command = run.call_args_list[1].args[0]
-            self.assertIn("intrep.train_shogi_move_choice", train_command)
+            self.assertIn("intrep.train_shogi_policy_value", train_command)
             self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
             self.assertIn("--value-loss-weight", train_command)
             self.assertIn("1.0", train_command)

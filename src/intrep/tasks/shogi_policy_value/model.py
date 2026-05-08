@@ -17,15 +17,15 @@ DROP_PIECE_VOCAB_SIZE = 8
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceModelConfig:
+class ShogiPolicyValueModelConfig:
     embedding_dim: int = 256
     hidden_dim: int = 1024
 
 
-class ShogiMoveChoiceModel(nn.Module):
-    def __init__(self, config: ShogiMoveChoiceModelConfig | None = None) -> None:
+class ShogiPolicyValueModel(nn.Module):
+    def __init__(self, config: ShogiPolicyValueModelConfig | None = None) -> None:
         super().__init__()
-        self.config = config or ShogiMoveChoiceModelConfig()
+        self.config = config or ShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_embedding = nn.Embedding(SHOGI_POSITION_VOCAB_SIZE, embedding_dim)
         self.from_square_embedding = nn.Embedding(FROM_SQUARE_VOCAB_SIZE, embedding_dim)
@@ -84,7 +84,7 @@ class ShogiMoveChoiceModel(nn.Module):
 
 
 @dataclass(frozen=True)
-class SharedCoreShogiMoveChoiceModelConfig:
+class SharedCoreShogiPolicyValueModelConfig:
     embedding_dim: int = 256
     num_heads: int = 8
     hidden_dim: int = 1024
@@ -103,10 +103,10 @@ class ShogiPositionInputLayer(nn.Module):
         return self.token_embedding(position_token_ids) + self.position_embedding(positions)
 
 
-class SharedCoreShogiMoveChoiceModel(nn.Module):
-    def __init__(self, config: SharedCoreShogiMoveChoiceModelConfig | None = None) -> None:
+class SharedCoreShogiPolicyValueModel(nn.Module):
+    def __init__(self, config: SharedCoreShogiPolicyValueModelConfig | None = None) -> None:
         super().__init__()
-        self.config = config or SharedCoreShogiMoveChoiceModelConfig()
+        self.config = config or SharedCoreShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_input = ShogiPositionInputLayer(embedding_dim=embedding_dim)
         self.core = SharedTransformerCore(
@@ -116,8 +116,8 @@ class SharedCoreShogiMoveChoiceModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.move_model = ShogiMoveChoiceModel(
-            ShogiMoveChoiceModelConfig(
+        self.move_model = ShogiPolicyValueModel(
+            ShogiPolicyValueModelConfig(
                 embedding_dim=embedding_dim,
                 hidden_dim=self.config.hidden_dim,
             )

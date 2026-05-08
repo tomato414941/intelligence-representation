@@ -5,27 +5,27 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.tasks.shogi_move_choice.checkpoint import (
-    load_shogi_move_choice_checkpoint_state_dict,
-    save_shogi_move_choice_checkpoint,
-    save_shogi_move_choice_model_checkpoint,
-    save_shogi_move_choice_state_checkpoint,
+from intrep.tasks.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_state_dict,
+    save_shogi_policy_value_checkpoint,
+    save_shogi_policy_value_model_checkpoint,
+    save_shogi_policy_value_state_checkpoint,
 )
-from intrep.tasks.shogi_move_choice.dataset_definition import (
-    load_shogi_move_choice_dataset_definition,
-    load_shogi_move_choice_dataset_examples,
-    shogi_move_choice_dataset_definition_to_json,
+from intrep.tasks.shogi_policy_value.dataset_definition import (
+    load_shogi_policy_value_dataset_definition,
+    load_shogi_policy_value_dataset_examples,
+    shogi_policy_value_dataset_definition_to_json,
 )
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueExample
-from intrep.tasks.shogi_move_choice.training import (
-    ShogiMoveChoiceTrainingConfig,
-    ShogiMoveChoiceTrainingProgress,
-    train_shogi_move_choice_model,
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.training import (
+    ShogiPolicyValueTrainingConfig,
+    ShogiPolicyValueTrainingProgress,
+    train_shogi_policy_value_model,
 )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a shogi move-choice policy/value model.")
+    parser = argparse.ArgumentParser(description="Train a shogi policy/value model.")
     parser.add_argument("--dataset-definition", type=Path, required=True)
     parser.add_argument("--init-checkpoint-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
@@ -54,10 +54,10 @@ def main() -> None:
     parser.add_argument("--keep-last-n-checkpoints", type=int)
     args = parser.parse_args()
 
-    dataset_definition = load_shogi_move_choice_dataset_definition(args.dataset_definition)
-    train_examples, eval_examples = load_shogi_move_choice_dataset_examples(dataset_definition)
+    dataset_definition = load_shogi_policy_value_dataset_definition(args.dataset_definition)
+    train_examples, eval_examples = load_shogi_policy_value_dataset_examples(dataset_definition)
 
-    config = ShogiMoveChoiceTrainingConfig(
+    config = ShogiPolicyValueTrainingConfig(
         max_steps=args.max_steps,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
@@ -82,22 +82,22 @@ def main() -> None:
     # Periodic artifacts keep long disposable-pod runs from losing all progress
     # when the process ends before final checkpoint and metrics are written.
     progress_writer = _ProgressArtifactWriter(args)
-    result = train_shogi_move_choice_model(
+    result = train_shogi_policy_value_model(
         train_examples,
         eval_examples=eval_examples,
         config=config,
         initial_state_dict=(
-            load_shogi_move_choice_checkpoint_state_dict(args.init_checkpoint_path, device=args.device)
+            load_shogi_policy_value_checkpoint_state_dict(args.init_checkpoint_path, device=args.device)
             if args.init_checkpoint_path is not None
             else None
         ),
         progress_callback=progress_writer.write,
     )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    save_shogi_move_choice_checkpoint(args.checkpoint_path, result)
+    save_shogi_policy_value_checkpoint(args.checkpoint_path, result)
     if args.best_checkpoint_path is not None and result.best_model_state_dict is not None:
         args.best_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        save_shogi_move_choice_state_checkpoint(args.best_checkpoint_path, result.best_model_state_dict, result.config)
+        save_shogi_policy_value_state_checkpoint(args.best_checkpoint_path, result.best_model_state_dict, result.config)
     metrics = {
         "raw_train_case_count": len(train_examples),
         "raw_eval_case_count": len(eval_examples),
@@ -105,7 +105,7 @@ def main() -> None:
         "train_policy_target_summary": _policy_target_summary(train_examples),
         "eval_policy_target_summary": _policy_target_summary(eval_examples),
         "dataset_definition_path": str(args.dataset_definition),
-        "dataset_definition": shogi_move_choice_dataset_definition_to_json(dataset_definition),
+        "dataset_definition": shogi_policy_value_dataset_definition_to_json(dataset_definition),
         "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,
@@ -153,20 +153,20 @@ class _ProgressArtifactWriter:
         if self.keep_last_n_checkpoints is not None and self.keep_last_n_checkpoints <= 0:
             raise ValueError("keep_last_n_checkpoints must be positive")
 
-    def write(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+    def write(self, progress: ShogiPolicyValueTrainingProgress) -> None:
         if self.checkpoint_every is not None and progress.step % self.checkpoint_every == 0:
             self._write_checkpoint(progress)
         if self.metrics_every is not None and progress.step % self.metrics_every == 0:
             self._write_metrics(progress)
 
-    def _write_checkpoint(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+    def _write_checkpoint(self, progress: ShogiPolicyValueTrainingProgress) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         path = self.checkpoint_dir / f"checkpoint_step_{progress.step}.pt"
-        save_shogi_move_choice_model_checkpoint(path, progress.model, progress.config)
+        save_shogi_policy_value_model_checkpoint(path, progress.model, progress.config)
         self.saved_checkpoints.append(path)
         self._prune_checkpoints()
 
-    def _write_metrics(self, progress: ShogiMoveChoiceTrainingProgress) -> None:
+    def _write_metrics(self, progress: ShogiPolicyValueTrainingProgress) -> None:
         self.metrics_dir.mkdir(parents=True, exist_ok=True)
         path = self.metrics_dir / f"metrics_step_{progress.step}.json"
         payload = {

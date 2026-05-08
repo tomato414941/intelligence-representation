@@ -5,8 +5,8 @@ from pathlib import Path
 
 import shogi
 
-from intrep.tasks.shogi_move_choice.data import (
-    load_shogi_move_choice_examples_from_game_records_jsonl,
+from intrep.tasks.shogi_policy_value.data import (
+    load_shogi_policy_value_examples_from_game_records_jsonl,
     shogi_policy_targets_from_game_record,
     shogi_return_targets_from_game_record,
     shogi_score_targets_from_game_record,
@@ -34,7 +34,7 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
-class ShogiMoveChoiceDataTest(unittest.TestCase):
+class ShogiPolicyValueDataTest(unittest.TestCase):
     def test_builds_return_targets_from_game_outcome(self) -> None:
         record = _record(("7g7f", "3c3d"), "black")
 
@@ -50,7 +50,7 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
             path = Path(directory) / "games.jsonl"
             write_shogi_game_records_jsonl(path, [_record(("7g7f", "3c3d"), "white")])
 
-            examples = load_shogi_move_choice_examples_from_game_records_jsonl(
+            examples = load_shogi_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_source="chosen_move",
                 value_target_source="winner",
@@ -91,7 +91,7 @@ class ShogiMoveChoiceDataTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            records = load_shogi_move_choice_examples_from_game_records_jsonl(
+            records = load_shogi_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_source="usi_multipv",
                 value_target_source="winner",

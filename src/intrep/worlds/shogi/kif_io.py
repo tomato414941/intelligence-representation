@@ -12,8 +12,8 @@ from intrep.worlds.shogi.game_record import (
     shogi_side_code_to_winner,
     write_shogi_game_records_jsonl,
 )
-from intrep.tasks.shogi_move_choice.data import shogi_move_choice_examples_from_game_record
-from intrep.tasks.shogi_move_choice.examples import ShogiMoveChoiceExample
+from intrep.tasks.shogi_policy_value.data import shogi_move_choice_examples_from_game_record
+from intrep.tasks.shogi_policy_value.examples import ShogiMoveChoiceExample
 
 
 def load_kif_game(path: str | Path, *, encoding: str = "cp932") -> tuple[str, ...]:

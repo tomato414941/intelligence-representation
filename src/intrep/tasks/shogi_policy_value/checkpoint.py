@@ -5,24 +5,24 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingResult
+from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 
 
-SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA = "intrep.tasks.shogi_move_choice.checkpoint.v1"
+SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.tasks.shogi_policy_value.checkpoint.v1"
 
 
-def save_shogi_move_choice_checkpoint(path: str | Path, result: ShogiMoveChoiceTrainingResult) -> None:
-    save_shogi_move_choice_model_checkpoint(path, result.model, result.config)
+def save_shogi_policy_value_checkpoint(path: str | Path, result: ShogiPolicyValueTrainingResult) -> None:
+    save_shogi_policy_value_model_checkpoint(path, result.model, result.config)
 
 
-def save_shogi_move_choice_model_checkpoint(path: str | Path, model: nn.Module, config: object) -> None:
-    save_shogi_move_choice_state_checkpoint(path, model.state_dict(), config)
+def save_shogi_policy_value_model_checkpoint(path: str | Path, model: nn.Module, config: object) -> None:
+    save_shogi_policy_value_state_checkpoint(path, model.state_dict(), config)
 
 
-def save_shogi_move_choice_state_checkpoint(path: str | Path, state_dict: object, config: object) -> None:
+def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: object, config: object) -> None:
     torch.save(
         {
-            "schema_version": SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA,
+            "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
             "config": {
                 "embedding_dim": config.embedding_dim,
                 "hidden_dim": config.hidden_dim,
@@ -38,22 +38,22 @@ def save_shogi_move_choice_state_checkpoint(path: str | Path, state_dict: object
     )
 
 
-def load_shogi_move_choice_checkpoint_state_dict(path: str | Path, *, device: str = "cpu") -> object:
+def load_shogi_policy_value_checkpoint_state_dict(path: str | Path, *, device: str = "cpu") -> object:
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
-    if payload.get("schema_version") != SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA:
-        raise ValueError("unsupported shogi move choice checkpoint schema")
+    if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
+        raise ValueError("unsupported shogi policy value checkpoint schema")
     return payload["model_state_dict"]
 
 
-def load_shogi_move_choice_checkpoint(path: str | Path, *, device: str = "cpu") -> nn.Module:
+def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu") -> nn.Module:
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
-    if payload.get("schema_version") != SHOGI_MOVE_CHOICE_CHECKPOINT_SCHEMA:
-        raise ValueError("unsupported shogi move choice checkpoint schema")
-    from intrep.tasks.shogi_move_choice.training import ShogiMoveChoiceTrainingConfig, build_shogi_move_choice_model
+    if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
+        raise ValueError("unsupported shogi policy value checkpoint schema")
+    from intrep.tasks.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
     config_payload = payload["config"]
-    model = build_shogi_move_choice_model(
-        ShogiMoveChoiceTrainingConfig(
+    model = build_shogi_policy_value_model(
+        ShogiPolicyValueTrainingConfig(
             embedding_dim=int(config_payload["embedding_dim"]),
             hidden_dim=int(config_payload["hidden_dim"]),
             num_heads=int(config_payload.get("num_heads", 4)),

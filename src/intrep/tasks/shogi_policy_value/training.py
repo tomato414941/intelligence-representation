@@ -11,17 +11,17 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
-from intrep.tasks.shogi_move_choice.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
-from intrep.tasks.shogi_move_choice.model import (
-    SharedCoreShogiMoveChoiceModel,
-    SharedCoreShogiMoveChoiceModelConfig,
-    ShogiMoveChoiceModel,
-    ShogiMoveChoiceModelConfig,
+from intrep.tasks.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.tasks.shogi_policy_value.model import (
+    SharedCoreShogiPolicyValueModel,
+    SharedCoreShogiPolicyValueModelConfig,
+    ShogiPolicyValueModel,
+    ShogiPolicyValueModelConfig,
 )
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceTrainingConfig:
+class ShogiPolicyValueTrainingConfig:
     max_steps: int = 100
     batch_size: int = 8
     learning_rate: float = 0.003
@@ -46,7 +46,7 @@ class ShogiMoveChoiceTrainingConfig:
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceEvaluationMetrics:
+class ShogiPolicyValueEvaluationMetrics:
     loss: float
     accuracy: float
     top_3_accuracy: float
@@ -57,7 +57,7 @@ class ShogiMoveChoiceEvaluationMetrics:
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceTrainingMetrics:
+class ShogiPolicyValueTrainingMetrics:
     train_case_count: int
     eval_case_count: int
     initial_loss: float
@@ -89,33 +89,33 @@ class ShogiMoveChoiceTrainingMetrics:
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceTrainingResult:
+class ShogiPolicyValueTrainingResult:
     model: nn.Module
-    config: ShogiMoveChoiceTrainingConfig
-    metrics: ShogiMoveChoiceTrainingMetrics
+    config: ShogiPolicyValueTrainingConfig
+    metrics: ShogiPolicyValueTrainingMetrics
     best_model_state_dict: dict[str, torch.Tensor] | None = None
 
 
 @dataclass(frozen=True)
-class ShogiMoveChoiceTrainingProgress:
+class ShogiPolicyValueTrainingProgress:
     step: int
     max_steps: int
     loss: float
     elapsed_seconds: float
     model: nn.Module
-    config: ShogiMoveChoiceTrainingConfig
-    eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+    config: ShogiPolicyValueTrainingConfig
+    eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
 
 
-def train_shogi_move_choice_model(
+def train_shogi_policy_value_model(
     examples: Sequence[ShogiPolicyValueExample],
     *,
     eval_examples: Sequence[ShogiPolicyValueExample] | None = None,
-    config: ShogiMoveChoiceTrainingConfig | None = None,
+    config: ShogiPolicyValueTrainingConfig | None = None,
     initial_state_dict: object | None = None,
-    progress_callback: Callable[[ShogiMoveChoiceTrainingProgress], None] | None = None,
-) -> ShogiMoveChoiceTrainingResult:
-    training_config = config or ShogiMoveChoiceTrainingConfig()
+    progress_callback: Callable[[ShogiPolicyValueTrainingProgress], None] | None = None,
+) -> ShogiPolicyValueTrainingResult:
+    training_config = config or ShogiPolicyValueTrainingConfig()
     if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
     if training_config.log_every is not None and training_config.log_every <= 0:
@@ -139,22 +139,22 @@ def train_shogi_move_choice_model(
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
     dataset = ShogiPolicyValueDataset(examples)
-    loader = _build_shogi_move_choice_loader(dataset, training_config, shuffle=True)
+    loader = _build_shogi_policy_value_loader(dataset, training_config, shuffle=True)
     train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
     train_eval_dataset = ShogiPolicyValueDataset(train_eval_examples)
-    train_eval_loader = _build_shogi_move_choice_loader(train_eval_dataset, training_config, shuffle=False)
+    train_eval_loader = _build_shogi_policy_value_loader(train_eval_dataset, training_config, shuffle=False)
     limited_eval_examples = (
         _limit_examples(eval_examples, training_config.max_eval_examples) if eval_examples is not None else None
     )
     eval_dataset = ShogiPolicyValueDataset(limited_eval_examples) if limited_eval_examples is not None else None
     eval_loader = (
-        _build_shogi_move_choice_loader(eval_dataset, training_config, shuffle=False)
+        _build_shogi_policy_value_loader(eval_dataset, training_config, shuffle=False)
         if eval_dataset is not None
         else None
     )
     if training_config.eval_every is not None and eval_loader is None:
         raise ValueError("eval examples are required when eval_every is set")
-    model = build_shogi_move_choice_model(training_config).to(device)
+    model = build_shogi_policy_value_model(training_config).to(device)
     if initial_state_dict is not None:
         model.load_state_dict(initial_state_dict, strict=True)
     optimizer = build_adamw(
@@ -162,12 +162,12 @@ def train_shogi_move_choice_model(
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
-    initial_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
-    initial_eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+    initial_metrics = evaluate_shogi_policy_value_metrics(model, train_eval_loader)
+    initial_eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     best_eval_tracker = BestMetricTracker(mode="min")
     best_model_state_dict: dict[str, torch.Tensor] | None = None
     if eval_loader is not None:
-        initial_eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+        initial_eval_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
         best_eval_tracker.update(step=0, value=initial_eval_metrics.loss)
         best_model_state_dict = copy.deepcopy(model.state_dict())
 
@@ -211,9 +211,9 @@ def train_shogi_move_choice_model(
             step += 1
             if training_config.log_every is not None and step % training_config.log_every == 0:
                 _log_training_progress(step, training_config.max_steps, started, loss, device)
-            eval_step_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+            eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
             if training_config.eval_every is not None and step % training_config.eval_every == 0:
-                eval_step_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+                eval_step_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
                 if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
                     best_model_state_dict = copy.deepcopy(model.state_dict())
                     no_improvement_eval_count = 0
@@ -226,7 +226,7 @@ def train_shogi_move_choice_model(
                 and step % training_config.progress_every == 0
             ):
                 progress_callback(
-                    ShogiMoveChoiceTrainingProgress(
+                    ShogiPolicyValueTrainingProgress(
                         step=step,
                         max_steps=training_config.max_steps,
                         loss=float(loss.detach().cpu().item()),
@@ -247,16 +247,16 @@ def train_shogi_move_choice_model(
         if stopped_early:
             break
 
-    final_metrics = evaluate_shogi_move_choice_metrics(model, train_eval_loader)
-    eval_metrics: ShogiMoveChoiceEvaluationMetrics | None = None
+    final_metrics = evaluate_shogi_policy_value_metrics(model, train_eval_loader)
+    eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     if eval_loader is not None:
-        eval_metrics = evaluate_shogi_move_choice_metrics(model, eval_loader)
+        eval_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
         if best_eval_tracker.update(step=step, value=eval_metrics.loss):
             best_model_state_dict = copy.deepcopy(model.state_dict())
-    return ShogiMoveChoiceTrainingResult(
+    return ShogiPolicyValueTrainingResult(
         model=model,
         config=training_config,
-        metrics=ShogiMoveChoiceTrainingMetrics(
+        metrics=ShogiPolicyValueTrainingMetrics(
             train_case_count=len(dataset),
             eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
             initial_loss=initial_metrics.loss,
@@ -290,18 +290,18 @@ def train_shogi_move_choice_model(
     )
 
 
-def evaluate_shogi_move_choice_model(
+def evaluate_shogi_policy_value_model(
     model: nn.Module,
     loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
 ) -> tuple[float, float]:
-    metrics = evaluate_shogi_move_choice_metrics(model, loader)
+    metrics = evaluate_shogi_policy_value_metrics(model, loader)
     return metrics.loss, metrics.accuracy
 
 
-def evaluate_shogi_move_choice_metrics(
+def evaluate_shogi_policy_value_metrics(
     model: nn.Module,
     loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
-) -> ShogiMoveChoiceEvaluationMetrics:
+) -> ShogiPolicyValueEvaluationMetrics:
     model.eval()
     losses: list[float] = []
     value_losses: list[float] = []
@@ -346,7 +346,7 @@ def evaluate_shogi_move_choice_metrics(
             if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 value_losses.append(float(value_loss.item()))
-    return ShogiMoveChoiceEvaluationMetrics(
+    return ShogiPolicyValueEvaluationMetrics(
         loss=sum(losses) / len(losses),
         accuracy=correct / total,
         top_3_accuracy=top_3_correct / total,
@@ -357,9 +357,9 @@ def evaluate_shogi_move_choice_metrics(
     )
 
 
-def _build_shogi_move_choice_loader(
+def _build_shogi_policy_value_loader(
     dataset: ShogiPolicyValueDataset,
-    config: ShogiMoveChoiceTrainingConfig,
+    config: ShogiPolicyValueTrainingConfig,
     *,
     shuffle: bool,
 ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
@@ -423,18 +423,18 @@ def _log_training_progress(
     print(" ".join(parts), flush=True)
 
 
-def build_shogi_move_choice_model(config: ShogiMoveChoiceTrainingConfig) -> nn.Module:
+def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
     if config.use_shared_core:
-        return SharedCoreShogiMoveChoiceModel(
-            SharedCoreShogiMoveChoiceModelConfig(
+        return SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=config.embedding_dim,
                 num_heads=config.num_heads,
                 hidden_dim=config.hidden_dim,
                 num_layers=config.num_layers,
             )
         )
-    return ShogiMoveChoiceModel(
-        ShogiMoveChoiceModelConfig(
+    return ShogiPolicyValueModel(
+        ShogiPolicyValueModelConfig(
             embedding_dim=config.embedding_dim,
             hidden_dim=config.hidden_dim,
         )
