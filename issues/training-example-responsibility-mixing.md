@@ -1,0 +1,80 @@
+# Training Example Responsibility Mixing
+
+Status: open.
+
+## Issue
+
+Current code mostly separates training examples from PyTorch `Dataset` samples,
+but several paths still mix Data Selection, Training Example Definition, and
+runtime sampling responsibilities.
+
+This is not an immediate bug. It is a design risk while the project is deciding
+how source records, targets, training examples, samples, and PyTorch datasets
+should relate.
+
+## Findings
+
+Image classification and image-text tasks are mostly clean:
+
+- `ImageClassificationExample` stores `image_path` and label meaning.
+- `ImageTextChoiceExample` stores image, choices, and answer index.
+- `ImageTextAnswerExample` stores image, prompt, and answer text.
+- Their PyTorch datasets mostly turn those examples into runtime tensor samples.
+
+Language modeling is less clear:
+
+- `LanguageModelingExample` is just text, so it is close to a source record.
+- `LanguageModelingDataset` slices token IDs into context/target windows.
+- That means the PyTorch dataset owns part of Training Example Definition.
+
+Grid step prediction is also mixed:
+
+- `GridExperienceTransition` is an experience/source-side record.
+- `GridStepPredictionDataset` turns it into observation/action/next-cell/reward
+  tensor targets.
+- That combines Training Example Definition with runtime sampling.
+
+Shogi move choice is the clearest pressure point:
+
+- `ShogiMoveChoiceDatasetDefinition` contains train/eval sources and `max_games`
+  style Data Selection.
+- It also contains objective and policy/value target-source settings, which are
+  closer to Training Example Definition.
+- `ShogiMoveChoiceDataset` then converts `ShogiMoveChoiceExample` into tensor
+  samples.
+
+## Why It Matters
+
+If these boundaries stay mixed, future multi-source or multi-objective learning
+may push more logic into PyTorch datasets or broad dataset-definition files.
+That would make it harder to answer:
+
+- which data was included
+- which input/target relationship was used
+- which targets were generated or stored
+- which logic only exists to materialize runtime samples
+
+## Direction
+
+Do not refactor everything now. Use the current code as concrete evidence while
+deciding the project-level responsibilities:
+
+- Data Selection: what data is included for a declared use
+- Training Example Definition: how included data becomes objective-specific
+  input/target relationships
+- Runtime Sampling: how training examples become PyTorch samples
+
+## Acceptance Criteria
+
+- Decide whether `ShogiMoveChoiceDatasetDefinition` should be split or renamed.
+- Decide whether language-modeling windowing belongs outside the PyTorch
+  dataset.
+- Decide whether grid transition-to-target shaping should stay in the dataset
+  or move to an explicit training-example layer.
+- Update docs or code only where the boundary decision is stable.
+
+## Non-Goals
+
+- immediate code refactor
+- broad generic dataset framework
+- renaming all `Example` classes
