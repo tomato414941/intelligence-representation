@@ -13,8 +13,8 @@ Original examples:
 - `data/shogi/`
 - `data/external/`
 
-`data/external/` has been removed. `data/runs/` and `data/shogi/` are now
-tracked by split-out issues.
+`data/external/` and `data/runs/` have been removed. `data/shogi/` is tracked
+by a split-out issue.
 
 This issue records the data-layout cleanup already done and keeps links to the
 remaining narrower issues.
@@ -74,7 +74,8 @@ work has been split into narrower issues.
 
 Remaining focus outside this closed issue:
 
-- [`data-runs-directory.md`](../data-runs-directory.md) tracks `data/runs/`.
+- [`data-runs-directory.md`](data-runs-directory.md) records the removal of
+  `data/runs/`.
 - [`data-shogi-directory.md`](../data-shogi-directory.md) tracks `data/shogi/`.
 
 ## Non-Goals

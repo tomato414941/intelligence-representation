@@ -1,6 +1,6 @@
 # Data Runs Directory
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -31,6 +31,15 @@ the data tree.
 - Delete disposable or obsolete files.
 - Move reusable data artifacts to source-specific paths if they still matter.
 - Remove `data/runs/` when it is empty.
+
+## Resolution
+
+`data/runs/` was removed. Its 37 local files were moved to
+`runs/data-runs-archive/` because they are historical run outputs or ad-hoc
+run-local train/eval JSONL files, not durable source data.
+
+No code or docs outside this issue referenced those file names. The project
+root `runs/` directory remains the disposable run-output location.
 
 ## Acceptance Criteria
 
