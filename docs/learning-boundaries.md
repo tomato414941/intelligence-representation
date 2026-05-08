@@ -21,6 +21,11 @@ need the same raw fields.
 Data Selection states which source records, training examples, or stored targets
 are included for a declared use.
 
+Experience Stores are source storage for generated or collected experience.
+They are not PyTorch Datasets and should not be the direct learning boundary.
+Training should use explicit Data Selection or a fixed Training View derived
+from them.
+
 PyTorch `Dataset` objects should stay thinner than Data Selection. They adapt
 an already-selected training or evaluation set into indexed samples; they should
 not be the source of truth for target generation, split policy, or learning

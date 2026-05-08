@@ -1,6 +1,6 @@
 # Experience Store Dataset Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -54,3 +54,24 @@ The decision should be reflected in the relevant docs or code names.
 - redesign directory layout
 - implement Replay Buffer or sampling policy
 - change ShogiGameRecord schema
+
+## Resolution
+
+Experience Store is source storage, not a Dataset.
+
+The decision is now recorded in:
+
+- [`../../docs/glossary.md`](../../docs/glossary.md)
+- [`../../docs/learning-boundaries.md`](../../docs/learning-boundaries.md)
+
+Current boundary:
+
+- Experience Store: durable source storage for generated or collected
+  experience.
+- Training View: fixed source snapshot used by Data Selection or training.
+- Data Selection: inclusion boundary for a declared use.
+- PyTorch Dataset: runtime adapter that returns indexed samples.
+
+Training should not depend directly on "whatever is currently in the store."
+It should use explicit Data Selection or a fixed Training View derived from the
+store.

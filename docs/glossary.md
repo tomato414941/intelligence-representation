@@ -168,6 +168,17 @@ Examples:
 Do not force static datasets to be experience. An image file and label row can
 be a source record without being experience.
 
+### Experience Store
+
+An Experience Store is durable source storage for generated or collected
+experience.
+
+It is not a PyTorch Dataset. Training should use explicit Data Selection or a
+fixed Training View derived from the store.
+
+Experience Store records should remain close to the source experience and
+should not be reshaped around one objective, run, or model.
+
 ### Data Selection
 
 Data Selection decides which source records, training examples, or stored
