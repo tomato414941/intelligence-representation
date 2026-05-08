@@ -1,6 +1,6 @@
 # Qhapaq Processed Regeneration
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
@@ -35,6 +35,9 @@ Without a clear regeneration path, Qhapaq raw cleanup can make the directory
 look organized while the processed records still reflect an older subset.
 
 ## Initial Policy
+
+This is intentionally deferred for now. The current processed data is usable,
+and Qhapaq is not the main near-term bottleneck.
 
 Do not keep persistent extracted/interim KIF directories unless conversion cost
 or debugging requires it.
