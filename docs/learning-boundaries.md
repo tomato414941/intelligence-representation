@@ -16,22 +16,22 @@ Do not force static dataset records and interaction records into one generic
 schema. They are related because both can produce model inputs, not because they
 need the same raw fields.
 
-## Dataset Definitions and Runs
+## Data Selection and Runs
 
-A dataset definition states which source records or training examples are used
-for a learning purpose.
+Data Selection states which source records, training examples, or stored targets
+are included for a declared use.
 
-PyTorch `Dataset` objects should stay thinner than dataset definitions. They
-adapt an already-defined training or evaluation set into indexed samples; they
-should not be the source of truth for target generation, split policy, or
-learning intent.
+PyTorch `Dataset` objects should stay thinner than Data Selection. They adapt
+an already-selected training or evaluation set into indexed samples; they should
+not be the source of truth for target generation, split policy, or learning
+intent.
 
 A run produces artifacts such as raw logs, example caches, metrics, or
-checkpoints. Runs can provide material for a dataset, but a run artifact is not
-itself the dataset definition.
+checkpoints. Runs can provide material for future Data Selection, but a run
+artifact is not itself the selection boundary.
 
-Training should be explainable by a dataset definition and a training
-configuration, not only by a convenient artifact path.
+Training should be explainable by Data Selection, training-example meaning, and
+a training configuration, not only by a convenient artifact path.
 
 ## Model Inputs
 

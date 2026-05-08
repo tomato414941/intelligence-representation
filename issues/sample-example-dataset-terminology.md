@@ -5,7 +5,7 @@ Status: open.
 ## Issue
 
 The project uses terms such as `Example`, `Dataset`, `Experience`, `Record`,
-`Training View`, and `Dataset Definition`, but the boundaries are still easy to
+`Training View`, and `Data Selection`, but the boundaries are still easy to
 blur.
 
 The current concern is that `example` may be too narrow as the general name for
@@ -40,9 +40,9 @@ If these names stay vague, storage and code boundaries can drift:
 - The glossary now defines PyTorch `Dataset` as an indexed-sample adapter, not
   the source of truth for raw data, target generation, split policy, or
   learning intent.
-- `learning-boundaries.md` now states that dataset definitions carry the
-  training/evaluation data boundary, while PyTorch `Dataset` objects adapt that
-  boundary into indexed samples.
+- `Data Selection` is now the glossary term for the data inclusion boundary.
+- `learning-boundaries.md` now states that PyTorch `Dataset` objects adapt an
+  already-selected training or evaluation set into indexed samples.
 - The glossary now distinguishes `Training Example` as the meaning-level
   objective-shaped unit from `Sample` as the runtime item returned by
   `Dataset.__getitem__`.

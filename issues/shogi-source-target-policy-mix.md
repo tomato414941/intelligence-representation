@@ -4,8 +4,8 @@ Status: open.
 
 ## Issue
 
-Shogi Dataset Definition currently chooses one policy target source and one
-value target source for the whole Training View.
+The current shogi `DatasetDefinition` implementation chooses one policy target
+source and one value target source for the whole Training View.
 
 That is simple, but it cannot express cases where different record sources need
 different target derivation rules.
@@ -34,7 +34,8 @@ signals or force weak records into a target policy they cannot support.
 
 Do not implement this until a concrete mixed-source run needs it.
 
-The likely shape is source-level target policy in Dataset Definition:
+The likely shape is source-level target policy in the current shogi
+`DatasetDefinition` implementation, or its eventual replacement:
 
 ```json
 {

@@ -201,21 +201,6 @@ A PyTorch `Dataset` is an adapter that returns indexed samples for training or
 evaluation. It is not the source of truth for raw data, target generation,
 split policy, or learning intent.
 
-### Dataset Definition
-
-A dataset definition states which source records or training examples are used
-for a learning purpose. It is the meaning and boundary of the training data,
-not a generated artifact path by itself.
-
-Prefer `Data Selection` when the concern is which data is included.
-
-Examples:
-
-- a supervised image-classification split
-- a text corpus slice and windowing rule for language modeling
-- shogi teacher-policy data from selected engine or model moves
-- self-play trajectories selected for policy or value learning
-
 ### Model Input
 
 A model input is the input-side value passed to a model for training,

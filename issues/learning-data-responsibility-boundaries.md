@@ -74,12 +74,15 @@ rename or split eventually happens.
 ## Progress
 
 - `Data Selection` has been promoted to `docs/glossary.md`.
+- `Dataset Definition` has been removed from `docs/glossary.md` as a formal
+  term. Existing `DatasetDefinition` names are implementation names until code
+  boundaries are revisited.
 
 ## Acceptance Criteria
 
 - Decide which responsibilities need project-level names.
-- Decide whether `Dataset Definition` should remain, be narrowed, or be
-  replaced by a more precise term.
+- Decide whether existing `DatasetDefinition` code should be renamed or split
+  into Data Selection and Training Example Definition responsibilities.
 - Promote only stable terms into `docs/glossary.md`.
 - Keep relationship explanations in `docs/learning-boundaries.md` only after
   the responsibilities are stable enough.

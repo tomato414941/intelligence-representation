@@ -17,7 +17,8 @@ The current shogi lifecycle is:
 
 - append generated ShogiGameRecord data to an Experience Store
 - create an immutable Training View
-- train from the Training View through a dataset definition
+- train from the Training View through Data Selection or the current shogi
+  `DatasetDefinition` implementation
 
 This lifecycle may also apply to future RL, self-supervised, or generated-data
 work outside shogi. Without an explicit boundary, the project can drift into

@@ -42,4 +42,4 @@ Training Views from run-local datasets, and no project guidance implies that
 - define Training View directory naming policy
 - add a Training View registry
 - redesign Experience Store
-- change dataset definition schema
+- change current shogi `DatasetDefinition` schema

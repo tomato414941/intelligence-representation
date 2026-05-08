@@ -14,9 +14,8 @@ The intended distinction should be made explicit:
 
 - Experience Store: durable source storage for generated or collected
   experience
-- Dataset / Dataset Definition: a learning/evaluation data definition with
-  selected sources and target derivation rules
-- Training View: a fixed source snapshot used by a Dataset Definition
+- Data Selection: a declared-use data inclusion boundary
+- Training View: a fixed source snapshot used by Data Selection or training
 
 Under this interpretation, an Experience Store is source material for datasets,
 not a dataset by itself.
@@ -28,14 +27,14 @@ on "whatever is currently in the store." That makes train/eval boundaries,
 target source selection, source mix, and reproducibility unclear.
 
 If Experience Store is treated only as source storage, training must go through
-an explicit Dataset Definition or Training View. That keeps the learning
+explicit Data Selection or a fixed Training View. That keeps the learning
 contract clearer even when generated experience grows over time.
 
 This also affects non-shogi data:
 
 - external datasets such as MNIST or Qhapaq may start as source data
 - generated interaction data may start in an Experience Store
-- both should become trainable only through an explicit dataset definition or
+- both should become trainable only through explicit Data Selection or an
   equivalent learning contract
 
 ## Acceptance Criteria
