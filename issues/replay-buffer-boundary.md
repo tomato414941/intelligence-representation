@@ -63,6 +63,7 @@ Prefer a PyTorch-compatible shape:
 The first implementation is shogi-local and minimal:
 
 - `scripts/create_shogi_replay_view.py`
+- reusable behavior lives in `src/intrep/worlds/shogi/replay.py`
 - accepts one or more `--train-games` JSONL sources
 - accepts fixed `--eval-games`
 - supports `--max-train-games`, `--max-eval-games`, and
