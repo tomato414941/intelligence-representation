@@ -1,6 +1,6 @@
 # Sample / Example / Dataset Terminology
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -46,6 +46,20 @@ If these names stay vague, storage and code boundaries can drift:
 - The glossary now distinguishes `Training Example` as the meaning-level
   objective-shaped unit from `Sample` as the runtime item returned by
   `Dataset.__getitem__`.
+
+## Resolution
+
+The terminology boundary is now stable enough:
+
+- `Source Record` and `Experience` are defined separately.
+- `Data Selection` is the inclusion boundary.
+- `Training Example` is the objective-specific input/target-or-feedback unit.
+- `Sample` is the PyTorch runtime item returned by `Dataset.__getitem__`.
+- PyTorch `Dataset` is an indexed-sample adapter.
+- `cache/` remains a rebuildable artifact, not a source of truth.
+
+Remaining code-level responsibility mixing is tracked separately in
+`training-example-responsibility-mixing.md`.
 
 ## Acceptance Criteria
 
