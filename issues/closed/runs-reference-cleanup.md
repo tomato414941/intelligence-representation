@@ -7,10 +7,8 @@ Status: closed.
 `runs/` is now defined as disposable experiment output, but several local files
 still refer to paths under `runs/`.
 
-Observed references include:
+Observed references included:
 
-- `data/shogi/player-registry.json`
-  - checkpoint players pointing to `runs/shogi/...`
 - `data/shogi/records/.../manifest.json`
   - source paths pointing to generated files under `runs/shogi/...`
 - documentation and issues
@@ -53,9 +51,8 @@ is to remove operational dependencies on disposable paths.
 This issue is closed because current operational dependencies on `runs/` have
 been removed:
 
-- `data/shogi/player-registry.json` no longer points checkpoint players at
-  `runs/shogi/...`.
-- The current player registry validates without requiring `runs/`.
+- The local player registry was later removed entirely in
+  [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md).
 - The old copied record collection manifest no longer depends on a `runs/`
   source path; the copied JSONL files in that directory are the usable records.
 
@@ -72,4 +69,4 @@ narrower checkpoint/source provenance problem tracked by
 [`shogi-checkpoint-actor-provenance.md`](shogi-checkpoint-actor-provenance.md).
 
 Deleting `runs/` may make old provenance paths non-resolvable, but it should not
-break current intended training, evaluation, or registry validation workflows.
+break current intended training or evaluation workflows.

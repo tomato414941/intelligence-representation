@@ -34,7 +34,7 @@ same place without clear responsibility.
 ## Related Issues
 
 - [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md)
-  tracks the player registry specifically.
+  later removed the player registry.
 - [`experience-store-training-view-boundary.md`](experience-store-training-view-boundary.md)
   tracks whether the store/view lifecycle should generalize beyond shogi.
 - [`shogi-training-view-tensor-cache.md`](shogi-training-view-tensor-cache.md)
@@ -53,8 +53,8 @@ The current direct children under `data/shogi/` were inspected:
 - `datasets/`: durable Training Views / Dataset Snapshots.
 - `experiences/`: shogi Experience Stores.
 - `records/`: source-derived copied record sets.
-- `player-registry.json`: runtime/evaluation player pick list, tracked by
-  [`../shogi-player-registry-boundary.md`](../shogi-player-registry-boundary.md).
+- `player-registry.json`: removed by
+  [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md).
 
 This closes the immediate directory-content audit. The remaining broader
 concern that `data/shogi/` is a world-level bucket rather than a source-level
@@ -64,6 +64,6 @@ data directory is tracked separately in
 ## Non-Goals
 
 - redesign shogi Experience Store
-- solve player registry policy
+- reintroduce player registry policy
 - introduce a generic Experience Store or Training View abstraction
 - move Qhapaq data into `data/shogi/`

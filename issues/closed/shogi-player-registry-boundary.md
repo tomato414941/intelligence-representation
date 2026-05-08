@@ -1,6 +1,6 @@
 # Shogi Player Registry Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -51,3 +51,17 @@ The current registry conflicts with newer project boundaries:
 This issue can close when the project either removes the player registry or
 keeps a clearly scoped player pick list whose location and checkpoint references
 match the `runs/` and `models/` artifact policies.
+
+## Resolution
+
+The local player registry was removed.
+
+Deleted files:
+
+- `data/shogi/player-registry.json`
+- `scripts/validate_shogi_player_registry.py`
+- `tests/test_validate_shogi_player_registry_script.py`
+
+This repository keeps ownership of learning assets such as data, Training
+Views, checkpoints, and training/evaluation code. Player selection presets are
+runtime/evaluation configuration and should not live under `data/`.

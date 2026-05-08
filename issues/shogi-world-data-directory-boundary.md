@@ -20,7 +20,6 @@ things:
 - Training Views
 - copied record sets
 - future position annotations
-- runtime or evaluation configuration
 
 ## Why It Matters
 
@@ -65,5 +64,4 @@ This issue can close when one of the following is true:
 
 - move files immediately
 - redesign Experience Store or Training View
-- solve the player registry location
 - introduce a generic generated-data directory framework
