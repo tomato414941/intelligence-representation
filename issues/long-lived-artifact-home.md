@@ -1,6 +1,6 @@
 # Long-Lived Artifact Home
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
@@ -14,6 +14,9 @@ future work. Local-only storage is fragile, while putting large generated files
 in GitHub is not appropriate.
 
 ## Scope
+
+This is intentionally deferred for now. No current artifact requires an external
+artifact home.
 
 - Decide when an artifact is too large or too important for local-only storage.
 - Compare simple external homes such as Hugging Face Hub or object storage when
