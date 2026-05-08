@@ -57,6 +57,20 @@ documents.
 
 The first boundary to decide is responsibility, not the final name.
 
+## Current Direction
+
+Prefer `Data Selection` over `Dataset Definition` for the inclusion boundary.
+`Dataset Definition` is too easy to read as "everything needed to define a
+dataset", which can absorb example definition, target handling, sampling,
+training configuration, or artifact paths.
+
+Keep `Training Example Definition` as a separate candidate responsibility. It
+is important, but its exact scope is still less stable than Data Selection.
+
+Treat existing `DatasetDefinition` names as current implementation names until
+the code boundary is revisited. Do not introduce compatibility aliases when the
+rename or split eventually happens.
+
 ## Acceptance Criteria
 
 - Decide which responsibilities need project-level names.
