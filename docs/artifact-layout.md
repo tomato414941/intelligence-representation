@@ -6,7 +6,8 @@ in [datasets.md](datasets.md).
 ## Rules
 
 - `data/<source>/raw/` holds externally acquired source files.
-- `data/<source>/processed/` holds reusable derived records or examples.
+- `data/<source>/processed/` holds reusable source-derived records and failure
+  logs.
 - `runs/` holds run-specific inputs, outputs, metrics, and temporary
   checkpoints.
 - Evaluation metrics and match outputs belong under `runs/` unless explicitly
@@ -22,9 +23,9 @@ in [datasets.md](datasets.md).
 
 ## Notes
 
-`processed/` data may be regenerable. It is still worth storing when it is a
-stable training or evaluation input, expensive enough to rebuild, or needed for
-fair comparisons.
+`processed/` data may be regenerable, but it is not a runtime speed cache. It
+is worth storing when it is a stable training or evaluation input, expensive
+enough to rebuild, or needed to explain skipped source records.
 
 `cache/` is not a source of truth. It should be rebuildable from `raw/`,
 `processed/`, or a documented dataset/training view.

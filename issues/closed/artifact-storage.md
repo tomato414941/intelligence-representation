@@ -33,7 +33,7 @@ Follow-up work is split into narrower issues:
 
 - [`model-artifact-policy.md`](model-artifact-policy.md): what belongs
   with long-lived model checkpoints under `models/`.
-- [`../source-derived-artifact-policy.md`](../source-derived-artifact-policy.md):
+- [`source-derived-artifact-policy.md`](source-derived-artifact-policy.md):
   how to store source-derived records and failure logs.
 - [`evaluation-artifact-policy.md`](evaluation-artifact-policy.md): where
   evaluation metrics and match outputs belong.

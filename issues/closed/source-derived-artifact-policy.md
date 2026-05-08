@@ -1,6 +1,6 @@
 # Source-Derived Artifact Policy
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -32,3 +32,20 @@ are treated like raw source data, the source of truth becomes unclear.
 
 This issue can close when source-derived records and failure logs have clear
 locations and lifecycle rules.
+
+## Resolution
+
+Source-derived records and failure logs belong under
+`data/<source>/processed/`.
+
+They may be regenerable, but they are not runtime speed caches. They are kept
+when they are stable training or evaluation inputs, expensive enough to rebuild,
+or needed to explain skipped source records.
+
+The default placement rule is recorded in
+[`../../docs/artifact-layout.md`](../../docs/artifact-layout.md).
+
+Current Qhapaq processed artifacts follow this policy:
+
+- `data/qhapaq/processed/qhapaq_all_games.jsonl`
+- `data/qhapaq/processed/qhapaq_all_games_failures.jsonl`
