@@ -8,6 +8,8 @@ in [datasets.md](datasets.md).
 - `data/<source>/raw/` holds externally acquired source files.
 - `data/<source>/processed/` holds reusable source-derived records and failure
   logs.
+- `data/shogi/datasets/<name>/` holds durable shogi Training Views / Dataset
+  Snapshots.
 - `runs/` holds run-specific inputs, outputs, metrics, and temporary
   checkpoints.
 - Evaluation metrics and match outputs belong under `runs/` unless explicitly

@@ -1,6 +1,6 @@
 # Shogi Training View Lifecycle Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -36,6 +36,22 @@ Use "Training View" or "Dataset Snapshot" for durable fixed views. Use
 This issue can close when docs and scripts consistently distinguish durable
 Training Views from run-local datasets, and no project guidance implies that
 `data/shogi/datasets/<name>/` is temporary.
+
+## Resolution
+
+No problematic "temporary view" wording was found outside this issue.
+
+The current boundary is:
+
+- `data/shogi/datasets/<name>/`: durable shogi Training View / Dataset Snapshot.
+- `runs/.../dataset.json` and adjacent source files: run-local dataset.
+
+`create_shogi_training_view.py` defaults to `data/shogi/datasets/` and refuses
+to overwrite an existing view, which matches the durable Training View
+interpretation.
+
+The placement rule is recorded in
+[`../../docs/artifact-layout.md`](../../docs/artifact-layout.md).
 
 ## Non-Goals
 
