@@ -6,7 +6,7 @@ import random
 from datetime import UTC, datetime
 from pathlib import Path
 
-from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_train_eval_position_stats
+from intrep.worlds.shogi.experience_stats import shogi_actor_pair, shogi_actor_pair_counts, shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 
@@ -150,18 +150,6 @@ def select_shogi_game_records(
         selected.extend(group[:count])
     random.Random(f"{seed}:selected").shuffle(selected)
     return selected
-
-
-def shogi_actor_pair(record: ShogiGameRecord) -> str:
-    return f"{record.black_actor.kind}:{record.white_actor.kind}"
-
-
-def shogi_actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for record in records:
-        key = shogi_actor_pair(record)
-        counts[key] = counts.get(key, 0) + 1
-    return dict(sorted(counts.items()))
 
 
 def parse_shogi_actor_pair_ratios(values: list[str]) -> dict[str, float]:

@@ -71,5 +71,17 @@ def shogi_train_eval_position_stats(
     )
 
 
+def shogi_actor_pair(record: ShogiGameRecord) -> str:
+    return f"{record.black_actor.kind}:{record.white_actor.kind}"
+
+
+def shogi_actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        key = shogi_actor_pair(record)
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
 def _position_set(records: list[ShogiGameRecord]) -> set[str]:
     return {transition.position_sfen for record in records for transition in record.transitions}

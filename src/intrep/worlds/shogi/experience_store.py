@@ -4,13 +4,12 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from intrep.worlds.shogi.experience_stats import shogi_position_stats
+from intrep.worlds.shogi.experience_stats import shogi_actor_pair_counts, shogi_position_stats
 from intrep.worlds.shogi.game_record import (
     ShogiGameRecord,
     iter_shogi_game_records_jsonl,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.training_data_bundle import shogi_actor_pair_counts
 
 
 def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[str, object]:
