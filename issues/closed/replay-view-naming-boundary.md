@@ -62,10 +62,10 @@ later needs one.
 
 The fixed Training View builder no longer uses `replay` in its code-level name:
 
-- `src/intrep/worlds/shogi/source_selection.py`
-- `scripts/create_shogi_training_view_from_sources.py`
-- `create_shogi_training_view_from_sources`
+- `src/intrep/worlds/shogi/training_view.py`
+- `scripts/create_shogi_training_view.py`
+- `create_shogi_training_view`
 - `select_shogi_game_records`
-- `shogi_source_selected_training_view_v1`
+- `shogi_training_view_v1`
 
 `Replay Buffer` remains reserved for a future training-time sampling component.

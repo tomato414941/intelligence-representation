@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 import json
+import math
+import random
 from datetime import UTC, datetime
 from pathlib import Path
 
 from intrep.worlds.shogi.experience_stats import shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
-from intrep.worlds.shogi.source_selection import shogi_actor_pair_counts
 
 
 def create_shogi_training_view(
     *,
-    train_games: Path,
+    train_games: Path | tuple[Path, ...],
     eval_games: Path,
     name: str,
     output_root: Path,
     max_train_games: int | None = None,
     max_eval_games: int | None = None,
+    actor_pair_ratios: dict[str, float] | None = None,
+    seed: int = 7,
     policy_target_source: str = "chosen_move",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
@@ -35,12 +38,25 @@ def create_shogi_training_view(
     _validate_max_games(max_train_games, label="max_train_games")
     _validate_max_games(max_eval_games, label="max_eval_games")
 
-    train_records = _limit_records(list(iter_shogi_game_records_jsonl(train_games)), max_train_games)
-    eval_records = _limit_records(list(iter_shogi_game_records_jsonl(eval_games)), max_eval_games)
-    if not train_records:
+    train_paths = _normalize_train_games(train_games)
+    available_train_records = _load_records(train_paths)
+    available_eval_records = list(iter_shogi_game_records_jsonl(eval_games))
+    if not available_train_records:
         raise ValueError("train games must not be empty")
-    if not eval_records:
+    if not available_eval_records:
         raise ValueError("eval games must not be empty")
+
+    train_records = select_shogi_game_records(
+        available_train_records,
+        max_games=max_train_games,
+        actor_pair_ratios=actor_pair_ratios or {},
+        seed=seed,
+    )
+    eval_records = _limit_records(available_eval_records, max_eval_games)
+    if not train_records:
+        raise ValueError("training view selection must produce at least one train game")
+    if not eval_records:
+        raise ValueError("training view selection must produce at least one eval game")
     records = train_records + eval_records
     train_eval_position_stats = shogi_train_eval_position_stats(train_records, eval_records).to_dict()
 
@@ -67,10 +83,14 @@ def create_shogi_training_view(
         "record_schema": "shogi_game_record_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),
-        "train_source_games_jsonl": str(train_games),
+        "train_source_games_jsonl": [str(path) for path in train_paths],
         "eval_source_games_jsonl": str(eval_games),
+        "seed": seed,
         "max_train_games": max_train_games,
         "max_eval_games": max_eval_games,
+        "actor_pair_ratios": dict(sorted((actor_pair_ratios or {}).items())),
+        "available_train_games": len(available_train_records),
+        "available_eval_games": len(available_eval_records),
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
         "position_stats": shogi_position_stats(records).to_dict(),
@@ -105,6 +125,105 @@ def create_shogi_training_view(
         "train_games": len(train_records),
         "eval_games": len(eval_records),
     }
+
+
+def select_shogi_game_records(
+    records: list[ShogiGameRecord],
+    *,
+    max_games: int | None,
+    actor_pair_ratios: dict[str, float],
+    seed: int,
+) -> list[ShogiGameRecord]:
+    limit = len(records) if max_games is None else min(max_games, len(records))
+    if limit <= 0:
+        return []
+    groups = _records_by_actor_pair(records)
+    if not actor_pair_ratios:
+        shuffled = list(records)
+        random.Random(seed).shuffle(shuffled)
+        return shuffled[:limit]
+
+    selected: list[ShogiGameRecord] = []
+    for actor_pair, count in _actor_pair_target_counts(groups, actor_pair_ratios, limit).items():
+        group = list(groups.get(actor_pair, ()))
+        random.Random(f"{seed}:{actor_pair}").shuffle(group)
+        selected.extend(group[:count])
+    random.Random(f"{seed}:selected").shuffle(selected)
+    return selected
+
+
+def shogi_actor_pair(record: ShogiGameRecord) -> str:
+    return f"{record.black_actor.kind}:{record.white_actor.kind}"
+
+
+def shogi_actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        key = shogi_actor_pair(record)
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def parse_shogi_actor_pair_ratios(values: list[str]) -> dict[str, float]:
+    ratios: dict[str, float] = {}
+    for value in values:
+        actor_pair, separator, weight = value.partition("=")
+        if not separator or not actor_pair:
+            raise ValueError("actor pair ratio must use ACTOR_PAIR=WEIGHT")
+        ratios[actor_pair] = float(weight)
+    return ratios
+
+
+def _normalize_train_games(train_games: Path | tuple[Path, ...]) -> tuple[Path, ...]:
+    if isinstance(train_games, Path):
+        return (train_games,)
+    if not train_games:
+        raise ValueError("train_games must not be empty")
+    return train_games
+
+
+def _load_records(paths: tuple[Path, ...]) -> list[ShogiGameRecord]:
+    records: list[ShogiGameRecord] = []
+    for path in paths:
+        records.extend(iter_shogi_game_records_jsonl(path))
+    return records
+
+
+def _actor_pair_target_counts(
+    groups: dict[str, list[ShogiGameRecord]],
+    ratios: dict[str, float],
+    limit: int,
+) -> dict[str, int]:
+    total_ratio = sum(ratios.values())
+    if total_ratio <= 0.0:
+        raise ValueError("actor pair ratios must have positive sum")
+
+    targets: dict[str, int] = {}
+    remainders: list[tuple[float, str]] = []
+    for actor_pair, ratio in sorted(ratios.items()):
+        if ratio <= 0.0:
+            raise ValueError("actor pair ratios must be positive")
+        exact = limit * ratio / total_ratio
+        count = min(math.floor(exact), len(groups.get(actor_pair, ())))
+        targets[actor_pair] = count
+        remainders.append((exact - math.floor(exact), actor_pair))
+
+    selected_count = sum(targets.values())
+    for _remainder, actor_pair in sorted(remainders, reverse=True):
+        if selected_count >= limit:
+            break
+        available = len(groups.get(actor_pair, ()))
+        if targets[actor_pair] < available:
+            targets[actor_pair] += 1
+            selected_count += 1
+    return {actor_pair: count for actor_pair, count in targets.items() if count > 0}
+
+
+def _records_by_actor_pair(records: list[ShogiGameRecord]) -> dict[str, list[ShogiGameRecord]]:
+    groups: dict[str, list[ShogiGameRecord]] = {}
+    for record in records:
+        groups.setdefault(shogi_actor_pair(record), []).append(record)
+    return groups
 
 
 def _limit_records(records: list[ShogiGameRecord], max_games: int | None) -> list[ShogiGameRecord]:

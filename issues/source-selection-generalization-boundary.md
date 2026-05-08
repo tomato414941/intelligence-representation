@@ -4,11 +4,11 @@ Status: open. Priority: low.
 
 ## Issue
 
-`source selection` is a general-looking concept, but the only concrete
-implementation is currently shogi-local:
+`source selection` is a general-looking behavior, but the only concrete
+implementation is currently inside shogi Training View creation:
 
-- `src/intrep/worlds/shogi/source_selection.py`
-- `scripts/create_shogi_training_view_from_sources.py`
+- `scripts/create_shogi_training_view.py`
+- `src/intrep/worlds/shogi/training_view.py`
 
 The current implementation depends on shogi-specific details:
 
@@ -20,7 +20,7 @@ The current implementation depends on shogi-specific details:
 
 ## Current Policy
 
-Keep source selection shogi-local for now.
+Keep source-selection behavior shogi-local for now.
 
 Do not create a shared source-selection package only because the concept looks
 general. Generalize only after another concrete use case shows the same boundary
@@ -34,6 +34,6 @@ another generated-experience source.
 
 ## Non-Goals
 
-- move shogi source-selection code into `core/`
+- move shogi training-view code into `core/`
 - redesign the shogi Training View format
 - define a generic source-selection abstraction now

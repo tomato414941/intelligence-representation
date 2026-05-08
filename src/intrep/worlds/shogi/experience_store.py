@@ -10,7 +10,7 @@ from intrep.worlds.shogi.game_record import (
     iter_shogi_game_records_jsonl,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.source_selection import shogi_actor_pair_counts
+from intrep.worlds.shogi.training_view import shogi_actor_pair_counts
 
 
 def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[str, object]:
