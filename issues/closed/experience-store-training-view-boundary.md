@@ -1,6 +1,6 @@
 # Experience Store Training View Boundary
 
-Status: open. Priority: low.
+Status: closed.
 
 ## Issue
 
@@ -53,3 +53,16 @@ This issue can close when one of the following is true:
 - optimize shogi Training View loading performance
 - add tensorized shogi caches
 - introduce a generic store/view framework before a second concrete use case
+
+## Resolution
+
+This issue was merged into
+[`../experience-store-generalization-boundary.md`](../experience-store-generalization-boundary.md).
+
+The distinction between the two issues was too small to justify separate
+tracking:
+
+- this issue covered generalizing the Experience Store -> Training View ->
+  training lifecycle
+- the remaining issue covers generalizing Experience Store and, when needed,
+  its Training View lifecycle together

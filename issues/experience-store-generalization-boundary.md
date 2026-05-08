@@ -12,6 +12,12 @@ agent, or other world/task work. In those cases, keeping Experience Store only
 inside shogi could lead to duplicated store concepts or unclear project
 boundaries.
 
+The related lifecycle is also currently shogi-local:
+
+- append generated records to an Experience Store
+- create a fixed Training View
+- train through Data Selection or a task-specific training input definition
+
 The current shogi-local placement is acceptable for KISS/YAGNI: shogi is the
 only concrete implementation, and extracting a shared abstraction now would be
 premature.
@@ -21,6 +27,10 @@ premature.
 Experience Store means durable storage for generated or collected experience.
 That responsibility is broader than shogi game records, even if the current
 schema is shogi-specific.
+
+The same caution applies to the Experience Store -> Training View lifecycle.
+It may become useful beyond shogi, but extracting a shared abstraction from one
+implementation would be premature.
 
 The project should avoid both bad outcomes:
 
@@ -34,7 +44,8 @@ Keep the current implementation shogi-local until a second concrete area needs
 durable generated experience.
 
 When a second implementation exists, compare the two concrete stores and extract
-only the shared boundary that is actually needed.
+only the shared boundary that is actually needed. If the second area also needs
+fixed Training Views, include that lifecycle in the comparison.
 
 ## Acceptance Criteria
 
@@ -50,5 +61,10 @@ This issue can close when one of the following is true:
 
 - redesign shogi Experience Store now
 - introduce a generic ExperienceStore class from shogi alone
-- solve Training View lifecycle boundaries
 - implement Replay Buffer or sampling policy
+
+## Related
+
+The narrower Training View lifecycle issue was merged into this issue:
+
+- [`closed/experience-store-training-view-boundary.md`](closed/experience-store-training-view-boundary.md)

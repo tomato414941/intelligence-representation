@@ -35,8 +35,9 @@ same place without clear responsibility.
 
 - [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md)
   later removed the player registry.
-- [`experience-store-training-view-boundary.md`](experience-store-training-view-boundary.md)
-  tracks whether the store/view lifecycle should generalize beyond shogi.
+- [`../experience-store-generalization-boundary.md`](../experience-store-generalization-boundary.md)
+  tracks whether Experience Store and its Training View lifecycle should
+  generalize beyond shogi.
 - [`shogi-training-view-tensor-cache.md`](shogi-training-view-tensor-cache.md)
   tracks shogi training cache performance.
 
