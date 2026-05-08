@@ -70,7 +70,7 @@ used.
 
 ## Current Route
 
-Training now chooses value target source through Dataset Definition:
+Training now chooses value target source through Data Selection:
 
 - `policy_target_source: "chosen_move"` uses the played move as a one-hot
   policy target.
@@ -90,20 +90,20 @@ only route.
 
 `ShogiGameRecord` no longer stores derived `policy_targets`. It keeps raw
 experience and raw `usi_info_lines`; `ShogiPolicyValueExample` is where the
-selected policy/value targets appear. Training metrics include the Dataset
-Definition, so runs record which policy and value sources were used.
+selected policy/value targets appear. Training metrics include Data Selection,
+so runs record which policy and value sources were used.
 
 ## Acceptance Criteria
 
 This issue is closed because shogi training now has explicit value-teacher
-selection through Dataset Definition:
+selection through Data Selection:
 
 - `value_target_source: "winner"` uses final winner-derived return targets.
 - `value_target_source: "yaneuraou_best_score"` uses best-line USI score from
   stored `usi_info_lines`.
 - `score_cp_scale` records how centipawn scores are mapped into `[-1.0, 1.0]`.
 - mate scores map to `+1.0` or `-1.0`.
-- metrics record the Dataset Definition used by the run.
+- metrics record the Data Selection used by the run.
 
 Remaining questions are tracked in narrower issues:
 

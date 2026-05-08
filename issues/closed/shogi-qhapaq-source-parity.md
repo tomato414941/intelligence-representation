@@ -21,22 +21,23 @@ to other sources such as YaneuraOu self-play, model-vs-YaneuraOu games, and
 future model self-play.
 
 Keeping Qhapaq as a special path makes it harder to reason about source mix,
-dataset definitions, and evaluation. The training path should consume Training
-Views, regardless of whether the underlying records came from Qhapaq, an
+Data Selection, and evaluation. The training path should consume Training Data
+Bundles, regardless of whether the underlying records came from Qhapaq, an
 engine, or self-play.
 
 ## Acceptance Criteria
 
 This issue is closed because:
 
-- RunPod shogi training now consumes a caller-selected Dataset Definition
-  through `DATASET_DEFINITION` instead of defaulting to Qhapaq train/eval JSONL.
-- The RunPod script syncs the Dataset Definition and its referenced
-  game-record JSONL sources, so Qhapaq is just one possible Training Data Bundle
-  source rather than a special training path.
+- RunPod shogi training now consumes caller-selected Data Selection through
+  `DATA_SELECTION` instead of defaulting to Qhapaq train/eval JSONL.
+- The RunPod script syncs the Data Selection file and its referenced game-record
+  JSONL sources, so Qhapaq is just one possible Training Data Bundle source
+  rather than a special training path.
 - Existing compute-cost rows that mention Qhapaq are historical cost evidence,
   not current source-selection policy.
 
-Qhapaq-derived records can still be used by creating a Training Data Bundle or Dataset
-Definition that points at Qhapaq game records. Do not reintroduce Qhapaq-specific
-training defaults unless the run is explicitly a Qhapaq historical comparison.
+Qhapaq-derived records can still be used by creating a Training Data Bundle with
+Data Selection that points at Qhapaq game records. Do not reintroduce
+Qhapaq-specific training defaults unless the run is explicitly a Qhapaq
+historical comparison.

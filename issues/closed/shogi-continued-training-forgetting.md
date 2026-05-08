@@ -12,7 +12,7 @@ lose that behavior if it is continued only on YaneuraOu-vs-YaneuraOu games.
 This is different from scratch training on a newly defined dataset.
 
 Experience Store and Training Data Bundle now reduce this risk by making training data
-explainable through an explicit dataset definition. The issue is not that
+explainable through explicit Data Selection. The issue is not that
 continued training is impossible; it is that continued-training runs still need
 to make the retained dataset scope and initialization choice explicit.
 
@@ -25,24 +25,24 @@ Shogi teacher-policy experiments now use multiple data sources:
 - future self-play or model-vs-engine correction data
 
 If continued training uses only the newest source, earlier behavior can be
-overwritten. Training results should be explainable by the dataset definition,
+overwritten. Training results should be explainable by Data Selection,
 not only by the checkpoint that was used as initialization.
 
-Current shogi training metrics record `dataset_definition` and
+Current shogi training metrics record `data_selection` and
 `init_checkpoint_path`, which is useful. They do not yet explicitly classify a
 run as scratch or continued training, and manual RL-cycle training still passes
 an initial checkpoint.
 
 ## Initial Policy
 
-Prefer scratch training from an explicit dataset definition while experiments
+Prefer scratch training from explicit Data Selection while experiments
 are small enough to make this practical.
 
-Use continued training only when the dataset definition deliberately includes
+Use continued training only when Data Selection deliberately includes
 the earlier data that should be retained, or when the experiment is explicitly
 testing forgetting.
 
-When continued training is used, treat the dataset definition as the source of
+When continued training is used, treat Data Selection as the source of
 truth for what behavior should be retained. The initial checkpoint should be
 recorded as initialization, not as a substitute for dataset scope.
 
@@ -56,7 +56,7 @@ second source of truth.
 
 Closed because existing run metadata is sufficient for the current workflow:
 
-- `dataset_definition` records the training data scope.
+- `data_selection` records the training data scope.
 - `init_checkpoint_path` records whether the run initialized from a checkpoint.
 
 Do not add a derived scratch/continued field unless result comparison or

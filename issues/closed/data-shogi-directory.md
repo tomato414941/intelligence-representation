@@ -51,7 +51,7 @@ tracked by a narrower open issue.
 
 The current direct children under `data/shogi/` were inspected:
 
-- `datasets/`: durable Training Data Bundles / Dataset Snapshots.
+- `training-data-bundles/`: durable Training Data Bundles.
 - `experiences/`: shogi Experience Stores.
 - `records/`: source-derived copied record sets.
 - `player-registry.json`: removed by

@@ -21,9 +21,9 @@ remaining narrower issues.
 
 ## Why It Matters
 
-`data/` should hold source data, processed data, durable experience, training
-views, and useful derived data. It should not become a second run-output tree
-or a catch-all for evaluation/runtime configuration.
+`data/` should hold source data, processed data, durable experience, Training
+Data Bundles, and useful derived data. It should not become a second run-output
+tree or a catch-all for evaluation/runtime configuration.
 
 If this boundary remains unclear, future generated data, model checkpoints,
 player registries, and run summaries may drift into whichever directory happens
@@ -53,8 +53,7 @@ to exist.
 - `data/qhapaq/processed/` was reduced to source-derived records:
   `qhapaq_all_games.jsonl` and `qhapaq_all_games_failures.jsonl`.
 - `docs/datasets.md` now records that Qhapaq raw data is partial and that
-  train/eval splits belong in Dataset Definitions or Training Data Bundles, not
-  `processed/`.
+  train/eval splits belong in Training Data Bundles, not `processed/`.
 - `data/external/` was removed locally after its contents were either deleted
   as samples/probes or moved to source-specific top-level directories.
 - Tiny Shakespeare raw text now lives under `data/tiny-shakespeare/raw/`.

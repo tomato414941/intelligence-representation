@@ -4,8 +4,8 @@ Status: closed.
 
 ## Issue
 
-The current shogi `DatasetDefinition` implementation chooses one policy target
-source and one value target source for the whole Training Data Bundle.
+The shogi Data Selection implementation used to choose one policy target source
+and one value target source for the whole Training Data Bundle.
 
 That is simple, but it cannot express cases where different record sources need
 different target derivation rules.
@@ -34,7 +34,7 @@ signals or force weak records into a target policy they cannot support.
 
 ## Resolution
 
-Implemented source-level target policy in the current shogi `DatasetDefinition`
+Implemented source-level target policy in the current shogi Data Selection
 implementation.
 
 Each source may now override the global default with:

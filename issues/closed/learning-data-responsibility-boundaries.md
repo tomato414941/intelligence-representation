@@ -67,16 +67,17 @@ training configuration, or artifact paths.
 Keep `Training Example Definition` as a separate candidate responsibility. It
 is important, but its exact scope is still less stable than Data Selection.
 
-Treat existing `DatasetDefinition` names as current implementation names until
-the code boundary is revisited. Do not introduce compatibility aliases when the
-rename or split eventually happens.
+Do not keep `DatasetDefinition` as an implementation name once the code boundary
+is revisited. Do not introduce compatibility aliases when the rename or split
+happens.
 
 ## Progress
 
 - `Data Selection` has been promoted to `docs/glossary.md`.
 - `Dataset Definition` has been removed from `docs/glossary.md` as a formal
-  term. Existing `DatasetDefinition` names are implementation names until code
-  boundaries are revisited.
+  term.
+- Code names have been moved away from `DatasetDefinition` toward Data
+  Selection.
 - `Training Example Definition` has not been promoted as a separate glossary
   term. Instead, `Training Example` now carries the input/target-or-feedback
   meaning directly.
@@ -96,8 +97,8 @@ Remaining code-level mixing is tracked separately in
 ## Acceptance Criteria
 
 - Decide which responsibilities need project-level names.
-- Decide whether existing `DatasetDefinition` code should be renamed or split
-  into Data Selection and Training Example Definition responsibilities.
+- Decide whether existing data-selection code should be split further into Data
+  Selection and Training Example Definition responsibilities.
 - Promote only stable terms into `docs/glossary.md`.
 - Keep relationship explanations in `docs/learning-boundaries.md` only after
   the responsibilities are stable enough.

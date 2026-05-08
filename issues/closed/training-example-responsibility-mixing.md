@@ -36,11 +36,11 @@ Grid step prediction is also mixed:
 
 Shogi move choice is the clearest pressure point:
 
-- `ShogiPolicyValueDatasetDefinition` contains train/eval sources and `max_games`
+- `ShogiPolicyValueDataSelection` contains train/eval sources and `max_games`
   style Data Selection.
-- It also contains objective and policy/value target-source settings, which are
-  closer to Training Example Definition.
-- `ShogiMoveChoiceDataset` then converts `ShogiMoveChoiceExample` into tensor
+- It also contains policy/value target-source settings, which are closer to
+  Training Example Definition.
+- `ShogiPolicyValueDataset` then converts `ShogiPolicyValueExample` into tensor
   samples.
 
 ## Progress

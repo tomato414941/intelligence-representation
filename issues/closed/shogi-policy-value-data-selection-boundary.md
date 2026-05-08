@@ -59,7 +59,7 @@ No compatibility alias was kept.
 
 ## Acceptance Criteria
 
-- [x] Decide whether the current `ShogiPolicyValueDatasetDefinition` name should
+- [x] Decide whether the old `ShogiPolicyValueDatasetDefinition` name should
   be replaced.
 - [x] Decide whether target policy belongs globally, per source, or both with a
   default/inheritance rule.

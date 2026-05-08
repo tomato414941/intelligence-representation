@@ -7,9 +7,9 @@ Status: closed.
 The project should clearly distinguish durable Training Data Bundles from run-local
 datasets.
 
-A view under `data/shogi/training-data-bundles/<name>/` is not temporary; it is a fixed,
-reusable snapshot. A dataset written under `runs/.../` is run-local and
-disposable.
+A bundle under `data/shogi/training-data-bundles/<name>/` is not temporary; it
+is a fixed, reusable artifact. A dataset written under `runs/.../` is run-local
+and disposable.
 
 Calling both "temporary views" makes the storage boundary unclear.
 
@@ -21,15 +21,15 @@ which files can be deleted and which files are intended to be reused.
 
 The distinction should be simple:
 
-- durable fixed view: `data/shogi/training-data-bundles/<name>/`
+- durable Training Data Bundle: `data/shogi/training-data-bundles/<name>/`
 - run-local dataset: `runs/.../dataset.json` and adjacent source files
 
 ## Initial Policy
 
 Avoid the phrase "temporary view" for `data/shogi/training-data-bundles/<name>/`.
 
-Use "Training Data Bundle" or "Dataset Snapshot" for durable fixed views. Use
-"run-local dataset" for disposable files under `runs/.../`.
+Use "Training Data Bundle" for durable fixed bundles. Use "run-local dataset"
+for disposable files under `runs/.../`.
 
 ## Acceptance Criteria
 
@@ -43,11 +43,11 @@ No problematic "temporary view" wording was found outside this issue.
 
 The current boundary is:
 
-- `data/shogi/training-data-bundles/<name>/`: durable shogi Training Data Bundle / Dataset Snapshot.
+- `data/shogi/training-data-bundles/<name>/`: durable shogi Training Data Bundle.
 - `runs/.../dataset.json` and adjacent source files: run-local dataset.
 
 `create_shogi_training_data_bundle.py` defaults to `data/shogi/training-data-bundles/` and refuses
-to overwrite an existing view, which matches the durable Training Data Bundle
+to overwrite an existing bundle, which matches the durable Training Data Bundle
 interpretation.
 
 The placement rule is recorded in
@@ -58,4 +58,4 @@ The placement rule is recorded in
 - define Training Data Bundle directory naming policy
 - add a Training Data Bundle registry
 - redesign Experience Store
-- change current shogi `DatasetDefinition` schema
+- change current shogi Data Selection schema

@@ -25,7 +25,7 @@
 ## Compute Cost Notes
 - Use `docs/compute-costs.md` to support expensive or remote run decisions, not
   as a general run log.
-- Keep `docs/datasets.md` aligned when dataset definitions change.
+- Keep `docs/datasets.md` aligned when data-source or dataset layout changes.
 
 ## Training Model Size
 - Use `d256-h1024-heads8-l6` for training runs unless there is a specific

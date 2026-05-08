@@ -17,8 +17,7 @@ The current shogi lifecycle is:
 
 - append generated ShogiGameRecord data to an Experience Store
 - create an immutable Training Data Bundle
-- train from the Training Data Bundle through Data Selection or the current shogi
-  `DatasetDefinition` implementation
+- train from the Training Data Bundle through shogi Data Selection
 
 This lifecycle may also apply to future RL, self-supervised, or generated-data
 work outside shogi. Without an explicit boundary, the project can drift into
@@ -29,8 +28,8 @@ either of two bad states:
 
 ## Initial Policy
 
-Do not introduce a shared ExperienceStore or TrainingView abstraction from shogi
-alone.
+Do not introduce a shared Experience Store or Training Data Bundle abstraction
+from shogi alone.
 
 This is intentionally deferred until a second concrete task needs the same
 lifecycle.

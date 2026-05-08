@@ -89,7 +89,7 @@ This issue is closed because:
   examples without treating those examples as source records,
 - shogi Experience Stores and Training Data Bundles preserve the raw-record to
   derived-example boundary, and
-- Dataset Definition records the selected policy and value target sources used
+- Data Selection records the selected policy and value target sources used
   during conversion.
 
 Remaining source mix, target policy mix, repeated-position evidence, forgetting,
