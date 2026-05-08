@@ -4,17 +4,26 @@ Status: open.
 
 ## Issue
 
-`shared_multimodal_model.py` and `shared_multimodal_checkpoint.py` still sit at
-the top level because their responsibility is not clean enough to move into
-`core/`.
+`image_text_shared_model.py` sits at the top level because its responsibility is
+not clean enough to move into `core/`, but it is also not a single problem
+model.
 
-They currently know concrete external interfaces and problem heads, including
-vision inputs, text routes, image classification, image-text choice, and
-image-text answer outputs. Moving them into `core/` as-is would make `core/`
-depend on concrete modalities and tasks.
+It knows concrete external interfaces:
 
-Calling this area `multimodal/` is also premature. The real boundary may need
-to cover shogi, grid, audio, video, and other external interfaces later, not
+- image patch input
+- text token and position embeddings
+- token output
+- shared Transformer core wiring
+
+It is currently shared by:
+
+- `problems/image_classification/model.py`
+- `problems/image_text_choice/model.py`
+- `problems/image_text_answer/model.py`
+
+Moving it into `core/` as-is would make `core/` depend on concrete image/text
+interfaces. Calling this area `multimodal/` is also premature because the future
+boundary may need to cover shogi, grid, audio, video, and other interfaces, not
 just image and text.
 
 ## Current Boundary
@@ -26,16 +35,18 @@ just image and text.
 - `problems/<problem>/model.py` wraps the interfaces, shared core, and
   prediction head for one concrete task.
 
-`shared_multimodal_model.py` is a temporary multi-task model shell. New
-problem-specific model entry points should live under `problems/<problem>/model.py`
-instead of adding more public routes to that shell.
+`image_text_shared_model.py` is a temporary image/text shared model shell. New
+problem-specific model entry points should live under `problems/<problem>/model.py`.
+Do not add more public routes to `ImageTextSharedModel` unless at least two
+current image/text problems need the same route.
 
 ## Acceptance Criteria
 
 - `core/` does not import from `vision`, `text`, `shogi`, `grid`, or `problems`.
-- The concrete adapters and problem heads inside `shared_multimodal_model.py` are
-  identified before moving files.
+- The concrete adapters and reusable routes inside `image_text_shared_model.py`
+  are identified before moving files.
 - Any new package name matches the actual responsibility and is not a broad
   abstraction created ahead of need.
-- Temporary shared model files are either split by responsibility or documented
-  as an experimental shared-core route.
+- `image_text_shared_model.py` is either kept as an explicit image/text shared
+  shell, split by responsibility, or moved only after a clearer package boundary
+  exists.
