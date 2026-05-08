@@ -4,22 +4,27 @@ Status: open.
 
 ## Issue
 
-The project should introduce Replay Buffer as a learning-time sampling layer,
-not as another name for Experience Store.
+The project should treat replay as a learning-time sampling layer over reusable
+experience records, not as another name for Experience Store.
 
-The current shogi flow has durable storage and fixed views, but no explicit
-Replay Buffer layer:
+The current shogi flow can read fixed game-record JSONL sources and build fixed
+Training Views, but it has no explicit Replay Buffer layer:
 
 ```text
-Experience Store
+game-record sources
   -> Training View
   -> Data Selection
   -> PyTorch Dataset
   -> Training Loop
 ```
 
-This works for supervised-style fixed datasets, but it leaves RL replay behavior
-implicit in view creation.
+Those game-record sources may come from an Experience Store, run outputs,
+teacher-only records, Qhapaq-derived records, or other generated record sets.
+The replay concern is the sampling policy over these sources, not the storage
+location that produced them.
+
+The current fixed-view flow works for supervised-style datasets, but it leaves
+RL replay behavior implicit in view creation.
 
 The missing replay questions are:
 
@@ -33,9 +38,9 @@ Those are not storage problems. They are replay-policy and sampling problems.
 
 ## Why It Matters
 
-If Experience Store and Training View remain the only concepts, training can
-drift toward fixed supervised datasets. That is simple, but it may be too rigid
-for reinforcement-learning-style improvement where new experience is generated,
+If source records and Training View remain the only concepts, training can drift
+toward fixed supervised datasets. That is simple, but it may be too rigid for
+reinforcement-learning-style improvement where new experience is generated,
 replayed, mixed, and partially forgotten over time.
 
 The project should decide whether it needs a Replay Buffer or Sampler layer
@@ -45,15 +50,13 @@ between stored experience and training batches.
 
 Do not rename Experience Store to Replay Buffer.
 
-Experience Store should remain the durable source of generated experience.
-Replay Buffer should describe how training samples from reusable experience.
-It should not require Experience Store as its only input; Experience Store is
-one possible source of game-record JSONL, alongside run outputs, Qhapaq-derived
-records, teacher-only records, or other generated records.
+Experience Store should remain one durable source of generated experience.
+Replay Buffer should describe how training samples from reusable experience
+records. It must not require Experience Store as its input.
 
 Prefer a PyTorch-compatible shape:
 
-- keep records close to source form in the Experience Store
+- keep records close to source form in source storage
 - let Replay Buffer produce selected records or training examples
 - use PyTorch `Dataset` for indexed samples
 - use PyTorch `Sampler` when sampling weights or ordering matter
