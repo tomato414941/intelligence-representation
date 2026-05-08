@@ -35,6 +35,7 @@ example:
 - cap `checkpoint:yaneuraou` games while keeping more `yaneuraou:yaneuraou`
   games
 - exclude a weak self-play batch from evaluation
+- exclude or cap known weak or obsolete actor-pair slices
 - compare two explicit source mixes from the same store
 
 ## Acceptance Criteria
