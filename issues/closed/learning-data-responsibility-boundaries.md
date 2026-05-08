@@ -1,6 +1,6 @@
 # Learning Data Responsibility Boundaries
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -80,6 +80,18 @@ rename or split eventually happens.
 - `Training Example Definition` has not been promoted as a separate glossary
   term. Instead, `Training Example` now carries the input/target-or-feedback
   meaning directly.
+
+## Resolution
+
+The responsibility boundary is now stable enough for this issue:
+
+- `Data Selection` owns inclusion for a declared use.
+- `Training Example` owns the objective-specific input/target-or-feedback unit.
+- PyTorch `Dataset` remains a runtime sample adapter.
+- `Dataset Definition` is no longer a formal glossary term.
+
+Remaining code-level mixing is tracked separately in
+`training-example-responsibility-mixing.md`.
 
 ## Acceptance Criteria
 
