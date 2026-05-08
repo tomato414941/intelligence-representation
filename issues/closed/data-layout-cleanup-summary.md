@@ -76,7 +76,10 @@ Remaining focus outside this closed issue:
 
 - [`data-runs-directory.md`](data-runs-directory.md) records the removal of
   `data/runs/`.
-- [`data-shogi-directory.md`](../data-shogi-directory.md) tracks `data/shogi/`.
+- [`data-shogi-directory.md`](data-shogi-directory.md) records the current
+  `data/shogi/` content audit.
+- [`shogi-world-data-directory-boundary.md`](../shogi-world-data-directory-boundary.md)
+  tracks the broader concern about using a world-level data bucket.
 
 ## Non-Goals
 

@@ -1,6 +1,6 @@
 # Data Shogi Directory
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -45,6 +45,21 @@ same place without clear responsibility.
 This issue can close when direct children under `data/shogi/` have clear data
 responsibilities and runtime/player configuration is either removed, moved, or
 tracked by a narrower open issue.
+
+## Resolution
+
+The current direct children under `data/shogi/` were inspected:
+
+- `datasets/`: durable Training Views / Dataset Snapshots.
+- `experiences/`: shogi Experience Stores.
+- `records/`: source-derived copied record sets.
+- `player-registry.json`: runtime/evaluation player pick list, tracked by
+  [`../shogi-player-registry-boundary.md`](../shogi-player-registry-boundary.md).
+
+This closes the immediate directory-content audit. The remaining broader
+concern that `data/shogi/` is a world-level bucket rather than a source-level
+data directory is tracked separately in
+[`../shogi-world-data-directory-boundary.md`](../shogi-world-data-directory-boundary.md).
 
 ## Non-Goals
 
