@@ -9,6 +9,8 @@ in [datasets.md](datasets.md).
 - `data/<source>/processed/` holds reusable derived records or examples.
 - `runs/` holds run-specific inputs, outputs, metrics, and temporary
   checkpoints.
+- Evaluation metrics and match outputs belong under `runs/` unless explicitly
+  promoted.
 - `models/<model-name>/checkpoint.pt` holds a long-lived loadable checkpoint.
 - `checkpoint.pt` under `models/` must contain the schema, model config, and
   state dict needed to load it.

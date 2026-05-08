@@ -35,7 +35,7 @@ Follow-up work is split into narrower issues:
   with long-lived model checkpoints under `models/`.
 - [`../source-derived-artifact-policy.md`](../source-derived-artifact-policy.md):
   how to store source-derived records and failure logs.
-- [`../evaluation-artifact-policy.md`](../evaluation-artifact-policy.md): where
+- [`evaluation-artifact-policy.md`](evaluation-artifact-policy.md): where
   evaluation metrics and match outputs belong.
 - [`../long-lived-artifact-home.md`](../long-lived-artifact-home.md): whether
   large long-lived artifacts should stay local or use an external artifact home.

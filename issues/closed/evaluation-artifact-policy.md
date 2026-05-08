@@ -1,6 +1,6 @@
 # Evaluation Artifact Policy
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -22,13 +22,19 @@ is promoted, artifact management becomes noisy.
   long-lived model checkpoint.
 - Keep the rule small enough to use during local experiments.
 
-## Non-Goals
-
-- Do not build a leaderboard.
-- Do not reintroduce player registry management.
-- Do not decide model promotion criteria beyond evaluation artifact handling.
-
 ## Acceptance Criteria
 
 This issue can close when evaluation outputs have clear default and long-lived
 locations.
+
+## Resolution
+
+Evaluation outputs are run artifacts by default.
+
+- Task metrics and match outputs belong under `runs/`.
+- `models/` stores loadable checkpoints only.
+- If an evaluation output becomes a long-lived input for future work, promote it
+  through a separate explicit decision.
+
+The default placement rule is recorded in
+[`../../docs/artifact-layout.md`](../../docs/artifact-layout.md).
