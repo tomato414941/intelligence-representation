@@ -87,7 +87,7 @@ Examples:
 
 ```text
 text observation -> tokenizer -> token embeddings
-image observation -> image input layer -> image embeddings
+image observation -> image input interface -> image embeddings
 discrete action -> action embedding
 reward or done -> scalar/class target, or a history token when needed
 ```

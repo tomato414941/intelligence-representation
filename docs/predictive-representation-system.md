@@ -133,17 +133,18 @@ plan の後の outcome
 
 すべてを1つの raw schema にすることは、構造を捨てることでも、構造を得ることでもない。
 自然言語は token sequence として扱いやすいが、画像、音声、動画、行動履歴は
-別の入力層を通って embedding sequence になることが多い。
+別の input interface と input embedding module を通って embedding sequence になることが多い。
 
 このプロジェクトで今後中心に置くのは、入力前の汎用 envelope schema ではなく、
 source record / experience と、それを input embedding sequence に変換する
-modality-specific input layers である。
+modality-specific input interfaces / input embedding modules である。
 
 このプロジェクトで積極的に固定してよいのは、主に学習と評価に実際に使う薄い境界である。
 
 ```text
 source record or experience
-input layer boundary
+input interface boundary
+input embedding module boundary
 input embedding sequence boundary
 loss mask or objective target
 evaluation candidate set
@@ -174,32 +175,32 @@ evaluation pressure
 input / output interface
 ```
 
-## 入力層は感覚器・行動器に近い
+## Input Interface は感覚器・行動器に近い
 
-入力層は単なる前処理ではない。世界との接点をモデル入力表現に変換するための
+input interface は単なる前処理ではない。世界との接点をモデル入力表現に変換するための
 感覚器・行動器・内部状態境界に近い。
 
 ```text
-language input layer:
+language input interface:
   text -> token ids -> token embeddings
 
-vision input layer:
+vision input interface:
   image / video -> patch or visual embeddings
 
-audio input layer:
+audio input interface:
   waveform / speech -> audio embeddings
 
-action input layer:
+action input interface:
   tool call / motor command / action form or encoding -> input embedding
 
-state input layer:
+state input interface:
   environment state / event logs -> form or encoding -> input embedding
 
-reward / error input layer:
+reward / error input interface:
   reward, failure, correction -> feedback form or encoding -> input embedding
 ```
 
-新しい入力層を追加することは、新しい感覚器や行動器を追加することに近い。
+新しい input interface を追加することは、新しい感覚器や行動器を追加することに近い。
 ただし、追加すれば即座に使えるわけではなく、既存表現との alignment、
 行動や観測との因果関係、評価対象との対応を学習または検証する必要がある。
 
@@ -212,7 +213,7 @@ reward / error input layer:
 
 ```text
 source records or experience
-  -> modality-specific input layers
+  -> modality-specific input interfaces / input embedding modules
   -> input embedding sequence
   -> shared Transformer core
   -> output head / decoder

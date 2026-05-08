@@ -17,7 +17,7 @@ The active engineering direction is:
 
 ```text
 source records or experience
-  -> modality-specific input layers
+  -> modality-specific input interfaces / input embedding modules
   -> input embedding sequence
   -> shared Transformer core
   -> output head or decoder
@@ -128,7 +128,7 @@ image example
   -> input embedding sequence
 
 image/text choice example
-  -> image input layer + text tokenizer / embedding layer
+  -> image input interface + text tokenizer / embedding layer
   -> input embedding sequence
 ```
 
@@ -143,7 +143,8 @@ when that route helps implementation, learning, or evaluation.
 Useful boundaries can include:
 
 ```text
-modality-specific input layer
+modality-specific input interface
+input embedding module
 tokenizer selection
 embedding layer
 decoder or output head
@@ -172,7 +173,8 @@ tool result
 ```
 
 But the boundary must earn its place. A name should not become a field or class
-unless an input layer, dataset, evaluator, objective, or execution loop uses it.
+unless an input interface, dataset, evaluator, objective, or execution loop uses
+it.
 
 ## Format Is Not Modality
 
@@ -190,7 +192,7 @@ format:
 
 They should not automatically become conceptual categories. A PNG and a JPEG
 may both be image inputs. A Markdown file and a JSON file may both be text
-inputs if the input layer treats them as text.
+inputs if the input interface treats them as text.
 
 ## Text As Reference Case
 
@@ -282,7 +284,7 @@ Prefer:
 
 ```text
 task-specific source records
-modality-specific input layers
+modality-specific input interfaces / input embedding modules
 token IDs for text or other discrete pre-embedding inputs
 input embedding sequence as the shared model input boundary
 hidden states as Transformer outputs
@@ -294,7 +296,7 @@ Avoid:
 ```text
 generic raw-data envelopes
 unused cross-task fields
-schema fields that no input layer or evaluator consumes
+schema fields that no input interface or evaluator consumes
 handcrafted semantic taxonomies
 making classification, prediction, memory, and action look identical too early
 ```
@@ -302,18 +304,18 @@ making classification, prediction, memory, and action look identical too early
 The shared middle of the system should be the model-facing representation:
 
 ```text
-modality-specific input layer
+modality-specific input embedding module
   -> input embedding sequence
   -> shared Transformer core
   -> output head / decoder
   -> model output / objective
 ```
 
-For text-only language modeling, the input layer may be a tokenizer plus an
-embedding table. For image/text choice tasks, image patches and candidate text
-embeddings can be fused before a candidate scoring head. For audio-to-text
-tasks, input layers and output decoders can differ while the Transformer core
-remains shareable.
+For text-only language modeling, the input interface may include tokenization
+and an embedding table. For image/text choice tasks, image patches and candidate
+text embeddings can be fused before a candidate scoring head. For audio-to-text
+tasks, input interfaces, input embedding modules, and output decoders can differ
+while the Transformer core remains shareable.
 
 ## Retired Direction
 

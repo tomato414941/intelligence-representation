@@ -41,19 +41,21 @@ Predictive Representation System の中核的な評価面に位置づける。
 学習可能な入力と出力の列として扱える。
 
 重要なのは、最初から人間が意味カテゴリを固定することではない。
-元データを入力層が扱いやすい形で保持し、
-そこからモデル入力に使える input embedding sequence へ変換することである。
+source record を source 側の意味で保持し、必要に応じて encoding / model input
+へ変換し、input embedding module で input embedding sequence へ変換することである。
 
 ```text
 source records
-  -> modality-specific input layers
+  -> input preparation / encodings
+  -> modality-specific input embedding modules
   -> input embedding sequence
   -> shared Transformer core
 ```
 
 この形なら、テキスト、画像、音声、行動、選択分類、自由記述応答を、
 同じ中間の予測計算へ接続しやすい。
-ただし、入力層、output head / decoder、学習目的まで無理に同一化する必要はない。
+ただし、input preparation、input embedding module、output head / decoder、
+学習目的まで無理に同一化する必要はない。
 
 ## 設計原則
 
@@ -61,7 +63,7 @@ source records
 
 ```text
 source records close to their source
-simple input-layer boundaries
+simple input preparation and embedding boundaries
 input embedding sequences as shared model input
 next-token or future-token training as smoke objectives
 held-out continuation / ranking / task evaluation

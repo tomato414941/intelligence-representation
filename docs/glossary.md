@@ -14,6 +14,7 @@ source record
 object or world state in a model input
   -> form
   -> encoding
+  -> input embedding module
   -> input embedding
   -> hidden state
   -> output head
@@ -246,13 +247,23 @@ Examples:
 Cached token IDs or tensors are still encodings. They may have a file format on
 disk, but their role in the pipeline is encoded model input preparation.
 
+### Input Interface
+
+An input interface is the broader route by which source-side or world-side
+values become model inputs. It may include IO, decoding, tokenization,
+encoding, or input embedding modules.
+
+Use narrower terms such as `encoding` or `input embedding module` for code
+boundaries when possible.
+
 ### Input Embedding Module
 
 An input embedding module is a model-side module that converts model inputs or
 encodings into input embedding sequences for the shared core.
 
-Use this term when precision matters. `Input layer` is acceptable in informal
-discussion, but it is too broad as a project boundary term.
+Use this term when precision matters. Use `input interface` for the broader
+route from source-side values toward model inputs. `Input layer` is acceptable
+in informal discussion, but it is too broad as a project boundary term.
 
 ### Input Embedding
 
