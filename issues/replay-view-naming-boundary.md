@@ -1,0 +1,59 @@
+# Replay View Naming Boundary
+
+Status: open.
+
+## Issue
+
+The current implementation is closer to replay selection / replay-view creation
+than to a reinforcement-learning Replay Buffer.
+
+General RL usage usually treats a Replay Buffer as a training-time component
+that stores transitions and samples minibatches during training. It may support
+capacity limits, recency, random sampling, prioritized replay, and continuous
+append / sample behavior.
+
+The current shogi implementation instead:
+
+- reads fixed `ShogiGameRecord` JSONL sources
+- selects records once before training
+- writes a fixed Training View
+- lets the normal PyTorch Dataset / training loop consume that fixed view
+
+That is useful, but calling the implementation a Replay Buffer would be
+misleading.
+
+## Why It Matters
+
+If the project uses "Replay Buffer" for fixed view creation, future design
+discussions can become confused:
+
+- online replay sampling vs offline view construction become mixed
+- PyTorch `Dataset` / `Sampler` responsibilities become unclear
+- RL terminology diverges from common usage
+- future prioritized or online replay may not have a clear name left
+
+## Current Policy
+
+Keep implementation names close to what exists:
+
+- `replay selection`
+- `replay view`
+- `replay view builder`
+
+Reserve `Replay Buffer` for a real training-time replay component if the project
+later needs one.
+
+## Acceptance Criteria
+
+- Current code and docs do not describe the fixed view builder itself as a
+  Replay Buffer.
+- The boundary issue may still discuss Replay Buffer as a possible future
+  component.
+- Naming makes clear whether a component samples once before training or samples
+  repeatedly during training.
+
+## Non-Goals
+
+- implement an online Replay Buffer
+- rename every occurrence of "replay"
+- introduce a generic replay abstraction
