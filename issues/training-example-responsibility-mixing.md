@@ -43,6 +43,13 @@ Shogi move choice is the clearest pressure point:
 - `ShogiMoveChoiceDataset` then converts `ShogiMoveChoiceExample` into tensor
   samples.
 
+## Progress
+
+- The shogi-specific Data Selection boundary problem has been split into
+  `shogi-move-choice-data-selection-boundary.md`.
+- Remaining concrete concerns here are language-modeling windowing and grid
+  transition-to-target shaping.
+
 ## Why It Matters
 
 If these boundaries stay mixed, future multi-source or multi-objective learning
@@ -66,11 +73,12 @@ deciding the project-level responsibilities:
 
 ## Acceptance Criteria
 
-- Decide whether `ShogiMoveChoiceDatasetDefinition` should be split or renamed.
 - Decide whether language-modeling windowing belongs outside the PyTorch
   dataset.
 - Decide whether grid transition-to-target shaping should stay in the dataset
   or move to an explicit training-example layer.
+- Keep shogi move-choice Data Selection changes in
+  `shogi-move-choice-data-selection-boundary.md`.
 - Update docs or code only where the boundary decision is stable.
 
 ## Non-Goals
