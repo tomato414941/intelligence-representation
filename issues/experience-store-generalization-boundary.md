@@ -32,6 +32,12 @@ Experience Store means durable storage for generated or collected experience.
 That responsibility is broader than shogi game records, even if the current
 schema is shogi-specific.
 
+Experience Store should remain problem-agnostic. It should store source-side
+experience such as observations, actions, outcomes, actors, and metadata.
+Problem-specific inputs, targets, losses, and objectives should be derived later
+by Data Selection, Training Data Bundle construction, or problem-specific sample
+construction.
+
 The same caution applies to the Experience Store -> Training Data Bundle lifecycle.
 It may become useful beyond shogi, but extracting a shared abstraction from one
 implementation would be premature.

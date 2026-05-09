@@ -26,8 +26,8 @@ enter a Training Data Bundle. Position evidence merge decides what to do when mu
 included records describe the same position.
 
 This is also different from target-source policy. Target-source policy decides
-how a record source becomes policy/value targets. Position evidence merge
-decides whether multiple target/evidence candidates for the same position are
+how a record source or annotation evidence becomes problem-specific targets.
+Position evidence merge decides whether multiple evidence candidates for the same position are
 kept separately, prioritized, averaged, weighted, or deduplicated.
 
 If this remains implicit, the project may accidentally overweight repeated
@@ -60,7 +60,7 @@ Likely choices to evaluate later:
 - checkpoint actor provenance
 - train/eval overlap exclusion
 - tensorized Training Data Bundle cache
-- storing derived policy/value targets in `ShogiGameRecord`
+- storing problem-derived policy/value targets in `ShogiGameRecord`
 
 ## Acceptance Criteria
 

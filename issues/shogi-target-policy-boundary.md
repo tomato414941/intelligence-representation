@@ -4,6 +4,10 @@ Status: open. Priority: low.
 
 ## Issue
 
+Experience records should be independent of problem definitions. They should
+store what happened in the world, while problems decide how selected records and
+evidence become inputs and targets.
+
 `ShogiPolicyValueDataSelection` currently includes both source selection and
 target-policy fields:
 
