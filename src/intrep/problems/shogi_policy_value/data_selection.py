@@ -51,7 +51,7 @@ def load_shogi_policy_value_data_selection(path: str | Path) -> ShogiPolicyValue
         train_sources=_sources_from_json(payload.get("train_sources"), root=root),
         eval_sources=_sources_from_json(payload.get("eval_sources"), root=root),
     )
-    _validate_target_construction(selection.target_construction)
+    _validate_target_construction(selection)
     _validate_split(selection)
     return selection
 
@@ -154,11 +154,16 @@ def _validate_split(selection: ShogiPolicyValueDataSelection) -> None:
         raise ValueError("train and eval data selection sources must be split")
 
 
-def _validate_target_construction(construction: ShogiPolicyValueTargetConstruction) -> None:
+def _validate_target_construction(selection: ShogiPolicyValueDataSelection) -> None:
+    construction = selection.target_construction
     if construction.policy not in {"chosen_move", "decision_usi_multipv", "engine_analysis_multipv"}:
         raise ValueError("target_construction.policy must be chosen_move, decision_usi_multipv, or engine_analysis_multipv")
     if construction.value not in {"winner", "decision_usi_score", "engine_analysis_score"}:
         raise ValueError("target_construction.value must be winner, decision_usi_score, or engine_analysis_score")
+    if (
+        construction.policy == "engine_analysis_multipv" or construction.value == "engine_analysis_score"
+    ) and not selection.analysis_sources:
+        raise ValueError("analysis_sources must be non-empty when target_construction uses engine analysis")
     if construction.score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
     if construction.policy_temperature_cp <= 0:

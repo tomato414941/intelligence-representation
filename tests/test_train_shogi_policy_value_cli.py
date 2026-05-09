@@ -581,6 +581,37 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
         self.assertEqual(eval_examples[1].policy_targets, {"8c8d": 1.0})
         self.assertAlmostEqual(eval_examples[1].value_target or 0.0, -0.761594, places=5)
 
+    def test_rejects_engine_analysis_targets_without_analysis_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f",), "black")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f",), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "missing-analysis-source",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "engine_analysis_multipv",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "engine_analysis_score",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "analysis_sources"):
+                load_shogi_policy_value_data_selection(data_selection_path)
+
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
