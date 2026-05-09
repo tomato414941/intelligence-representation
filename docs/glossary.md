@@ -154,6 +154,17 @@ target, a ranking target, or simply evaluation metadata.
 Do not use `Evidence` when a narrower term is clearer. For actual world
 interaction, use `Experience`. For the optimized training signal, use `Target`.
 
+### Engine Analysis
+
+Engine Analysis is analysis produced by an engine for a position or state.
+
+In the current shogi code, `ShogiEngineAnalysis` is intentionally narrow: it
+stores shogi-engine analysis for a shogi position. It is not a generic
+annotation framework and not a training target.
+
+Engine Analysis may later be used as Evidence by a problem-specific target
+construction rule.
+
 ## Data Pipeline Terms
 
 ### Source Record
@@ -200,6 +211,11 @@ fixed Training Data Bundle derived from the store.
 
 Experience Store records should remain close to the source experience and
 should not be reshaped around one objective, run, or model.
+
+Experience Store is a concept, not proof that a shared implementation exists.
+The current implementation is shogi-local. Whether Experience Store storage
+should remain world/source-specific or become a shared abstraction is an open
+design question.
 
 ### Online Experience Replay
 
