@@ -190,6 +190,17 @@ Use `Index` when the important concept is finding or referring to stored
 information, not merely owning source records. Do not use `Index` as a synonym
 for every durable store.
 
+### Shogi Position Index
+
+A Shogi Position Index is a shogi-specific Index keyed by `position_sfen`.
+
+It is for looking up known entries for a position. It is not an Experience
+Store: game records and transitions describe what happened, while the position
+index describes what is known for a position key.
+
+The first implementation is exact lookup. Approximate lookup for similar
+positions is a separate design question.
+
 ### Engine Analysis
 
 Engine Analysis is analysis produced by an engine for a position or state.
