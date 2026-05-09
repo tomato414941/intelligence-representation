@@ -36,6 +36,31 @@ Record enough context to explain latency and throughput:
 This path covers inference where a search or planning loop repeatedly chooses
 model inputs. MCTS-style play belongs here.
 
-| Inference Path | Model | Environment | Input Shape | Output Shape | Request | Output Unit | Settings | Workload | request_wall_time_sec | model_call_count | model_wall_time_sec | non_model_wall_time_sec | output_count | output_per_sec | Notes |
-|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
-| shogi checkpoint MCTS | d256-h1024-heads8-l6-shogi | RunPod RTX 4090, CUDA, torch 2.11.0+cu130 | shogi position tokens plus legal candidate moves | candidate move logits plus value | one move decision | MCTS simulation | MCTS32, batch=1 model calls, checkpoint device cuda | 4 games vs YaneuraOu `go nodes 1`, max 80 plies | avg 0.306s, p95 0.431s, max 0.601s | avg 33.0 | avg 0.184s | avg 0.122s | avg 32.0 | avg 111.8/s | 0-4-0, all game_over, avg 58.0 plies. GPU: NVIDIA GeForce RTX 4090. Measured 2026-05-09. |
+#### Shogi Checkpoint MCTS
+
+Context:
+
+- Inference path: search-driven repeated calls
+- Model: d256-h1024-heads8-l6-shogi
+- Environment: RunPod RTX 4090, CUDA, torch 2.11.0+cu130
+- Input shape: shogi position tokens plus legal candidate moves
+- Output shape: candidate move logits plus value
+- Request: one move decision
+- Output unit: MCTS simulation
+- Settings: MCTS32, batch=1 model calls, checkpoint device cuda
+- Workload: 4 games vs YaneuraOu `go nodes 1`, max 80 plies
+
+Measured performance:
+
+- `request_wall_time_sec`: avg 0.306s, p95 0.431s, max 0.601s
+- `model_call_count`: avg 33.0 per request
+- `model_wall_time_sec`: avg 0.184s per request
+- `non_model_wall_time_sec`: avg 0.122s per request
+- `output_count`: avg 32.0 simulations per request
+- `output_per_sec`: avg 111.8 simulations/sec
+
+Notes:
+
+- Result: 0-4-0, all game_over, avg 58.0 plies
+- GPU: NVIDIA GeForce RTX 4090
+- Measured: 2026-05-09
