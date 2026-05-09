@@ -1,6 +1,6 @@
 # Experience Store Generalization Boundary
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
