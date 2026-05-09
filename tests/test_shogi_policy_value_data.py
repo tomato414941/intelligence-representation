@@ -56,8 +56,8 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
             examples = load_shogi_policy_value_examples_from_game_records_jsonl(
                 path,
-                policy_target_source="chosen_move",
-                value_target_source="winner",
+                policy_target_construction="chosen_move",
+                value_target_construction="winner",
             )
 
         self.assertEqual([example.chosen_move for example in examples], ["7g7f", "3c3d"])
@@ -97,8 +97,8 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
             records = load_shogi_policy_value_examples_from_game_records_jsonl(
                 path,
-                policy_target_source="usi_multipv",
-                value_target_source="winner",
+                policy_target_construction="decision_usi_multipv",
+                value_target_construction="winner",
             )
 
         self.assertEqual([record.chosen_move for record in records], ["7g7f", "3c3d"])
@@ -173,7 +173,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
             winner=record.winner,
         )
 
-        targets = shogi_policy_targets_from_game_record(record, source="usi_multipv")[0]
+        targets = shogi_policy_targets_from_game_record(record, source="decision_usi_multipv")[0]
 
         self.assertIsNotNone(targets)
         self.assertGreater(targets["7g7f"], targets["2g2f"])

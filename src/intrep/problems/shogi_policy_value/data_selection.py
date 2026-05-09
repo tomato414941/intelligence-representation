@@ -14,22 +14,22 @@ class ShogiPolicyValueDataSelectionSource:
     kind: str
     path: Path
     max_games: int | None = None
-    policy_target_source: str | None = None
-    value_target_source: str | None = None
+
+
+@dataclass(frozen=True)
+class ShogiPolicyValueTargetConstruction:
+    policy: str
+    value: str
+    policy_temperature_cp: float
+    policy_mate_cp: float
+    score_cp_scale: float
 
 
 @dataclass(frozen=True)
 class ShogiPolicyValueDataSelection:
-    # Target policy is not conceptually Data Selection. It lives here for now
-    # so one small file can define the selected sources and their target
-    # derivation policy until a concrete run needs separate reuse.
     name: str
     objective: str
-    policy_target_source: str
-    policy_temperature_cp: float
-    policy_mate_cp: float
-    value_target_source: str
-    score_cp_scale: float
+    target_construction: ShogiPolicyValueTargetConstruction
     train_sources: tuple[ShogiPolicyValueDataSelectionSource, ...]
     eval_sources: tuple[ShogiPolicyValueDataSelectionSource, ...]
 
@@ -41,16 +41,11 @@ def load_shogi_policy_value_data_selection(path: str | Path) -> ShogiPolicyValue
     selection = ShogiPolicyValueDataSelection(
         name=str(payload["name"]),
         objective=str(payload["objective"]),
-        policy_target_source=str(payload["policy_target_source"]),
-        policy_temperature_cp=float(payload["policy_temperature_cp"]),
-        policy_mate_cp=float(payload["policy_mate_cp"]),
-        value_target_source=str(payload["value_target_source"]),
-        score_cp_scale=float(payload["score_cp_scale"]),
+        target_construction=_target_construction_from_json(payload.get("target_construction")),
         train_sources=_sources_from_json(payload.get("train_sources"), root=root),
         eval_sources=_sources_from_json(payload.get("eval_sources"), root=root),
     )
-    _validate_policy_target_source(selection)
-    _validate_value_target_source(selection)
+    _validate_target_construction(selection.target_construction)
     _validate_split(selection)
     return selection
 
@@ -60,19 +55,11 @@ def load_shogi_policy_value_data_selection_examples(
 ) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
     train_examples = _load_sources(
         selection.train_sources,
-        policy_target_source=selection.policy_target_source,
-        value_target_source=selection.value_target_source,
-        policy_temperature_cp=selection.policy_temperature_cp,
-        policy_mate_cp=selection.policy_mate_cp,
-        score_cp_scale=selection.score_cp_scale,
+        target_construction=selection.target_construction,
     )
     eval_examples = _load_sources(
         selection.eval_sources,
-        policy_target_source=selection.policy_target_source,
-        value_target_source=selection.value_target_source,
-        policy_temperature_cp=selection.policy_temperature_cp,
-        policy_mate_cp=selection.policy_mate_cp,
-        score_cp_scale=selection.score_cp_scale,
+        target_construction=selection.target_construction,
     )
     return train_examples, eval_examples
 
@@ -81,13 +68,31 @@ def shogi_policy_value_data_selection_to_json(selection: ShogiPolicyValueDataSel
     return {
         "name": selection.name,
         "objective": selection.objective,
-        "policy_target_source": selection.policy_target_source,
-        "policy_temperature_cp": selection.policy_temperature_cp,
-        "policy_mate_cp": selection.policy_mate_cp,
-        "value_target_source": selection.value_target_source,
-        "score_cp_scale": selection.score_cp_scale,
+        "target_construction": _target_construction_to_json(selection.target_construction),
         "train_sources": [_source_to_json(source) for source in selection.train_sources],
         "eval_sources": [_source_to_json(source) for source in selection.eval_sources],
+    }
+
+
+def _target_construction_from_json(value: object) -> ShogiPolicyValueTargetConstruction:
+    if not isinstance(value, dict):
+        raise ValueError("target_construction must be an object")
+    return ShogiPolicyValueTargetConstruction(
+        policy=str(value["policy"]),
+        value=str(value["value"]),
+        policy_temperature_cp=float(value["policy_temperature_cp"]),
+        policy_mate_cp=float(value["policy_mate_cp"]),
+        score_cp_scale=float(value["score_cp_scale"]),
+    )
+
+
+def _target_construction_to_json(construction: ShogiPolicyValueTargetConstruction) -> dict[str, str | float]:
+    return {
+        "policy": construction.policy,
+        "policy_temperature_cp": construction.policy_temperature_cp,
+        "policy_mate_cp": construction.policy_mate_cp,
+        "value": construction.value,
+        "score_cp_scale": construction.score_cp_scale,
     }
 
 
@@ -111,21 +116,11 @@ def _sources_from_json(value: object, *, root: Path) -> tuple[ShogiPolicyValueDa
             max_games = int(item["max_games"])
             if max_games <= 0:
                 raise ValueError("data selection source max_games must be positive")
-        policy_target_source = None
-        if "policy_target_source" in item:
-            policy_target_source = str(item["policy_target_source"])
-            _validate_policy_target_source_value(policy_target_source)
-        value_target_source = None
-        if "value_target_source" in item:
-            value_target_source = str(item["value_target_source"])
-            _validate_value_target_source_value(value_target_source)
         sources.append(
             ShogiPolicyValueDataSelectionSource(
                 kind=kind,
                 path=source_path,
                 max_games=max_games,
-                policy_target_source=policy_target_source,
-                value_target_source=value_target_source,
             )
         )
     return tuple(sources)
@@ -139,38 +134,23 @@ def _validate_split(selection: ShogiPolicyValueDataSelection) -> None:
         raise ValueError("train and eval data selection sources must be split")
 
 
-def _validate_value_target_source(selection: ShogiPolicyValueDataSelection) -> None:
-    _validate_value_target_source_value(selection.value_target_source)
-    if selection.score_cp_scale <= 0:
+def _validate_target_construction(construction: ShogiPolicyValueTargetConstruction) -> None:
+    if construction.policy not in {"chosen_move", "decision_usi_multipv"}:
+        raise ValueError("target_construction.policy must be chosen_move or decision_usi_multipv")
+    if construction.value not in {"winner", "decision_usi_score"}:
+        raise ValueError("target_construction.value must be winner or decision_usi_score")
+    if construction.score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
-
-
-def _validate_policy_target_source(selection: ShogiPolicyValueDataSelection) -> None:
-    _validate_policy_target_source_value(selection.policy_target_source)
-    if selection.policy_temperature_cp <= 0:
+    if construction.policy_temperature_cp <= 0:
         raise ValueError("policy_temperature_cp must be positive")
-    if selection.policy_mate_cp <= 0:
+    if construction.policy_mate_cp <= 0:
         raise ValueError("policy_mate_cp must be positive")
-
-
-def _validate_value_target_source_value(value: str) -> None:
-    if value not in {"winner", "yaneuraou_best_score"}:
-        raise ValueError("value_target_source must be winner or yaneuraou_best_score")
-
-
-def _validate_policy_target_source_value(value: str) -> None:
-    if value not in {"chosen_move", "usi_multipv"}:
-        raise ValueError("policy_target_source must be chosen_move or usi_multipv")
 
 
 def _load_sources(
     sources: tuple[ShogiPolicyValueDataSelectionSource, ...],
     *,
-    policy_target_source: str,
-    value_target_source: str,
-    policy_temperature_cp: float,
-    policy_mate_cp: float,
-    score_cp_scale: float,
+    target_construction: ShogiPolicyValueTargetConstruction,
 ) -> list[ShogiPolicyValueExample]:
     examples: list[ShogiPolicyValueExample] = []
     for source in sources:
@@ -178,11 +158,11 @@ def _load_sources(
             examples.extend(
                 load_shogi_policy_value_examples_from_game_records_jsonl(
                     source.path,
-                    policy_target_source=source.policy_target_source or policy_target_source,
-                    value_target_source=source.value_target_source or value_target_source,
-                    policy_temperature_cp=policy_temperature_cp,
-                    policy_mate_cp=policy_mate_cp,
-                    score_cp_scale=score_cp_scale,
+                    policy_target_construction=target_construction.policy,
+                    value_target_construction=target_construction.value,
+                    policy_temperature_cp=target_construction.policy_temperature_cp,
+                    policy_mate_cp=target_construction.policy_mate_cp,
+                    score_cp_scale=target_construction.score_cp_scale,
                     max_games=source.max_games,
                 )
             )
@@ -200,10 +180,6 @@ def _source_to_json(source: ShogiPolicyValueDataSelectionSource) -> dict[str, st
     }
     if source.max_games is not None:
         payload["max_games"] = source.max_games
-    if source.policy_target_source is not None:
-        payload["policy_target_source"] = source.policy_target_source
-    if source.value_target_source is not None:
-        payload["value_target_source"] = source.value_target_source
     return payload
 
 

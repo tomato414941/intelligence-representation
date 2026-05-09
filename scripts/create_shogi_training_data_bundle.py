@@ -17,10 +17,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--name", required=True)
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/training-data-bundles"))
-    parser.add_argument("--policy-target-source", choices=("chosen_move", "usi_multipv"), default="chosen_move")
+    parser.add_argument("--policy-target-construction", choices=("chosen_move", "decision_usi_multipv"), default="chosen_move")
     parser.add_argument("--policy-temperature-cp", type=float, default=100.0)
     parser.add_argument("--policy-mate-cp", type=float, default=100000.0)
-    parser.add_argument("--value-target-source", choices=("winner", "yaneuraou_best_score"), default="winner")
+    parser.add_argument("--value-target-construction", choices=("winner", "decision_usi_score"), default="winner")
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
     args = parser.parse_args(argv)
 
@@ -33,10 +33,10 @@ def main(argv: list[str] | None = None) -> None:
         seed=args.seed,
         name=args.name,
         output_root=args.output_root,
-        policy_target_source=args.policy_target_source,
+        policy_target_construction=args.policy_target_construction,
         policy_temperature_cp=args.policy_temperature_cp,
         policy_mate_cp=args.policy_mate_cp,
-        value_target_source=args.value_target_source,
+        value_target_construction=args.value_target_construction,
         score_cp_scale=args.score_cp_scale,
     )
     print(json.dumps(result, indent=2))

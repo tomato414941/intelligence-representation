@@ -80,11 +80,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-policy-value",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -169,11 +171,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-policy-value",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "usi_multipv",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "decision_usi_multipv",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -232,11 +236,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-policy-value",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -322,11 +328,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "test-shogi-policy-value",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
                     }
@@ -391,11 +399,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "bad-unsplit",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(games_path)}],
                     }
@@ -426,11 +436,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "max-games",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path), "max_games": 1}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path), "max_games": 1}],
                     }
@@ -466,20 +478,17 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             data_selection_path.write_text(
                 json.dumps(
                     {
-                        "name": "source-local-target-policy",
+                        "name": "target-construction",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "decision_usi_multipv",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "decision_usi_score",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [
-                            {
-                                "kind": "game_records_jsonl",
-                                "path": str(teacher_games_path),
-                                "policy_target_source": "usi_multipv",
-                                "value_target_source": "yaneuraou_best_score",
-                            },
+                            {"kind": "game_records_jsonl", "path": str(teacher_games_path)},
                             {"kind": "game_records_jsonl", "path": str(self_play_games_path)},
                         ],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
@@ -492,18 +501,19 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             definition = load_shogi_policy_value_data_selection(data_selection_path)
             train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(definition)
 
-        self.assertEqual(definition.train_sources[0].policy_target_source, "usi_multipv")
-        self.assertEqual(definition.train_sources[0].value_target_source, "yaneuraou_best_score")
+        self.assertEqual(definition.target_construction.policy, "decision_usi_multipv")
+        self.assertEqual(definition.target_construction.value, "decision_usi_score")
         self.assertEqual(train_examples[0].policy_targets, {"7g7f": 1.0})
         self.assertIsNotNone(train_examples[0].value_target)
         self.assertNotEqual(train_examples[0].value_target, 1.0)
         self.assertIsNone(train_examples[1].policy_targets)
-        self.assertEqual(train_examples[1].value_target, 1.0)
+        self.assertIsNone(train_examples[1].value_target)
         self.assertIsNone(eval_examples[0].policy_targets)
-        self.assertEqual(eval_examples[0].value_target, 1.0)
-        source_json = shogi_policy_value_data_selection_to_json(definition)["train_sources"][0]
-        self.assertEqual(source_json["policy_target_source"], "usi_multipv")
-        self.assertEqual(source_json["value_target_source"], "yaneuraou_best_score")
+        self.assertIsNone(eval_examples[0].value_target)
+        self.assertEqual(
+            shogi_policy_value_data_selection_to_json(definition)["target_construction"]["policy"],
+            "decision_usi_multipv",
+        )
 
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -514,11 +524,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     {
                         "name": "bad-source-kind",
                         "objective": "shogi policy-value",
-                        "policy_target_source": "chosen_move",
-                        "policy_temperature_cp": 100.0,
-                        "policy_mate_cp": 100000.0,
-                        "value_target_source": "winner",
-                        "score_cp_scale": 600.0,
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
                         "train_sources": [{"kind": "examples_jsonl", "path": "train-examples.jsonl"}],
                         "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
                     }

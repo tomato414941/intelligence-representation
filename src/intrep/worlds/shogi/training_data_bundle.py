@@ -20,10 +20,10 @@ def create_shogi_training_data_bundle(
     max_eval_games: int | None = None,
     actor_pair_ratios: dict[str, float] | None = None,
     seed: int = 7,
-    policy_target_source: str = "chosen_move",
+    policy_target_construction: str = "chosen_move",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
-    value_target_source: str = "winner",
+    value_target_construction: str = "winner",
     score_cp_scale: float = 600.0,
 ) -> dict[str, object]:
     output_dir = output_root / name
@@ -68,11 +68,13 @@ def create_shogi_training_data_bundle(
     data_selection = {
         "name": name,
         "objective": "shogi move-choice policy/value",
-        "policy_target_source": policy_target_source,
-        "policy_temperature_cp": policy_temperature_cp,
-        "policy_mate_cp": policy_mate_cp,
-        "value_target_source": value_target_source,
-        "score_cp_scale": score_cp_scale,
+        "target_construction": {
+            "policy": policy_target_construction,
+            "policy_temperature_cp": policy_temperature_cp,
+            "policy_mate_cp": policy_mate_cp,
+            "value": value_target_construction,
+            "score_cp_scale": score_cp_scale,
+        },
         "train_sources": [_source_json(train_jsonl.name, max_train_games)],
         "eval_sources": [_source_json(eval_jsonl.name, max_eval_games)],
     }
@@ -100,11 +102,7 @@ def create_shogi_training_data_bundle(
         "eval_actor_pair_counts": shogi_actor_pair_counts(eval_records),
         "train_games": len(train_records),
         "eval_games": len(eval_records),
-        "policy_target_source": policy_target_source,
-        "policy_temperature_cp": policy_temperature_cp,
-        "policy_mate_cp": policy_mate_cp,
-        "value_target_source": value_target_source,
-        "score_cp_scale": score_cp_scale,
+        "target_construction": data_selection["target_construction"],
         "files": {
             "games": games_jsonl.name,
             "train": train_jsonl.name,

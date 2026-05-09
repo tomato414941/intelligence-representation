@@ -20,8 +20,8 @@ from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
 def load_shogi_policy_value_examples_from_game_records_jsonl(
     path: str | Path,
     *,
-    policy_target_source: str,
-    value_target_source: str,
+    policy_target_construction: str,
+    value_target_construction: str,
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
@@ -35,8 +35,8 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
             break
         game_examples = shogi_policy_value_examples_from_game_record(
             record,
-            policy_target_source=policy_target_source,
-            value_target_source=value_target_source,
+            policy_target_construction=policy_target_construction,
+            value_target_construction=value_target_construction,
             policy_temperature_cp=policy_temperature_cp,
             policy_mate_cp=policy_mate_cp,
             score_cp_scale=score_cp_scale,
@@ -52,21 +52,21 @@ def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[Shog
 def shogi_policy_value_examples_from_game_record(
     record: ShogiGameRecord,
     *,
-    policy_target_source: str = "chosen_move",
-    value_target_source: str = "winner",
+    policy_target_construction: str = "chosen_move",
+    value_target_construction: str = "winner",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
 ) -> list[ShogiPolicyValueExample]:
     policy_targets = shogi_policy_targets_from_game_record(
         record,
-        source=policy_target_source,
+        source=policy_target_construction,
         policy_temperature_cp=policy_temperature_cp,
         policy_mate_cp=policy_mate_cp,
     )
     value_targets = shogi_value_targets_from_game_record(
         record,
-        source=value_target_source,
+        source=value_target_construction,
         score_cp_scale=score_cp_scale,
     )
     return [
@@ -84,13 +84,13 @@ def shogi_policy_value_examples_from_game_record(
 def shogi_move_choice_examples_from_game_record(
     record: ShogiGameRecord,
     *,
-    policy_target_source: str = "chosen_move",
+    policy_target_construction: str = "chosen_move",
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
 ) -> list[ShogiMoveChoiceExample]:
     policy_targets = shogi_policy_targets_from_game_record(
         record,
-        source=policy_target_source,
+        source=policy_target_construction,
         policy_temperature_cp=policy_temperature_cp,
         policy_mate_cp=policy_mate_cp,
     )
@@ -108,12 +108,12 @@ def shogi_move_choice_examples_from_game_record(
 def shogi_position_value_examples_from_game_record(
     record: ShogiGameRecord,
     *,
-    value_target_source: str = "winner",
+    value_target_construction: str = "winner",
     score_cp_scale: float = 600.0,
 ) -> list[ShogiPositionValueExample]:
     value_targets = shogi_value_targets_from_game_record(
         record,
-        source=value_target_source,
+        source=value_target_construction,
         score_cp_scale=score_cp_scale,
     )
     return [
@@ -134,7 +134,7 @@ def shogi_policy_targets_from_game_record(
 ) -> tuple[dict[str, float] | None, ...]:
     if source == "chosen_move":
         return tuple(None for _transition in record.transitions)
-    if source == "usi_multipv":
+    if source == "decision_usi_multipv":
         return tuple(
             _policy_target_from_info_lines(
                 transition.decision_usi_info_lines,
@@ -155,7 +155,7 @@ def shogi_value_targets_from_game_record(
 ) -> tuple[float | None, ...]:
     if source == "winner":
         return shogi_return_targets_from_game_record(record)
-    if source == "yaneuraou_best_score":
+    if source == "decision_usi_score":
         return shogi_score_targets_from_game_record(record, score_cp_scale=score_cp_scale)
     raise ValueError(f"unsupported shogi value target source: {source}")
 
