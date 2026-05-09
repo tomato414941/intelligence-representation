@@ -465,6 +465,22 @@ Examples:
 - next grid state
 - winner or value target
 
+### Target Construction
+
+Target Construction is the problem-specific rule that turns selected source
+records, evidence, stored targets, or feedback into Targets.
+
+It is separate from Data Selection. Data Selection decides what material is
+included. Target Construction decides how included material becomes the value
+that a model output is compared with.
+
+Examples:
+
+- selected move -> one-hot policy target
+- engine MultiPV scores -> policy distribution target
+- game winner -> return target
+- engine score -> value target
+
 ### Objective
 
 An objective is the goal to optimize or evaluate. It defines what behavior
