@@ -39,9 +39,11 @@ training script, and model-quality interpretation belongs in evidence docs.
 | 2026-05-04 | candidate-aware value-only policy-skip smoke EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq split cache | 1000 | 512 | 6m17s total, 4m28s training | about $0.07 | policy_loss_weight=0.0; value_loss_weight=1.0; 3.73 steps/s; 5.3 GB CUDA max memory. |
 | 2026-05-04 | candidate-aware value-only policy-skip comparison EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | Qhapaq split cache | 3000 | 512 | 24m18s total, 22m03s training | about $0.28 | policy_loss_weight=0.0; value_loss_weight=1.0; 2.27 steps/s; 5.3 GB CUDA max memory. |
 | 2026-05-09 | engine-analysis small train EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | shogi engine-analysis bundle, 50 train games / 10 eval games | 500 | 512 | 3m42s total, 2m05s training | about $0.04 | value_loss_weight=0.2; 4.00 steps/s; 7.8 GB CUDA max memory. CPU measured 300 steps in about 14m24s at 0.35 steps/s with batch 128. |
+| 2026-05-09 | engine-analysis 1000-game train EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 | shogi engine-analysis bundle, 1000 train games / 20 eval games | 1750 | 512 | 8m30s total, 6m40s training | about $0.10 | value_loss_weight=0.2; early-stopped at step 1750; best eval step 750; 4.52 steps/s; 8.0 GB CUDA max memory. |
 
 ## RunPod Shogi Evaluation
 
 | Date | Run | Status | Compute | Players | Games | Search | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | --- |
 | 2026-05-09 | d32 vs engine-analysis best MCTS8 EU | measured | RunPod RTX 4090, $0.69/hr | d32-h64-heads4-layers1 checkpoint vs d256-h1024-heads8-layers6 checkpoint | 20 | MCTS8 each, CUDA checkpoint inference | 5m50s total, 3m31s evaluation | about $0.07 | GPU confirmed as NVIDIA GeForce RTX 4090. |
+| 2026-05-09 | engine-analysis 1000-game vs smoke best MCTS8 EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 checkpoint vs d256-h1024-heads8-layers6 checkpoint | 20 | MCTS8 each, CUDA checkpoint inference | 2m47s total, 1m16s evaluation | about $0.03 | GPU confirmed as NVIDIA GeForce RTX 4090. |
