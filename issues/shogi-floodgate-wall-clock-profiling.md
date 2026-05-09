@@ -1,6 +1,6 @@
 # Shogi Floodgate Wall-Clock Profiling
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -33,3 +33,20 @@ behavior.
 - the summary is enough to tell whether GPU inference or CPU-side search is the
   likely bottleneck
 - compute-cost notes can reference the measured wall-clock result when needed
+
+## Resolution
+
+Closed on 2026-05-09.
+
+`shogi-arena-agent` now emits per-move inference performance summaries for
+in-process MCTS policies through `decision_usi_info_lines`, and
+`evaluate_shogi_players.py` aggregates them in stdout.
+
+The first catalog entry is recorded in
+[`docs/inference-performance.md`](../docs/inference-performance.md):
+
+- workload: d256-h1024-heads8-l6-shogi MCTS32 vs YaneuraOu `go nodes 1`
+- environment: RunPod RTX 4090, CUDA
+- request wall time: avg 0.306s, p95 0.431s, max 0.601s
+- model wall time: avg 0.184s
+- non-model wall time: avg 0.122s
