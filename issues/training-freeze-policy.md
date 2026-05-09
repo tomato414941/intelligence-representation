@@ -1,6 +1,6 @@
 # Training Freeze Policy
 
-Status: open.
+Status: open. Priority: low.
 
 ## Issue
 
