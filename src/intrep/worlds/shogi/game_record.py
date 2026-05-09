@@ -25,6 +25,8 @@ class ShogiTransitionRecord:
     next_position_sfen: str
     reward: float
     done: bool
+    # Engine info emitted during this transition. Post-game analysis of the
+    # same position belongs in ShogiEngineAnalysis, not back on this record.
     usi_info_lines: tuple[str, ...] = ()
 
 
