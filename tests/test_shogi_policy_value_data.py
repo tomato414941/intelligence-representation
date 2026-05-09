@@ -7,10 +7,14 @@ import shogi
 
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_policy_value_examples_from_game_records_jsonl,
+    shogi_engine_analysis_by_position,
+    shogi_policy_targets_from_engine_analysis,
     shogi_policy_targets_from_game_record,
     shogi_return_targets_from_game_record,
+    shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
 )
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -174,6 +178,47 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         self.assertIsNotNone(targets)
         self.assertGreater(targets["7g7f"], targets["2g2f"])
         self.assertAlmostEqual(sum(targets.values()), 1.0)
+
+    def test_builds_policy_and_score_targets_from_engine_analysis(self) -> None:
+        record = _record(("7g7f",), "black")
+        transition = record.transitions[0]
+        analysis = ShogiEngineAnalysis(
+            position_sfen=transition.position_sfen,
+            legal_moves=transition.legal_moves,
+            engine=WHITE_ACTOR,
+            usi_info_lines=(
+                "info multipv 1 score cp 300 pv 7g7f",
+                "info multipv 2 score cp 0 pv 2g2f",
+            ),
+        )
+
+        analyses = shogi_engine_analysis_by_position([analysis])
+        policy_targets = shogi_policy_targets_from_engine_analysis(analyses, record)[0]
+        score_targets = shogi_score_targets_from_engine_analysis(analyses, record, score_cp_scale=300.0)
+
+        self.assertIsNotNone(policy_targets)
+        self.assertGreater(policy_targets["7g7f"], policy_targets["2g2f"])
+        self.assertAlmostEqual(sum(policy_targets.values()), 1.0)
+        self.assertAlmostEqual(score_targets[0] or 0.0, 0.761594, places=5)
+
+    def test_missing_engine_analysis_yields_unknown_targets(self) -> None:
+        record = _record(("7g7f",), "black")
+
+        self.assertEqual(shogi_policy_targets_from_engine_analysis({}, record), (None,))
+        self.assertEqual(shogi_score_targets_from_engine_analysis({}, record), (None,))
+
+    def test_rejects_duplicate_engine_analysis_positions(self) -> None:
+        record = _record(("7g7f",), "black")
+        transition = record.transitions[0]
+        analysis = ShogiEngineAnalysis(
+            position_sfen=transition.position_sfen,
+            legal_moves=transition.legal_moves,
+            engine=WHITE_ACTOR,
+            usi_info_lines=(),
+        )
+
+        with self.assertRaisesRegex(ValueError, "duplicate shogi engine analysis"):
+            shogi_engine_analysis_by_position([analysis, analysis])
 
 
 if __name__ == "__main__":

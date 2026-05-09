@@ -11,6 +11,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     ShogiPositionValueExample,
 )
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
 from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
@@ -169,6 +170,70 @@ def shogi_score_targets_from_game_record(record: ShogiGameRecord, *, score_cp_sc
     if score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
     return tuple(_score_target_from_info_lines(transition.decision_usi_info_lines, score_cp_scale=score_cp_scale) for transition in record.transitions)
+
+
+def shogi_engine_analysis_by_position(analyses: Sequence[ShogiEngineAnalysis]) -> dict[str, ShogiEngineAnalysis]:
+    by_position: dict[str, ShogiEngineAnalysis] = {}
+    for analysis in analyses:
+        if analysis.position_sfen in by_position:
+            raise ValueError(f"duplicate shogi engine analysis for position: {analysis.position_sfen}")
+        by_position[analysis.position_sfen] = analysis
+    return by_position
+
+
+def shogi_policy_targets_from_engine_analysis(
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    record: ShogiGameRecord,
+    *,
+    policy_temperature_cp: float = 100.0,
+    policy_mate_cp: float = 100000.0,
+) -> tuple[dict[str, float] | None, ...]:
+    return tuple(
+        _policy_target_from_analysis(
+            analyses_by_position.get(transition.position_sfen),
+            legal_moves=transition.legal_moves,
+            policy_temperature_cp=policy_temperature_cp,
+            policy_mate_cp=policy_mate_cp,
+        )
+        for transition in record.transitions
+    )
+
+
+def shogi_score_targets_from_engine_analysis(
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    record: ShogiGameRecord,
+    *,
+    score_cp_scale: float = 600.0,
+) -> tuple[float | None, ...]:
+    if score_cp_scale <= 0:
+        raise ValueError("score_cp_scale must be positive")
+    return tuple(
+        _score_target_from_analysis(analyses_by_position.get(transition.position_sfen), score_cp_scale=score_cp_scale)
+        for transition in record.transitions
+    )
+
+
+def _policy_target_from_analysis(
+    analysis: ShogiEngineAnalysis | None,
+    *,
+    legal_moves: Sequence[str],
+    policy_temperature_cp: float,
+    policy_mate_cp: float,
+) -> dict[str, float] | None:
+    if analysis is None:
+        return None
+    return _policy_target_from_info_lines(
+        analysis.usi_info_lines,
+        legal_moves=legal_moves,
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+    )
+
+
+def _score_target_from_analysis(analysis: ShogiEngineAnalysis | None, *, score_cp_scale: float) -> float | None:
+    if analysis is None:
+        return None
+    return _score_target_from_info_lines(analysis.usi_info_lines, score_cp_scale=score_cp_scale)
 
 
 def _policy_target_from_info_lines(
