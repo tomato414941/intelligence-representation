@@ -1,6 +1,11 @@
 # Replay Buffer Boundary
 
-Status: open.
+Status: closed.
+
+Resolution: `intrep.learning.replay_buffer.ReplayBuffer` provides a small
+training-time buffer with capacity, FIFO replacement, and uniform sampling. It
+is independent of Experience Store, Training Data Bundle, shogi, and PyTorch
+`Dataset`.
 
 ## Issue
 
@@ -43,12 +48,12 @@ one possible durable source of experience records.
 This issue can close when Replay Buffer has a concrete design or implementation
 that explains what owns:
 
-- training-time sampling
-- capacity / replacement
-- recency or priority
-- duplicate handling
-- relationship to PyTorch `Dataset` / `Sampler`
-- relationship to Experience Store and fixed Training Data Bundles
+- [x] training-time sampling
+- [x] capacity / replacement
+- [x] recency or priority
+- [x] duplicate handling
+- [x] relationship to PyTorch `Dataset` / `Sampler`
+- [x] relationship to Experience Store and fixed Training Data Bundles
 
 ## Non-Goals
 
