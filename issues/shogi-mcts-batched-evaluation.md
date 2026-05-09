@@ -13,6 +13,10 @@ This matters for external one-game play as well as batch evaluation. Running
 many games in parallel can improve evaluation throughput, but it does not solve
 the single-game case.
 
+For Floodgate-like play, the target metric is wall-clock move latency and search
+quality under the time limit, not raw GPU throughput. Batch waiting must stay
+small enough that it does not make the engine miss useful thinking time.
+
 ## Desired Direction
 
 Add a single-game MCTS path that can collect multiple leaf positions and evaluate
