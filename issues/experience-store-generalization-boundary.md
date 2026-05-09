@@ -18,6 +18,10 @@ The related lifecycle is also currently shogi-local:
 - create a fixed Training Data Bundle
 - train through Data Selection or a problem-specific training input definition
 
+Replay Buffer is now a separate training-time component under `intrep.learning`.
+That does not change this issue: Experience Store is still durable source
+storage, not online replay sampling.
+
 The current shogi-local placement is acceptable for KISS/YAGNI: shogi is the
 only concrete implementation, and extracting a shared abstraction now would be
 premature.
@@ -61,7 +65,7 @@ This issue can close when one of the following is true:
 
 - redesign shogi Experience Store now
 - introduce a generic ExperienceStore class from shogi alone
-- implement Replay Buffer or sampling policy
+- redesign Replay Buffer or sampling policy
 
 ## Related
 
