@@ -132,6 +132,28 @@ Examples:
 - error message
 - tool result status
 
+### Evidence
+
+Evidence is stored information that can support later target construction,
+evaluation, or interpretation, but is not itself a problem-specific target.
+
+Use this term when the same stored signal can be interpreted in multiple ways by
+different problems or objectives.
+
+Examples:
+
+- engine score lines for a shogi position
+- MCTS visit counts for a position
+- a teacher's ranked moves
+- repeated observations of the same position or transition
+
+Evidence can later be turned into a target by a problem-specific rule. For
+example, the same shogi engine scores may become a policy distribution, a value
+target, a ranking target, or simply evaluation metadata.
+
+Do not use `Evidence` when a narrower term is clearer. For actual world
+interaction, use `Experience`. For the optimized training signal, use `Target`.
+
 ## Data Pipeline Terms
 
 ### Source Record
