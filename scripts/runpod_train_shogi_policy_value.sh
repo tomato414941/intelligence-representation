@@ -50,9 +50,9 @@ from pathlib import Path
 selection_path = Path(sys.argv[1])
 payload = json.loads(selection_path.read_text(encoding="utf-8"))
 paths = {selection_path}
-for key in ("train_sources", "eval_sources"):
+for key in ("train_sources", "eval_sources", "analysis_sources"):
     for source in payload.get(key, []):
-        if source.get("kind") != "game_records_jsonl":
+        if source.get("kind") not in {"game_records_jsonl", "shogi_engine_analysis_jsonl"}:
             continue
         source_path = Path(source["path"])
         if not source_path.is_absolute():
