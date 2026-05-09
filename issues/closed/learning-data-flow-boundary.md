@@ -1,6 +1,11 @@
 # Learning Data Flow Boundary
 
-Status: open.
+Status: closed.
+
+Resolution: this was a parent map for learning data-flow boundaries. The
+remaining concrete concerns are tracked by smaller issues such as Replay Buffer,
+Experience Store generalization, target policy, Training Data Bundle, and
+mixed-schema dataset boundaries.
 
 ## Issue
 
