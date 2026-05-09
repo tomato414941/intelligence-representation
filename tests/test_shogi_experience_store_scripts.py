@@ -210,6 +210,12 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["analysis_source_jsonl"], [str(analysis_path)])
             self.assertEqual(manifest["files"]["analysis"], ["analysis.jsonl"])
+            self.assertEqual(manifest["analysis_coverage"]["train"]["positions"], 1)
+            self.assertEqual(manifest["analysis_coverage"]["train"]["covered"], 1)
+            self.assertEqual(manifest["analysis_coverage"]["train"]["ratio"], 1.0)
+            self.assertEqual(manifest["analysis_coverage"]["eval"]["positions"], 1)
+            self.assertEqual(manifest["analysis_coverage"]["eval"]["covered"], 1)
+            self.assertEqual(manifest["analysis_coverage"]["eval"]["ratio"], 1.0)
 
     def test_training_data_bundle_rejects_engine_analysis_targets_without_analysis_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

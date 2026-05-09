@@ -7,6 +7,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+from intrep.worlds.shogi.engine_analysis import load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_stats import shogi_actor_pair, shogi_actor_pair_counts, shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
@@ -72,6 +73,7 @@ def create_shogi_training_data_bundle(
     write_shogi_game_records_jsonl(train_jsonl, train_records)
     write_shogi_game_records_jsonl(eval_jsonl, eval_records)
     analysis_jsonls = _copy_analysis_sources(analysis_sources, output_dir=output_dir)
+    analysis_coverage = shogi_analysis_coverage(train_records, eval_records, analysis_jsonls)
 
     data_selection = {
         "name": name,
@@ -111,6 +113,7 @@ def create_shogi_training_data_bundle(
         "transition_count": sum(len(record.transitions) for record in records),
         "position_stats": shogi_position_stats(records).to_dict(),
         **train_eval_position_stats,
+        "analysis_coverage": analysis_coverage,
         "actor_pair_counts": shogi_actor_pair_counts(records),
         "train_actor_pair_counts": shogi_actor_pair_counts(train_records),
         "eval_actor_pair_counts": shogi_actor_pair_counts(eval_records),
@@ -174,6 +177,18 @@ def parse_shogi_actor_pair_ratios(values: list[str]) -> dict[str, float]:
             raise ValueError("actor pair ratio must use ACTOR_PAIR=WEIGHT")
         ratios[actor_pair] = float(weight)
     return ratios
+
+
+def shogi_analysis_coverage(
+    train_records: list[ShogiGameRecord],
+    eval_records: list[ShogiGameRecord],
+    analysis_paths: list[Path],
+) -> dict[str, dict[str, float | int]]:
+    analyzed_positions = _analyzed_positions(analysis_paths)
+    return {
+        "train": _position_coverage(train_records, analyzed_positions),
+        "eval": _position_coverage(eval_records, analyzed_positions),
+    }
 
 
 def _normalize_train_games(train_games: Path | tuple[Path, ...]) -> tuple[Path, ...]:
@@ -249,6 +264,29 @@ def _copy_analysis_sources(paths: tuple[Path, ...], *, output_dir: Path) -> list
         shutil.copyfile(source, output_path)
         output_paths.append(output_path)
     return output_paths
+
+
+def _analyzed_positions(paths: list[Path]) -> set[str]:
+    positions: set[str] = set()
+    for path in paths:
+        for analysis in load_shogi_engine_analysis_jsonl(path):
+            positions.add(analysis.position_sfen)
+    return positions
+
+
+def _position_coverage(records: list[ShogiGameRecord], analyzed_positions: set[str]) -> dict[str, float | int]:
+    positions = {
+        transition.position_sfen
+        for record in records
+        for transition in record.transitions
+    }
+    covered = len(positions & analyzed_positions)
+    total = len(positions)
+    return {
+        "positions": total,
+        "covered": covered,
+        "ratio": covered / total if total else 0.0,
+    }
 
 
 def _validate_analysis_sources_for_targets(
