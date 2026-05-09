@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterator, Protocol, Sequence
 
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -32,6 +32,18 @@ class ShogiEngineAnalysis:
     created_at: str | None = None
 
 
+class ShogiUsiGoResult(Protocol):
+    info_lines: tuple[str, ...]
+
+
+class ShogiUsiSession(Protocol):
+    def position(self, command: str) -> None:
+        ...
+
+    def go(self) -> ShogiUsiGoResult:
+        ...
+
+
 def shogi_analysis_positions_from_game_records(records: Sequence[ShogiGameRecord]) -> list[ShogiAnalysisPosition]:
     positions: list[ShogiAnalysisPosition] = []
     seen_position_sfen: set[str] = set()
@@ -47,6 +59,24 @@ def shogi_analysis_positions_from_game_records(records: Sequence[ShogiGameRecord
                 )
             )
     return positions
+
+
+def analyze_shogi_position_with_usi_session(
+    position: ShogiAnalysisPosition,
+    *,
+    engine: ShogiActorSpec,
+    session: ShogiUsiSession,
+    created_at: str | None = None,
+) -> ShogiEngineAnalysis:
+    session.position(f"position sfen {position.position_sfen}")
+    result = session.go()
+    return ShogiEngineAnalysis(
+        position_sfen=position.position_sfen,
+        legal_moves=position.legal_moves,
+        engine=engine,
+        usi_info_lines=result.info_lines,
+        created_at=created_at,
+    )
 
 
 def write_shogi_engine_analysis_jsonl(path: str | Path, records: Sequence[ShogiEngineAnalysis]) -> None:
