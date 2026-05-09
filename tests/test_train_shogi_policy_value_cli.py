@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -462,7 +463,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             1,
         )
 
-    def test_dataset_source_target_policy_overrides_global_default(self) -> None:
+    def test_loads_global_target_construction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             teacher_games_path = root / "teacher-games.jsonl"
@@ -514,6 +515,71 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             shogi_policy_value_data_selection_to_json(definition)["target_construction"]["policy"],
             "decision_usi_multipv",
         )
+
+    def test_loads_engine_analysis_target_construction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            analysis_path = root / "analysis.jsonl"
+            data_selection_path = root / "data-selection.json"
+            train_record = _record(("7g7f",), "black")
+            eval_record = _record(("2g2f", "8c8d"), "white")
+            train_transition = train_record.transitions[0]
+            eval_transition = eval_record.transitions[1]
+            write_shogi_game_records_jsonl(train_games_path, [train_record])
+            write_shogi_game_records_jsonl(eval_games_path, [eval_record])
+            write_shogi_engine_analysis_jsonl(
+                analysis_path,
+                [
+                    ShogiEngineAnalysis(
+                        position_sfen=train_transition.position_sfen,
+                        legal_moves=train_transition.legal_moves,
+                        engine=WHITE_ACTOR,
+                        usi_info_lines=(
+                            "info multipv 1 score cp 300 pv 7g7f",
+                            "info multipv 2 score cp 0 pv 2g2f",
+                        ),
+                    ),
+                    ShogiEngineAnalysis(
+                        position_sfen=eval_transition.position_sfen,
+                        legal_moves=eval_transition.legal_moves,
+                        engine=WHITE_ACTOR,
+                        usi_info_lines=("info multipv 1 score cp -300 pv 8c8d",),
+                    ),
+                ],
+            )
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "engine-analysis-targets",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "engine_analysis_multipv",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "engine_analysis_score",
+                            "score_cp_scale": 300.0,
+                        },
+                        "analysis_sources": [{"kind": "shogi_engine_analysis_jsonl", "path": str(analysis_path)}],
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            definition = load_shogi_policy_value_data_selection(data_selection_path)
+            train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(definition)
+
+        self.assertEqual(definition.analysis_sources[0].path, analysis_path)
+        self.assertGreater(train_examples[0].policy_targets["7g7f"], train_examples[0].policy_targets["2g2f"])
+        self.assertAlmostEqual(train_examples[0].value_target or 0.0, 0.761594, places=5)
+        self.assertGreater(eval_examples[0].policy_targets["7g7f"], eval_examples[0].policy_targets["2g2f"])
+        self.assertAlmostEqual(eval_examples[0].value_target or 0.0, 0.761594, places=5)
+        self.assertEqual(eval_examples[1].policy_targets, {"8c8d": 1.0})
+        self.assertAlmostEqual(eval_examples[1].value_target or 0.0, -0.761594, places=5)
 
     def test_rejects_example_jsonl_dataset_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

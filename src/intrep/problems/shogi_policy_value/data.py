@@ -11,7 +11,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     ShogiPositionValueExample,
 )
-from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
 from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
@@ -27,6 +27,29 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
     score_cp_scale: float = 600.0,
     max_games: int | None = None,
 ) -> list[ShogiPolicyValueExample]:
+    return load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+        path,
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
+        analyses_by_position={},
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+        score_cp_scale=score_cp_scale,
+        max_games=max_games,
+    )
+
+
+def load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+    path: str | Path,
+    *,
+    policy_target_construction: str,
+    value_target_construction: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    policy_temperature_cp: float = 100.0,
+    policy_mate_cp: float = 100000.0,
+    score_cp_scale: float = 600.0,
+    max_games: int | None = None,
+) -> list[ShogiPolicyValueExample]:
     if max_games is not None and max_games <= 0:
         raise ValueError("max_games must be positive")
     examples: list[ShogiPolicyValueExample] = []
@@ -37,6 +60,7 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
             record,
             policy_target_construction=policy_target_construction,
             value_target_construction=value_target_construction,
+            analyses_by_position=analyses_by_position,
             policy_temperature_cp=policy_temperature_cp,
             policy_mate_cp=policy_mate_cp,
             score_cp_scale=score_cp_scale,
@@ -54,19 +78,23 @@ def shogi_policy_value_examples_from_game_record(
     *,
     policy_target_construction: str = "chosen_move",
     value_target_construction: str = "winner",
+    analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
 ) -> list[ShogiPolicyValueExample]:
+    analyses = analyses_by_position or {}
     policy_targets = shogi_policy_targets_from_game_record(
         record,
         source=policy_target_construction,
+        analyses_by_position=analyses,
         policy_temperature_cp=policy_temperature_cp,
         policy_mate_cp=policy_mate_cp,
     )
     value_targets = shogi_value_targets_from_game_record(
         record,
         source=value_target_construction,
+        analyses_by_position=analyses,
         score_cp_scale=score_cp_scale,
     )
     return [
@@ -129,6 +157,7 @@ def shogi_policy_targets_from_game_record(
     record: ShogiGameRecord,
     *,
     source: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
 ) -> tuple[dict[str, float] | None, ...]:
@@ -144,6 +173,13 @@ def shogi_policy_targets_from_game_record(
             )
             for transition in record.transitions
         )
+    if source == "engine_analysis_multipv":
+        return shogi_policy_targets_from_engine_analysis(
+            analyses_by_position or {},
+            record,
+            policy_temperature_cp=policy_temperature_cp,
+            policy_mate_cp=policy_mate_cp,
+        )
     raise ValueError(f"unsupported shogi policy target source: {source}")
 
 
@@ -151,12 +187,15 @@ def shogi_value_targets_from_game_record(
     record: ShogiGameRecord,
     *,
     source: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
     score_cp_scale: float = 600.0,
 ) -> tuple[float | None, ...]:
     if source == "winner":
         return shogi_return_targets_from_game_record(record)
     if source == "decision_usi_score":
         return shogi_score_targets_from_game_record(record, score_cp_scale=score_cp_scale)
+    if source == "engine_analysis_score":
+        return shogi_score_targets_from_engine_analysis(analyses_by_position or {}, record, score_cp_scale=score_cp_scale)
     raise ValueError(f"unsupported shogi value target source: {source}")
 
 
@@ -179,6 +218,13 @@ def shogi_engine_analysis_by_position(analyses: Sequence[ShogiEngineAnalysis]) -
             raise ValueError(f"duplicate shogi engine analysis for position: {analysis.position_sfen}")
         by_position[analysis.position_sfen] = analysis
     return by_position
+
+
+def load_shogi_engine_analysis_by_position_jsonl(paths: Sequence[str | Path]) -> dict[str, ShogiEngineAnalysis]:
+    analyses: list[ShogiEngineAnalysis] = []
+    for path in paths:
+        analyses.extend(load_shogi_engine_analysis_jsonl(path))
+    return shogi_engine_analysis_by_position(analyses)
 
 
 def shogi_policy_targets_from_engine_analysis(
