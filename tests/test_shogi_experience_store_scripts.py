@@ -12,6 +12,7 @@ from unittest.mock import patch
 import shogi
 
 from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -163,6 +164,71 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["position_stats"]["unique_position_count"], 3)
             self.assertEqual(manifest["target_construction"]["policy"], "chosen_move")
             self.assertEqual(manifest["target_construction"]["value"], "winner")
+
+    def test_training_data_bundle_can_include_engine_analysis_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train-source.jsonl"
+            eval_path = root / "eval-source.jsonl"
+            analysis_path = root / "analysis-source.jsonl"
+            output_root = root / "datasets"
+            train_record = _record(("7g7f",), "black")
+            eval_record = _record(("2g2f",), "black")
+            train_transition = train_record.transitions[0]
+            write_shogi_game_records_jsonl(train_path, [train_record])
+            write_shogi_game_records_jsonl(eval_path, [eval_record])
+            write_shogi_engine_analysis_jsonl(
+                analysis_path,
+                [
+                    ShogiEngineAnalysis(
+                        position_sfen=train_transition.position_sfen,
+                        legal_moves=train_transition.legal_moves,
+                        engine=YANEURAOU_ACTOR,
+                        usi_info_lines=("info multipv 1 score cp 100 pv 7g7f",),
+                    )
+                ],
+            )
+
+            result = create_shogi_training_data_bundle(
+                train_games=train_path,
+                eval_games=eval_path,
+                analysis_sources=(analysis_path,),
+                name="engine-analysis-bundle",
+                output_root=output_root,
+                policy_target_construction="engine_analysis_multipv",
+                value_target_construction="engine_analysis_score",
+            )
+
+            bundle_dir = output_root / "engine-analysis-bundle"
+            copied_analysis_path = bundle_dir / "analysis.jsonl"
+            self.assertEqual(result["analysis_jsonl"], [str(copied_analysis_path)])
+            self.assertTrue(copied_analysis_path.exists())
+            definition = load_shogi_policy_value_data_selection(bundle_dir / "data-selection.json")
+            self.assertEqual(definition.analysis_sources[0].path, copied_analysis_path)
+            self.assertEqual(definition.target_construction.policy, "engine_analysis_multipv")
+            self.assertEqual(definition.target_construction.value, "engine_analysis_score")
+            manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["analysis_source_jsonl"], [str(analysis_path)])
+            self.assertEqual(manifest["files"]["analysis"], ["analysis.jsonl"])
+
+    def test_training_data_bundle_rejects_engine_analysis_targets_without_analysis_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train-source.jsonl"
+            eval_path = root / "eval-source.jsonl"
+            output_root = root / "datasets"
+            write_shogi_game_records_jsonl(train_path, [_record(("7g7f",), "black")])
+            write_shogi_game_records_jsonl(eval_path, [_record(("2g2f",), "black")])
+
+            with self.assertRaisesRegex(ValueError, "analysis_sources"):
+                create_shogi_training_data_bundle(
+                    train_games=train_path,
+                    eval_games=eval_path,
+                    name="missing-analysis",
+                    output_root=output_root,
+                    policy_target_construction="engine_analysis_multipv",
+                    value_target_construction="engine_analysis_score",
+                )
 
     def test_training_data_bundle_script_is_thin_cli_wrapper(self) -> None:
         view_module = _load_script_module("create_shogi_training_data_bundle")

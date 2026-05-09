@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import random
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,6 +26,7 @@ def create_shogi_training_data_bundle(
     policy_mate_cp: float = 100000.0,
     value_target_construction: str = "winner",
     score_cp_scale: float = 600.0,
+    analysis_sources: tuple[Path, ...] = (),
 ) -> dict[str, object]:
     output_dir = output_root / name
     games_jsonl = output_dir / "games.jsonl"
@@ -37,6 +39,11 @@ def create_shogi_training_data_bundle(
         raise FileExistsError(f"training data bundle already exists: {output_dir}")
     _validate_max_games(max_train_games, label="max_train_games")
     _validate_max_games(max_eval_games, label="max_eval_games")
+    _validate_analysis_sources_for_targets(
+        analysis_sources=analysis_sources,
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
+    )
 
     train_paths = _normalize_train_games(train_games)
     available_train_records = _load_records(train_paths)
@@ -64,6 +71,7 @@ def create_shogi_training_data_bundle(
     write_shogi_game_records_jsonl(games_jsonl, records)
     write_shogi_game_records_jsonl(train_jsonl, train_records)
     write_shogi_game_records_jsonl(eval_jsonl, eval_records)
+    analysis_jsonls = _copy_analysis_sources(analysis_sources, output_dir=output_dir)
 
     data_selection = {
         "name": name,
@@ -78,6 +86,11 @@ def create_shogi_training_data_bundle(
         "train_sources": [_source_json(train_jsonl.name, max_train_games)],
         "eval_sources": [_source_json(eval_jsonl.name, max_eval_games)],
     }
+    if analysis_jsonls:
+        data_selection["analysis_sources"] = [
+            {"kind": "shogi_engine_analysis_jsonl", "path": path.name}
+            for path in analysis_jsonls
+        ]
     data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
@@ -87,6 +100,7 @@ def create_shogi_training_data_bundle(
         "created_at": datetime.now(UTC).isoformat(),
         "train_source_games_jsonl": [str(path) for path in train_paths],
         "eval_source_games_jsonl": str(eval_games),
+        "analysis_source_jsonl": [str(path) for path in analysis_sources],
         "seed": seed,
         "max_train_games": max_train_games,
         "max_eval_games": max_eval_games,
@@ -107,6 +121,7 @@ def create_shogi_training_data_bundle(
             "games": games_jsonl.name,
             "train": train_jsonl.name,
             "eval": eval_jsonl.name,
+            "analysis": [path.name for path in analysis_jsonls],
             "data_selection": data_selection_json.name,
         },
     }
@@ -118,6 +133,7 @@ def create_shogi_training_data_bundle(
         "games_jsonl": str(games_jsonl),
         "train_jsonl": str(train_jsonl),
         "eval_jsonl": str(eval_jsonl),
+        "analysis_jsonl": [str(path) for path in analysis_jsonls],
         "manifest": str(manifest_path),
         "game_count": len(records),
         "train_games": len(train_records),
@@ -223,6 +239,29 @@ def _source_json(path: str, max_games: int | None) -> dict[str, str | int]:
     if max_games is not None:
         payload["max_games"] = max_games
     return payload
+
+
+def _copy_analysis_sources(paths: tuple[Path, ...], *, output_dir: Path) -> list[Path]:
+    output_paths: list[Path] = []
+    for index, source in enumerate(paths, start=1):
+        name = "analysis.jsonl" if len(paths) == 1 else f"analysis-{index:04d}.jsonl"
+        output_path = output_dir / name
+        shutil.copyfile(source, output_path)
+        output_paths.append(output_path)
+    return output_paths
+
+
+def _validate_analysis_sources_for_targets(
+    *,
+    analysis_sources: tuple[Path, ...],
+    policy_target_construction: str,
+    value_target_construction: str,
+) -> None:
+    if (
+        policy_target_construction == "engine_analysis_multipv"
+        or value_target_construction == "engine_analysis_score"
+    ) and not analysis_sources:
+        raise ValueError("analysis_sources must be non-empty when target construction uses engine analysis")
 
 
 def _validate_max_games(value: int | None, *, label: str) -> None:
