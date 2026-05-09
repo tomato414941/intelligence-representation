@@ -27,6 +27,7 @@ CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-1000}
 METRICS_EVERY=${METRICS_EVERY:-1000}
 KEEP_LAST_N_CHECKPOINTS=${KEEP_LAST_N_CHECKPOINTS:-3}
 EVAL_EVERY=${EVAL_EVERY:-1000}
+EARLY_STOPPING_PATIENCE=${EARLY_STOPPING_PATIENCE:-}
 EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
@@ -94,7 +95,11 @@ python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \
   --output "$OUTPUT_DIR" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE\"
+TRAIN_ARGS=()
+if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
+  TRAIN_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
+fi
 .venv/bin/python -u -m intrep.train_shogi_policy_value \
   --data-selection \"$DATA_SELECTION\" \
   --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
@@ -119,5 +124,6 @@ echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEA
   --max-eval-examples \"$MAX_EVAL_EXAMPLES\" \
   --checkpoint-every \"$CHECKPOINT_EVERY\" \
   --metrics-every \"$METRICS_EVERY\" \
-  --keep-last-n-checkpoints \"$KEEP_LAST_N_CHECKPOINTS\"" \
+  --keep-last-n-checkpoints \"$KEEP_LAST_N_CHECKPOINTS\" \
+  \"\${TRAIN_ARGS[@]}\"" \
   "$@"
