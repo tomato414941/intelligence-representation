@@ -154,6 +154,42 @@ target, a ranking target, or simply evaluation metadata.
 Do not use `Evidence` when a narrower term is clearer. For actual world
 interaction, use `Experience`. For the optimized training signal, use `Target`.
 
+### Dictionary
+
+A Dictionary is an exact key-to-value mapping.
+
+Use this term when the intended operation is direct lookup:
+
+`key -> value`
+
+Examples:
+
+- position SFEN -> cached best move
+- document id and span -> stored label
+- content hash -> cached result
+
+A Dictionary is narrower than an Index. It implies exact keys and a relatively
+direct returned value.
+
+### Index
+
+An Index is a lookup or search structure used to find stored entries or
+references.
+
+An Index may behave like a Dictionary when the lookup is exact, but it can also
+support multiple matches, filtering, ranking, or approximate retrieval.
+
+Examples:
+
+- exact position index keyed by SFEN
+- inverted text index
+- vector similarity index
+- content-hash index
+
+Use `Index` when the important concept is finding or referring to stored
+information, not merely owning source records. Do not use `Index` as a synonym
+for every durable store.
+
 ### Engine Analysis
 
 Engine Analysis is analysis produced by an engine for a position or state.
