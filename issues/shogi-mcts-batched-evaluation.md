@@ -43,3 +43,13 @@ The first version should stay shogi-specific and small:
 - behavior is covered by a small deterministic test or smoke evaluation
 - CUDA usage is measured with at least a basic `nvidia-smi` or timing log
 - the implementation does not require running multiple games in parallel
+
+## Progress
+
+2026-05-09:
+
+- `shogi-arena-agent` added batch evaluation support to
+  `ShogiMoveChoiceCheckpointEvaluator`.
+- CPU smoke confirmed that batch evaluation matches repeated single evaluation
+  for the promoted d256-h1024-heads8-l6-shogi checkpoint.
+- MCTS does not yet use batched leaf evaluation, so this issue remains open.
