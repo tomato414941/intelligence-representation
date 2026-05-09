@@ -5,11 +5,13 @@ from pathlib import Path
 import shogi
 
 from intrep.worlds.shogi.engine_analysis import (
+    ShogiAnalysisPosition,
     ShogiEngineAnalysis,
     load_shogi_engine_analysis_jsonl,
+    shogi_analysis_positions_from_game_records,
     write_shogi_engine_analysis_jsonl,
 )
-from intrep.worlds.shogi.game_record import ShogiActorSpec
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_transitions_from_usi_moves
 
 
 class ShogiEngineAnalysisTest(unittest.TestCase):
@@ -40,6 +42,40 @@ class ShogiEngineAnalysisTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "at least one analysis"):
                 write_shogi_engine_analysis_jsonl(path, [])
+
+    def test_extracts_unique_analysis_positions_from_game_records(self) -> None:
+        first_record = _record(("7g7f", "3c3d"))
+        second_record = _record(("2g2f", "8c8d"))
+
+        positions = shogi_analysis_positions_from_game_records([first_record, second_record])
+
+        self.assertEqual(
+            positions,
+            [
+                ShogiAnalysisPosition(
+                    position_sfen=first_record.transitions[0].position_sfen,
+                    legal_moves=first_record.transitions[0].legal_moves,
+                ),
+                ShogiAnalysisPosition(
+                    position_sfen=first_record.transitions[1].position_sfen,
+                    legal_moves=first_record.transitions[1].legal_moves,
+                ),
+                ShogiAnalysisPosition(
+                    position_sfen=second_record.transitions[1].position_sfen,
+                    legal_moves=second_record.transitions[1].legal_moves,
+                ),
+            ],
+        )
+
+
+def _record(moves: tuple[str, ...]) -> ShogiGameRecord:
+    actor = ShogiActorSpec(kind="test", name="actor", settings={})
+    return ShogiGameRecord(
+        black_actor=actor,
+        white_actor=actor,
+        initial_position_sfen=shogi.Board().sfen(),
+        transitions=shogi_game_transitions_from_usi_moves(moves),
+    )
 
 
 if __name__ == "__main__":

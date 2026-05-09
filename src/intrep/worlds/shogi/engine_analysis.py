@@ -7,9 +7,16 @@ from typing import Iterator, Sequence
 
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
+    ShogiGameRecord,
     shogi_actor_spec_from_json,
     shogi_actor_spec_to_json,
 )
+
+
+@dataclass(frozen=True)
+class ShogiAnalysisPosition:
+    position_sfen: str
+    legal_moves: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -23,6 +30,23 @@ class ShogiEngineAnalysis:
     engine: ShogiActorSpec
     usi_info_lines: tuple[str, ...]
     created_at: str | None = None
+
+
+def shogi_analysis_positions_from_game_records(records: Sequence[ShogiGameRecord]) -> list[ShogiAnalysisPosition]:
+    positions: list[ShogiAnalysisPosition] = []
+    seen_position_sfen: set[str] = set()
+    for record in records:
+        for transition in record.transitions:
+            if transition.position_sfen in seen_position_sfen:
+                continue
+            seen_position_sfen.add(transition.position_sfen)
+            positions.append(
+                ShogiAnalysisPosition(
+                    position_sfen=transition.position_sfen,
+                    legal_moves=transition.legal_moves,
+                )
+            )
+    return positions
 
 
 def write_shogi_engine_analysis_jsonl(path: str | Path, records: Sequence[ShogiEngineAnalysis]) -> None:
