@@ -49,7 +49,7 @@ def _record_with_multipv_info(moves: tuple[str, ...], winner: str | None) -> Sho
             next_position_sfen=transition.next_position_sfen,
             reward=transition.reward,
             done=transition.done,
-            usi_info_lines=(f"info multipv 1 score cp 100 pv {transition.action_usi}",),
+            decision_usi_info_lines=(f"info multipv 1 score cp 100 pv {transition.action_usi}",),
         )
         for transition in record.transitions
     )

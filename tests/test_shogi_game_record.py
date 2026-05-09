@@ -74,7 +74,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                                 "next_position_sfen": board.sfen(),
                                 "reward": 0.0,
                                 "done": True,
-                                "usi_info_lines": ["info depth 1 nodes 1 pv 2g2f"],
+                                "decision_usi_info_lines": ["info depth 1 nodes 1 pv 2g2f"],
                             }
                         ],
                         "end_reason": "max_plies",
@@ -106,7 +106,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                             next_position_sfen=board.sfen(),
                             reward=0.0,
                             done=True,
-                            usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
+                            decision_usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
                         ),
                     ),
                     winner=None,
@@ -137,7 +137,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                                 "next_position_sfen": board.sfen(),
                                 "reward": 0.0,
                                 "done": True,
-                                "usi_info_lines": [],
+                                "decision_usi_info_lines": [],
                             }
                         ],
                         "end_reason": "max_plies",

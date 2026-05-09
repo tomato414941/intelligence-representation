@@ -136,7 +136,7 @@ def shogi_policy_targets_from_game_record(
     if source == "usi_multipv":
         return tuple(
             _policy_target_from_info_lines(
-                transition.usi_info_lines,
+                transition.decision_usi_info_lines,
                 legal_moves=transition.legal_moves,
                 policy_temperature_cp=policy_temperature_cp,
                 policy_mate_cp=policy_mate_cp,
@@ -168,7 +168,7 @@ def shogi_return_targets_from_game_record(record: ShogiGameRecord) -> tuple[floa
 def shogi_score_targets_from_game_record(record: ShogiGameRecord, *, score_cp_scale: float = 600.0) -> tuple[float | None, ...]:
     if score_cp_scale <= 0:
         raise ValueError("score_cp_scale must be positive")
-    return tuple(_score_target_from_info_lines(transition.usi_info_lines, score_cp_scale=score_cp_scale) for transition in record.transitions)
+    return tuple(_score_target_from_info_lines(transition.decision_usi_info_lines, score_cp_scale=score_cp_scale) for transition in record.transitions)
 
 
 def _policy_target_from_info_lines(

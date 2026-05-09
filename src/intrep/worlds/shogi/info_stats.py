@@ -96,9 +96,9 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
         for ply in record.transitions:
             ply_count += 1
             ply_has_best_score = False
-            if ply.usi_info_lines:
+            if ply.decision_usi_info_lines:
                 info_ply_count += 1
-            for line in ply.usi_info_lines:
+            for line in ply.decision_usi_info_lines:
                 info_line_count += 1
                 fields = parse_shogi_usi_info_line(line)
                 score_kind = fields.get("score_kind")

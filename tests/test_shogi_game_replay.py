@@ -50,7 +50,7 @@ class ShogiGameReplayTest(unittest.TestCase):
                     next_position_sfen=shogi.Board().sfen(),
                     reward=transition.reward,
                     done=transition.done,
-                    usi_info_lines=transition.usi_info_lines,
+                    decision_usi_info_lines=transition.decision_usi_info_lines,
                 ),
             ),
         )

@@ -78,7 +78,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                     next_position_sfen=first.next_position_sfen,
                     reward=first.reward,
                     done=first.done,
-                    usi_info_lines=("info depth 4 score cp 100 multipv 1 pv 7g7f",),
+                    decision_usi_info_lines=("info depth 4 score cp 100 multipv 1 pv 7g7f",),
                 ),
                 record.transitions[1],
             ),
@@ -121,7 +121,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                     next_position_sfen=first.next_position_sfen,
                     reward=first.reward,
                     done=first.done,
-                    usi_info_lines=("info depth 4 score cp 300 multipv 1 pv 7g7f",),
+                    decision_usi_info_lines=("info depth 4 score cp 300 multipv 1 pv 7g7f",),
                 ),
                 type(second)(
                     ply=second.ply,
@@ -132,7 +132,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                     next_position_sfen=second.next_position_sfen,
                     reward=second.reward,
                     done=second.done,
-                    usi_info_lines=("info depth 4 score mate -3 multipv 1 pv 3c3d",),
+                    decision_usi_info_lines=("info depth 4 score mate -3 multipv 1 pv 3c3d",),
                 ),
             ),
             winner=record.winner,
@@ -160,7 +160,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                     next_position_sfen=first.next_position_sfen,
                     reward=first.reward,
                     done=first.done,
-                    usi_info_lines=(
+                    decision_usi_info_lines=(
                         "info multipv 1 score cp 100 pv 7g7f",
                         "info multipv 2 score cp 0 pv 2g2f",
                     ),

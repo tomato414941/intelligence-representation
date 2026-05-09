@@ -162,6 +162,9 @@ In the current shogi code, `ShogiEngineAnalysis` is intentionally narrow: it
 stores shogi-engine analysis for a shogi position. It is not a generic
 annotation framework and not a training target.
 
+USI info emitted during the recorded action decision belongs to the shogi game
+transition record, not to `ShogiEngineAnalysis`.
+
 Engine Analysis may later be used as Evidence by a problem-specific target
 construction rule.
 

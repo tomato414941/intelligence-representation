@@ -27,7 +27,7 @@ class ShogiTransitionRecord:
     done: bool
     # Engine info emitted during this transition. Post-game analysis of the
     # same position belongs in ShogiEngineAnalysis, not back on this record.
-    usi_info_lines: tuple[str, ...] = ()
+    decision_usi_info_lines: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,7 @@ def shogi_transition_record_to_json(record: ShogiTransitionRecord) -> dict[str, 
         "next_position_sfen": record.next_position_sfen,
         "reward": record.reward,
         "done": record.done,
-        "usi_info_lines": list(record.usi_info_lines),
+        "decision_usi_info_lines": list(record.decision_usi_info_lines),
     }
 
 
@@ -121,7 +121,7 @@ def shogi_transition_record_from_json(payload: dict[str, object]) -> ShogiTransi
         next_position_sfen=str(payload["next_position_sfen"]),
         reward=float(payload["reward"]),
         done=bool(payload["done"]),
-        usi_info_lines=tuple(str(line) for line in _object_list(payload.get("usi_info_lines", []))),
+        decision_usi_info_lines=tuple(str(line) for line in _object_list(payload.get("decision_usi_info_lines", []))),
     )
 
 

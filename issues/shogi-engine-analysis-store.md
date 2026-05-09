@@ -9,16 +9,17 @@ become a container for one problem's policy/value training targets.
 For the current need, the narrow concept is shogi engine analysis: how a shogi
 engine analyzes a shogi position.
 
-`ShogiGameRecord.transition.usi_info_lines` is enough while each game record has
-one active engine analysis, but it will become unclear once the same position
-needs multiple analyses from different engines or search settings.
+`ShogiGameRecord.transition.decision_usi_info_lines` is enough while each game
+record only needs the USI info emitted during action selection, but it will
+become unclear once the same position needs post-game analyses from different
+engines or search settings.
 
 Examples:
 - YaneuraOu MultiPV with different node budgets.
 - Another USI engine with different search settings.
 - Future value or score analyses separate from the game outcome.
 
-Embedding all of those directly into the transition risks mixing source
+Embedding post-game analyses directly into the transition risks mixing source
 experience with derived teacher evidence.
 
 Engine analyses should be stored as analysis of a position, not as
@@ -44,6 +45,8 @@ would hide important provenance.
 
 ## Current Step
 
-`ShogiEngineAnalysis` exists as a narrow JSONL schema for shogi-engine analysis
-of shogi positions. It is intentionally not a generic annotation/evidence
-framework and is not yet connected to training.
+`ShogiTransitionRecord.decision_usi_info_lines` stores USI info emitted during
+the recorded action decision. `ShogiEngineAnalysis` exists as a narrow JSONL
+schema for post-game shogi-engine analysis of shogi positions. It is
+intentionally not a generic annotation/evidence framework and is not yet
+connected to training.
