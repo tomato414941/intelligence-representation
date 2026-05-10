@@ -22,6 +22,10 @@ size; operational incidents and model-quality interpretation belong elsewhere.
 | measured runtime | about 13 minutes for train, about 2 minutes for eval |
 | measured cost | about $0.19 for the original full-cache run; split-cache cost not separately recorded |
 
+Next time this cache is regenerated on Modal, record the worker CPU count,
+memory, image/Python environment, and parallelism settings. Those details were
+not recorded for the run above.
+
 ## RunPod Shogi Training
 
 RunPod shogi jobs use disposable RTX 4090 pods without network volumes. This
