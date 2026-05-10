@@ -54,7 +54,10 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                         ],
                     )
 
-            with patch.object(module.subprocess, "run", side_effect=fake_run) as run:
+            with (
+                patch.object(module.subprocess, "run", side_effect=fake_run) as run,
+                patch.object(module, "print") as print_,
+            ):
                 module.main(
                     [
                         "--checkpoint",
@@ -98,6 +101,17 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
             self.assertIn("--value-loss-weight", train_command)
             self.assertIn("1.0", train_command)
+            summary = json.loads(print_.call_args.args[0])
+            self.assertEqual(
+                summary["generation"],
+                {
+                    "opponent": "self",
+                    "games": 2,
+                    "max_plies": 4,
+                    "simulations": 3,
+                    "evaluation_batch_size": 4,
+                },
+            )
 
     def test_passes_yaneuraou_generation_options(self) -> None:
         module = _load_script_module()

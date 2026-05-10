@@ -85,6 +85,13 @@ def main(argv: list[str] | None = None) -> None:
                 "checkpoint": str(checkpoint_path),
                 "best_checkpoint": str(best_checkpoint_path),
                 "metrics": str(metrics_path),
+                "generation": {
+                    "opponent": args.opponent,
+                    "games": args.games,
+                    "max_plies": args.max_plies,
+                    "simulations": args.simulations,
+                    "evaluation_batch_size": args.evaluation_batch_size,
+                },
             },
             indent=2,
         )
