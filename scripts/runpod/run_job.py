@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one disposable RunPod job for this repository."""
+"""Run one disposable RunPod job for intelligence-representation."""
 
 from __future__ import annotations
 
@@ -18,10 +18,6 @@ import time
 
 DEFAULT_IMAGE = "runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404"
 DEFAULT_REMOTE_DIR = "/root/intrep"
-DEFAULT_RUNPODCTL = "/home/dev/bin/runpodctl"
-DEFAULT_SECRET_PATH = Path.home() / ".secrets" / "runpod"
-DEFAULT_SSH_KEY = Path.home() / ".runpod" / "ssh" / "RunPod-Key-Go"
-DEFAULT_SSH_PUBLIC_KEY = Path.home() / ".runpod" / "ssh" / "RunPod-Key-Go.pub"
 DEFAULT_SYNC = ("src", "tests", "pyproject.toml", "uv.lock", "README.md", "AGENTS.md")
 
 
@@ -381,15 +377,20 @@ def load_text(path: Path) -> str:
     return text
 
 
+def env_path(name: str) -> Path | None:
+    value = os.environ.get(name)
+    return Path(value).expanduser() if value else None
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--name", default="intrep-runpod")
     parser.add_argument("--pod-name")
-    parser.add_argument("--runpodctl", default=DEFAULT_RUNPODCTL)
-    parser.add_argument("--secret-path", type=Path, default=DEFAULT_SECRET_PATH)
-    parser.add_argument("--ssh-key", type=Path, default=DEFAULT_SSH_KEY)
-    parser.add_argument("--ssh-public-key", type=Path, default=DEFAULT_SSH_PUBLIC_KEY)
+    parser.add_argument("--runpodctl", default=os.environ.get("RUNPODCTL", "runpodctl"))
+    parser.add_argument("--secret-path", type=Path, default=env_path("RUNPOD_API_KEY_FILE"))
+    parser.add_argument("--ssh-key", type=Path, default=env_path("RUNPOD_SSH_KEY"))
+    parser.add_argument("--ssh-public-key", type=Path, default=env_path("RUNPOD_SSH_PUBLIC_KEY"))
     parser.add_argument("--image", default=DEFAULT_IMAGE)
     parser.add_argument("--allowed-cuda-version", action="append", default=[])
     parser.add_argument("--gpu-type", default="NVIDIA GeForce RTX 4090")
@@ -427,14 +428,20 @@ def main() -> int:
     args = parse_args()
     args.repo_root = args.repo_root.resolve()
     args.pod_name = args.pod_name or timestamped_name(args.name)
-    if not Path(args.runpodctl).exists():
-        raise FileNotFoundError(args.runpodctl)
+    if args.ssh_key is None:
+        raise ValueError("set RUNPOD_SSH_KEY or pass --ssh-key")
+    if args.ssh_public_key is None:
+        raise ValueError("set RUNPOD_SSH_PUBLIC_KEY or pass --ssh-public-key")
     if not args.ssh_key.exists():
         raise FileNotFoundError(args.ssh_key)
     if not args.ssh_public_key.exists():
         raise FileNotFoundError(args.ssh_public_key)
 
-    api_key = load_text(args.secret_path) if args.allowed_cuda_version else ""
+    api_key = os.environ.get("RUNPOD_API_KEY", "")
+    if args.allowed_cuda_version and not api_key:
+        if args.secret_path is None:
+            raise ValueError("set RUNPOD_API_KEY, set RUNPOD_API_KEY_FILE, or pass --secret-path")
+        api_key = load_text(args.secret_path)
     public_key = load_text(args.ssh_public_key)
     secrets = [api_key, public_key]
     pod_id: str | None = None

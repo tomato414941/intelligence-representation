@@ -68,7 +68,7 @@ for selection_file in "${DATA_SELECTION_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$selection_file")
 done
 
-python3 scripts/runpod/run_once.py \
+python3 scripts/runpod/run_job.py \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
   --secure-cloud \
