@@ -3,10 +3,6 @@
 This document is the project-specific RunPod operations note for
 `intelligence-representation`.
 
-General RunPod behavior, secrets, SSH keys, and local CLI configuration are
-outside this repository. This document records only choices and evidence that
-belong to this project.
-
 ## Setup
 
 This repo's RunPod setup is designed to use the PyTorch/CUDA stack already
@@ -38,23 +34,16 @@ scripts/runpod_train_shogi_policy_value.sh
 This script expects `RUNPOD_RUN_ONCE` to point to the local `run_once.py`
 orchestration helper.
 
-Important defaults:
+For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
+been measured on the target cache and Pod size. The JSONL cache is loaded as a
+large Python object list, and workers can increase RAM pressure.
 
-- `DATA_SELECTION=data/shogi/training-data-bundles/current/data-selection.json`
-- `OUTPUT_DIR=runs/shogi/runpod-shogi-policy-value`
-- `BATCH_SIZE=512`
-- `NUM_WORKERS=0`
-- `DATA_CENTER_IDS` is usually unset; prefer `EU-RO-1` for longer baselines.
+For longer baselines, prefer `DATA_CENTER_IDS=EU-RO-1`; `US-CA-2` has had SSH
+stability failures during shogi training.
 
-`NUM_WORKERS=0` avoids CPU RAM growth from the full-cache JSONL Python object
-list. Do not increase it for full-cache runs without measuring CPU RAM behavior
-on the target cache and Pod size.
-
-`EU-RO-1` has completed longer shogi baselines; `US-CA-2` has had SSH stability
-failures during shogi training.
-
-The script uses disposable compute and currently avoids RunPod network volumes
-because network volumes caused Pod readiness failures in this workstream.
+The script uses disposable compute and currently avoids RunPod network volumes.
+Network-volume use is tracked separately in
+`issues/runpod-network-volume-revisit.md`.
 
 ## Images
 

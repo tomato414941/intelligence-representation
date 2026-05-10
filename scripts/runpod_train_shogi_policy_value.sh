@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Use RunPod as disposable compute.
 # Project-specific RunPod operating notes live in docs/runpod.md.
-# Keep this on container disk; network volumes caused pod readiness failures.
+# Keep this on container disk for the current KISS flow; network-volume
+# reevaluation is tracked in issues/runpod-network-volume-revisit.md.
 
 cd "$(dirname "$0")/.."
 
