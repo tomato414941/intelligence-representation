@@ -178,6 +178,10 @@ Notes:
   the difference from increasing MCTS simulations.
 - MCTS4096 with batch 128 averaged 7.507s per move and stayed within the
   10-second move budget in this short workload. MCTS8192 exceeded the budget.
+- Temporary 10-second-budget starting point for the promoted
+  d256-h1024-heads8-l6-shogi checkpoint on RTX 4090: MCTS4096 with evaluation
+  batch size 64. Batch 128 was slightly faster in this measurement, but 64 is a
+  conservative first setting until more arena-like workloads are measured.
 - The workload is short and deterministic, so use it for speed direction, not
   playing-strength conclusions.
 - GPU: NVIDIA GeForce RTX 4090
