@@ -64,3 +64,35 @@ Notes:
 - Result: 0-4-0, all game_over, avg 58.0 plies
 - GPU: NVIDIA GeForce RTX 4090
 - Measured: 2026-05-09
+
+#### Shogi Checkpoint MCTS Batched Leaf Evaluation
+
+Context:
+
+- Inference path: search-driven repeated calls
+- Model: d256-h1024-heads8-l6-shogi
+- Environment: RunPod RTX 4090, CUDA, torch 2.9.1+cu128
+- Input shape: shogi position tokens plus legal candidate moves
+- Output shape: candidate move logits plus value
+- Request: one move decision
+- Output unit: MCTS simulation
+- Settings: MCTS32, checkpoint device cuda
+- Workload: 2 games vs deterministic legal player, max 40 plies
+
+Measured performance:
+
+| Evaluation batch size | Avg model calls | Avg request wall | P95 request wall | Avg model wall | Avg non-model wall | Avg output/sec |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 33.000 | 0.219s | 0.295s | 0.120s | 0.099s | 170.8 |
+| 4 | 9.225 | 0.157s | 0.239s | 0.058s | 0.098s | 240.6 |
+| 8 | 5.389 | 0.152s | 0.247s | 0.052s | 0.100s | 275.6 |
+| 16 | 3.325 | 0.156s | 0.280s | 0.046s | 0.110s | 269.5 |
+
+Notes:
+
+- Result: no illegal moves; batch 8 had one game end before max plies, so its
+  request count was 36 instead of 40.
+- Batched evaluation reduced model calls and model wall time substantially, but
+  non-model search overhead became the dominant remaining cost.
+- GPU: NVIDIA GeForce RTX 4090
+- Measured: 2026-05-10

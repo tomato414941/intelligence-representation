@@ -53,3 +53,16 @@ The first version should stay shogi-specific and small:
 - CPU smoke confirmed that batch evaluation matches repeated single evaluation
   for the promoted d256-h1024-heads8-l6-shogi checkpoint.
 - MCTS does not yet use batched leaf evaluation, so this issue remains open.
+
+2026-05-10:
+
+- `shogi-arena-agent` added one-game MCTS leaf batching controlled separately
+  from simulation count: MCTS `N` still controls simulations, and evaluation
+  batch size controls how many pending leaves are sent per model call.
+- Unit tests cover batched leaf evaluation and the full test suite passed.
+- RunPod RTX 4090 smoke with MCTS32 and the promoted d256 checkpoint confirmed
+  fewer model calls and lower move latency for batch sizes 4, 8, and 16 versus
+  batch size 1.
+- Current bottleneck after batching is mostly non-model search overhead, so
+  further speed work should inspect tree selection / legal move generation /
+  bookkeeping before increasing batch size blindly.
