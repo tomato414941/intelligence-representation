@@ -17,8 +17,7 @@ import sys
 import time
 
 
-DEFAULT_IMAGE = "runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404"
-DEFAULT_ALLOWED_CUDA_VERSIONS = ("12.8", "12.9", "13.0")
+DEFAULT_TEMPLATE_ID = "runpod-torch-v240"
 DEFAULT_REMOTE_DIR = "/root/intrep"
 DEFAULT_SYNC = ("src", "tests", "pyproject.toml", "uv.lock", "README.md", "AGENTS.md")
 
@@ -152,9 +151,15 @@ def create_pod(args: argparse.Namespace, secrets: list[str], api_key: str, publi
         "volumeMountPath": args.remote_volume,
         "ports": ["22/tcp"],
         "cloudType": "SECURE" if args.secure_cloud else "COMMUNITY",
-        "allowedCudaVersions": args.allowed_cuda_version,
-        "imageName": args.image,
     }
+    if args.image:
+        payload["imageName"] = args.image
+    elif args.template_id:
+        payload["templateId"] = args.template_id
+    else:
+        raise ValueError("set --template-id or --image")
+    if args.allowed_cuda_version:
+        payload["allowedCudaVersions"] = args.allowed_cuda_version
     if args.data_center_ids:
         payload["dataCenterIds"] = [item.strip() for item in args.data_center_ids.split(",") if item.strip()]
     if public_key:
@@ -361,13 +366,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--secret-path", type=Path, default=env_path("RUNPOD_API_KEY_FILE"))
     parser.add_argument("--ssh-key", type=Path, default=env_path("RUNPOD_SSH_KEY"))
     parser.add_argument("--ssh-public-key", type=Path, default=env_path("RUNPOD_SSH_PUBLIC_KEY"))
-    parser.add_argument("--image", default=DEFAULT_IMAGE)
+    parser.add_argument("--template-id", default=DEFAULT_TEMPLATE_ID)
+    parser.add_argument("--image")
     parser.add_argument("--allowed-cuda-version", action="append")
     parser.add_argument("--gpu-type", default="NVIDIA GeForce RTX 4090")
     parser.add_argument("--gpu-count", type=int, default=1)
     parser.add_argument("--secure-cloud", action="store_true")
-    parser.add_argument("--container-disk-size", type=int, default=80)
-    parser.add_argument("--volume-size", type=int, default=0)
+    parser.add_argument("--container-disk-size", type=int, default=20)
+    parser.add_argument("--volume-size", type=int, default=20)
     parser.add_argument("--remote-volume", default="/workspace")
     parser.add_argument("--remote-dir", default=DEFAULT_REMOTE_DIR)
     parser.add_argument("--data-center-ids", default="")
@@ -396,8 +402,6 @@ def main() -> int:
     args = parse_args()
     args.repo_root = args.repo_root.resolve()
     args.pod_name = args.pod_name or timestamped_name(args.name)
-    if args.allowed_cuda_version is None:
-        args.allowed_cuda_version = list(DEFAULT_ALLOWED_CUDA_VERSIONS)
     if shutil.which(args.runpodctl) is None:
         raise FileNotFoundError(f"runpodctl command not found: {args.runpodctl}")
     if shutil.which("rsync") is None:

@@ -56,32 +56,29 @@ Network-volume use is tracked separately in
 
 ## Images
 
-Repository-local RunPod job helper defaults:
+Repository-local RunPod job helper default template:
+
+```text
+runpod-torch-v240
+Runpod Pytorch 2.4.0
+runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+```
+
+The helper uses the official RunPod PyTorch template by default. Use `--image`
+only for explicit fallback work.
+
+The helper does not set `allowedCudaVersions` by default. If a job needs to
+constrain host CUDA compatibility, pass `--allowed-cuda-version` explicitly.
+
+Previously used CUDA 12.8 image:
 
 ```text
 runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404
 ```
 
-Allowed CUDA versions in the job helper:
-
-```text
-12.8, 12.9, 13.0
-```
-
 Some RTX 4090 hosts cannot start CUDA 12.8 images when their NVIDIA driver is
 too old. This is a container startup failure, not a training-code or search
 parameter problem.
-
-Known manual fallback for profiling and smoke work:
-
-```text
-runpod-torch-v240
-runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
-```
-
-This fallback was used successfully for MCTS large-batch profiling on
-2026-05-10. It is not yet the standard path for
-`scripts/runpod_train_shogi_policy_value.sh`.
 
 ## Records
 
