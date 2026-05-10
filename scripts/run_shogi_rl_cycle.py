@@ -20,6 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--games", type=int, default=4)
     parser.add_argument("--max-plies", type=int, default=80)
     parser.add_argument("--simulations", type=int, default=16)
+    parser.add_argument("--evaluation-batch-size", type=int, default=1)
     parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -50,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
         games=args.games,
         max_plies=args.max_plies,
         simulations=args.simulations,
+        evaluation_batch_size=args.evaluation_batch_size,
     )
     train_count, eval_count = split_shogi_game_records_jsonl(
         games_jsonl=games_jsonl,
@@ -100,6 +102,7 @@ def _run_generate_games(
     games: int,
     max_plies: int,
     simulations: int,
+    evaluation_batch_size: int,
 ) -> None:
     if opponent == "yaneuraou" and not yaneuraou:
         raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
@@ -117,6 +120,8 @@ def _run_generate_games(
         "mcts",
         "--black-checkpoint-simulations",
         str(simulations),
+        "--black-checkpoint-evaluation-batch-size",
+        str(evaluation_batch_size),
         "--games",
         str(games),
         "--max-plies",
@@ -146,6 +151,8 @@ def _run_generate_games(
                 "mcts",
                 "--white-checkpoint-simulations",
                 str(simulations),
+                "--white-checkpoint-evaluation-batch-size",
+                str(evaluation_batch_size),
             ]
         )
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
