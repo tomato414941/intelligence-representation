@@ -70,3 +70,7 @@ The first version should stay shogi-specific and small:
   batch sizes 8/16/32 found batch 32 fastest for each measured simulation count.
   The largest measured setting, MCTS1024 with batch 32, averaged 1.686s per
   move and stayed below the 10-second budget.
+- A follow-up RunPod grid over MCTS simulations 1024/2048/4096/8192 and
+  evaluation batch sizes 32/64/128 found only small differences among these
+  larger batch sizes. MCTS4096 with batch 128 averaged 7.507s per move in the
+  short deterministic workload; MCTS8192 exceeded the 10-second budget.

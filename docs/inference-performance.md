@@ -137,3 +137,48 @@ Notes:
   playing-strength conclusions.
 - GPU: NVIDIA GeForce RTX 4090
 - Measured: 2026-05-10
+
+#### Shogi Checkpoint MCTS Large-Batch Grid
+
+Context:
+
+- Inference path: search-driven repeated calls
+- Model: d256-h1024-heads8-l6-shogi
+- Environment: RunPod RTX 4090, CUDA, torch 2.4.1+cu124
+- Input shape: shogi position tokens plus legal candidate moves
+- Output shape: candidate move logits plus value
+- Request: one move decision
+- Output unit: MCTS simulation
+- Settings: checkpoint device cuda
+- Workload: 2 games vs deterministic legal player, max 8 plies
+
+Measured performance:
+
+| MCTS simulations | Evaluation batch size | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1024 | 32 | 2.137s | 3.063s | 3.063s | 34.38 | 0.802s | 1.335s | 495.8 |
+| 1024 | 64 | 2.015s | 2.744s | 2.744s | 30.88 | 0.755s | 1.260s | 518.3 |
+| 1024 | 128 | 2.051s | 2.914s | 2.914s | 30.50 | 0.765s | 1.286s | 511.8 |
+| 2048 | 32 | 4.233s | 5.781s | 5.781s | 68.12 | 1.521s | 2.713s | 502.5 |
+| 2048 | 64 | 4.095s | 5.252s | 5.252s | 61.00 | 1.473s | 2.622s | 511.2 |
+| 2048 | 128 | 4.101s | 5.407s | 5.407s | 59.62 | 1.500s | 2.601s | 511.8 |
+| 4096 | 32 | 7.654s | 9.847s | 9.847s | 140.00 | 2.807s | 4.847s | 541.1 |
+| 4096 | 64 | 7.607s | 9.357s | 9.357s | 135.50 | 2.808s | 4.798s | 542.7 |
+| 4096 | 128 | 7.507s | 9.048s | 9.048s | 135.38 | 2.769s | 4.738s | 549.3 |
+| 8192 | 32 | 15.232s | 20.236s | 20.236s | 286.25 | 5.568s | 9.664s | 545.3 |
+| 8192 | 64 | 15.136s | 19.705s | 19.705s | 273.88 | 5.474s | 9.662s | 547.8 |
+| 8192 | 128 | 15.225s | 20.022s | 20.022s | 271.88 | 5.517s | 9.708s | 545.0 |
+
+Notes:
+
+- This run used a different RunPod image than the preceding grid because some
+  hosts could not start the CUDA 12.8 image with their installed NVIDIA driver.
+- Batch 64 was fastest at MCTS1024, MCTS2048, and MCTS8192; batch 128 was
+  fastest at MCTS4096. The difference among 32/64/128 was small compared with
+  the difference from increasing MCTS simulations.
+- MCTS4096 with batch 128 averaged 7.507s per move and stayed within the
+  10-second move budget in this short workload. MCTS8192 exceeded the budget.
+- The workload is short and deterministic, so use it for speed direction, not
+  playing-strength conclusions.
+- GPU: NVIDIA GeForce RTX 4090
+- Measured: 2026-05-10
