@@ -66,3 +66,7 @@ The first version should stay shogi-specific and small:
 - Current bottleneck after batching is mostly non-model search overhead, so
   further speed work should inspect tree selection / legal move generation /
   bookkeeping before increasing batch size blindly.
+- A small RunPod grid over MCTS simulations 32/128/512/1024 and evaluation
+  batch sizes 8/16/32 found batch 32 fastest for each measured simulation count.
+  The largest measured setting, MCTS1024 with batch 32, averaged 1.686s per
+  move and stayed below the 10-second budget.

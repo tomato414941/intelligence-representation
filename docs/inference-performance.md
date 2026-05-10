@@ -96,3 +96,44 @@ Notes:
   non-model search overhead became the dominant remaining cost.
 - GPU: NVIDIA GeForce RTX 4090
 - Measured: 2026-05-10
+
+#### Shogi Checkpoint MCTS N / Batch Grid
+
+Context:
+
+- Inference path: search-driven repeated calls
+- Model: d256-h1024-heads8-l6-shogi
+- Environment: RunPod RTX 4090, CUDA, torch 2.9.1+cu128
+- Input shape: shogi position tokens plus legal candidate moves
+- Output shape: candidate move logits plus value
+- Request: one move decision
+- Output unit: MCTS simulation
+- Settings: checkpoint device cuda
+- Workload: 2 games vs deterministic legal player, max 8 plies
+
+Measured performance:
+
+| MCTS simulations | Evaluation batch size | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 32 | 8 | 0.092s | 0.297s | 0.297s | 5.00 | 0.057s | 0.035s | 477.9 |
+| 32 | 16 | 0.094s | 0.328s | 0.328s | 3.00 | 0.058s | 0.037s | 495.7 |
+| 32 | 32 | 0.083s | 0.318s | 0.318s | 2.25 | 0.053s | 0.030s | 581.9 |
+| 128 | 8 | 0.281s | 0.465s | 0.465s | 17.00 | 0.132s | 0.150s | 486.3 |
+| 128 | 16 | 0.262s | 0.446s | 0.446s | 9.00 | 0.116s | 0.146s | 531.9 |
+| 128 | 32 | 0.250s | 0.426s | 0.426s | 5.62 | 0.107s | 0.143s | 558.9 |
+| 512 | 8 | 0.998s | 1.140s | 1.140s | 65.00 | 0.426s | 0.572s | 518.3 |
+| 512 | 16 | 0.892s | 1.190s | 1.190s | 33.00 | 0.347s | 0.546s | 592.6 |
+| 512 | 32 | 0.844s | 1.314s | 1.314s | 17.75 | 0.313s | 0.531s | 633.7 |
+| 1024 | 8 | 1.841s | 2.341s | 2.341s | 129.12 | 0.766s | 1.075s | 563.2 |
+| 1024 | 16 | 1.798s | 2.368s | 2.368s | 65.00 | 0.664s | 1.134s | 584.8 |
+| 1024 | 32 | 1.686s | 2.309s | 2.309s | 34.38 | 0.610s | 1.076s | 627.0 |
+
+Notes:
+
+- All measured settings stayed below a 10-second move wall-clock budget.
+- Batch size 32 was fastest for every measured MCTS simulation count in this
+  small grid.
+- The workload is short and deterministic, so use it for speed direction, not
+  playing-strength conclusions.
+- GPU: NVIDIA GeForce RTX 4090
+- Measured: 2026-05-10
