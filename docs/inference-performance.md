@@ -178,11 +178,52 @@ Notes:
   the difference from increasing MCTS simulations.
 - MCTS4096 with batch 128 averaged 7.507s per move and stayed within the
   10-second move budget in this short workload. MCTS8192 exceeded the budget.
-- Temporary 10-second-budget starting point for the promoted
-  d256-h1024-heads8-l6-shogi checkpoint on RTX 4090: MCTS4096 with evaluation
-  batch size 64. Batch 128 was slightly faster in this measurement, but 64 is a
-  conservative first setting until more arena-like workloads are measured.
+- This short deterministic workload made MCTS4096 look viable for a 10-second
+  budget, but the later YaneuraOu workload below exceeded that budget.
 - The workload is short and deterministic, so use it for speed direction, not
   playing-strength conclusions.
+- GPU: NVIDIA GeForce RTX 4090
+- Measured: 2026-05-10
+
+#### Shogi Checkpoint MCTS4096 Versus YaneuraOu
+
+Context:
+
+- Inference path: search-driven repeated calls
+- Model: d256-h1024-heads8-l6-shogi
+- Environment: RunPod RTX 4090, CUDA, torch 2.4.1+cu124
+- Input shape: shogi position tokens plus legal candidate moves
+- Output shape: candidate move logits plus value
+- Request: one move decision
+- Output unit: MCTS simulation
+- Settings: MCTS4096, evaluation batch size 64, checkpoint device cuda
+- Workload: 4 games vs YaneuraOu MaterialLv1 `go nodes 1`, max 80 plies
+
+Measured performance:
+
+- `request_wall_time_sec`: avg 10.887s, p95 22.631s, max 33.782s
+- `model_call_count`: avg 115.779 per request
+- `model_wall_time_sec`: avg 3.100s per request
+- `non_model_wall_time_sec`: avg 7.788s per request
+- `output_count`: avg 4096.0 simulations per request
+- `output_per_sec`: avg 478.0 simulations/sec
+
+Result:
+
+- 4 games: 1 win, 2 losses, 1 draw by max plies
+- Player as black: 0 wins, 1 loss, 1 draw
+- Player as white: 1 win, 1 loss
+- End reasons: 3 game_over, 1 max_plies
+- Average plies: 70.25
+- Illegal moves: 0
+
+Notes:
+
+- This arena-like workload exceeded a 10-second move wall-clock budget on
+  average and had a much higher tail than the short deterministic grids.
+- The main cost was non-model search overhead, not model wall time.
+- The RunPod image was Ubuntu 22.04, so the local YaneuraOu binary could not be
+  reused due to GLIBC/GLIBCXX version mismatch. YaneuraOu MaterialLv1 was built
+  inside the container before evaluation.
 - GPU: NVIDIA GeForce RTX 4090
 - Measured: 2026-05-10
