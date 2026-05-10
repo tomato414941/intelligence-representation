@@ -150,8 +150,6 @@ def create_pod(args: argparse.Namespace, secrets: list[str], api_key: str, publi
         "containerDiskInGb": args.container_disk_size,
         "volumeInGb": args.volume_size,
         "volumeMountPath": args.remote_volume,
-        "vcpuCount": args.vcpu,
-        "memoryInGb": args.mem,
         "ports": ["22/tcp"],
         "cloudType": "SECURE" if args.secure_cloud else "COMMUNITY",
         "allowedCudaVersions": args.allowed_cuda_version,
@@ -290,15 +288,17 @@ def rsync_to_remote(args: argparse.Namespace, connection: Connection, secrets: l
     sources = [source for source in [*DEFAULT_SYNC, *args.sync] if (args.repo_root / source).exists()]
     if not sources:
         raise RuntimeError("no sync sources found")
+    relative_sources = [f"./{source}" for source in sources]
     run(
         [
             "rsync",
             "-az",
+            "--relative",
             "--timeout",
             "30",
             "-e",
             rsync_ssh(args, connection),
-            *sources,
+            *relative_sources,
             f"{connection.user}@{connection.host}:{args.remote_dir}/",
         ],
         cwd=args.repo_root,
@@ -370,8 +370,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--volume-size", type=int, default=0)
     parser.add_argument("--remote-volume", default="/workspace")
     parser.add_argument("--remote-dir", default=DEFAULT_REMOTE_DIR)
-    parser.add_argument("--mem", type=int, default=32)
-    parser.add_argument("--vcpu", type=int, default=8)
     parser.add_argument("--data-center-ids", default="")
     parser.add_argument("--wait-seconds", type=int, default=600)
     parser.add_argument("--ssh-wait-seconds", type=int, default=180)
