@@ -74,6 +74,8 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                         "3",
                         "--evaluation-batch-size",
                         "4",
+                        "--mcts-move-time-limit-sec",
+                        "9.0",
                         "--max-steps",
                         "5",
                         "--batch-size",
@@ -96,6 +98,8 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-evaluation-batch-size") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-evaluation-batch-size") + 1], "4")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-move-time-limit-sec") + 1], "9.0")
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-move-time-limit-sec") + 1], "9.0")
             train_command = run.call_args_list[1].args[0]
             self.assertIn("intrep.train_shogi_policy_value", train_command)
             self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
@@ -110,6 +114,7 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                     "max_plies": 4,
                     "simulations": 3,
                     "evaluation_batch_size": 4,
+                    "mcts_move_time_limit_sec": 9.0,
                 },
             )
 
@@ -134,7 +139,10 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
                         ],
                     )
 
-            with patch.object(module.subprocess, "run", side_effect=fake_run) as run:
+            with (
+                patch.object(module.subprocess, "run", side_effect=fake_run) as run,
+                patch.object(module, "print"),
+            ):
                 module.main(
                     [
                         "--checkpoint",
@@ -159,6 +167,8 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "yaneuraou")
             self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-command") + 1], "engine-command")
             self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-go-command") + 1], "go nodes 2")
+            self.assertNotIn("--black-checkpoint-move-time-limit-sec", generate_command)
+            self.assertNotIn("--white-checkpoint-move-time-limit-sec", generate_command)
 
 
 def _load_script_module() -> ModuleType:
