@@ -31,8 +31,9 @@ Current entrypoint:
 scripts/runpod_train_shogi_policy_value.sh
 ```
 
-This script uses the repository-local `scripts/runpod/run_job.py` helper.
-It must not depend on RunPod helpers from another project.
+This script uses the shared `../runpod-job-runner/scripts/run_job.py` helper.
+The project-specific training entrypoint remains in this repository; generic
+RunPod pod lifecycle code lives outside the model repository.
 
 Local RunPod credentials and SSH key paths are provided at runtime through CLI
 arguments or environment variables: `RUNPOD_API_KEY` or `RUNPOD_API_KEY_FILE`,

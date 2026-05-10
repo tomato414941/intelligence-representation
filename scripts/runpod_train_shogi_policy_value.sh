@@ -8,6 +8,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+RUNPOD_RUNNER_ROOT=${RUNPOD_RUNNER_ROOT:-"$PWD/../runpod-job-runner"}
+RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
 DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/current/data-selection.json}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
@@ -68,7 +70,7 @@ for selection_file in "${DATA_SELECTION_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$selection_file")
 done
 
-python3 scripts/runpod/run_job.py \
+python3 "$RUNPOD_JOB" \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
   --secure-cloud \
@@ -77,6 +79,12 @@ python3 scripts/runpod/run_job.py \
   --wait-seconds 600 \
   --ssh-wait-seconds 180 \
   --allow-existing-pods \
+  --sync src \
+  --sync tests \
+  --sync pyproject.toml \
+  --sync uv.lock \
+  --sync README.md \
+  --sync AGENTS.md \
   --sync scripts/setup_runpod.sh \
   "${SYNC_ARGS[@]}" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \
