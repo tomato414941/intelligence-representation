@@ -28,9 +28,13 @@ not recorded for the run above.
 
 ## RunPod Shogi Training
 
-RunPod shogi jobs use disposable RTX 4090 pods without network volumes. This
-section records cost and runtime only; operational defaults belong in the
-training script, and model-quality interpretation belongs in evidence docs.
+RunPod shogi jobs use disposable GPU pods. The current KISS flow avoids network
+volumes. This section records cost and runtime only; operational defaults belong
+in the training script, and model-quality interpretation belongs in evidence
+docs.
+
+RunPod prices are recorded as observed at run time. Check the RunPod console or
+pricing page before using these rows for future cost estimates.
 
 | Date | Run | Status | Compute | Model | Data | Steps | Batch | Runtime | Cost | Notes |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
