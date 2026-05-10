@@ -17,7 +17,7 @@ import sys
 import time
 
 
-DEFAULT_TEMPLATE_ID = "runpod-torch-v240"
+DEFAULT_TEMPLATE_ID = "runpod-torch-v280"
 DEFAULT_REMOTE_DIR = "/root/intrep"
 DEFAULT_SYNC = ("src", "tests", "pyproject.toml", "uv.lock", "README.md", "AGENTS.md")
 

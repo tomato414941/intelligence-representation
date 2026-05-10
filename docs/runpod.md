@@ -59,9 +59,9 @@ Network-volume use is tracked separately in
 Repository-local RunPod job helper default template:
 
 ```text
-runpod-torch-v240
-Runpod Pytorch 2.4.0
-runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+runpod-torch-v280
+Runpod Pytorch 2.8.0
+runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404
 ```
 
 The helper uses the official RunPod PyTorch template by default. Use `--image`
@@ -79,6 +79,9 @@ runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404
 Some RTX 4090 hosts cannot start CUDA 12.8 images when their NVIDIA driver is
 too old. This is a container startup failure, not a training-code or search
 parameter problem.
+
+The `runpod-torch-v280` template was verified with RTX 5090 on 2026-05-10:
+`torch 2.8.0+cu128`, CUDA available, and the repository setup smoke completed.
 
 ## Records
 
