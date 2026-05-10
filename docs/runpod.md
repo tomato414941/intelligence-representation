@@ -25,7 +25,7 @@ For torchvision jobs, run `./scripts/setup_runpod_vision.sh` after
 
 ## Shogi Training
 
-Entrypoint:
+Current entrypoint:
 
 ```sh
 scripts/runpod_train_shogi_policy_value.sh
@@ -33,6 +33,11 @@ scripts/runpod_train_shogi_policy_value.sh
 
 This script expects `RUNPOD_RUN_ONCE` to point to the local `run_once.py`
 orchestration helper.
+
+This entrypoint is policy-value specific. Generalizing shogi RunPod training is
+tracked in `issues/runpod-shogi-training-entrypoint-generalization.md`.
+
+## Runtime Choices
 
 For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
 been measured on the target cache and Pod size. The JSONL cache is loaded as a
