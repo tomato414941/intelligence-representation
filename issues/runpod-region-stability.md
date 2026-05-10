@@ -14,6 +14,8 @@ compute-cost or model-quality record.
 | --- | --- |
 | 2000-step shogi full-cache baseline, RunPod US-CA-2 | reached 350/2000 steps, then the pod stopped responding over SSH |
 | 2000-step shogi full-cache baseline, RunPod EU-RO-1 | completed |
+| 2026-05-10 shogi evaluation smoke, RTX 5090 community host in FR (`wd2d7uh7pp6g`) | `runpodctl ssh info` became available, but SSH public-key auth repeatedly failed with `Permission denied`; reproduced across multiple pods |
+| 2026-05-10 shogi evaluation smoke, RTX 5090 secure host in US (`nwyg4zgjz5w1`) | completed setup, evaluation, output sync, and pod deletion |
 
 ## Current Mitigation
 
