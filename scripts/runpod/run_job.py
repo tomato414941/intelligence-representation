@@ -11,12 +11,14 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
 
 
 DEFAULT_IMAGE = "runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404"
+DEFAULT_ALLOWED_CUDA_VERSIONS = ("12.8", "12.9", "13.0")
 DEFAULT_REMOTE_DIR = "/root/intrep"
 DEFAULT_SYNC = ("src", "tests", "pyproject.toml", "uv.lock", "README.md", "AGENTS.md")
 
@@ -141,81 +143,47 @@ def active_pods(args: argparse.Namespace, secrets: list[str]) -> list[dict[str, 
 
 
 def create_pod(args: argparse.Namespace, secrets: list[str], api_key: str, public_key: str) -> None:
-    if args.allowed_cuda_version:
-        payload: dict[str, object] = {
-            "name": args.pod_name,
-            "gpuTypeIds": [args.gpu_type],
-            "gpuCount": args.gpu_count,
-            "containerDiskInGb": args.container_disk_size,
-            "volumeInGb": args.volume_size,
-            "volumeMountPath": args.remote_volume,
-            "vcpuCount": args.vcpu,
-            "memoryInGb": args.mem,
-            "ports": ["22/tcp"],
-            "cloudType": "SECURE" if args.secure_cloud else "COMMUNITY",
-            "allowedCudaVersions": args.allowed_cuda_version,
-            "imageName": args.image,
-        }
-        if args.data_center_ids:
-            payload["dataCenterIds"] = [item.strip() for item in args.data_center_ids.split(",") if item.strip()]
-        if public_key:
-            payload["env"] = {"PUBLIC_KEY": public_key}
-        if not args.secure_cloud:
-            payload["supportPublicIp"] = True
-        run(
-            [
-                "curl",
-                "--fail-with-body",
-                "--silent",
-                "--show-error",
-                "--request",
-                "POST",
-                "--url",
-                "https://rest.runpod.io/v1/pods",
-                "--header",
-                f"Authorization: Bearer {api_key}",
-                "--header",
-                "Content-Type: application/json",
-                "--data",
-                json.dumps(payload, separators=(",", ":")),
-            ],
-            cwd=args.repo_root,
-            secrets=secrets,
-            capture=True,
-        )
-        return
-    command = [
-        args.runpodctl,
-        "pod",
-        "create",
-        "-o",
-        "json",
-        "--name",
-        args.pod_name,
-        "--gpu-id",
-        args.gpu_type,
-        "--gpu-count",
-        str(args.gpu_count),
-        "--container-disk-in-gb",
-        str(args.container_disk_size),
-        "--volume-in-gb",
-        str(args.volume_size),
-        "--volume-mount-path",
-        args.remote_volume,
-        "--ports",
-        "22/tcp",
-        "--image",
-        args.image,
-        "--cloud-type",
-        "SECURE" if args.secure_cloud else "COMMUNITY",
-    ]
-    if not args.secure_cloud:
-        command.append("--public-ip")
+    payload: dict[str, object] = {
+        "name": args.pod_name,
+        "gpuTypeIds": [args.gpu_type],
+        "gpuCount": args.gpu_count,
+        "containerDiskInGb": args.container_disk_size,
+        "volumeInGb": args.volume_size,
+        "volumeMountPath": args.remote_volume,
+        "vcpuCount": args.vcpu,
+        "memoryInGb": args.mem,
+        "ports": ["22/tcp"],
+        "cloudType": "SECURE" if args.secure_cloud else "COMMUNITY",
+        "allowedCudaVersions": args.allowed_cuda_version,
+        "imageName": args.image,
+    }
     if args.data_center_ids:
-        command.extend(["--data-center-ids", args.data_center_ids])
+        payload["dataCenterIds"] = [item.strip() for item in args.data_center_ids.split(",") if item.strip()]
     if public_key:
-        command.append("--ssh")
-    run(command, cwd=args.repo_root, secrets=secrets, capture=True)
+        payload["env"] = {"PUBLIC_KEY": public_key}
+    if not args.secure_cloud:
+        payload["supportPublicIp"] = True
+    run(
+        [
+            "curl",
+            "--fail-with-body",
+            "--silent",
+            "--show-error",
+            "--request",
+            "POST",
+            "--url",
+            "https://rest.runpod.io/v1/pods",
+            "--header",
+            f"Authorization: Bearer {api_key}",
+            "--header",
+            "Content-Type: application/json",
+            "--data",
+            json.dumps(payload, separators=(",", ":")),
+        ],
+        cwd=args.repo_root,
+        secrets=secrets,
+        capture=True,
+    )
 
 
 def pod_connection_from_ports(ports: str) -> Connection | None:
@@ -320,6 +288,8 @@ def wait_for_ssh(args: argparse.Namespace, connection: Connection, secrets: list
 
 def rsync_to_remote(args: argparse.Namespace, connection: Connection, secrets: list[str]) -> None:
     sources = [source for source in [*DEFAULT_SYNC, *args.sync] if (args.repo_root / source).exists()]
+    if not sources:
+        raise RuntimeError("no sync sources found")
     run(
         [
             "rsync",
@@ -392,7 +362,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ssh-key", type=Path, default=env_path("RUNPOD_SSH_KEY"))
     parser.add_argument("--ssh-public-key", type=Path, default=env_path("RUNPOD_SSH_PUBLIC_KEY"))
     parser.add_argument("--image", default=DEFAULT_IMAGE)
-    parser.add_argument("--allowed-cuda-version", action="append", default=[])
+    parser.add_argument("--allowed-cuda-version", action="append")
     parser.add_argument("--gpu-type", default="NVIDIA GeForce RTX 4090")
     parser.add_argument("--gpu-count", type=int, default=1)
     parser.add_argument("--secure-cloud", action="store_true")
@@ -428,6 +398,16 @@ def main() -> int:
     args = parse_args()
     args.repo_root = args.repo_root.resolve()
     args.pod_name = args.pod_name or timestamped_name(args.name)
+    if args.allowed_cuda_version is None:
+        args.allowed_cuda_version = list(DEFAULT_ALLOWED_CUDA_VERSIONS)
+    if shutil.which(args.runpodctl) is None:
+        raise FileNotFoundError(f"runpodctl command not found: {args.runpodctl}")
+    if shutil.which("rsync") is None:
+        raise FileNotFoundError("rsync command not found")
+    if shutil.which("ssh") is None:
+        raise FileNotFoundError("ssh command not found")
+    if shutil.which("curl") is None:
+        raise FileNotFoundError("curl command not found")
     if args.ssh_key is None:
         raise ValueError("set RUNPOD_SSH_KEY or pass --ssh-key")
     if args.ssh_public_key is None:
@@ -438,7 +418,7 @@ def main() -> int:
         raise FileNotFoundError(args.ssh_public_key)
 
     api_key = os.environ.get("RUNPOD_API_KEY", "")
-    if args.allowed_cuda_version and not api_key:
+    if not api_key:
         if args.secret_path is None:
             raise ValueError("set RUNPOD_API_KEY, set RUNPOD_API_KEY_FILE, or pass --secret-path")
         api_key = load_text(args.secret_path)

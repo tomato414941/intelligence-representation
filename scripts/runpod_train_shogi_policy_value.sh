@@ -72,16 +72,6 @@ python3 scripts/runpod/run_job.py \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
   --secure-cloud \
-  --gpu-type "NVIDIA GeForce RTX 4090" \
-  --image runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404 \
-  --allowed-cuda-version 12.8 \
-  --allowed-cuda-version 12.9 \
-  --allowed-cuda-version 13.0 \
-  --container-disk-size 80 \
-  --volume-size 0 \
-  --remote-dir /root/intrep \
-  --mem 32 \
-  --vcpu 8 \
   ${DATA_CENTER_IDS:+--data-center-ids "$DATA_CENTER_IDS"} \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 600 \

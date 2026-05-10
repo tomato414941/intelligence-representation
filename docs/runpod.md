@@ -56,13 +56,13 @@ Network-volume use is tracked separately in
 
 ## Images
 
-Training script default:
+Repository-local RunPod job helper defaults:
 
 ```text
 runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404
 ```
 
-Allowed CUDA versions in the training script:
+Allowed CUDA versions in the job helper:
 
 ```text
 12.8, 12.9, 13.0
