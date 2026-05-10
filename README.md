@@ -55,6 +55,7 @@ Read these first:
 - [Learning Boundaries](docs/learning-boundaries.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
+- [RunPod](docs/runpod.md)
 - [Compute Costs](docs/compute-costs.md)
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
@@ -94,8 +95,8 @@ uv run python -m unittest
 
 On RunPod, use an official PyTorch template and keep its system PyTorch/CUDA
 stack. Do not run `uv sync`, because it may install a PyTorch wheel that does
-not match the host NVIDIA driver. The current shogi RunPod recipe uses
-`runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404`.
+not match the host NVIDIA driver. See [RunPod](docs/runpod.md) for project
+specific image, setup, region, and fallback notes.
 
 ```sh
 ./scripts/setup_runpod.sh

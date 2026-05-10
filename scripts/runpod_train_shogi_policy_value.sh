@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Use RunPod as disposable compute.
+# Project-specific RunPod operating notes live in docs/runpod.md.
 # Keep this on container disk; network volumes caused pod readiness failures.
 
 cd "$(dirname "$0")/.."
@@ -11,10 +12,8 @@ OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
-# Keep worker count at zero for the current JSONL/Python-object cache. Worker
-# processes gradually private-copy the large example list and can make 46 GB
-# pods unresponsive during longer full-cache runs. Revisit after a tensorized or
-# binary cache exists.
+# Keep worker count at zero for the current JSONL/Python-object cache. See
+# docs/runpod.md before increasing this for full-cache runs.
 NUM_WORKERS=${NUM_WORKERS:-0}
 LEARNING_RATE=${LEARNING_RATE:-0.0005}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
@@ -32,10 +31,14 @@ EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
 NUM_LAYERS=${NUM_LAYERS:-6}
-# Optional RunPod data-center pin. EU-RO-1 has completed the 2000-step
-# full-cache baseline; a US-CA-2 host failed with SSH timeout and CUDA init
-# errors during the same workstream.
+# Optional RunPod data-center pin. See docs/runpod.md before long baselines.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
+RUNPOD_RUN_ONCE=${RUNPOD_RUN_ONCE:-}
+
+if [[ -z "$RUNPOD_RUN_ONCE" ]]; then
+  echo "RUNPOD_RUN_ONCE must point to the runpod run_once.py helper" >&2
+  exit 1
+fi
 
 if [[ ! -f "$DATA_SELECTION" ]]; then
   echo "data selection not found: $DATA_SELECTION" >&2
@@ -70,7 +73,7 @@ for selection_file in "${DATA_SELECTION_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$selection_file")
 done
 
-python3 /home/dev/projects/llm/scripts/runpod/run_once.py \
+python3 "$RUNPOD_RUN_ONCE" \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
   --secure-cloud \

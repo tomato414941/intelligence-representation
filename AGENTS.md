@@ -53,3 +53,5 @@
 - RunPod torchvision setup must use `./scripts/setup_runpod_vision.sh` after
   `./scripts/setup_runpod.sh`. It keeps system torch intact and requires an
   explicit torchvision wheel spec for the selected RunPod image.
+- Project-specific RunPod image, region, memory, and measurement notes live in
+  `docs/runpod.md`.
