@@ -1,8 +1,11 @@
 # Compute Costs
 
-This document records estimated and measured compute cost to choose practical
-run settings. It keeps runtime, hardware, price, throughput, memory, and run
-size; operational incidents and model-quality interpretation belong elsewhere.
+This document keeps forward-looking compute-cost references for choosing future
+run settings. It is not a complete run history. Keep rows only while they help
+estimate or plan likely future runs.
+
+It keeps runtime, hardware, price, throughput, memory, and run size; operational
+incidents and model-quality interpretation belong elsewhere.
 
 ## Shogi Move-Choice Cache
 
