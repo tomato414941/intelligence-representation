@@ -34,12 +34,6 @@ NUM_HEADS=${NUM_HEADS:-8}
 NUM_LAYERS=${NUM_LAYERS:-6}
 # Optional RunPod data-center pin. See docs/runpod.md before long baselines.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
-RUNPOD_RUN_ONCE=${RUNPOD_RUN_ONCE:-}
-
-if [[ -z "$RUNPOD_RUN_ONCE" ]]; then
-  echo "RUNPOD_RUN_ONCE must point to the runpod run_once.py helper" >&2
-  exit 1
-fi
 
 if [[ ! -f "$DATA_SELECTION" ]]; then
   echo "data selection not found: $DATA_SELECTION" >&2
@@ -74,7 +68,7 @@ for selection_file in "${DATA_SELECTION_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$selection_file")
 done
 
-python3 "$RUNPOD_RUN_ONCE" \
+python3 scripts/runpod/run_once.py \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
   --secure-cloud \
@@ -93,7 +87,6 @@ python3 "$RUNPOD_RUN_ONCE" \
   --wait-seconds 600 \
   --ssh-wait-seconds 180 \
   --allow-existing-pods \
-  --no-cuda-smoke \
   --sync scripts/setup_runpod.sh \
   "${SYNC_ARGS[@]}" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod.sh' \

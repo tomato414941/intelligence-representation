@@ -31,8 +31,8 @@ Current entrypoint:
 scripts/runpod_train_shogi_policy_value.sh
 ```
 
-This script expects `RUNPOD_RUN_ONCE` to point to the local `run_once.py`
-orchestration helper.
+This script uses the repository-local `scripts/runpod/run_once.py` helper.
+It must not depend on RunPod helpers from another project.
 
 This entrypoint is policy-value specific. Generalizing shogi RunPod training is
 tracked in `issues/runpod-shogi-training-entrypoint-generalization.md`.
