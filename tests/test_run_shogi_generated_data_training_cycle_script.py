@@ -32,7 +32,7 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
-class RunShogiRlCycleScriptTest(unittest.TestCase):
+class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
     def test_runs_one_cycle_through_generation_split_and_training_command(self) -> None:
         module = _load_script_module()
         with tempfile.TemporaryDirectory() as directory:
@@ -172,8 +172,8 @@ class RunShogiRlCycleScriptTest(unittest.TestCase):
 
 
 def _load_script_module() -> ModuleType:
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_shogi_rl_cycle.py"
-    spec = importlib.util.spec_from_file_location("run_shogi_rl_cycle", script_path)
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "run_shogi_generated_data_training_cycle.py"
+    spec = importlib.util.spec_from_file_location("run_shogi_generated_data_training_cycle", script_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"failed to load {script_path}")
     module = importlib.util.module_from_spec(spec)

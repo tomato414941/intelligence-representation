@@ -10,7 +10,7 @@ from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Run one manual shogi RL data-generation and training cycle.")
+    parser = argparse.ArgumentParser(description="Run one generated shogi data training cycle.")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))

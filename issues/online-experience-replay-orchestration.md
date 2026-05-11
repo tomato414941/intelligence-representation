@@ -30,8 +30,8 @@ Use `ReplayBuffer` for online RL only when there is a loop that:
 
 ## Current Shogi RL Cycle
 
-`scripts/run_shogi_rl_cycle.py` is currently a manual one-cycle pipeline, not an
-Online Experience Replay loop.
+`scripts/run_shogi_generated_data_training_cycle.py` is currently a manual
+one-cycle pipeline, not an Online Experience Replay loop.
 
 The current flow is:
 

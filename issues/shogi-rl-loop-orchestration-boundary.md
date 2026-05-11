@@ -54,7 +54,7 @@ Revisit this boundary when one of these becomes true:
 - self-play generation needs to run distributed or remotely
 - CLI/subprocess overhead becomes material compared with game generation
 - game record schema changes require coordinated versioning
-- the manual RL cycle script becomes a repeated production workflow
+- the generated-data training cycle script becomes a repeated production workflow
 - a shared library boundary is clearly smaller than the CLI/artifact boundary
 
 ## Acceptance Criteria
