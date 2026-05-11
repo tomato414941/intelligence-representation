@@ -53,6 +53,8 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "go nodes 2",
                     "--games",
                     "2",
+                    "--parallel-games",
+                    "2",
                     "--max-plies",
                     "4",
                     "--simulations",
@@ -88,6 +90,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.yaneuraou, "engine-command")
         self.assertEqual(config.engine_go_command, "go nodes 2")
         self.assertEqual(config.games, 2)
+        self.assertEqual(config.parallel_games, 2)
         self.assertEqual(config.max_plies, 4)
         self.assertEqual(config.simulations, 3)
         self.assertEqual(config.evaluation_batch_size, 4)

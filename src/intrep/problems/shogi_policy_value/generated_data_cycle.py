@@ -41,6 +41,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
+    parallel_games: int = 1
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -66,6 +67,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
+    parallel_games: int = 1
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -93,6 +95,7 @@ class ShogiOnlineReplayConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
+    parallel_games: int = 1
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -220,6 +223,7 @@ def run_shogi_generated_data_training_cycle(
         engine_go_command=config.engine_go_command,
         out=games_jsonl,
         games=config.games,
+        parallel_games=config.parallel_games,
         max_plies=config.max_plies,
         simulations=config.simulations,
         evaluation_batch_size=config.evaluation_batch_size,
@@ -259,6 +263,7 @@ def run_shogi_generated_data_training_cycle(
         generation={
             "opponent": config.opponent,
             "games": config.games,
+            "parallel_games": config.parallel_games,
             "max_plies": config.max_plies,
             "simulations": config.simulations,
             "evaluation_batch_size": config.evaluation_batch_size,
@@ -286,6 +291,7 @@ def run_shogi_generated_data_training_loop(
                 yaneuraou=config.yaneuraou,
                 engine_go_command=config.engine_go_command,
                 games=config.games,
+                parallel_games=config.parallel_games,
                 max_plies=config.max_plies,
                 simulations=config.simulations,
                 evaluation_batch_size=config.evaluation_batch_size,
@@ -338,6 +344,7 @@ def run_shogi_online_replay(
             engine_go_command=config.engine_go_command,
             out=games_jsonl,
             games=config.games,
+            parallel_games=config.parallel_games,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -413,6 +420,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("yaneuraou is required when opponent is yaneuraou")
     if config.games <= 0:
         raise ValueError("games must be positive")
+    if config.parallel_games <= 0:
+        raise ValueError("parallel_games must be positive")
     if config.max_plies <= 0:
         raise ValueError("max_plies must be positive")
     if config.simulations <= 0:
@@ -453,6 +462,7 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             yaneuraou=config.yaneuraou,
             engine_go_command=config.engine_go_command,
             games=config.games,
+            parallel_games=config.parallel_games,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -485,6 +495,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             yaneuraou=config.yaneuraou,
             engine_go_command=config.engine_go_command,
             games=config.games,
+            parallel_games=config.parallel_games,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -558,6 +569,7 @@ def _run_generate_games(
     engine_go_command: str,
     out: Path,
     games: int,
+    parallel_games: int,
     max_plies: int,
     simulations: int,
     evaluation_batch_size: int,
@@ -584,6 +596,8 @@ def _run_generate_games(
         checkpoint_device,
         "--games",
         str(games),
+        "--parallel-games",
+        str(parallel_games),
         "--max-plies",
         str(max_plies),
         "--out",
