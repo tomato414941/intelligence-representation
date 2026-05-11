@@ -31,6 +31,9 @@ from intrep.problems.shogi_policy_value.training import (
 )
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
+STANDARD_SHOGI_MAX_PLIES = 320
+DEFAULT_SHOGI_MAX_PLIES = 320
+
 
 @dataclass(frozen=True)
 class ShogiGeneratedDataTrainingCycleConfig:
@@ -43,7 +46,9 @@ class ShogiGeneratedDataTrainingCycleConfig:
     games: int = 4
     parallel_games: int = 1
     board_backend: str = "cshogi"
-    max_plies: int = 80
+    # Computer-shogi self-play should not end as a short artificial draw; use
+    # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
+    max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
     mcts_move_time_limit_sec: float | None = None
@@ -70,7 +75,9 @@ class ShogiGeneratedDataTrainingLoopConfig:
     games: int = 4
     parallel_games: int = 1
     board_backend: str = "cshogi"
-    max_plies: int = 80
+    # Computer-shogi self-play should not end as a short artificial draw; use
+    # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
+    max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
     mcts_move_time_limit_sec: float | None = None
@@ -99,7 +106,9 @@ class ShogiOnlineReplayConfig:
     games: int = 4
     parallel_games: int = 1
     board_backend: str = "cshogi"
-    max_plies: int = 80
+    # Computer-shogi self-play should not end as a short artificial draw; use
+    # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
+    max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
     mcts_move_time_limit_sec: float | None = None
@@ -431,6 +440,7 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("parallel_games must be positive")
     if config.max_plies <= 0:
         raise ValueError("max_plies must be positive")
+    _warn_short_max_plies(config.max_plies)
     if config.simulations <= 0:
         raise ValueError("simulations must be positive")
     if config.evaluation_batch_size <= 0:
@@ -535,6 +545,15 @@ def _promoted_online_replay_checkpoint(result: ShogiOnlineReplayCycleResult, *, 
     if policy == "final":
         return result.checkpoint
     raise ValueError("next_checkpoint must be best or final")
+
+
+def _warn_short_max_plies(max_plies: int) -> None:
+    if max_plies < STANDARD_SHOGI_MAX_PLIES:
+        print(
+            f"warning: max_plies {max_plies} is below the computer-shogi standard cap "
+            f"of {STANDARD_SHOGI_MAX_PLIES}; this can create artificial max_plies draws.",
+            file=sys.stderr,
+        )
 
 
 def _load_generated_policy_value_examples(path: Path) -> list[ShogiPolicyValueExample]:

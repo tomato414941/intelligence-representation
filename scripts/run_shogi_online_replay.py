@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from intrep.problems.shogi_policy_value.generated_data_cycle import (
+    DEFAULT_SHOGI_MAX_PLIES,
     ShogiOnlineReplayConfig,
     run_shogi_online_replay,
 )
@@ -25,7 +26,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--games", type=int, default=4)
     parser.add_argument("--parallel-games", type=int, default=1)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
-    parser.add_argument("--max-plies", type=int, default=80)
+    parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
     parser.add_argument("--simulations", type=int, default=16)
     parser.add_argument("--evaluation-batch-size", type=int, default=1)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)

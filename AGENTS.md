@@ -17,6 +17,8 @@
   or deprecated interfaces.
 - ShogiGameRecord schema is mirrored with `../shogi-arena-agent`; update both
   repositories' read/write/tests together when changing it.
+- Computer-shogi self-play defaults should use `max-plies=320`; shorter
+  overrides are allowed only with a warning.
 
 ## Verification
 - Run relevant tests or checks after implementation changes.
