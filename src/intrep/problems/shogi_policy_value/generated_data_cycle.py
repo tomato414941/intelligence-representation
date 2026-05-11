@@ -71,7 +71,7 @@ def run_shogi_generated_data_training_cycle(
     best_checkpoint_path = run_dir / "best-checkpoint.pt"
     metrics_path = run_dir / "metrics.json"
 
-    run_generate_games(
+    _run_generate_games(
         arena_repo=config.arena_repo,
         checkpoint=config.checkpoint,
         opponent=config.opponent,
@@ -90,8 +90,8 @@ def run_shogi_generated_data_training_cycle(
         eval_jsonl=eval_jsonl,
         eval_ratio=config.eval_ratio,
     )
-    write_data_selection(data_selection_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
-    run_training(
+    _write_data_selection(data_selection_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
+    _run_training(
         data_selection_json=data_selection_json,
         init_checkpoint_path=config.checkpoint,
         checkpoint_path=checkpoint_path,
@@ -125,7 +125,7 @@ def run_shogi_generated_data_training_cycle(
     )
 
 
-def run_generate_games(
+def _run_generate_games(
     *,
     arena_repo: Path,
     checkpoint: Path,
@@ -197,7 +197,7 @@ def run_generate_games(
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
 
 
-def write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
+def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
     payload = {
         "name": path.parent.name,
         "objective": "shogi policy/value from generated game records",
@@ -214,7 +214,7 @@ def write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> 
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def run_training(
+def _run_training(
     *,
     data_selection_json: Path,
     init_checkpoint_path: Path,
