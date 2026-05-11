@@ -61,6 +61,7 @@ class ShogiGeneratedDataTrainingCycleResult:
 def run_shogi_generated_data_training_cycle(
     config: ShogiGeneratedDataTrainingCycleConfig,
 ) -> ShogiGeneratedDataTrainingCycleResult:
+    _validate_config(config)
     run_dir = config.run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     games_jsonl = run_dir / "generated-games.jsonl"
@@ -123,6 +124,39 @@ def run_shogi_generated_data_training_cycle(
             "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
         },
     )
+
+
+def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
+    if config.opponent not in {"self", "yaneuraou"}:
+        raise ValueError("opponent must be self or yaneuraou")
+    if config.opponent == "yaneuraou" and not config.yaneuraou:
+        raise ValueError("yaneuraou is required when opponent is yaneuraou")
+    if config.games <= 0:
+        raise ValueError("games must be positive")
+    if config.max_plies <= 0:
+        raise ValueError("max_plies must be positive")
+    if config.simulations <= 0:
+        raise ValueError("simulations must be positive")
+    if config.evaluation_batch_size <= 0:
+        raise ValueError("evaluation_batch_size must be positive")
+    if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
+        raise ValueError("mcts_move_time_limit_sec must be positive")
+    if not 0.0 < config.eval_ratio < 1.0:
+        raise ValueError("eval_ratio must be between 0 and 1")
+    if config.max_steps <= 0:
+        raise ValueError("max_steps must be positive")
+    if config.batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    if config.learning_rate <= 0.0:
+        raise ValueError("learning_rate must be positive")
+    if config.policy_loss_weight < 0.0:
+        raise ValueError("policy_loss_weight must be non-negative")
+    if config.value_loss_weight < 0.0:
+        raise ValueError("value_loss_weight must be non-negative")
+    if config.policy_loss_weight == 0.0 and config.value_loss_weight == 0.0:
+        raise ValueError("at least one loss weight must be positive")
+    if config.num_workers < 0:
+        raise ValueError("num_workers must be non-negative")
 
 
 def _run_generate_games(

@@ -35,6 +35,29 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
 
 
 class ShogiGeneratedDataCycleTest(unittest.TestCase):
+    def test_rejects_invalid_config_before_running_commands(self) -> None:
+        with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run") as run:
+            with self.assertRaisesRegex(ValueError, "games"):
+                run_shogi_generated_data_training_cycle(
+                    ShogiGeneratedDataTrainingCycleConfig(
+                        checkpoint=Path("source.pt"),
+                        run_dir=Path("cycle"),
+                        games=0,
+                    )
+                )
+
+        run.assert_not_called()
+
+    def test_requires_yaneuraou_command_for_yaneuraou_opponent(self) -> None:
+        with self.assertRaisesRegex(ValueError, "yaneuraou"):
+            run_shogi_generated_data_training_cycle(
+                ShogiGeneratedDataTrainingCycleConfig(
+                    checkpoint=Path("source.pt"),
+                    run_dir=Path("cycle"),
+                    opponent="yaneuraou",
+                )
+            )
+
     def test_runs_one_cycle_through_generation_split_and_training_command(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
