@@ -39,6 +39,30 @@ class ShogiGeneratedDataTrainingCycleConfig:
 
 
 @dataclass(frozen=True)
+class ShogiGeneratedDataTrainingLoopConfig:
+    checkpoint: Path
+    run_dir: Path
+    cycles: int = 1
+    arena_repo: Path = Path("../shogi-arena-agent")
+    opponent: str = "self"
+    yaneuraou: str | None = None
+    engine_go_command: str = "go nodes 1"
+    games: int = 4
+    max_plies: int = 80
+    simulations: int = 16
+    evaluation_batch_size: int = 1
+    mcts_move_time_limit_sec: float | None = None
+    eval_ratio: float = 0.25
+    max_steps: int = 100
+    batch_size: int = 128
+    learning_rate: float = 0.0005
+    policy_loss_weight: float = 1.0
+    value_loss_weight: float = 1.0
+    device: str = "cpu"
+    num_workers: int = 0
+
+
+@dataclass(frozen=True)
 class ShogiGeneratedDataTrainingCycleResult:
     run_dir: Path
     generated_games_jsonl: Path
@@ -61,6 +85,22 @@ class ShogiGeneratedDataTrainingCycleResult:
             "best_checkpoint": str(self.best_checkpoint),
             "metrics": str(self.metrics),
             "generation": self.generation,
+        }
+
+
+@dataclass(frozen=True)
+class ShogiGeneratedDataTrainingLoopResult:
+    run_dir: Path
+    initial_checkpoint: Path
+    final_checkpoint: Path
+    cycles: tuple[ShogiGeneratedDataTrainingCycleResult, ...]
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "run_dir": str(self.run_dir),
+            "initial_checkpoint": str(self.initial_checkpoint),
+            "final_checkpoint": str(self.final_checkpoint),
+            "cycles": [cycle.to_json() for cycle in self.cycles],
         }
 
 
@@ -132,6 +172,48 @@ def run_shogi_generated_data_training_cycle(
     )
 
 
+def run_shogi_generated_data_training_loop(
+    config: ShogiGeneratedDataTrainingLoopConfig,
+) -> ShogiGeneratedDataTrainingLoopResult:
+    _validate_loop_config(config)
+    run_dir = config.run_dir.resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint = config.checkpoint
+    results: list[ShogiGeneratedDataTrainingCycleResult] = []
+    for cycle_index in range(1, config.cycles + 1):
+        result = run_shogi_generated_data_training_cycle(
+            ShogiGeneratedDataTrainingCycleConfig(
+                checkpoint=checkpoint,
+                run_dir=run_dir / f"cycle-{cycle_index:04d}",
+                arena_repo=config.arena_repo,
+                opponent=config.opponent,
+                yaneuraou=config.yaneuraou,
+                engine_go_command=config.engine_go_command,
+                games=config.games,
+                max_plies=config.max_plies,
+                simulations=config.simulations,
+                evaluation_batch_size=config.evaluation_batch_size,
+                mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+                eval_ratio=config.eval_ratio,
+                max_steps=config.max_steps,
+                batch_size=config.batch_size,
+                learning_rate=config.learning_rate,
+                policy_loss_weight=config.policy_loss_weight,
+                value_loss_weight=config.value_loss_weight,
+                device=config.device,
+                num_workers=config.num_workers,
+            )
+        )
+        results.append(result)
+        checkpoint = result.best_checkpoint
+    return ShogiGeneratedDataTrainingLoopResult(
+        run_dir=run_dir,
+        initial_checkpoint=config.checkpoint,
+        final_checkpoint=checkpoint,
+        cycles=tuple(results),
+    )
+
+
 def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
     if config.opponent not in {"self", "yaneuraou"}:
         raise ValueError("opponent must be self or yaneuraou")
@@ -163,6 +245,34 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("at least one loss weight must be positive")
     if config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+
+
+def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
+    if config.cycles <= 0:
+        raise ValueError("cycles must be positive")
+    _validate_config(
+        ShogiGeneratedDataTrainingCycleConfig(
+            checkpoint=config.checkpoint,
+            run_dir=config.run_dir,
+            arena_repo=config.arena_repo,
+            opponent=config.opponent,
+            yaneuraou=config.yaneuraou,
+            engine_go_command=config.engine_go_command,
+            games=config.games,
+            max_plies=config.max_plies,
+            simulations=config.simulations,
+            evaluation_batch_size=config.evaluation_batch_size,
+            mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+            eval_ratio=config.eval_ratio,
+            max_steps=config.max_steps,
+            batch_size=config.batch_size,
+            learning_rate=config.learning_rate,
+            policy_loss_weight=config.policy_loss_weight,
+            value_loss_weight=config.value_loss_weight,
+            device=config.device,
+            num_workers=config.num_workers,
+        )
+    )
 
 
 def _run_generate_games(
