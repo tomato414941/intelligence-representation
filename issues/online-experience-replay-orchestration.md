@@ -76,6 +76,23 @@ buffer, and supplies sampled update batches to a trainer.
 - Should sampling remain uniform initially, or does the first concrete RL update
   need recency or priority?
 
+## V1 Decision
+
+The first Online Experience Replay implementation should stay narrow:
+
+- buffer item: `ShogiPolicyValueExample`
+- append timing: after each generated-data cycle loads newly generated game
+  records into policy-value examples
+- sampling: uniform sampling through `intrep.learning.ReplayBuffer`
+- trainer boundary: the RL orchestrator samples examples and calls the trainer;
+  fixed offline training CLIs do not receive a replay buffer
+- target construction: `chosen_move` policy target and `winner` value target
+  for v1
+- checkpoint promotion: use the configured generated-data loop policy
+
+This is intentionally not a target-network, prioritized-replay, ply-streaming,
+or distributed self-play design.
+
 ## Acceptance Criteria
 
 - Online Experience Replay is not confused with Offline Experience Reuse.

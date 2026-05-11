@@ -11,8 +11,16 @@ import shogi
 from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedDataTrainingCycleConfig,
     ShogiGeneratedDataTrainingLoopConfig,
+    ShogiOnlineReplayConfig,
+    run_shogi_online_replay,
     run_shogi_generated_data_training_loop,
     run_shogi_generated_data_training_cycle,
+)
+from intrep.problems.shogi_policy_value.training import (
+    ShogiPolicyValueTrainingConfig,
+    ShogiPolicyValueTrainingMetrics,
+    ShogiPolicyValueTrainingResult,
+    build_shogi_policy_value_model,
 )
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -276,6 +284,109 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
                 str(result.cycles[0].checkpoint.resolve()),
             )
+
+    def test_online_replay_appends_generated_examples_and_trains_from_samples(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            train_batches: list[int] = []
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _record(("7g7f", "3c3d"), "black"),
+                            _record(("2g2f", "8c8d"), "white"),
+                        ],
+                    )
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                train_batches.append(len(examples))
+                return _training_result(config)
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=2,
+                        replay_capacity=4,
+                        replay_sample_size=3,
+                        arena_repo=arena_repo,
+                        games=2,
+                        max_steps=1,
+                    )
+                )
+
+            self.assertEqual(len(result.cycles), 2)
+            self.assertEqual(train_batches, [2, 3])
+            self.assertEqual(result.cycles[0].appended_examples, 2)
+            self.assertEqual(result.cycles[0].replay_size, 2)
+            self.assertEqual(result.cycles[0].sampled_examples, 2)
+            self.assertEqual(result.cycles[1].appended_examples, 2)
+            self.assertEqual(result.cycles[1].replay_size, 4)
+            self.assertEqual(result.cycles[1].sampled_examples, 3)
+            second_generate_command = run.call_args_list[1].args[0]
+            self.assertEqual(
+                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
+                str(result.cycles[0].best_checkpoint.resolve()),
+            )
+
+
+def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:
+    return ShogiPolicyValueTrainingResult(
+        model=build_shogi_policy_value_model(
+            ShogiPolicyValueTrainingConfig(
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            )
+        ),
+        config=config,
+        metrics=ShogiPolicyValueTrainingMetrics(
+            train_case_count=1,
+            eval_case_count=1,
+            initial_loss=1.0,
+            initial_value_loss=None,
+            final_loss=0.5,
+            accuracy=0.0,
+            top_3_accuracy=0.0,
+            top_5_accuracy=0.0,
+            mean_reciprocal_rank=0.0,
+            mean_correct_move_rank=0.0,
+            value_loss=None,
+            eval_loss=None,
+            initial_eval_loss=None,
+            eval_accuracy=None,
+            initial_eval_accuracy=None,
+            eval_top_3_accuracy=None,
+            eval_top_5_accuracy=None,
+            eval_mean_reciprocal_rank=None,
+            eval_mean_correct_move_rank=None,
+            eval_value_loss=None,
+            initial_eval_value_loss=None,
+            best_eval_loss=None,
+            best_eval_step=None,
+            max_steps=config.max_steps,
+            actual_steps=1,
+            stopped_early=False,
+            stopped_step=None,
+            early_stopping_patience=None,
+        ),
+        best_model_state_dict=None,
+    )
 
 
 if __name__ == "__main__":
