@@ -53,6 +53,9 @@ models/d256-h1024-heads8-l6-shogi/checkpoint.pt
 The d32 checkpoint is for local smoke tests. Do not use it for RunPod training
 or arena evaluation unless the run is explicitly a d32 smoke.
 
+RunPod shogi self-play generation uses the `cshogi` board backend by default.
+The `python-shogi` backend is kept as a compatibility option.
+
 ## Runtime Choices
 
 For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
