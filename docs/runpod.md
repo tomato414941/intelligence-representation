@@ -42,6 +42,17 @@ arguments or environment variables: `RUNPOD_API_KEY` or `RUNPOD_API_KEY_FILE`,
 This entrypoint is policy-value specific. Generalizing shogi RunPod training is
 tracked in `issues/runpod-shogi-training-entrypoint-generalization.md`.
 
+## Shogi Checkpoint
+
+RunPod shogi runs use the promoted d256 checkpoint by default:
+
+```text
+models/d256-h1024-heads8-l6-shogi/checkpoint.pt
+```
+
+The d32 checkpoint is for local smoke tests. Do not use it for RunPod training
+or arena evaluation unless the run is explicitly a d32 smoke.
+
 ## Runtime Choices
 
 For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
