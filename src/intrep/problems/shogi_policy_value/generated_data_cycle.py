@@ -6,6 +6,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from intrep.problems.shogi_policy_value.data_selection import (
+    ShogiPolicyValueDataSelection,
+    ShogiPolicyValueDataSelectionSource,
+    ShogiPolicyValueTargetConstruction,
+    shogi_policy_value_data_selection_to_json,
+)
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 
@@ -232,19 +238,21 @@ def _run_generate_games(
 
 
 def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
-    payload = {
-        "name": path.parent.name,
-        "objective": "shogi policy/value from generated game records",
-        "target_construction": {
-            "policy": "chosen_move",
-            "policy_temperature_cp": 100.0,
-            "policy_mate_cp": 100000.0,
-            "value": "winner",
-            "score_cp_scale": 600.0,
-        },
-        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_jsonl)}],
-        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_jsonl)}],
-    }
+    selection = ShogiPolicyValueDataSelection(
+        name=path.parent.name,
+        objective="shogi policy/value from generated game records",
+        target_construction=ShogiPolicyValueTargetConstruction(
+            policy="chosen_move",
+            policy_temperature_cp=100.0,
+            policy_mate_cp=100000.0,
+            value="winner",
+            score_cp_scale=600.0,
+        ),
+        analysis_sources=(),
+        train_sources=(ShogiPolicyValueDataSelectionSource(kind="game_records_jsonl", path=train_jsonl),),
+        eval_sources=(ShogiPolicyValueDataSelectionSource(kind="game_records_jsonl", path=eval_jsonl),),
+    )
+    payload = shogi_policy_value_data_selection_to_json(selection)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
