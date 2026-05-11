@@ -93,6 +93,30 @@ The first Online Experience Replay implementation should stay narrow:
 This is intentionally not a target-network, prioritized-replay, ply-streaming,
 or distributed self-play design.
 
+## Local Smoke
+
+2026-05-11 local CPU smoke succeeded with:
+
+- entrypoint: `scripts/run_shogi_online_replay.py`
+- checkpoint: `models/d32-h64-heads4-l1/checkpoint.pt`
+- cycles: 1
+- games: 2
+- max plies: 4
+- MCTS simulations: 1
+- replay capacity: 8
+- replay sample size: 4
+- max training steps: 1
+
+The first attempt with the same d32 checkpoint failed because Online Replay
+constructed the trainer with the default d256/h1024/l6 model config. The
+implementation was changed to derive model shape from the checkpoint config.
+
+Observed metrics:
+
+- `appended_examples`: 4
+- `replay_size`: 4
+- `sampled_examples`: 4
+
 ## Acceptance Criteria
 
 - Online Experience Replay is not confused with Offline Experience Reuse.
