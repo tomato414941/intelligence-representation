@@ -21,9 +21,6 @@ from intrep.problems.shogi_policy_value.model import (
 )
 
 
-ShogiPolicyValueBatch = tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
-
-
 @dataclass(frozen=True)
 class ShogiPolicyValueTrainingConfig:
     max_steps: int = 100
@@ -145,7 +142,15 @@ def train_shogi_policy_value_model(
         raise ValueError("at least one loss weight must be positive")
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
-    training_batches = _iter_training_batches(examples, training_config)
+    dataset = ShogiPolicyValueDataset(examples)
+    loader = _build_shogi_policy_value_loader(dataset, training_config, shuffle=True)
+    replay_buffer = _build_replay_buffer(examples, training_config)
+    training_batches = _iter_training_batches(
+        loader=loader,
+        replay_buffer=replay_buffer,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+    )
     train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
     train_eval_dataset = ShogiPolicyValueDataset(train_eval_examples)
     train_eval_loader = _build_shogi_policy_value_loader(train_eval_dataset, training_config, shuffle=False)
@@ -183,13 +188,37 @@ def train_shogi_policy_value_model(
     stopped_early = False
     started = time.monotonic()
     while step < training_config.max_steps:
-        loss = _train_shogi_policy_value_step(
-            model=model,
-            optimizer=optimizer,
-            batch=next(training_batches),
-            config=training_config,
-            device=device,
-        )
+        position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets = next(training_batches)
+        position_token_ids = position_token_ids.to(device)
+        candidate_move_features = candidate_move_features.to(device)
+        candidate_mask = candidate_mask.to(device)
+        labels = labels.to(device)
+        policy_targets = policy_targets.to(device)
+        value_targets = value_targets.to(device)
+        optimizer.zero_grad(set_to_none=True)
+        value_mask = torch.isfinite(value_targets)
+        if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
+            value_predictions = model.predict_value(position_token_ids)
+            loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
+        elif training_config.value_loss_weight > 0.0 and value_mask.any():
+            logits, value_predictions = _forward_policy_value(
+                model,
+                position_token_ids,
+                candidate_move_features,
+                candidate_mask,
+            )
+            policy_loss = _policy_target_loss(logits, policy_targets)
+            loss = training_config.policy_loss_weight * policy_loss
+        else:
+            logits = model(position_token_ids, candidate_move_features, candidate_mask)
+            value_predictions = None
+            policy_loss = _policy_target_loss(logits, policy_targets)
+            loss = training_config.policy_loss_weight * policy_loss
+        if value_predictions is not None:
+            value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+            loss = loss + training_config.value_loss_weight * value_loss
+        loss.backward()
+        optimizer.step()
         step += 1
         if training_config.log_every is not None and step % training_config.log_every == 0:
             _log_training_progress(step, training_config.max_steps, started, loss, device)
@@ -235,7 +264,7 @@ def train_shogi_policy_value_model(
         model=model,
         config=training_config,
         metrics=ShogiPolicyValueTrainingMetrics(
-            train_case_count=len(examples),
+            train_case_count=len(dataset),
             eval_case_count=len(eval_dataset) if eval_dataset is not None else 0,
             initial_loss=initial_metrics.loss,
             initial_value_loss=initial_metrics.value_loss,
@@ -340,7 +369,7 @@ def _build_shogi_policy_value_loader(
     config: ShogiPolicyValueTrainingConfig,
     *,
     shuffle: bool,
-) -> DataLoader[ShogiPolicyValueBatch]:
+) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
     return DataLoader(
         dataset,
         batch_size=config.batch_size,
@@ -348,44 +377,6 @@ def _build_shogi_policy_value_loader(
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
     )
-
-
-def _train_shogi_policy_value_step(
-    *,
-    model: nn.Module,
-    optimizer: torch.optim.Optimizer,
-    batch: ShogiPolicyValueBatch,
-    config: ShogiPolicyValueTrainingConfig,
-    device: torch.device,
-) -> torch.Tensor:
-    position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets = (
-        tensor.to(device) for tensor in batch
-    )
-    optimizer.zero_grad(set_to_none=True)
-    value_mask = torch.isfinite(value_targets)
-    if config.policy_loss_weight == 0.0 and config.value_loss_weight > 0.0 and value_mask.any():
-        value_predictions = model.predict_value(position_token_ids)
-        loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
-    elif config.value_loss_weight > 0.0 and value_mask.any():
-        logits, value_predictions = _forward_policy_value(
-            model,
-            position_token_ids,
-            candidate_move_features,
-            candidate_mask,
-        )
-        policy_loss = _policy_target_loss(logits, policy_targets)
-        loss = config.policy_loss_weight * policy_loss
-    else:
-        logits = model(position_token_ids, candidate_move_features, candidate_mask)
-        value_predictions = None
-        policy_loss = _policy_target_loss(logits, policy_targets)
-        loss = config.policy_loss_weight * policy_loss
-    if value_predictions is not None:
-        value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
-        loss = loss + config.value_loss_weight * value_loss
-    loss.backward()
-    optimizer.step()
-    return loss
 
 
 def _build_replay_buffer(
@@ -400,25 +391,25 @@ def _build_replay_buffer(
 
 
 def _iter_training_batches(
-    examples: Sequence[ShogiPolicyValueExample],
-    config: ShogiPolicyValueTrainingConfig,
+    *,
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    replay_buffer: ReplayBuffer[ShogiPolicyValueExample] | None,
+    batch_size: int,
+    seed: int,
 ):
-    dataset = ShogiPolicyValueDataset(examples)
-    loader = _build_shogi_policy_value_loader(dataset, config, shuffle=True)
-    replay_buffer = _build_replay_buffer(examples, config)
     if replay_buffer is None:
         while True:
             yield from loader
     else:
-        generator = torch.Generator().manual_seed(config.seed)
+        generator = torch.Generator().manual_seed(seed)
         while True:
-            sample_size = min(config.batch_size, len(replay_buffer))
+            sample_size = min(batch_size, len(replay_buffer))
             yield _batch_replay_examples(replay_buffer.sample(sample_size, generator=generator))
 
 
 def _batch_replay_examples(
     examples: Sequence[ShogiPolicyValueExample],
-) -> ShogiPolicyValueBatch:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     dataset = ShogiPolicyValueDataset(examples)
     columns = tuple(zip(*(dataset[index] for index in range(len(dataset)))))
     return tuple(torch.stack(column) for column in columns)  # type: ignore[return-value]
