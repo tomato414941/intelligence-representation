@@ -95,7 +95,7 @@ or distributed self-play design.
 
 ## Local Smoke
 
-2026-05-11 local CPU smoke succeeded with:
+2026-05-11 local CPU smoke succeeded with one cycle:
 
 - entrypoint: `scripts/run_shogi_online_replay.py`
 - checkpoint: `models/d32-h64-heads4-l1/checkpoint.pt`
@@ -116,6 +116,57 @@ Observed metrics:
 - `appended_examples`: 4
 - `replay_size`: 4
 - `sampled_examples`: 4
+
+2026-05-11 local CPU smoke also succeeded with two cycles:
+
+- entrypoint: `scripts/run_shogi_online_replay.py`
+- checkpoint: `models/d32-h64-heads4-l1/checkpoint.pt`
+- cycles: 2
+- games per cycle: 2
+- max plies: 4
+- MCTS simulations: 1
+- replay capacity: 8
+- replay sample size: 4
+- max training steps per cycle: 1
+
+Observed cycle metrics:
+
+- cycle 1: `appended_examples`: 4, `replay_size`: 4, `sampled_examples`: 4
+- cycle 2: `appended_examples`: 4, `replay_size`: 8, `sampled_examples`: 4
+
+## RunPod Smoke
+
+2026-05-11 RunPod GPU smoke succeeded with:
+
+- entrypoint: `scripts/run_shogi_online_replay.py`
+- helper: `../runpod-job-runner/scripts/run_job.py`
+- template: `runpod-torch-v280`
+- image: `runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404`
+- GPU: RTX 5090 secure cloud
+- checkpoint: `models/d32-h64-heads4-l1/checkpoint.pt`
+- cycles: 1
+- games: 2
+- max plies: 4
+- MCTS simulations: 1
+- replay capacity: 8
+- replay sample size: 4
+- max training steps: 1
+- device: `cuda`
+
+The first RunPod attempt reached remote execution but failed because
+`shogi-arena-agent` was invoked through `uv run`, and its local path dependency
+expected `../intelligence-representation`. The implementation now supports
+`SHOGI_ARENA_PYTHON`, and the successful run invoked the arena script with the
+job `.venv` Python plus `PYTHONPATH`.
+
+Observed metrics:
+
+- `appended_examples`: 4
+- `replay_size`: 4
+- `sampled_examples`: 4
+- model config: `embedding_dim=32`, `hidden_dim=64`, `num_heads=4`,
+  `num_layers=1`
+- RunPod timing: total job 123.016 seconds, remote command 7.589 seconds
 
 ## Acceptance Criteria
 
