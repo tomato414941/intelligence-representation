@@ -71,8 +71,8 @@ buffer, and supplies sampled update batches to a trainer.
 - Does the trainer receive a `ReplayBuffer`, a batch iterator, or already-built
   tensors?
 - Where are shogi game records converted into policy-value training examples?
-- What state is needed to resume a run: buffer contents, source records, random
-  seed, checkpoint identity, actor settings, and search settings?
+- What state is needed to resume a replay run: buffer contents, random seed,
+  checkpoint identity, actor settings, and search settings?
 - Should sampling remain uniform initially, or does the first concrete RL update
   need recency or priority?
 
@@ -89,6 +89,8 @@ The first Online Experience Replay implementation should stay narrow:
 - target construction: `chosen_move` policy target and `winner` value target
   for v1
 - checkpoint promotion: use the configured generated-data loop policy
+- Experience Store is independent of Online Replay Buffer. V1 does not use
+  Experience Store as input, output, persistence, or replay-buffer storage.
 
 This is intentionally not a target-network, prioritized-replay, ply-streaming,
 or distributed self-play design.
