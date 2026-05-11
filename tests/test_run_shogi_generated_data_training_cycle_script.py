@@ -2,173 +2,105 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-import shogi
-
-from intrep.worlds.shogi.game_record import (
-    ShogiActorSpec,
-    ShogiGameRecord,
-    shogi_game_transitions_from_usi_moves,
-    write_shogi_game_records_jsonl,
-)
-
-
-BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
-WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
-
-
-def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(
-        black_actor=BLACK_ACTOR,
-        white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
-        winner=winner,
-    )
+from intrep.problems.shogi_policy_value.generated_data_cycle import ShogiGeneratedDataTrainingCycleResult
 
 
 class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
-    def test_runs_one_cycle_through_generation_split_and_training_command(self) -> None:
+    def test_passes_cli_arguments_to_cycle_config_and_prints_result(self) -> None:
         module = _load_script_module()
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
-            run_dir = root / "cycle"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
+        result = ShogiGeneratedDataTrainingCycleResult(
+            run_dir=Path("/tmp/cycle").resolve(),
+            generated_games_jsonl=Path("/tmp/cycle/generated-games.jsonl"),
+            train_games=1,
+            eval_games=1,
+            data_selection=Path("/tmp/cycle/data-selection.json"),
+            checkpoint=Path("/tmp/cycle/checkpoint.pt"),
+            best_checkpoint=Path("/tmp/cycle/best-checkpoint.pt"),
+            metrics=Path("/tmp/cycle/metrics.json"),
+            generation={
+                "opponent": "yaneuraou",
+                "games": 2,
+                "max_plies": 4,
+                "simulations": 3,
+                "evaluation_batch_size": 4,
+                "mcts_move_time_limit_sec": 9.0,
+            },
+        )
+        run_cycle = Mock(return_value=result)
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-                patch.object(module, "print") as print_,
-            ):
-                module.main(
-                    [
-                        "--checkpoint",
-                        str(checkpoint_path),
-                        "--run-dir",
-                        str(run_dir),
-                        "--arena-repo",
-                        str(arena_repo),
-                        "--games",
-                        "2",
-                        "--max-plies",
-                        "4",
-                        "--simulations",
-                        "3",
-                        "--evaluation-batch-size",
-                        "4",
-                        "--mcts-move-time-limit-sec",
-                        "9.0",
-                        "--max-steps",
-                        "5",
-                        "--batch-size",
-                        "2",
-                    ]
-                )
-
-            dataset = json.loads((run_dir / "data-selection.json").read_text(encoding="utf-8"))
-            self.assertEqual(dataset["target_construction"]["policy"], "chosen_move")
-            self.assertEqual(dataset["target_construction"]["value"], "winner")
-            self.assertEqual(dataset["train_sources"][0]["kind"], "game_records_jsonl")
-            self.assertEqual(dataset["eval_sources"][0]["kind"], "game_records_jsonl")
-            self.assertTrue((run_dir / "train-games.jsonl").exists())
-            self.assertTrue((run_dir / "eval-games.jsonl").exists())
-            self.assertEqual(run.call_count, 2)
-            generate_command = run.call_args_list[0].args[0]
-            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
-            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
-            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-evaluation-batch-size") + 1], "4")
-            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-evaluation-batch-size") + 1], "4")
-            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-move-time-limit-sec") + 1], "9.0")
-            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-move-time-limit-sec") + 1], "9.0")
-            train_command = run.call_args_list[1].args[0]
-            self.assertIn("intrep.train_shogi_policy_value", train_command)
-            self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
-            self.assertIn("--value-loss-weight", train_command)
-            self.assertIn("1.0", train_command)
-            summary = json.loads(print_.call_args.args[0])
-            self.assertEqual(
-                summary["generation"],
-                {
-                    "opponent": "self",
-                    "games": 2,
-                    "max_plies": 4,
-                    "simulations": 3,
-                    "evaluation_batch_size": 4,
-                    "mcts_move_time_limit_sec": 9.0,
-                },
+        with (
+            patch.object(module, "run_shogi_generated_data_training_cycle", run_cycle),
+            patch.object(module, "print") as print_,
+        ):
+            module.main(
+                [
+                    "--checkpoint",
+                    "source.pt",
+                    "--run-dir",
+                    "cycle",
+                    "--arena-repo",
+                    "arena",
+                    "--opponent",
+                    "yaneuraou",
+                    "--yaneuraou",
+                    "engine-command",
+                    "--engine-go-command",
+                    "go nodes 2",
+                    "--games",
+                    "2",
+                    "--max-plies",
+                    "4",
+                    "--simulations",
+                    "3",
+                    "--evaluation-batch-size",
+                    "4",
+                    "--mcts-move-time-limit-sec",
+                    "9.0",
+                    "--eval-ratio",
+                    "0.5",
+                    "--max-steps",
+                    "5",
+                    "--batch-size",
+                    "6",
+                    "--learning-rate",
+                    "0.001",
+                    "--policy-loss-weight",
+                    "0.7",
+                    "--value-loss-weight",
+                    "0.3",
+                    "--device",
+                    "cuda",
+                    "--num-workers",
+                    "2",
+                ]
             )
 
-    def test_passes_yaneuraou_generation_options(self) -> None:
-        module = _load_script_module()
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
-            run_dir = root / "cycle"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
-
-            def fake_run(command: list[str], **_kwargs: object) -> None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-                patch.object(module, "print"),
-            ):
-                module.main(
-                    [
-                        "--checkpoint",
-                        str(checkpoint_path),
-                        "--run-dir",
-                        str(run_dir),
-                        "--arena-repo",
-                        str(arena_repo),
-                        "--opponent",
-                        "yaneuraou",
-                        "--yaneuraou",
-                        "engine-command",
-                        "--engine-go-command",
-                        "go nodes 2",
-                        "--games",
-                        "2",
-                    ]
-                )
-
-            generate_command = run.call_args_list[0].args[0]
-            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "yaneuraou")
-            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-command") + 1], "engine-command")
-            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-go-command") + 1], "go nodes 2")
-            self.assertNotIn("--black-checkpoint-move-time-limit-sec", generate_command)
-            self.assertNotIn("--white-checkpoint-move-time-limit-sec", generate_command)
+        config = run_cycle.call_args.args[0]
+        self.assertEqual(config.checkpoint, Path("source.pt"))
+        self.assertEqual(config.run_dir, Path("cycle"))
+        self.assertEqual(config.arena_repo, Path("arena"))
+        self.assertEqual(config.opponent, "yaneuraou")
+        self.assertEqual(config.yaneuraou, "engine-command")
+        self.assertEqual(config.engine_go_command, "go nodes 2")
+        self.assertEqual(config.games, 2)
+        self.assertEqual(config.max_plies, 4)
+        self.assertEqual(config.simulations, 3)
+        self.assertEqual(config.evaluation_batch_size, 4)
+        self.assertEqual(config.mcts_move_time_limit_sec, 9.0)
+        self.assertEqual(config.eval_ratio, 0.5)
+        self.assertEqual(config.max_steps, 5)
+        self.assertEqual(config.batch_size, 6)
+        self.assertEqual(config.learning_rate, 0.001)
+        self.assertEqual(config.policy_loss_weight, 0.7)
+        self.assertEqual(config.value_loss_weight, 0.3)
+        self.assertEqual(config.device, "cuda")
+        self.assertEqual(config.num_workers, 2)
+        self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())
 
 
 def _load_script_module() -> ModuleType:
