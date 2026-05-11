@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
-import sys
 from pathlib import Path
 
-from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
+from intrep.problems.shogi_policy_value.generated_data_cycle import (
+    ShogiGeneratedDataTrainingCycleConfig,
+    run_shogi_generated_data_training_cycle,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -32,209 +33,30 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--num-workers", type=int, default=0)
     args = parser.parse_args(argv)
 
-    run_dir = args.run_dir.resolve()
-    run_dir.mkdir(parents=True, exist_ok=True)
-    games_jsonl = run_dir / "generated-games.jsonl"
-    train_jsonl = run_dir / "train-games.jsonl"
-    eval_jsonl = run_dir / "eval-games.jsonl"
-    data_selection_json = run_dir / "data-selection.json"
-    checkpoint_path = run_dir / "checkpoint.pt"
-    best_checkpoint_path = run_dir / "best-checkpoint.pt"
-    metrics_path = run_dir / "metrics.json"
-
-    _run_generate_games(
-        arena_repo=args.arena_repo,
-        checkpoint=args.checkpoint,
-        opponent=args.opponent,
-        yaneuraou=args.yaneuraou,
-        engine_go_command=args.engine_go_command,
-        out=games_jsonl,
-        games=args.games,
-        max_plies=args.max_plies,
-        simulations=args.simulations,
-        evaluation_batch_size=args.evaluation_batch_size,
-        mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
-    )
-    train_count, eval_count = split_shogi_game_records_jsonl(
-        games_jsonl=games_jsonl,
-        train_jsonl=train_jsonl,
-        eval_jsonl=eval_jsonl,
-        eval_ratio=args.eval_ratio,
-    )
-    _write_data_selection(data_selection_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
-    _run_training(
-        data_selection_json=data_selection_json,
-        init_checkpoint_path=args.checkpoint,
-        checkpoint_path=checkpoint_path,
-        best_checkpoint_path=best_checkpoint_path,
-        metrics_path=metrics_path,
-        max_steps=args.max_steps,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        policy_loss_weight=args.policy_loss_weight,
-        value_loss_weight=args.value_loss_weight,
-        device=args.device,
-        num_workers=args.num_workers,
-    )
-    print(
-        json.dumps(
-            {
-                "run_dir": str(run_dir),
-                "generated_games_jsonl": str(games_jsonl),
-                "train_games": train_count,
-                "eval_games": eval_count,
-                "data_selection": str(data_selection_json),
-                "checkpoint": str(checkpoint_path),
-                "best_checkpoint": str(best_checkpoint_path),
-                "metrics": str(metrics_path),
-                "generation": {
-                    "opponent": args.opponent,
-                    "games": args.games,
-                    "max_plies": args.max_plies,
-                    "simulations": args.simulations,
-                    "evaluation_batch_size": args.evaluation_batch_size,
-                    "mcts_move_time_limit_sec": args.mcts_move_time_limit_sec,
-                },
-            },
-            indent=2,
+    result = run_shogi_generated_data_training_cycle(
+        ShogiGeneratedDataTrainingCycleConfig(
+            checkpoint=args.checkpoint,
+            run_dir=args.run_dir,
+            arena_repo=args.arena_repo,
+            opponent=args.opponent,
+            yaneuraou=args.yaneuraou,
+            engine_go_command=args.engine_go_command,
+            games=args.games,
+            max_plies=args.max_plies,
+            simulations=args.simulations,
+            evaluation_batch_size=args.evaluation_batch_size,
+            mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
+            eval_ratio=args.eval_ratio,
+            max_steps=args.max_steps,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            policy_loss_weight=args.policy_loss_weight,
+            value_loss_weight=args.value_loss_weight,
+            device=args.device,
+            num_workers=args.num_workers,
         )
     )
-
-
-def _run_generate_games(
-    *,
-    arena_repo: Path,
-    checkpoint: Path,
-    opponent: str,
-    yaneuraou: str | None,
-    engine_go_command: str,
-    out: Path,
-    games: int,
-    max_plies: int,
-    simulations: int,
-    evaluation_batch_size: int,
-    mcts_move_time_limit_sec: float | None,
-) -> None:
-    if opponent == "yaneuraou" and not yaneuraou:
-        raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
-
-    command = [
-        "uv",
-        "run",
-        "python",
-        "scripts/generate_shogi_games.py",
-        "--black-kind",
-        "checkpoint",
-        "--black-checkpoint",
-        str(checkpoint.resolve()),
-        "--black-checkpoint-policy",
-        "mcts",
-        "--black-checkpoint-simulations",
-        str(simulations),
-        "--black-checkpoint-evaluation-batch-size",
-        str(evaluation_batch_size),
-        "--games",
-        str(games),
-        "--max-plies",
-        str(max_plies),
-        "--out",
-        str(out),
-    ]
-    if mcts_move_time_limit_sec is not None:
-        command.extend(["--black-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    if opponent == "yaneuraou":
-        command.extend(
-            [
-                "--white-kind",
-                "yaneuraou",
-                "--white-yaneuraou-command",
-                yaneuraou or "",
-                "--white-yaneuraou-go-command",
-                engine_go_command,
-            ]
-        )
-    else:
-        command.extend(
-            [
-                "--white-kind",
-                "checkpoint",
-                "--white-checkpoint",
-                str(checkpoint.resolve()),
-                "--white-checkpoint-policy",
-                "mcts",
-                "--white-checkpoint-simulations",
-                str(simulations),
-                "--white-checkpoint-evaluation-batch-size",
-                str(evaluation_batch_size),
-            ]
-        )
-        if mcts_move_time_limit_sec is not None:
-            command.extend(["--white-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    subprocess.run(command, cwd=arena_repo.resolve(), check=True)
-
-
-def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
-    payload = {
-        "name": path.parent.name,
-        "objective": "shogi policy/value from self-play records",
-        "target_construction": {
-            "policy": "chosen_move",
-            "policy_temperature_cp": 100.0,
-            "policy_mate_cp": 100000.0,
-            "value": "winner",
-            "score_cp_scale": 600.0,
-        },
-        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_jsonl)}],
-        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_jsonl)}],
-    }
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-
-def _run_training(
-    *,
-    data_selection_json: Path,
-    init_checkpoint_path: Path,
-    checkpoint_path: Path,
-    best_checkpoint_path: Path,
-    metrics_path: Path,
-    max_steps: int,
-    batch_size: int,
-    learning_rate: float,
-    policy_loss_weight: float,
-    value_loss_weight: float,
-    device: str,
-    num_workers: int,
-) -> None:
-    command = [
-        sys.executable,
-        "-m",
-        "intrep.train_shogi_policy_value",
-        "--data-selection",
-        str(data_selection_json),
-        "--init-checkpoint-path",
-        str(init_checkpoint_path),
-        "--checkpoint-path",
-        str(checkpoint_path),
-        "--best-checkpoint-path",
-        str(best_checkpoint_path),
-        "--metrics-path",
-        str(metrics_path),
-        "--max-steps",
-        str(max_steps),
-        "--batch-size",
-        str(batch_size),
-        "--learning-rate",
-        str(learning_rate),
-        "--policy-loss-weight",
-        str(policy_loss_weight),
-        "--value-loss-weight",
-        str(value_loss_weight),
-        "--device",
-        device,
-        "--num-workers",
-        str(num_workers),
-    ]
-    subprocess.run(command, check=True)
+    print(json.dumps(result.to_json(), indent=2))
 
 
 if __name__ == "__main__":

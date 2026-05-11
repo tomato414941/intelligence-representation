@@ -55,7 +55,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     )
 
             with (
-                patch.object(module.subprocess, "run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
                 patch.object(module, "print") as print_,
             ):
                 module.main(
@@ -140,7 +140,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     )
 
             with (
-                patch.object(module.subprocess, "run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
                 patch.object(module, "print"),
             ):
                 module.main(
