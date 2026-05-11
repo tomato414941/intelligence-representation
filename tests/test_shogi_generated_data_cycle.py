@@ -139,6 +139,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--parallel-games") + 1], "2")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-profile") + 1], "self-play")
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-profile") + 1], "self-play")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-evaluation-batch-size") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-evaluation-batch-size") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-device") + 1], "cuda")
