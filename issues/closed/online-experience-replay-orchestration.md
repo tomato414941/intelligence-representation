@@ -1,6 +1,10 @@
 # Online Experience Replay Orchestration
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
+
+Closed because Online Replay v1 has a concrete append/sample loop with local
+CPU smoke, local two-cycle smoke, and RunPod GPU smoke coverage. Follow-up
+work is tracked separately.
 
 ## Issue
 

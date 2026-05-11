@@ -49,5 +49,5 @@ A future implementation may need to persist:
 
 ## Related
 
-- [`online-experience-replay-orchestration.md`](online-experience-replay-orchestration.md)
+- [`online-experience-replay-orchestration.md`](closed/online-experience-replay-orchestration.md)
 - [`experience-store-generalization-boundary.md`](experience-store-generalization-boundary.md)
