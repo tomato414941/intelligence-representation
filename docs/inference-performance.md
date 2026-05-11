@@ -6,6 +6,24 @@ not a run log and it is not a cloud cost ledger.
 `runs/` is disposable. Measurements that should survive must be summarized here
 or in a promoted model note.
 
+## Current Reading
+
+For current shogi arena planning, treat MCTS2048 with evaluation batch size 64
+as the conservative GPU setting under a 10-second move budget. A 2026-05-10
+secure RTX 5090 smoke against YaneuraOu stayed below 6 seconds per measured move
+request, but it only covered 1 game and 16 plies.
+
+Do not infer that MCTS4096 is generally safe from the short deterministic grids.
+Those grids stayed under 10 seconds, but the later YaneuraOu workload averaged
+more than 10 seconds per move and had a much higher tail. Use the deterministic
+grids for speed direction only; use arena-like YaneuraOu workloads for move-time
+budget decisions.
+
+Environment differences matter. The entries below mix RTX 4090 and RTX 5090,
+secure and community RunPod hosts, and multiple PyTorch/CUDA images. Compare
+rows only when the workload and environment are close enough for the intended
+decision.
+
 ## Required Context
 
 Record enough context to explain latency and throughput:
