@@ -28,6 +28,41 @@ Use `ReplayBuffer` for online RL only when there is a loop that:
 - records the source of generated experience and the checkpoint/search settings
   that produced it
 
+## Current Shogi RL Cycle
+
+`scripts/run_shogi_rl_cycle.py` is currently a manual one-cycle pipeline, not an
+Online Experience Replay loop.
+
+The current flow is:
+
+```text
+input checkpoint
+  -> invoke ../shogi-arena-agent/scripts/generate_shogi_games.py
+  -> write generated-games.jsonl
+  -> split generated records into train-games.jsonl and eval-games.jsonl
+  -> write fixed data-selection.json
+  -> run intrep.train_shogi_policy_value once
+  -> write checkpoint.pt, best-checkpoint.pt, metrics.json
+```
+
+This is closer to Offline Experience Reuse: generated game records are fixed
+before training starts, converted through data selection, and then trained like
+an ordinary dataset.
+
+The current artifact boundary is:
+
+- `shogi-arena-agent` owns game generation runtime and writes raw game record
+  JSONL.
+- `intelligence-representation` owns splitting, data selection construction,
+  model training, metrics, and checkpoint output.
+- The boundary is a CLI/subprocess plus artifact boundary, not a Python import
+  boundary.
+
+There is currently no append/sample point during model updates. The natural
+future insertion point is a shogi RL orchestrator that sits above generation and
+training, appends newly generated records or derived examples to a learner-facing
+buffer, and supplies sampled update batches to a trainer.
+
 ## Design Questions
 
 - Does the first Online Experience Replay loop belong in a shogi-specific RL
