@@ -17,6 +17,7 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
             run_dir=Path("/tmp/loop"),
             initial_checkpoint=Path("source.pt"),
             final_checkpoint=Path("/tmp/loop/cycle-0002/best-checkpoint.pt"),
+            next_checkpoint="final",
             cycles=(),
         )
         run_loop = Mock(return_value=result)
@@ -33,6 +34,8 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
                     "loop",
                     "--cycles",
                     "2",
+                    "--next-checkpoint",
+                    "final",
                     "--games",
                     "3",
                     "--max-steps",
@@ -44,6 +47,7 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
         self.assertEqual(config.checkpoint, Path("source.pt"))
         self.assertEqual(config.run_dir, Path("loop"))
         self.assertEqual(config.cycles, 2)
+        self.assertEqual(config.next_checkpoint, "final")
         self.assertEqual(config.games, 3)
         self.assertEqual(config.max_steps, 4)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())

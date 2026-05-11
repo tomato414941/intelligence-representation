@@ -43,6 +43,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     checkpoint: Path
     run_dir: Path
     cycles: int = 1
+    next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
     yaneuraou: str | None = None
@@ -93,6 +94,7 @@ class ShogiGeneratedDataTrainingLoopResult:
     run_dir: Path
     initial_checkpoint: Path
     final_checkpoint: Path
+    next_checkpoint: str
     cycles: tuple[ShogiGeneratedDataTrainingCycleResult, ...]
 
     def to_json(self) -> dict[str, object]:
@@ -100,6 +102,7 @@ class ShogiGeneratedDataTrainingLoopResult:
             "run_dir": str(self.run_dir),
             "initial_checkpoint": str(self.initial_checkpoint),
             "final_checkpoint": str(self.final_checkpoint),
+            "next_checkpoint": self.next_checkpoint,
             "cycles": [cycle.to_json() for cycle in self.cycles],
         }
 
@@ -205,11 +208,12 @@ def run_shogi_generated_data_training_loop(
             )
         )
         results.append(result)
-        checkpoint = result.best_checkpoint
+        checkpoint = _promoted_checkpoint(result, policy=config.next_checkpoint)
     return ShogiGeneratedDataTrainingLoopResult(
         run_dir=run_dir,
         initial_checkpoint=config.checkpoint,
         final_checkpoint=checkpoint,
+        next_checkpoint=config.next_checkpoint,
         cycles=tuple(results),
     )
 
@@ -250,6 +254,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
 def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
     if config.cycles <= 0:
         raise ValueError("cycles must be positive")
+    if config.next_checkpoint not in {"best", "final"}:
+        raise ValueError("next_checkpoint must be best or final")
     _validate_config(
         ShogiGeneratedDataTrainingCycleConfig(
             checkpoint=config.checkpoint,
@@ -273,6 +279,14 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             num_workers=config.num_workers,
         )
     )
+
+
+def _promoted_checkpoint(result: ShogiGeneratedDataTrainingCycleResult, *, policy: str) -> Path:
+    if policy == "best":
+        return result.best_checkpoint
+    if policy == "final":
+        return result.checkpoint
+    raise ValueError("next_checkpoint must be best or final")
 
 
 def _run_generate_games(

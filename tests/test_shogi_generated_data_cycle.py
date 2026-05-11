@@ -47,6 +47,15 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
             )
 
+        with self.assertRaisesRegex(ValueError, "next_checkpoint"):
+            run_shogi_generated_data_training_loop(
+                ShogiGeneratedDataTrainingLoopConfig(
+                    checkpoint=Path("source.pt"),
+                    run_dir=Path("loop"),
+                    next_checkpoint="latest",
+                )
+            )
+
     def test_rejects_invalid_config_before_running_commands(self) -> None:
         with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run") as run:
             with self.assertRaisesRegex(ValueError, "games"):
@@ -207,6 +216,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         cycles=2,
+                        next_checkpoint="best",
                         arena_repo=arena_repo,
                         games=2,
                         max_steps=1,
@@ -214,6 +224,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(len(result.cycles), 2)
+            self.assertEqual(result.next_checkpoint, "best")
             self.assertEqual(result.cycles[0].run_dir, run_dir.resolve() / "cycle-0001")
             self.assertEqual(result.cycles[1].run_dir, run_dir.resolve() / "cycle-0002")
             self.assertEqual(result.final_checkpoint, result.cycles[1].best_checkpoint)
@@ -223,6 +234,47 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
                 str(result.cycles[0].best_checkpoint.resolve()),
+            )
+
+    def test_multi_cycle_loop_can_promote_final_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "loop"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _record(("7g7f", "3c3d"), "black"),
+                            _record(("2g2f", "8c8d"), "white"),
+                        ],
+                    )
+
+            with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
+                result = run_shogi_generated_data_training_loop(
+                    ShogiGeneratedDataTrainingLoopConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=2,
+                        next_checkpoint="final",
+                        arena_repo=arena_repo,
+                        games=2,
+                        max_steps=1,
+                    )
+                )
+
+            second_generate_command = run.call_args_list[2].args[0]
+            self.assertEqual(result.next_checkpoint, "final")
+            self.assertEqual(result.final_checkpoint, result.cycles[1].checkpoint)
+            self.assertEqual(
+                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
+                str(result.cycles[0].checkpoint.resolve()),
             )
 
 

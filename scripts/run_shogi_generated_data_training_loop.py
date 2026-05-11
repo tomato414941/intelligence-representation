@@ -15,6 +15,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=1)
+    parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
     parser.add_argument("--opponent", choices=("self", "yaneuraou"), default="self")
     parser.add_argument("--yaneuraou", help="USI engine command used when --opponent yaneuraou.")
@@ -39,6 +40,7 @@ def main(argv: list[str] | None = None) -> None:
             checkpoint=args.checkpoint,
             run_dir=args.run_dir,
             cycles=args.cycles,
+            next_checkpoint=args.next_checkpoint,
             arena_repo=args.arena_repo,
             opponent=args.opponent,
             yaneuraou=args.yaneuraou,
