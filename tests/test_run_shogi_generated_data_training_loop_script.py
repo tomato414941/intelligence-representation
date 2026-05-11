@@ -40,6 +40,8 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
                     "3",
                     "--parallel-games",
                     "2",
+                    "--board-backend",
+                    "cshogi",
                     "--max-steps",
                     "4",
                 ]
@@ -52,6 +54,7 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
         self.assertEqual(config.next_checkpoint, "final")
         self.assertEqual(config.games, 3)
         self.assertEqual(config.parallel_games, 2)
+        self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_steps, 4)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())
 

@@ -42,6 +42,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    board_backend: str = "cshogi"
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -68,6 +69,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    board_backend: str = "cshogi"
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -96,6 +98,7 @@ class ShogiOnlineReplayConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    board_backend: str = "cshogi"
     max_plies: int = 80
     simulations: int = 16
     evaluation_batch_size: int = 1
@@ -224,6 +227,7 @@ def run_shogi_generated_data_training_cycle(
         out=games_jsonl,
         games=config.games,
         parallel_games=config.parallel_games,
+        board_backend=config.board_backend,
         max_plies=config.max_plies,
         simulations=config.simulations,
         evaluation_batch_size=config.evaluation_batch_size,
@@ -264,6 +268,7 @@ def run_shogi_generated_data_training_cycle(
             "opponent": config.opponent,
             "games": config.games,
             "parallel_games": config.parallel_games,
+            "board_backend": config.board_backend,
             "max_plies": config.max_plies,
             "simulations": config.simulations,
             "evaluation_batch_size": config.evaluation_batch_size,
@@ -292,6 +297,7 @@ def run_shogi_generated_data_training_loop(
                 engine_go_command=config.engine_go_command,
                 games=config.games,
                 parallel_games=config.parallel_games,
+                board_backend=config.board_backend,
                 max_plies=config.max_plies,
                 simulations=config.simulations,
                 evaluation_batch_size=config.evaluation_batch_size,
@@ -345,6 +351,7 @@ def run_shogi_online_replay(
             out=games_jsonl,
             games=config.games,
             parallel_games=config.parallel_games,
+            board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -463,6 +470,7 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             engine_go_command=config.engine_go_command,
             games=config.games,
             parallel_games=config.parallel_games,
+            board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -496,6 +504,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             engine_go_command=config.engine_go_command,
             games=config.games,
             parallel_games=config.parallel_games,
+            board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
@@ -570,6 +579,7 @@ def _run_generate_games(
     out: Path,
     games: int,
     parallel_games: int,
+    board_backend: str,
     max_plies: int,
     simulations: int,
     evaluation_batch_size: int,
@@ -598,6 +608,8 @@ def _run_generate_games(
         str(games),
         "--parallel-games",
         str(parallel_games),
+        "--board-backend",
+        board_backend,
         "--max-plies",
         str(max_plies),
         "--out",

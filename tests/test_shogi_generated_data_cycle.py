@@ -143,6 +143,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-evaluation-batch-size") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-device") + 1], "cuda")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-device") + 1], "cuda")
+            self.assertEqual(generate_command[generate_command.index("--board-backend") + 1], "cshogi")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-move-time-limit-sec") + 1], "9.0")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-move-time-limit-sec") + 1], "9.0")
             train_command = run.call_args_list[1].args[0]
@@ -156,6 +157,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "opponent": "self",
                     "games": 2,
                     "parallel_games": 2,
+                    "board_backend": "cshogi",
                     "max_plies": 4,
                     "simulations": 3,
                     "evaluation_batch_size": 4,
