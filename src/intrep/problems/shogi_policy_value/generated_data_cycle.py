@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import asdict
@@ -563,9 +564,7 @@ def _run_generate_games(
         raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
 
     command = [
-        "uv",
-        "run",
-        "python",
+        *_shogi_arena_python_command(),
         "scripts/generate_shogi_games.py",
         "--black-kind",
         "checkpoint",
@@ -615,6 +614,13 @@ def _run_generate_games(
         if mcts_move_time_limit_sec is not None:
             command.extend(["--white-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
     subprocess.run(command, cwd=arena_repo.resolve(), check=True)
+
+
+def _shogi_arena_python_command() -> list[str]:
+    python = os.environ.get("SHOGI_ARENA_PYTHON")
+    if python:
+        return [python]
+    return ["uv", "run", "python"]
 
 
 def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
