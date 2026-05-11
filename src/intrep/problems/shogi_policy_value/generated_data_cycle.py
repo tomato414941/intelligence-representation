@@ -223,6 +223,7 @@ def run_shogi_generated_data_training_cycle(
         max_plies=config.max_plies,
         simulations=config.simulations,
         evaluation_batch_size=config.evaluation_batch_size,
+        checkpoint_device=config.device,
         mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
     )
     train_count, eval_count = split_shogi_game_records_jsonl(
@@ -261,6 +262,7 @@ def run_shogi_generated_data_training_cycle(
             "max_plies": config.max_plies,
             "simulations": config.simulations,
             "evaluation_batch_size": config.evaluation_batch_size,
+            "checkpoint_device": config.device,
             "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
         },
     )
@@ -339,6 +341,7 @@ def run_shogi_online_replay(
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
+            checkpoint_device=config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
         )
         split_shogi_game_records_jsonl(
@@ -558,6 +561,7 @@ def _run_generate_games(
     max_plies: int,
     simulations: int,
     evaluation_batch_size: int,
+    checkpoint_device: str,
     mcts_move_time_limit_sec: float | None,
 ) -> None:
     if opponent == "yaneuraou" and not yaneuraou:
@@ -576,6 +580,8 @@ def _run_generate_games(
         str(simulations),
         "--black-checkpoint-evaluation-batch-size",
         str(evaluation_batch_size),
+        "--black-checkpoint-device",
+        checkpoint_device,
         "--games",
         str(games),
         "--max-plies",
@@ -609,6 +615,8 @@ def _run_generate_games(
                 str(simulations),
                 "--white-checkpoint-evaluation-batch-size",
                 str(evaluation_batch_size),
+                "--white-checkpoint-device",
+                checkpoint_device,
             ]
         )
         if mcts_move_time_limit_sec is not None:

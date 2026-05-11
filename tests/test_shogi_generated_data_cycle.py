@@ -120,6 +120,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         mcts_move_time_limit_sec=9.0,
                         max_steps=5,
                         batch_size=2,
+                        device="cuda",
                     )
                 )
 
@@ -138,6 +139,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-evaluation-batch-size") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-evaluation-batch-size") + 1], "4")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-device") + 1], "cuda")
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-device") + 1], "cuda")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-move-time-limit-sec") + 1], "9.0")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-move-time-limit-sec") + 1], "9.0")
             train_command = run.call_args_list[1].args[0]
@@ -153,6 +156,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "max_plies": 4,
                     "simulations": 3,
                     "evaluation_batch_size": 4,
+                    "checkpoint_device": "cuda",
                     "mcts_move_time_limit_sec": 9.0,
                 },
             )
@@ -187,6 +191,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         yaneuraou="engine-command",
                         engine_go_command="go nodes 2",
                         games=2,
+                        device="cuda",
                     )
                 )
 
@@ -195,6 +200,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "yaneuraou")
             self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-command") + 1], "engine-command")
             self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-go-command") + 1], "go nodes 2")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-device") + 1], "cuda")
+            self.assertNotIn("--white-checkpoint-device", generate_command)
             self.assertNotIn("--black-checkpoint-move-time-limit-sec", generate_command)
             self.assertNotIn("--white-checkpoint-move-time-limit-sec", generate_command)
 
