@@ -45,6 +45,24 @@ def load_shogi_policy_value_checkpoint_state_dict(path: str | Path, *, device: s
     return payload["model_state_dict"]
 
 
+def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, device: str = "cpu") -> object:
+    payload = torch.load(path, map_location=torch.device(device), weights_only=False)
+    if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
+        raise ValueError("unsupported shogi policy value checkpoint schema")
+    from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
+
+    config_payload = payload["config"]
+    return ShogiPolicyValueTrainingConfig(
+        embedding_dim=int(config_payload["embedding_dim"]),
+        hidden_dim=int(config_payload["hidden_dim"]),
+        num_heads=int(config_payload.get("num_heads", 4)),
+        num_layers=int(config_payload.get("num_layers", 1)),
+        use_shared_core=bool(config_payload.get("use_shared_core", False)),
+        policy_loss_weight=float(config_payload.get("policy_loss_weight", 1.0)),
+        value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
+    )
+
+
 def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu") -> nn.Module:
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:

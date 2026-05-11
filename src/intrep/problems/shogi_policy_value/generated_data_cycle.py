@@ -11,6 +11,7 @@ import torch
 
 from intrep.learning.replay_buffer import ReplayBuffer
 from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_training_config,
     load_shogi_policy_value_checkpoint_state_dict,
     save_shogi_policy_value_checkpoint,
     save_shogi_policy_value_state_checkpoint,
@@ -349,18 +350,11 @@ def run_shogi_online_replay(
         eval_examples = _load_generated_policy_value_examples(eval_jsonl)
         replay.extend(new_examples)
         sampled_examples = replay.sample(min(config.replay_sample_size, len(replay)), generator=generator)
+        training_config = _training_config_from_checkpoint(checkpoint, config)
         training_result = train_shogi_policy_value_model(
             sampled_examples,
             eval_examples=eval_examples,
-            config=ShogiPolicyValueTrainingConfig(
-                max_steps=config.max_steps,
-                batch_size=config.batch_size,
-                learning_rate=config.learning_rate,
-                policy_loss_weight=config.policy_loss_weight,
-                value_loss_weight=config.value_loss_weight,
-                device=config.device,
-                num_workers=config.num_workers,
-            ),
+            config=training_config,
             initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=config.device),
         )
         save_shogi_policy_value_checkpoint(checkpoint_path, training_result)
@@ -527,6 +521,27 @@ def _load_generated_policy_value_examples(path: Path) -> list[ShogiPolicyValueEx
         policy_temperature_cp=100.0,
         policy_mate_cp=100000.0,
         score_cp_scale=600.0,
+    )
+
+
+def _training_config_from_checkpoint(
+    checkpoint: Path,
+    config: ShogiOnlineReplayConfig,
+) -> ShogiPolicyValueTrainingConfig:
+    checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint, device=config.device)
+    return ShogiPolicyValueTrainingConfig(
+        max_steps=config.max_steps,
+        batch_size=config.batch_size,
+        learning_rate=config.learning_rate,
+        embedding_dim=checkpoint_config.embedding_dim,
+        hidden_dim=checkpoint_config.hidden_dim,
+        num_heads=checkpoint_config.num_heads,
+        num_layers=checkpoint_config.num_layers,
+        use_shared_core=checkpoint_config.use_shared_core,
+        policy_loss_weight=config.policy_loss_weight,
+        value_loss_weight=config.value_loss_weight,
+        device=config.device,
+        num_workers=config.num_workers,
     )
 
 

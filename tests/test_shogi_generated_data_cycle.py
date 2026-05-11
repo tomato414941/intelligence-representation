@@ -313,6 +313,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             with (
                 patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
                 patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
                 patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
                 patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
                 patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
