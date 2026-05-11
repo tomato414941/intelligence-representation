@@ -114,6 +114,41 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 ),
             )
 
+    def test_rejects_invalid_replay_capacity(self) -> None:
+        examples = shogi_policy_value_examples_from_test_moves(("7g7f",))
+
+        with self.assertRaisesRegex(ValueError, "replay_capacity"):
+            train_shogi_policy_value_model(
+                examples,
+                config=ShogiPolicyValueTrainingConfig(
+                    max_steps=1,
+                    replay_capacity=0,
+                ),
+            )
+
+    def test_training_can_sample_batches_from_replay_buffer(self) -> None:
+        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
+        original_batch_replay_examples = training._batch_replay_examples
+        training._batch_replay_examples = Mock(wraps=original_batch_replay_examples)
+        try:
+            result = train_shogi_policy_value_model(
+                examples,
+                config=ShogiPolicyValueTrainingConfig(
+                    max_steps=2,
+                    batch_size=2,
+                    embedding_dim=8,
+                    hidden_dim=16,
+                    num_heads=2,
+                    replay_capacity=2,
+                ),
+            )
+        finally:
+            replay_batch_call_count = training._batch_replay_examples.call_count
+            training._batch_replay_examples = original_batch_replay_examples
+
+        self.assertEqual(result.metrics.actual_steps, 2)
+        self.assertEqual(replay_batch_call_count, 2)
+
     def test_progress_callback_runs_only_on_progress_interval(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []

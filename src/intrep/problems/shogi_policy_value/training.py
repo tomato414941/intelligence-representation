@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
+from intrep.learning.replay_buffer import ReplayBuffer
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
 from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModel,
@@ -43,6 +44,7 @@ class ShogiPolicyValueTrainingConfig:
     progress_every: int | None = None
     eval_every: int | None = None
     early_stopping_patience: int | None = None
+    replay_capacity: int | None = None
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,8 @@ def train_shogi_policy_value_model(
         raise ValueError("eval_every is required when early_stopping_patience is set")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+    if training_config.replay_capacity is not None and training_config.replay_capacity <= 0:
+        raise ValueError("replay_capacity must be positive")
     if training_config.policy_loss_weight < 0.0:
         raise ValueError("policy_loss_weight must be non-negative")
     if training_config.value_loss_weight < 0.0:
@@ -140,6 +144,13 @@ def train_shogi_policy_value_model(
     device = torch.device(training_config.device)
     dataset = ShogiPolicyValueDataset(examples)
     loader = _build_shogi_policy_value_loader(dataset, training_config, shuffle=True)
+    replay_buffer = _build_replay_buffer(examples, training_config)
+    training_batches = _iter_training_batches(
+        loader=loader,
+        replay_buffer=replay_buffer,
+        batch_size=training_config.batch_size,
+        seed=training_config.seed,
+    )
     train_eval_examples = _limit_examples(examples, training_config.max_train_eval_examples)
     train_eval_dataset = ShogiPolicyValueDataset(train_eval_examples)
     train_eval_loader = _build_shogi_policy_value_loader(train_eval_dataset, training_config, shuffle=False)
@@ -177,74 +188,70 @@ def train_shogi_policy_value_model(
     stopped_early = False
     started = time.monotonic()
     while step < training_config.max_steps:
-        for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
-            position_token_ids = position_token_ids.to(device)
-            candidate_move_features = candidate_move_features.to(device)
-            candidate_mask = candidate_mask.to(device)
-            labels = labels.to(device)
-            policy_targets = policy_targets.to(device)
-            value_targets = value_targets.to(device)
-            optimizer.zero_grad(set_to_none=True)
-            value_mask = torch.isfinite(value_targets)
-            if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
-                value_predictions = model.predict_value(position_token_ids)
-                loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
-            elif training_config.value_loss_weight > 0.0 and value_mask.any():
-                logits, value_predictions = _forward_policy_value(
-                    model,
-                    position_token_ids,
-                    candidate_move_features,
-                    candidate_mask,
-                )
-                policy_loss = _policy_target_loss(logits, policy_targets)
-                loss = training_config.policy_loss_weight * policy_loss
+        position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets = next(training_batches)
+        position_token_ids = position_token_ids.to(device)
+        candidate_move_features = candidate_move_features.to(device)
+        candidate_mask = candidate_mask.to(device)
+        labels = labels.to(device)
+        policy_targets = policy_targets.to(device)
+        value_targets = value_targets.to(device)
+        optimizer.zero_grad(set_to_none=True)
+        value_mask = torch.isfinite(value_targets)
+        if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
+            value_predictions = model.predict_value(position_token_ids)
+            loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
+        elif training_config.value_loss_weight > 0.0 and value_mask.any():
+            logits, value_predictions = _forward_policy_value(
+                model,
+                position_token_ids,
+                candidate_move_features,
+                candidate_mask,
+            )
+            policy_loss = _policy_target_loss(logits, policy_targets)
+            loss = training_config.policy_loss_weight * policy_loss
+        else:
+            logits = model(position_token_ids, candidate_move_features, candidate_mask)
+            value_predictions = None
+            policy_loss = _policy_target_loss(logits, policy_targets)
+            loss = training_config.policy_loss_weight * policy_loss
+        if value_predictions is not None:
+            value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+            loss = loss + training_config.value_loss_weight * value_loss
+        loss.backward()
+        optimizer.step()
+        step += 1
+        if training_config.log_every is not None and step % training_config.log_every == 0:
+            _log_training_progress(step, training_config.max_steps, started, loss, device)
+        eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
+        if training_config.eval_every is not None and step % training_config.eval_every == 0:
+            eval_step_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
+            if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
+                best_model_state_dict = copy.deepcopy(model.state_dict())
+                no_improvement_eval_count = 0
             else:
-                logits = model(position_token_ids, candidate_move_features, candidate_mask)
-                value_predictions = None
-                policy_loss = _policy_target_loss(logits, policy_targets)
-                loss = training_config.policy_loss_weight * policy_loss
-            if value_predictions is not None:
-                value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
-                loss = loss + training_config.value_loss_weight * value_loss
-            loss.backward()
-            optimizer.step()
-            step += 1
-            if training_config.log_every is not None and step % training_config.log_every == 0:
-                _log_training_progress(step, training_config.max_steps, started, loss, device)
-            eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
-            if training_config.eval_every is not None and step % training_config.eval_every == 0:
-                eval_step_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
-                if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
-                    best_model_state_dict = copy.deepcopy(model.state_dict())
-                    no_improvement_eval_count = 0
-                else:
-                    no_improvement_eval_count += 1
-                model.train()
-            if (
-                progress_callback is not None
-                and training_config.progress_every is not None
-                and step % training_config.progress_every == 0
-            ):
-                progress_callback(
-                    ShogiPolicyValueTrainingProgress(
-                        step=step,
-                        max_steps=training_config.max_steps,
-                        loss=float(loss.detach().cpu().item()),
-                        elapsed_seconds=time.monotonic() - started,
-                        model=model,
-                        config=training_config,
-                        eval_metrics=eval_step_metrics,
-                    )
+                no_improvement_eval_count += 1
+            model.train()
+        if (
+            progress_callback is not None
+            and training_config.progress_every is not None
+            and step % training_config.progress_every == 0
+        ):
+            progress_callback(
+                ShogiPolicyValueTrainingProgress(
+                    step=step,
+                    max_steps=training_config.max_steps,
+                    loss=float(loss.detach().cpu().item()),
+                    elapsed_seconds=time.monotonic() - started,
+                    model=model,
+                    config=training_config,
+                    eval_metrics=eval_step_metrics,
                 )
-            if (
-                training_config.early_stopping_patience is not None
-                and no_improvement_eval_count >= training_config.early_stopping_patience
-            ):
-                stopped_early = True
-                break
-            if step >= training_config.max_steps:
-                break
-        if stopped_early:
+            )
+        if (
+            training_config.early_stopping_patience is not None
+            and no_improvement_eval_count >= training_config.early_stopping_patience
+        ):
+            stopped_early = True
             break
 
     final_metrics = evaluate_shogi_policy_value_metrics(model, train_eval_loader)
@@ -370,6 +377,42 @@ def _build_shogi_policy_value_loader(
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
     )
+
+
+def _build_replay_buffer(
+    examples: Sequence[ShogiPolicyValueExample],
+    config: ShogiPolicyValueTrainingConfig,
+) -> ReplayBuffer[ShogiPolicyValueExample] | None:
+    if config.replay_capacity is None:
+        return None
+    buffer = ReplayBuffer[ShogiPolicyValueExample](capacity=config.replay_capacity)
+    buffer.extend(examples)
+    return buffer
+
+
+def _iter_training_batches(
+    *,
+    loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    replay_buffer: ReplayBuffer[ShogiPolicyValueExample] | None,
+    batch_size: int,
+    seed: int,
+):
+    if replay_buffer is None:
+        while True:
+            yield from loader
+    else:
+        generator = torch.Generator().manual_seed(seed)
+        while True:
+            sample_size = min(batch_size, len(replay_buffer))
+            yield _batch_replay_examples(replay_buffer.sample(sample_size, generator=generator))
+
+
+def _batch_replay_examples(
+    examples: Sequence[ShogiPolicyValueExample],
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    dataset = ShogiPolicyValueDataset(examples)
+    columns = tuple(zip(*(dataset[index] for index in range(len(dataset)))))
+    return tuple(torch.stack(column) for column in columns)  # type: ignore[return-value]
 
 
 def _policy_target_loss(logits: torch.Tensor, policy_targets: torch.Tensor) -> torch.Tensor:

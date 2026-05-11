@@ -128,6 +128,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     "1",
                     "--early-stopping-patience",
                     "1",
+                    "--replay-capacity",
+                    "2",
                     "--num-workers",
                     "0",
                 ],
@@ -145,6 +147,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertIsNotNone(metrics["metrics"]["best_eval_loss"])
             self.assertEqual(metrics["config"]["num_workers"], 0)
             self.assertEqual(metrics["config"]["early_stopping_patience"], 1)
+            self.assertEqual(metrics["config"]["replay_capacity"], 2)
             self.assertEqual(metrics["config"]["policy_loss_weight"], 1.0)
             self.assertEqual(metrics["config"]["value_loss_weight"], 0.0)
             self.assertEqual(metrics["raw_train_case_count"], 2)
