@@ -50,7 +50,7 @@ Context:
 
 Measured results:
 
-| Case | Parallel games | Simulations | Eval batch | Avg plies | Wall sec | Plies/sec |
+| Case | Concurrent games per process | MCTS simulations | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `p1_b16` | 1 | 16 | 16 | 110.5 | 55.00 | 8.04 |
 | `p2_b16` | 2 | 16 | 16 | 304.5 | 114.64 | 10.62 |
@@ -85,7 +85,7 @@ Context:
 
 Measured results:
 
-| Case | Games | Parallel games | Simulations | Eval batch | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | CPU observation | Notes |
+| Case | Total games | Concurrent games per process | MCTS simulations | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | CPU observation | Notes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
 | `p4_s16_b32` | 4 | 4 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
 | `p8_s16_b32` | 8 | 8 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
@@ -104,3 +104,6 @@ Measured results:
 - Increasing simulations from 16 to 32 reduced throughput in this grid.
 - Process-level game parallelism is still unresolved. Current `parallel-games`
   batches multiple active games inside one Python process.
+- Current measurements do not use in-tree leaf selection parallelism; batching
+  comes from multiple active games, not multiple pending leaves from one MCTS
+  tree.
