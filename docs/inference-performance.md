@@ -6,16 +6,18 @@ not a run log and it is not a cloud cost ledger.
 `runs/` is disposable. Measurements that should survive must be summarized here
 or in a promoted model note.
 
-## Current Observations
+## Current Decision Status
 
-- A 2026-05-10 secure RTX 5090 smoke against YaneuraOu with MCTS2048 and
-  evaluation batch size 64 stayed below 6 seconds per measured move request. It
-  covered 1 game and 16 plies.
-- Short deterministic grids kept MCTS4096 under 10 seconds per measured move
-  request. A later YaneuraOu workload with MCTS4096 averaged more than 10
-  seconds per measured move request and had a higher tail.
-- The entries below mix RTX 4090 and RTX 5090, secure and community RunPod
-  hosts, and multiple PyTorch/CUDA images.
+There is no current Floodgate-ready latency baseline yet.
+
+The next baseline should measure a current `shogi-arena-agent` entrypoint with
+`board_backend=cshogi`, a YaneuraOu workload, and enough plies to expose tail
+latency. Short deterministic grids and smoke runs below are historical
+measurements, not current deployment evidence.
+
+The strongest current warning is that a 2026-05-10 YaneuraOu workload with
+MCTS4096 and evaluation batch size 64 averaged more than 10 seconds per move
+request. Most of that wall time was outside model execution.
 
 ## Required Context
 
@@ -40,7 +42,25 @@ Record enough context to explain latency and throughput:
 - `output_count`: number of output units produced or evaluated.
 - `output_per_sec`: `output_count / request_wall_time_sec`.
 
-## Catalog
+## Current Baseline
+
+No current baseline is recorded.
+
+Minimum context for the next baseline:
+
+- entrypoint: `evaluate_shogi_players.py` or `python -m shogi_arena_agent`
+- board backend: `cshogi`
+- workload: YaneuraOu, max plies high enough for tail latency
+- MCTS simulations per move
+- NN leaf eval batch limit
+- move time limit
+- GPU, vCPU, and PyTorch/CUDA stack
+
+## Historical Measurements
+
+These entries preserve measured facts. Do not use short deterministic grids,
+short max-plies smoke runs, or older runtime stacks as current Floodgate
+deployment evidence.
 
 ### Search-Driven Repeated Calls
 
@@ -72,6 +92,8 @@ Measured performance:
 
 Notes:
 
+- Historical status: low-simulation baseline; not a current Floodgate candidate
+  setting.
 - Result: 0-4-0, all game_over, avg 58.0 plies
 - GPU: NVIDIA GeForce RTX 4090
 - Measured: 2026-05-09
@@ -101,6 +123,8 @@ Measured performance:
 
 Notes:
 
+- Historical status: batch-mechanism check against a deterministic legal player;
+  not a deployment workload.
 - Result: no illegal moves; batch 8 had one game end before max plies, so its
   request count was 36 instead of 40.
 - Batched evaluation reduced model calls and model wall time substantially, but
@@ -141,7 +165,10 @@ Measured performance:
 
 Notes:
 
-- All measured settings stayed below a 10-second move wall-clock budget.
+- Historical status: short deterministic grid; use only for local speed
+  direction.
+- All measured settings stayed below a 10-second move wall-clock budget in this
+  short workload.
 - Batch size 32 was fastest for every measured MCTS simulation count in this
   small grid.
 - The workload is short and deterministic, so use it for speed direction, not
@@ -182,6 +209,8 @@ Measured performance:
 
 Notes:
 
+- Historical status: short deterministic grid; do not treat its MCTS4096 timing
+  as current Floodgate evidence.
 - This run used a different RunPod image than the preceding grid because some
   hosts could not start the CUDA 12.8 image with their installed NVIDIA driver.
 - Batch 64 was fastest at MCTS1024, MCTS2048, and MCTS8192; batch 128 was
@@ -230,6 +259,8 @@ Result:
 
 Notes:
 
+- Historical status: useful CPU-overhead warning, but not a current baseline
+  because it used max 80 plies and an older runtime stack.
 - This arena-like workload exceeded a 10-second move wall-clock budget on
   average and had a much higher tail than the short deterministic grids.
 - The main cost was non-model search overhead, not model wall time.
@@ -270,6 +301,7 @@ Result:
 
 Notes:
 
+- Historical status: smoke only; too few plies for tail-latency conclusions.
 - This was a shared RunPod runner smoke, not a strength or stable performance
   benchmark.
 - The run completed setup, YaneuraOu build, evaluation, output sync, timings
