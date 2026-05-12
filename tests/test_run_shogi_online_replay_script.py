@@ -21,7 +21,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             replay_capacity=8,
             experience_store_dir=None,
             replay_seed_data_selection=None,
+            training_eval_data_selection=None,
             preloaded_examples=0,
+            fixed_eval_examples=0,
             cycles=(),
         )
         run_replay = Mock(return_value=result)
@@ -48,6 +50,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "data/shogi/experiences/online",
                     "--replay-seed-data-selection",
                     "data/shogi/training-data-bundles/online/data-selection.json",
+                    "--training-eval-data-selection",
+                    "data/shogi/training-data-bundles/online/data-selection.json",
                     "--games",
                     "4",
                     "--parallel-games",
@@ -73,6 +77,10 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
         self.assertEqual(
             config.replay_seed_data_selection,
+            Path("data/shogi/training-data-bundles/online/data-selection.json"),
+        )
+        self.assertEqual(
+            config.training_eval_data_selection,
             Path("data/shogi/training-data-bundles/online/data-selection.json"),
         )
         self.assertEqual(config.games, 4)

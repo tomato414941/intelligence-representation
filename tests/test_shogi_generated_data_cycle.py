@@ -405,6 +405,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 encoding="utf-8",
             )
             train_batches: list[int] = []
+            eval_batches: list[int] = []
 
             def fake_run(command: list[str], **_kwargs: object) -> None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
@@ -413,6 +414,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
+                eval_batches.append(len(eval_examples))
                 return _training_result(config)
 
             with (
@@ -436,6 +438,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         min_replay_size=1,
                         experience_store_dir=store_dir,
                         replay_seed_data_selection=bundle_dir / "data-selection.json",
+                        training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
                         games=2,
                         max_steps=1,
@@ -443,17 +446,24 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(result.preloaded_examples, 2)
+            self.assertEqual(result.fixed_eval_examples, 2)
             self.assertEqual(result.experience_store_dir, store_dir)
             self.assertEqual(result.replay_seed_data_selection, bundle_dir / "data-selection.json")
+            self.assertEqual(result.training_eval_data_selection, bundle_dir / "data-selection.json")
             self.assertEqual(train_batches, [4])
+            self.assertEqual(eval_batches, [2])
             self.assertEqual(result.cycles[0].replay_size, 4)
             self.assertIsNotNone(result.cycles[0].experience_store_append)
             self.assertEqual(result.cycles[0].experience_store_append["added_games"], 2)
             self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), generated_records)
             metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["preloaded_examples"], 2)
+            self.assertEqual(metrics["fixed_eval_examples"], 2)
+            self.assertEqual(metrics["generated_eval_examples"], 2)
+            self.assertEqual(metrics["training_eval_source"], "fixed")
             self.assertEqual(metrics["experience_store_dir"], str(store_dir))
             self.assertEqual(metrics["replay_seed_data_selection"], str(bundle_dir / "data-selection.json"))
+            self.assertEqual(metrics["training_eval_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["experience_store_append"]["total_games"], 2)
 
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
