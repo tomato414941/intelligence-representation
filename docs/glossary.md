@@ -237,6 +237,18 @@ because the search tree statistics have not yet been updated by backup.
 The current shogi self-play implementation batches across active games. It does
 not implement in-tree leaf selection parallelism.
 
+### Concurrent Games Per Process
+
+Concurrent Games Per Process is the number of games advanced together inside one
+generator process.
+
+In the current shogi self-play CLI, this is the `--parallel-games` value. It is
+not process-level parallelism. It supplies leaf positions from multiple active
+games so neural-network evaluation can be batched.
+
+Do not confuse this with Total Games, which is the total number of games to
+generate for a run or measurement.
+
 ## Data Pipeline Terms
 
 ### Source Record
