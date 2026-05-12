@@ -130,6 +130,44 @@ Observed facts:
   run it exposed a larger memory total than the Pod's 31 GiB setting. Use
   `Generator RSS` for process-scoped memory comparison.
 
+## 2026-05-12 RTX 4000 Ada Generation Worker Scaling Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| data center | `EU-RO-1` requested |
+| vCPU/RAM | 6 vCPU, 31 GiB RAM |
+| RunPod rate | $0.20/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | 906.726s |
+| remote workload runtime | 841.622s |
+| estimated total cost | about $0.05 |
+
+Measured results:
+
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `w1_c16_s16_b32` | 16 | 16 | 1 | 16 | 32 | 195.5 | 257.17 | 12.16 | 4.44% | 10.00% | 542 MiB / 20475 MiB | 101.93% | 140.00% | 42275 MiB / 257818 MiB | 968 MiB | 5 of 16 games reached max plies. |
+| `w2_c8_s16_b32` | 16 | 8 | 2 | 16 | 32 | 257.4 | 187.10 | 22.01 | 10.60% | 30.00% | 705 MiB / 20475 MiB | 205.55% | 300.80% | 41610 MiB / 257818 MiB | 1946 MiB | 9 of 16 games reached max plies. |
+| `w4_c8_s16_b32` | 32 | 8 | 4 | 16 | 32 | 215.4 | 178.59 | 38.59 | 24.95% | 58.00% | 1415 MiB / 20475 MiB | 381.92% | 498.30% | 42612 MiB / 257818 MiB | 3793 MiB | 12 of 32 games reached max plies. |
+| `w6_c8_s16_b32` | 48 | 8 | 6 | 16 | 32 | 230.8 | 208.04 | 53.24 | 35.65% | 62.00% | 2113 MiB / 20475 MiB | 478.39% | 569.20% | 44580 MiB / 257818 MiB | 5667 MiB | 22 of 48 games reached max plies. |
+
+Observed facts:
+
+- Throughput increased from 12.16 to 53.24 plies/sec between 1 and 6 generation
+  worker processes.
+- GPU utilization average increased from 4.44% to 35.65%.
+- Generator CPU average increased from about 1.0 core to about 4.8 cores on a
+  6 vCPU Pod.
+- Generator RSS increased from about 1.0 GiB to about 5.5 GiB.
+- The 6-worker case was still below full GPU saturation.
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
@@ -151,3 +189,5 @@ Observed facts:
   process stayed near one CPU core while GPU memory use remained below 500 MiB.
 - The generation worker check recorded higher throughput and higher GPU
   utilization by running multiple generator processes.
+- The generation worker scaling check recorded continued throughput gains
+  through 6 worker processes on a 6 vCPU RTX 4000 Ada Pod.

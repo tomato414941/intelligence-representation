@@ -61,10 +61,10 @@ PYTHON = INTREP / '.venv/bin/python'
 CHECKPOINT = INTREP / 'models/d256-h1024-heads8-l6-shogi/checkpoint.pt'
 OUT = REMOTE / os.environ['MEASURE_OUT']
 CASES = [
-    ('p4_s16_b32', 4, 4, 1, 16, 32),
-    ('p8_s16_b32', 8, 8, 1, 16, 32),
-    ('p16_s16_b32', 16, 16, 1, 16, 32),
+    ('w1_c16_s16_b32', 16, 16, 1, 16, 32),
+    ('w2_c8_s16_b32', 16, 8, 2, 16, 32),
     ('w4_c8_s16_b32', 32, 8, 4, 16, 32),
+    ('w6_c8_s16_b32', 48, 8, 6, 16, 32),
 ]
 
 
