@@ -138,6 +138,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--parallel-games") + 1], "2")
+            self.assertEqual(generate_command[generate_command.index("--progress-every-plies") + 1], "0")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-profile") + 1], "self-play")
@@ -160,6 +161,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "opponent": "self",
                     "games": 2,
                     "parallel_games": 2,
+                    "generation_progress_every_plies": 0,
                     "board_backend": "cshogi",
                     "max_plies": 4,
                     "simulations": 3,

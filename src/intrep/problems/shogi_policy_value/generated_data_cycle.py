@@ -52,6 +52,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
     # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
@@ -81,6 +82,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
     # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
@@ -116,6 +118,7 @@ class ShogiOnlineReplayConfig:
     engine_go_command: str = "go nodes 1"
     games: int = 4
     parallel_games: int = 1
+    generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
     # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
@@ -272,6 +275,7 @@ def run_shogi_generated_data_training_cycle(
         out=games_jsonl,
         games=config.games,
         parallel_games=config.parallel_games,
+        generation_progress_every_plies=config.generation_progress_every_plies,
         board_backend=config.board_backend,
         max_plies=config.max_plies,
         simulations=config.simulations,
@@ -313,6 +317,7 @@ def run_shogi_generated_data_training_cycle(
             "opponent": config.opponent,
             "games": config.games,
             "parallel_games": config.parallel_games,
+            "generation_progress_every_plies": config.generation_progress_every_plies,
             "board_backend": config.board_backend,
             "max_plies": config.max_plies,
             "simulations": config.simulations,
@@ -342,6 +347,7 @@ def run_shogi_generated_data_training_loop(
                 engine_go_command=config.engine_go_command,
                 games=config.games,
                 parallel_games=config.parallel_games,
+                generation_progress_every_plies=config.generation_progress_every_plies,
                 board_backend=config.board_backend,
                 max_plies=config.max_plies,
                 simulations=config.simulations,
@@ -491,6 +497,7 @@ def _generate_online_replay_cycle_experience(
         out=artifacts.games_jsonl,
         games=config.games,
         parallel_games=config.parallel_games,
+        generation_progress_every_plies=config.generation_progress_every_plies,
         board_backend=config.board_backend,
         max_plies=config.max_plies,
         simulations=config.simulations,
@@ -599,6 +606,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("games must be positive")
     if config.parallel_games <= 0:
         raise ValueError("parallel_games must be positive")
+    if config.generation_progress_every_plies < 0:
+        raise ValueError("generation_progress_every_plies must be non-negative")
     if config.max_plies <= 0:
         raise ValueError("max_plies must be positive")
     _warn_short_max_plies(config.max_plies)
@@ -641,6 +650,7 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             engine_go_command=config.engine_go_command,
             games=config.games,
             parallel_games=config.parallel_games,
+            generation_progress_every_plies=config.generation_progress_every_plies,
             board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
@@ -679,6 +689,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             engine_go_command=config.engine_go_command,
             games=config.games,
             parallel_games=config.parallel_games,
+            generation_progress_every_plies=config.generation_progress_every_plies,
             board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
@@ -785,6 +796,7 @@ def _run_generate_games(
     out: Path,
     games: int,
     parallel_games: int,
+    generation_progress_every_plies: int,
     board_backend: str,
     max_plies: int,
     simulations: int,
@@ -816,6 +828,8 @@ def _run_generate_games(
         str(games),
         "--parallel-games",
         str(parallel_games),
+        "--progress-every-plies",
+        str(generation_progress_every_plies),
         "--board-backend",
         board_backend,
         "--max-plies",

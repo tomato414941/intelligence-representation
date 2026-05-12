@@ -56,6 +56,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "4",
                     "--parallel-games",
                     "2",
+                    "--generation-progress-every-plies",
+                    "16",
                     "--board-backend",
                     "cshogi",
                     "--max-steps",
@@ -85,6 +87,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         )
         self.assertEqual(config.games, 4)
         self.assertEqual(config.parallel_games, 2)
+        self.assertEqual(config.generation_progress_every_plies, 16)
         self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_steps, 5)
         self.assertEqual(config.device, "cuda")
