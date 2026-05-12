@@ -55,6 +55,29 @@ Likely contributors:
 
 This is a runtime/search issue, not primarily a model-training issue.
 
+## Additional Observation: Self-Play Generation
+
+The 2026-05-12 RunPod Online Replay confirmation attempted self-play game
+generation with:
+
+```text
+GPU: RTX 5090
+torch: 2.8.0+cu128
+checkpoint: d256-h1024-heads8-l6-shogi
+games: 16
+parallel_games: 16
+MCTS simulations: 128
+evaluation_batch_size: 64
+max plies: 320
+board backend: cshogi
+```
+
+After about 15 minutes, cycle 1 was still inside `generate_shogi_games.py`.
+Spot checks showed low GPU utilization around 2-3% while the Python generation
+process used roughly one CPU core. This suggests the same CPU-side MCTS/game
+orchestration bottleneck also affects training self-play throughput, not only
+arena move latency.
+
 ## Current Position
 
 Do not treat `MCTS4096, evaluation_batch_size=64` as a safe 10-second arena
