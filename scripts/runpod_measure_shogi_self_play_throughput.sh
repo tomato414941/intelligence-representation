@@ -114,6 +114,42 @@ def cpu_sample(root_pid: int) -> float | None:
     return total if seen else None
 
 
+def rss_sample(root_pid: int) -> int | None:
+    pids = {root_pid, *child_pids(root_pid)}
+    total_kib = 0
+    seen = False
+    for pid in pids:
+        try:
+            raw = subprocess.check_output(
+                ['ps', '-p', str(pid), '-o', 'rss='],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except subprocess.CalledProcessError:
+            continue
+        if not raw:
+            continue
+        total_kib += int(raw)
+        seen = True
+    return total_kib if seen else None
+
+
+def system_ram_sample() -> str | None:
+    try:
+        values: dict[str, int] = {}
+        for line in Path('/proc/meminfo').read_text(encoding='utf-8').splitlines():
+            key, value = line.split(':', 1)
+            values[key] = int(value.strip().split()[0])
+    except Exception:
+        return None
+    total = values.get('MemTotal')
+    available = values.get('MemAvailable')
+    if total is None or available is None:
+        return None
+    used = total - available
+    return f'{used // 1024} MiB / {total // 1024} MiB'
+
+
 def load_summary(path: Path) -> dict[str, object]:
     text = path.read_text(encoding='utf-8')
     matches = list(re.finditer(r'^\{', text, flags=re.MULTILINE))
@@ -163,12 +199,15 @@ def run_case(name: str, games: int, parallel_games: int, simulations: int, batch
         while proc.poll() is None:
             gpu_util, gpu_memory = gpu_sample()
             generator_cpu = cpu_sample(proc.pid)
+            generator_rss = rss_sample(proc.pid)
             samples.append(
                 {
                     'elapsed_sec': time.monotonic() - started,
                     'gpu_util': gpu_util,
                     'gpu_memory': gpu_memory,
                     'generator_cpu': generator_cpu,
+                    'generator_rss': generator_rss,
+                    'system_ram': system_ram_sample(),
                 }
             )
             time.sleep(2.0)
@@ -184,6 +223,8 @@ def run_case(name: str, games: int, parallel_games: int, simulations: int, batch
         if isinstance(sample.get('generator_cpu'), int | float)
     ]
     memory_values = [str(sample['gpu_memory']) for sample in samples if sample.get('gpu_memory')]
+    rss_values = [int(sample['generator_rss']) for sample in samples if isinstance(sample.get('generator_rss'), int)]
+    system_ram_values = [str(sample['system_ram']) for sample in samples if sample.get('system_ram')]
     result = {
         'case': name,
         'total_games': games,
@@ -198,6 +239,8 @@ def run_case(name: str, games: int, parallel_games: int, simulations: int, batch
         'gpu_memory_used': max(memory_values, key=lambda value: int(value.split()[0])) if memory_values else None,
         'generator_cpu_avg': sum(cpu_values) / len(cpu_values) if cpu_values else None,
         'generator_cpu_max': max(cpu_values) if cpu_values else None,
+        'system_ram_used': max(system_ram_values, key=lambda value: int(value.split()[0])) if system_ram_values else None,
+        'generator_rss': f'{max(rss_values) // 1024} MiB' if rss_values else None,
         'sample_count': len(samples),
         'summary': summary,
     }
