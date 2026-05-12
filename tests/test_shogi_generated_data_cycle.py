@@ -25,6 +25,7 @@ from intrep.problems.shogi_policy_value.training import (
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
+    load_shogi_game_records_jsonl,
     shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
@@ -354,6 +355,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(result.cycles[0].appended_examples, 2)
             self.assertEqual(result.cycles[0].replay_size, 2)
             self.assertEqual(result.cycles[0].sampled_examples, 2)
+            self.assertIsNone(result.cycles[0].experience_store_append)
             self.assertEqual(result.cycles[1].appended_examples, 2)
             self.assertEqual(result.cycles[1].replay_size, 4)
             self.assertEqual(result.cycles[1].sampled_examples, 3)
@@ -362,6 +364,97 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
                 str(result.cycles[0].best_checkpoint.resolve()),
             )
+
+    def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            store_dir = root / "store"
+            bundle_dir = root / "bundle"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            seed_train_record = _record(("9g9f", "9c9d"), "black")
+            seed_eval_record = _record(("1g1f", "1c1d"), "white")
+            generated_records = [
+                _record(("7g7f", "3c3d"), "black"),
+                _record(("2g2f", "8c8d"), "white"),
+            ]
+            write_shogi_game_records_jsonl(bundle_dir / "train-games.jsonl", [seed_train_record])
+            write_shogi_game_records_jsonl(bundle_dir / "eval-games.jsonl", [seed_eval_record])
+            (bundle_dir / "data-selection.json").write_text(
+                json.dumps(
+                    {
+                        "name": "seed-bundle",
+                        "objective": "shogi move-choice policy/value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "analysis_sources": [],
+                        "train_sources": [{"kind": "game_records_jsonl", "path": "train-games.jsonl"}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            train_batches: list[int] = []
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(out_path, generated_records)
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                train_batches.append(len(examples))
+                return _training_result(config)
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=1,
+                        replay_capacity=8,
+                        replay_sample_size=8,
+                        min_replay_size=1,
+                        experience_store_dir=store_dir,
+                        replay_seed_data_selection=bundle_dir / "data-selection.json",
+                        arena_repo=arena_repo,
+                        games=2,
+                        max_steps=1,
+                    )
+                )
+
+            self.assertEqual(result.preloaded_examples, 2)
+            self.assertEqual(result.experience_store_dir, store_dir)
+            self.assertEqual(result.replay_seed_data_selection, bundle_dir / "data-selection.json")
+            self.assertEqual(train_batches, [4])
+            self.assertEqual(result.cycles[0].replay_size, 4)
+            self.assertIsNotNone(result.cycles[0].experience_store_append)
+            self.assertEqual(result.cycles[0].experience_store_append["added_games"], 2)
+            self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), generated_records)
+            metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["preloaded_examples"], 2)
+            self.assertEqual(metrics["experience_store_dir"], str(store_dir))
+            self.assertEqual(metrics["replay_seed_data_selection"], str(bundle_dir / "data-selection.json"))
+            self.assertEqual(metrics["experience_store_append"]["total_games"], 2)
 
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

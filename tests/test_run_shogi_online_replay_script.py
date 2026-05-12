@@ -19,6 +19,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             final_checkpoint=Path("/tmp/online/cycle-0002/best-checkpoint.pt"),
             next_checkpoint="best",
             replay_capacity=8,
+            experience_store_dir=None,
+            replay_seed_data_selection=None,
+            preloaded_examples=0,
             cycles=(),
         )
         run_replay = Mock(return_value=result)
@@ -41,6 +44,10 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "3",
                     "--min-replay-size",
                     "2",
+                    "--experience-store-dir",
+                    "data/shogi/experiences/online",
+                    "--replay-seed-data-selection",
+                    "data/shogi/training-data-bundles/online/data-selection.json",
                     "--games",
                     "4",
                     "--parallel-games",
@@ -63,6 +70,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.replay_capacity, 8)
         self.assertEqual(config.replay_sample_size, 3)
         self.assertEqual(config.min_replay_size, 2)
+        self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
+        self.assertEqual(
+            config.replay_seed_data_selection,
+            Path("data/shogi/training-data-bundles/online/data-selection.json"),
+        )
         self.assertEqual(config.games, 4)
         self.assertEqual(config.parallel_games, 2)
         self.assertEqual(config.board_backend, "cshogi")

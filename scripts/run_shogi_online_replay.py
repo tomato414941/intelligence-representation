@@ -22,6 +22,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
     parser.add_argument("--replay-sample-size", type=int, default=DEFAULT_REPLAY_SAMPLE_SIZE)
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
+    parser.add_argument("--experience-store-dir", type=Path)
+    parser.add_argument("--replay-seed-data-selection", type=Path)
     parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
     parser.add_argument("--opponent", choices=("self", "yaneuraou"), default="self")
@@ -53,6 +55,8 @@ def main(argv: list[str] | None = None) -> None:
             replay_capacity=args.replay_capacity,
             replay_sample_size=args.replay_sample_size,
             min_replay_size=args.min_replay_size,
+            experience_store_dir=args.experience_store_dir,
+            replay_seed_data_selection=args.replay_seed_data_selection,
             next_checkpoint=args.next_checkpoint,
             arena_repo=args.arena_repo,
             opponent=args.opponent,

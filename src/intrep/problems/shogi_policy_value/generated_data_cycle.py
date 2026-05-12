@@ -22,6 +22,8 @@ from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
     ShogiPolicyValueDataSelectionSource,
     ShogiPolicyValueTargetConstruction,
+    load_shogi_policy_value_data_selection,
+    load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
@@ -29,6 +31,7 @@ from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     train_shogi_policy_value_model,
 )
+from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 STANDARD_SHOGI_MAX_PLIES = 320
@@ -102,6 +105,8 @@ class ShogiOnlineReplayConfig:
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
     replay_sample_size: int = DEFAULT_REPLAY_SAMPLE_SIZE
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
+    experience_store_dir: Path | None = None
+    replay_seed_data_selection: Path | None = None
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
@@ -180,6 +185,7 @@ class ShogiOnlineReplayCycleResult:
     replay_size: int
     sampled_examples: int
     training_skipped: bool
+    experience_store_append: dict[str, object] | None
     checkpoint: Path
     best_checkpoint: Path
     metrics: Path
@@ -193,6 +199,7 @@ class ShogiOnlineReplayCycleResult:
             "replay_size": self.replay_size,
             "sampled_examples": self.sampled_examples,
             "training_skipped": self.training_skipped,
+            "experience_store_append": self.experience_store_append,
             "checkpoint": str(self.checkpoint),
             "best_checkpoint": str(self.best_checkpoint),
             "metrics": str(self.metrics),
@@ -206,6 +213,9 @@ class ShogiOnlineReplayResult:
     final_checkpoint: Path
     next_checkpoint: str
     replay_capacity: int
+    experience_store_dir: Path | None
+    replay_seed_data_selection: Path | None
+    preloaded_examples: int
     cycles: tuple[ShogiOnlineReplayCycleResult, ...]
 
     def to_json(self) -> dict[str, object]:
@@ -215,6 +225,9 @@ class ShogiOnlineReplayResult:
             "final_checkpoint": str(self.final_checkpoint),
             "next_checkpoint": self.next_checkpoint,
             "replay_capacity": self.replay_capacity,
+            "experience_store_dir": str(self.experience_store_dir) if self.experience_store_dir is not None else None,
+            "replay_seed_data_selection": str(self.replay_seed_data_selection) if self.replay_seed_data_selection is not None else None,
+            "preloaded_examples": self.preloaded_examples,
             "cycles": [cycle.to_json() for cycle in self.cycles],
         }
 
@@ -346,6 +359,8 @@ def run_shogi_online_replay(
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = config.checkpoint
     replay = ReplayBuffer[ShogiPolicyValueExample](capacity=config.replay_capacity)
+    preloaded_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
+    replay.extend(preloaded_examples)
     generator = torch.Generator().manual_seed(config.seed)
     cycle_results: list[ShogiOnlineReplayCycleResult] = []
     for cycle_index in range(1, config.cycles + 1):
@@ -373,6 +388,10 @@ def run_shogi_online_replay(
             checkpoint_device=config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
         )
+        experience_store_append = _append_to_experience_store(
+            store_dir=config.experience_store_dir,
+            games_jsonl=games_jsonl,
+        )
         split_shogi_game_records_jsonl(
             games_jsonl=games_jsonl,
             train_jsonl=train_jsonl,
@@ -395,6 +414,10 @@ def run_shogi_online_replay(
                 "appended_examples": len(new_examples),
                 "replay_size": len(replay),
                 "min_replay_size": config.min_replay_size,
+                "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
+                "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
+                "preloaded_examples": len(preloaded_examples),
+                "experience_store_append": experience_store_append,
                 "sampled_examples": 0,
                 "init_checkpoint_path": str(checkpoint),
                 "checkpoint_path": str(effective_checkpoint),
@@ -430,6 +453,10 @@ def run_shogi_online_replay(
                 "appended_examples": len(new_examples),
                 "replay_size": len(replay),
                 "min_replay_size": config.min_replay_size,
+                "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
+                "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
+                "preloaded_examples": len(preloaded_examples),
+                "experience_store_append": experience_store_append,
                 "sampled_examples": len(sampled_examples),
                 "init_checkpoint_path": str(checkpoint),
                 "checkpoint_path": str(effective_checkpoint),
@@ -446,6 +473,7 @@ def run_shogi_online_replay(
             replay_size=len(replay),
             sampled_examples=len(sampled_examples),
             training_skipped=training_skipped,
+            experience_store_append=experience_store_append,
             checkpoint=effective_checkpoint,
             best_checkpoint=effective_best_checkpoint,
             metrics=metrics_path,
@@ -458,6 +486,9 @@ def run_shogi_online_replay(
         final_checkpoint=checkpoint,
         next_checkpoint=config.next_checkpoint,
         replay_capacity=config.replay_capacity,
+        experience_store_dir=config.experience_store_dir,
+        replay_seed_data_selection=config.replay_seed_data_selection,
+        preloaded_examples=len(preloaded_examples),
         cycles=tuple(cycle_results),
     )
 
@@ -566,6 +597,20 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             num_workers=config.num_workers,
         )
     )
+
+
+def _load_replay_seed_examples(data_selection_path: Path | None) -> list[ShogiPolicyValueExample]:
+    if data_selection_path is None:
+        return []
+    selection = load_shogi_policy_value_data_selection(data_selection_path)
+    train_examples, _eval_examples = load_shogi_policy_value_data_selection_examples(selection)
+    return train_examples
+
+
+def _append_to_experience_store(*, store_dir: Path | None, games_jsonl: Path) -> dict[str, object] | None:
+    if store_dir is None:
+        return None
+    return append_shogi_experience_store(input_path=games_jsonl, store_dir=store_dir)
 
 
 def _promoted_checkpoint(result: ShogiGeneratedDataTrainingCycleResult, *, policy: str) -> Path:
