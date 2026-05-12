@@ -215,6 +215,28 @@ transition record, not to `ShogiEngineAnalysis`.
 Engine Analysis may later be used as Evidence by a problem-specific target
 construction rule.
 
+### MCTS Leaf Parallelization
+
+MCTS Leaf Parallelization is a Monte Carlo Tree Search parallelization pattern
+where one search tree selects multiple pending leaf nodes before neural
+evaluation and backup.
+
+It is different from running multiple games at the same time. It is also
+different from the neural evaluation batch size:
+
+- parallel games: multiple games or root positions are active at once
+- MCTS leaf parallelization: one MCTS tree has multiple in-flight leaf
+  selections
+- evaluation batch size: the maximum number of selected leaf positions sent to
+  the model in one forward pass
+
+Without an in-flight marker such as virtual loss or virtual visits, multiple
+parallel selections can choose the same promising path or even the same leaf,
+because the search tree statistics have not yet been updated by backup.
+
+The current shogi self-play implementation batches across active games. It does
+not implement MCTS leaf parallelization within one tree.
+
 ## Data Pipeline Terms
 
 ### Source Record
