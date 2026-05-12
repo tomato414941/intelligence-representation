@@ -73,6 +73,7 @@ Context:
 | Item | Value |
 | --- | --- |
 | GPU | RunPod RTX 4000 Ada Generation |
+| vCPU/RAM | 6 vCPU, 31 GiB RAM |
 | RunPod rate | $0.20/hr observed at run time |
 | torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
 | model | `d256-h1024-heads8-l6-shogi` |
