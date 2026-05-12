@@ -63,6 +63,10 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "3",
                     "--evaluation-batch-size",
                     "4",
+                    "--generation-worker-processes",
+                    "3",
+                    "--seed",
+                    "11",
                     "--mcts-move-time-limit-sec",
                     "9.0",
                     "--eval-ratio",
@@ -97,6 +101,8 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.max_plies, 4)
         self.assertEqual(config.simulations, 3)
         self.assertEqual(config.evaluation_batch_size, 4)
+        self.assertEqual(config.generation_worker_processes, 3)
+        self.assertEqual(config.seed, 11)
         self.assertEqual(config.mcts_move_time_limit_sec, 9.0)
         self.assertEqual(config.eval_ratio, 0.5)
         self.assertEqual(config.max_steps, 5)

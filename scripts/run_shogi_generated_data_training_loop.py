@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
     parser.add_argument("--simulations", type=int, default=16)
     parser.add_argument("--evaluation-batch-size", type=int, default=1)
+    parser.add_argument("--generation-worker-processes", type=int, default=1)
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
     parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--max-steps", type=int, default=100)
@@ -54,6 +56,8 @@ def main(argv: list[str] | None = None) -> None:
             max_plies=args.max_plies,
             simulations=args.simulations,
             evaluation_batch_size=args.evaluation_batch_size,
+            generation_worker_processes=args.generation_worker_processes,
+            seed=args.seed,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
             eval_ratio=args.eval_ratio,
             max_steps=args.max_steps,

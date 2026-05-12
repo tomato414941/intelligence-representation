@@ -120,6 +120,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         max_plies=4,
                         simulations=3,
                         evaluation_batch_size=4,
+                        generation_worker_processes=3,
+                        seed=11,
                         mcts_move_time_limit_sec=9.0,
                         max_steps=5,
                         batch_size=2,
@@ -139,6 +141,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--parallel-games") + 1], "2")
+            self.assertEqual(generate_command[generate_command.index("--generation-worker-processes") + 1], "3")
+            self.assertEqual(generate_command[generate_command.index("--seed") + 1], "11")
             self.assertEqual(generate_command[generate_command.index("--progress-every-plies") + 1], "0")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--white-checkpoint-simulations") + 1], "3")
@@ -167,6 +171,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "max_plies": 4,
                     "simulations": 3,
                     "evaluation_batch_size": 4,
+                    "generation_worker_processes": 3,
+                    "seed": 11,
                     "checkpoint_device": "cuda",
                     "mcts_move_time_limit_sec": 9.0,
                 },

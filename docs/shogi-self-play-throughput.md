@@ -86,11 +86,11 @@ Context:
 
 Measured results:
 
-| Case | Total games | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
-| `p4_s16_b32` | 4 | 4 | 16 | 32 | 176.5 | 64.57 | 10.93 | 5.78% | 10.00% | 322 MiB / 20475 MiB | 106.28% | 140.00% | not recorded | not recorded | 1 of 4 games reached max plies. |
-| `p8_s16_b32` | 8 | 8 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | not recorded | not recorded | 6 of 8 games reached max plies. |
-| `p16_s16_b32` | 16 | 16 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | not recorded | not recorded | 10 of 16 games reached max plies. |
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `p4_s16_b32` | 4 | 4 | 1 | 16 | 32 | 176.5 | 64.57 | 10.93 | 5.78% | 10.00% | 322 MiB / 20475 MiB | 106.28% | 140.00% | not recorded | not recorded | 1 of 4 games reached max plies. |
+| `p8_s16_b32` | 8 | 8 | 1 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | not recorded | not recorded | 6 of 8 games reached max plies. |
+| `p16_s16_b32` | 16 | 16 | 1 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | not recorded | not recorded | 10 of 16 games reached max plies. |
 
 ## Notes
 
@@ -103,8 +103,9 @@ Measured results:
 - The throughput grid did not record GPU utilization over time. It confirms CUDA
   execution, but not whether the GPU was saturated.
 - Increasing simulations from 16 to 32 reduced throughput in this grid.
-- Process-level game parallelism is still unresolved. Current `parallel-games`
-  batches multiple active games inside one Python process.
+- Process-level game parallelism is exposed as generation worker processes.
+  `parallel-games` still batches multiple active games inside one Python
+  process.
 - Current measurements do not use in-tree leaf selection parallelism; batching
   comes from multiple active games, not multiple pending leaves from one MCTS
   tree.

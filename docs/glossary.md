@@ -249,6 +249,19 @@ games so neural-network evaluation can be batched.
 Do not confuse this with Total Games, which is the total number of games to
 generate for a run or measurement.
 
+### Generation Worker Processes
+
+Generation Worker Processes is the number of OS processes used by shogi
+self-play generation.
+
+Each worker process owns its own generator state, model evaluator, and active
+games. This is process-level parallelism and is separate from Concurrent Games
+Per Process, which controls how many games one worker advances together.
+
+For example, `generation worker processes = 4` and
+`concurrent games per process = 8` means up to 32 active games are spread across
+four Python processes.
+
 ### MCTS Simulations Per Move
 
 MCTS Simulations Per Move is the number of Monte Carlo Tree Search simulations

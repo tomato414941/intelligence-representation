@@ -59,6 +59,8 @@ class ShogiGeneratedDataTrainingCycleConfig:
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
+    generation_worker_processes: int = 1
+    seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
     eval_ratio: float = 0.25
     max_steps: int = 100
@@ -89,6 +91,8 @@ class ShogiGeneratedDataTrainingLoopConfig:
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
+    generation_worker_processes: int = 1
+    seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
     eval_ratio: float = 0.25
     max_steps: int = 100
@@ -125,6 +129,7 @@ class ShogiOnlineReplayConfig:
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
     evaluation_batch_size: int = 1
+    generation_worker_processes: int = 1
     mcts_move_time_limit_sec: float | None = None
     eval_ratio: float = 0.25
     max_steps: int = 100
@@ -283,6 +288,8 @@ def run_shogi_generated_data_training_cycle(
         max_plies=config.max_plies,
         simulations=config.simulations,
         evaluation_batch_size=config.evaluation_batch_size,
+        generation_worker_processes=config.generation_worker_processes,
+        seed=config.seed,
         checkpoint_device=config.device,
         mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
     )
@@ -325,6 +332,8 @@ def run_shogi_generated_data_training_cycle(
             "max_plies": config.max_plies,
             "simulations": config.simulations,
             "evaluation_batch_size": config.evaluation_batch_size,
+            "generation_worker_processes": config.generation_worker_processes,
+            "seed": config.seed,
             "checkpoint_device": config.device,
             "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
         },
@@ -355,6 +364,8 @@ def run_shogi_generated_data_training_loop(
                 max_plies=config.max_plies,
                 simulations=config.simulations,
                 evaluation_batch_size=config.evaluation_batch_size,
+                generation_worker_processes=config.generation_worker_processes,
+                seed=config.seed,
                 mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
                 eval_ratio=config.eval_ratio,
                 max_steps=config.max_steps,
@@ -508,6 +519,8 @@ def _generate_online_replay_cycle_experience(
         max_plies=config.max_plies,
         simulations=config.simulations,
         evaluation_batch_size=config.evaluation_batch_size,
+        generation_worker_processes=config.generation_worker_processes,
+        seed=config.seed,
         checkpoint_device=config.device,
         mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
     )
@@ -630,6 +643,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("simulations must be positive")
     if config.evaluation_batch_size <= 0:
         raise ValueError("evaluation_batch_size must be positive")
+    if config.generation_worker_processes <= 0:
+        raise ValueError("generation_worker_processes must be positive")
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
         raise ValueError("mcts_move_time_limit_sec must be positive")
     if not 0.0 < config.eval_ratio < 1.0:
@@ -670,6 +685,8 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
+            generation_worker_processes=config.generation_worker_processes,
+            seed=config.seed,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
             eval_ratio=config.eval_ratio,
             max_steps=config.max_steps,
@@ -709,6 +726,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             max_plies=config.max_plies,
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
+            generation_worker_processes=config.generation_worker_processes,
+            seed=config.seed,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
             eval_ratio=config.eval_ratio,
             max_steps=config.max_steps,
@@ -817,6 +836,8 @@ def _run_generate_games(
     max_plies: int,
     simulations: int,
     evaluation_batch_size: int,
+    generation_worker_processes: int,
+    seed: int | None,
     checkpoint_device: str,
     mcts_move_time_limit_sec: float | None,
 ) -> None:
@@ -844,6 +865,8 @@ def _run_generate_games(
         str(games),
         "--parallel-games",
         str(parallel_games),
+        "--generation-worker-processes",
+        str(generation_worker_processes),
         "--progress-every-plies",
         str(generation_progress_every_plies),
         "--board-backend",
@@ -853,6 +876,8 @@ def _run_generate_games(
         "--out",
         str(out),
     ]
+    if seed is not None:
+        command.extend(["--seed", str(seed)])
     if mcts_move_time_limit_sec is not None:
         command.extend(["--black-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
     if opponent == "yaneuraou":

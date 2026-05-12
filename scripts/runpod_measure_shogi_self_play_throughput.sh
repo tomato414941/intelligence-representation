@@ -61,9 +61,9 @@ PYTHON = INTREP / '.venv/bin/python'
 CHECKPOINT = INTREP / 'models/d256-h1024-heads8-l6-shogi/checkpoint.pt'
 OUT = REMOTE / os.environ['MEASURE_OUT']
 CASES = [
-    ('p4_s16_b32', 4, 4, 16, 32),
-    ('p8_s16_b32', 8, 8, 16, 32),
-    ('p16_s16_b32', 16, 16, 16, 32),
+    ('p4_s16_b32', 4, 4, 1, 16, 32),
+    ('p8_s16_b32', 8, 8, 1, 16, 32),
+    ('p16_s16_b32', 16, 16, 1, 16, 32),
 ]
 
 
@@ -161,7 +161,14 @@ def load_summary(path: Path) -> dict[str, object]:
     raise RuntimeError(f'no JSON summary found in {path}')
 
 
-def run_case(name: str, games: int, parallel_games: int, simulations: int, batch: int) -> dict[str, object]:
+def run_case(
+    name: str,
+    games: int,
+    parallel_games: int,
+    worker_processes: int,
+    simulations: int,
+    batch: int,
+) -> dict[str, object]:
     case_dir = OUT / name
     case_dir.mkdir(parents=True, exist_ok=True)
     stdout_path = case_dir / 'generate_stdout.json'
@@ -172,6 +179,7 @@ def run_case(name: str, games: int, parallel_games: int, simulations: int, batch
         '--out', str(records_path),
         '--games', str(games),
         '--parallel-games', str(parallel_games),
+        '--generation-worker-processes', str(worker_processes),
         '--max-plies', '320',
         '--board-backend', 'cshogi',
         '--progress-every-plies', '50',
@@ -229,6 +237,7 @@ def run_case(name: str, games: int, parallel_games: int, simulations: int, batch
         'case': name,
         'total_games': games,
         'concurrent_games_per_process': parallel_games,
+        'generation_worker_processes': worker_processes,
         'mcts_simulations_per_move': simulations,
         'nn_leaf_eval_batch_limit': batch,
         'average_plies': summary.get('average_plies'),
