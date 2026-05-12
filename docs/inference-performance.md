@@ -56,6 +56,39 @@ Minimum context for the next baseline:
 - move time limit
 - GPU, vCPU, and PyTorch/CUDA stack
 
+### Planned Floodgate-Like One-Game Check
+
+Purpose: measure one-game, one-move latency behavior. This is different from
+self-play throughput, where multiple games can be sharded across worker
+processes.
+
+Context:
+
+- Entry point: `evaluate_shogi_players.py`
+- Model: d256-h1024-heads8-l6-shogi
+- Workload: checkpoint vs YaneuraOu MaterialLv1 `go nodes 1`
+- Request: one move decision
+- Output unit: MCTS simulation
+- Board backend: `cshogi`
+- Device: cuda
+- GPU: RTX 4000 Ada
+- vCPU: TBD
+- Max plies: 320
+- Measured: TBD
+
+| MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Result | Interpretation |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1024 | 64 | 9.0s | 1 | N/A | N/A | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Check whether current single-game latency has margin under 10s. |
+| 2048 | 64 | 9.0s | 1 | N/A | N/A | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Check whether a larger search still fits the move budget. |
+
+Notes:
+
+- `Game-level worker processes` is N/A because this workload is one live game;
+  sharding other games would not speed up the current move.
+- `Concurrent games per process` is N/A because there is only one current game.
+- The relevant batching mechanism is one-tree MCTS leaf batching through
+  `NN leaf eval batch limit`.
+
 ## Historical Measurements
 
 These entries preserve measured facts. Do not use short deterministic grids,
