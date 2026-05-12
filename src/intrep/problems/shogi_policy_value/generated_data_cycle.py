@@ -247,6 +247,7 @@ class ShogiOnlineReplayCycleArtifacts:
     games_jsonl: Path
     train_jsonl: Path
     eval_jsonl: Path
+    generation_summary_path: Path
     checkpoint_path: Path
     best_checkpoint_path: Path
     metrics_path: Path
@@ -261,6 +262,7 @@ def run_shogi_generated_data_training_cycle(
     games_jsonl = run_dir / "generated-games.jsonl"
     train_jsonl = run_dir / "train-games.jsonl"
     eval_jsonl = run_dir / "eval-games.jsonl"
+    generation_summary_path = run_dir / "generation-summary.json"
     data_selection_json = run_dir / "data-selection.json"
     checkpoint_path = run_dir / "checkpoint.pt"
     best_checkpoint_path = run_dir / "best-checkpoint.pt"
@@ -273,6 +275,7 @@ def run_shogi_generated_data_training_cycle(
         yaneuraou=config.yaneuraou,
         engine_go_command=config.engine_go_command,
         out=games_jsonl,
+        generation_summary_path=generation_summary_path,
         games=config.games,
         parallel_games=config.parallel_games,
         generation_progress_every_plies=config.generation_progress_every_plies,
@@ -422,6 +425,7 @@ def run_shogi_online_replay(
             skip_reason = None
         metrics = _online_replay_cycle_metrics(
             config=config,
+            artifacts=artifacts,
             cycle_index=cycle_index,
             training_skipped=training_skipped,
             skip_reason=skip_reason,
@@ -476,6 +480,7 @@ def _online_replay_cycle_artifacts(run_dir: Path, cycle_index: int) -> ShogiOnli
         games_jsonl=cycle_dir / "generated-games.jsonl",
         train_jsonl=cycle_dir / "train-games.jsonl",
         eval_jsonl=cycle_dir / "eval-games.jsonl",
+        generation_summary_path=cycle_dir / "generation-summary.json",
         checkpoint_path=cycle_dir / "checkpoint.pt",
         best_checkpoint_path=cycle_dir / "best-checkpoint.pt",
         metrics_path=cycle_dir / "metrics.json",
@@ -495,6 +500,7 @@ def _generate_online_replay_cycle_experience(
         yaneuraou=config.yaneuraou,
         engine_go_command=config.engine_go_command,
         out=artifacts.games_jsonl,
+        generation_summary_path=artifacts.generation_summary_path,
         games=config.games,
         parallel_games=config.parallel_games,
         generation_progress_every_plies=config.generation_progress_every_plies,
@@ -555,6 +561,7 @@ def _train_online_replay_cycle(
 def _online_replay_cycle_metrics(
     *,
     config: ShogiOnlineReplayConfig,
+    artifacts: ShogiOnlineReplayCycleArtifacts,
     cycle_index: int,
     training_skipped: bool,
     skip_reason: str | None,
@@ -585,6 +592,8 @@ def _online_replay_cycle_metrics(
         "generated_eval_examples": generated_eval_examples,
         "training_eval_source": "fixed" if fixed_eval_examples else "generated_cycle",
         "experience_store_append": experience_store_append,
+        "generation_summary_path": str(artifacts.generation_summary_path),
+        "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
         "sampled_examples": sampled_examples,
         "init_checkpoint_path": str(init_checkpoint),
         "checkpoint_path": str(checkpoint),
@@ -595,6 +604,12 @@ def _online_replay_cycle_metrics(
     if skip_reason is not None:
         metrics["skip_reason"] = skip_reason
     return metrics
+
+
+def _load_json_if_exists(path: Path) -> object | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
@@ -794,6 +809,7 @@ def _run_generate_games(
     yaneuraou: str | None,
     engine_go_command: str,
     out: Path,
+    generation_summary_path: Path | None,
     games: int,
     parallel_games: int,
     generation_progress_every_plies: int,
@@ -871,7 +887,12 @@ def _run_generate_games(
         )
         if mcts_move_time_limit_sec is not None:
             command.extend(["--white-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    subprocess.run(command, cwd=arena_repo.resolve(), check=True)
+    completed = subprocess.run(command, cwd=arena_repo.resolve(), check=True, stdout=subprocess.PIPE, text=True)
+    stdout = completed.stdout if completed is not None else ""
+    if stdout:
+        print(stdout, end="")
+        if generation_summary_path is not None:
+            generation_summary_path.write_text(stdout, encoding="utf-8")
 
 
 def _shogi_arena_python_command() -> list[str]:

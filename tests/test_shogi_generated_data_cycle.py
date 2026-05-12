@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,7 +98,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             arena_repo = root / "arena"
             arena_repo.mkdir()
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(
@@ -413,6 +414,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(out_path, generated_records)
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps({"game_count": 2, "generation_wall_time_sec": 1.5}) + "\n",
+                    )
+                return None
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
@@ -467,6 +474,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["replay_seed_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["training_eval_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["experience_store_append"]["total_games"], 2)
+            self.assertEqual(metrics["generation_summary"]["game_count"], 2)
+            self.assertTrue((run_dir / "cycle-0001" / "generation-summary.json").exists())
 
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
