@@ -249,6 +249,24 @@ games so neural-network evaluation can be batched.
 Do not confuse this with Total Games, which is the total number of games to
 generate for a run or measurement.
 
+### MCTS Simulations Per Move
+
+MCTS Simulations Per Move is the number of Monte Carlo Tree Search simulations
+used to choose one move.
+
+It is not a game count and not a batch size. Increasing it gives each move more
+search work, which can improve move quality but increases CPU-side search and
+neural evaluation demand.
+
+### NN Leaf Eval Batch Limit
+
+NN Leaf Eval Batch Limit is the configured maximum number of MCTS leaf positions
+sent to the neural-network evaluator in one forward pass.
+
+It is a limit, not a guarantee that each model call reaches that size. Actual
+batch size depends on how many pending leaf positions the search produces before
+evaluation.
+
 ## Data Pipeline Terms
 
 ### Source Record
