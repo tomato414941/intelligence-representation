@@ -85,11 +85,11 @@ Context:
 
 Measured results:
 
-| Case | Total games | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | CPU observation | Notes |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| `p4_s16_b32` | 4 | 4 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
-| `p8_s16_b32` | 8 | 8 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
-| `p16_s16_b32` | 16 | 16 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| Case | Total games | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| `p4_s16_b32` | 4 | 4 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| `p8_s16_b32` | 8 | 8 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| `p16_s16_b32` | 16 | 16 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
 
 ## Notes
 
