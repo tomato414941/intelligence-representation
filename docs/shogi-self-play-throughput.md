@@ -237,6 +237,42 @@ Observed facts:
 - Generator RSS increased from about 5.5 GiB at 6 workers to about 7.4 GiB at 8
   workers.
 
+## 2026-05-12 RTX 4000 Ada Worker 8 Secure 9 vCPU Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| cloud type | secure |
+| data center | `EU-RO-1` |
+| vCPU/RAM | 9 vCPU, 50 GiB RAM |
+| RunPod rate | $0.26/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | 225.423s |
+| remote workload runtime | 152.079s |
+| estimated total cost | about $0.02 |
+
+Measured results:
+
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `w8_c8_s16_b32` | 64 | 8 | 8 | 16 | 32 | 225.9 | 147.35 | 98.10 | 54.48% | 84.00% | 2777 MiB / 20475 MiB | 643.07% | 830.40% | 52470 MiB / 257587 MiB | 7825 MiB | 28 of 64 games reached max plies. |
+
+Observed facts:
+
+- Moving from the 6 vCPU community Pod to the 9 vCPU secure Pod increased the
+  same `w8_c8_s16_b32` throughput from 52.10 to 98.10 plies/sec.
+- GPU utilization average increased from 35.14% to 54.48%.
+- Generator CPU average increased from about 4.6 cores to about 6.4 cores.
+- Generator RSS stayed in the same range: about 7.4 GiB to about 7.6 GiB.
+- The higher vCPU Pod was more expensive per hour, but the measured workload
+  completed faster.
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
@@ -264,3 +300,5 @@ Observed facts:
   `NN leaf eval batch limit` from 32 to 64.
 - The 8-worker check did not improve throughput over 6 workers on the observed
   6 vCPU RTX 4000 Ada Pod.
+- The secure 9 vCPU worker-8 check recorded much higher throughput and GPU
+  utilization than the 6 vCPU worker-8 check.

@@ -12,6 +12,7 @@ GPU_TYPE=${GPU_TYPE:-"NVIDIA RTX 4000 Ada Generation"}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-60}
 CASE_SET=${CASE_SET:-"worker-scaling"}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-""}
+MIN_VCPU_PER_GPU=${MIN_VCPU_PER_GPU:-""}
 
 if [[ ! -d "$ARENA_REPO" ]]; then
   echo "shogi-arena-agent repo not found: $ARENA_REPO" >&2
@@ -21,6 +22,9 @@ fi
 EXTRA_RUNPOD_ARGS=()
 if [[ -n "$DATA_CENTER_IDS" ]]; then
   EXTRA_RUNPOD_ARGS+=(--data-center-ids "$DATA_CENTER_IDS")
+fi
+if [[ -n "$MIN_VCPU_PER_GPU" ]]; then
+  EXTRA_RUNPOD_ARGS+=(--min-vcpu-per-gpu "$MIN_VCPU_PER_GPU")
 fi
 
 python3 "$RUNPOD_JOB" \
