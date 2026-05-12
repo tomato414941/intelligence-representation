@@ -201,6 +201,42 @@ Observed facts:
   utilization average.
 - The batch-64 run recorded 49.68 plies/sec and 34.17% GPU utilization average.
 
+## 2026-05-12 RTX 4000 Ada Worker 8 Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| data center | `EU-RO-1` requested; assigned machine location was US |
+| vCPU/RAM | 6 vCPU, 31 GiB RAM |
+| RunPod rate | $0.20/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | 339.589s |
+| remote workload runtime | 284.899s |
+| estimated total cost | about $0.02 |
+
+Measured results:
+
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `w8_c8_s16_b32` | 64 | 8 | 8 | 16 | 32 | 227.4 | 279.35 | 52.10 | 35.14% | 53.00% | 2816 MiB / 20475 MiB | 463.94% | 586.80% | 43959 MiB / 257818 MiB | 7555 MiB | 29 of 64 games reached max plies. |
+
+Observed facts:
+
+- Increasing generation worker processes from 6 to 8 did not increase
+  throughput in this run.
+- The comparable 6-worker batch-32 run recorded 53.24 plies/sec and 35.65% GPU
+  utilization average.
+- The 8-worker batch-32 run recorded 52.10 plies/sec and 35.14% GPU utilization
+  average.
+- Generator RSS increased from about 5.5 GiB at 6 workers to about 7.4 GiB at 8
+  workers.
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
@@ -226,3 +262,5 @@ Observed facts:
   through 6 worker processes on a 6 vCPU RTX 4000 Ada Pod.
 - The 6-worker batch limit check did not show an advantage for increasing
   `NN leaf eval batch limit` from 32 to 64.
+- The 8-worker check did not improve throughput over 6 workers on the observed
+  6 vCPU RTX 4000 Ada Pod.
