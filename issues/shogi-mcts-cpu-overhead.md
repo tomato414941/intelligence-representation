@@ -65,7 +65,7 @@ GPU: RTX 5090
 torch: 2.8.0+cu128
 checkpoint: d256-h1024-heads8-l6-shogi
 games: 16
-parallel_games: 16
+concurrent_games_per_process: 16
 MCTS simulations: 128
 evaluation_batch_size: 64
 max plies: 320

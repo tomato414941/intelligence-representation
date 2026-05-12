@@ -164,7 +164,7 @@ def load_summary(path: Path) -> dict[str, object]:
 def run_case(
     name: str,
     games: int,
-    parallel_games: int,
+    concurrent_games_per_process: int,
     worker_processes: int,
     simulations: int,
     batch: int,
@@ -178,7 +178,7 @@ def run_case(
         str(PYTHON), '-u', str(ARENA / 'scripts/generate_shogi_games.py'),
         '--out', str(records_path),
         '--games', str(games),
-        '--parallel-games', str(parallel_games),
+        '--concurrent-games-per-process', str(concurrent_games_per_process),
         '--generation-worker-processes', str(worker_processes),
         '--max-plies', '320',
         '--board-backend', 'cshogi',
@@ -236,7 +236,7 @@ def run_case(
     result = {
         'case': name,
         'total_games': games,
-        'concurrent_games_per_process': parallel_games,
+        'concurrent_games_per_process': concurrent_games_per_process,
         'generation_worker_processes': worker_processes,
         'mcts_simulations_per_move': simulations,
         'nn_leaf_eval_batch_limit': batch,

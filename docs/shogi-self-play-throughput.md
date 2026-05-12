@@ -104,7 +104,7 @@ Measured results:
   execution, but not whether the GPU was saturated.
 - Increasing simulations from 16 to 32 reduced throughput in this grid.
 - Process-level game parallelism is exposed as generation worker processes.
-  `parallel-games` still batches multiple active games inside one Python
+  `concurrent-games-per-process` still batches multiple active games inside one Python
   process.
 - Current measurements do not use in-tree leaf selection parallelism; batching
   comes from multiple active games, not multiple pending leaves from one MCTS

@@ -116,7 +116,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         arena_repo=arena_repo,
                         games=2,
-                        parallel_games=2,
+                        concurrent_games_per_process=2,
                         max_plies=4,
                         simulations=3,
                         evaluation_batch_size=4,
@@ -140,7 +140,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             generate_command = run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--parallel-games") + 1], "2")
+            self.assertEqual(generate_command[generate_command.index("--concurrent-games-per-process") + 1], "2")
             self.assertEqual(generate_command[generate_command.index("--generation-worker-processes") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--seed") + 1], "11")
             self.assertEqual(generate_command[generate_command.index("--progress-every-plies") + 1], "0")
@@ -165,7 +165,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 {
                     "opponent": "self",
                     "games": 2,
-                    "parallel_games": 2,
+                    "concurrent_games_per_process": 2,
                     "generation_progress_every_plies": 0,
                     "board_backend": "cshogi",
                     "max_plies": 4,

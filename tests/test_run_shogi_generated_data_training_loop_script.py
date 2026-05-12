@@ -38,7 +38,7 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
                     "final",
                     "--games",
                     "3",
-                    "--parallel-games",
+                    "--concurrent-games-per-process",
                     "2",
                     "--generation-worker-processes",
                     "3",
@@ -57,7 +57,7 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
         self.assertEqual(config.cycles, 2)
         self.assertEqual(config.next_checkpoint, "final")
         self.assertEqual(config.games, 3)
-        self.assertEqual(config.parallel_games, 2)
+        self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.seed, 11)
         self.assertEqual(config.board_backend, "cshogi")

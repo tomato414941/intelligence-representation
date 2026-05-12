@@ -51,7 +51,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
-    parallel_games: int = 1
+    concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
@@ -83,7 +83,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
-    parallel_games: int = 1
+    concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
@@ -121,7 +121,7 @@ class ShogiOnlineReplayConfig:
     yaneuraou: str | None = None
     engine_go_command: str = "go nodes 1"
     games: int = 4
-    parallel_games: int = 1
+    concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     # Computer-shogi self-play should not end as a short artificial draw; use
@@ -282,7 +282,7 @@ def run_shogi_generated_data_training_cycle(
         out=games_jsonl,
         generation_summary_path=generation_summary_path,
         games=config.games,
-        parallel_games=config.parallel_games,
+        concurrent_games_per_process=config.concurrent_games_per_process,
         generation_progress_every_plies=config.generation_progress_every_plies,
         board_backend=config.board_backend,
         max_plies=config.max_plies,
@@ -326,7 +326,7 @@ def run_shogi_generated_data_training_cycle(
         generation={
             "opponent": config.opponent,
             "games": config.games,
-            "parallel_games": config.parallel_games,
+            "concurrent_games_per_process": config.concurrent_games_per_process,
             "generation_progress_every_plies": config.generation_progress_every_plies,
             "board_backend": config.board_backend,
             "max_plies": config.max_plies,
@@ -358,7 +358,7 @@ def run_shogi_generated_data_training_loop(
                 yaneuraou=config.yaneuraou,
                 engine_go_command=config.engine_go_command,
                 games=config.games,
-                parallel_games=config.parallel_games,
+                concurrent_games_per_process=config.concurrent_games_per_process,
                 generation_progress_every_plies=config.generation_progress_every_plies,
                 board_backend=config.board_backend,
                 max_plies=config.max_plies,
@@ -513,7 +513,7 @@ def _generate_online_replay_cycle_experience(
         out=artifacts.games_jsonl,
         generation_summary_path=artifacts.generation_summary_path,
         games=config.games,
-        parallel_games=config.parallel_games,
+        concurrent_games_per_process=config.concurrent_games_per_process,
         generation_progress_every_plies=config.generation_progress_every_plies,
         board_backend=config.board_backend,
         max_plies=config.max_plies,
@@ -632,8 +632,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("yaneuraou is required when opponent is yaneuraou")
     if config.games <= 0:
         raise ValueError("games must be positive")
-    if config.parallel_games <= 0:
-        raise ValueError("parallel_games must be positive")
+    if config.concurrent_games_per_process <= 0:
+        raise ValueError("concurrent_games_per_process must be positive")
     if config.generation_progress_every_plies < 0:
         raise ValueError("generation_progress_every_plies must be non-negative")
     if config.max_plies <= 0:
@@ -679,7 +679,7 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             yaneuraou=config.yaneuraou,
             engine_go_command=config.engine_go_command,
             games=config.games,
-            parallel_games=config.parallel_games,
+            concurrent_games_per_process=config.concurrent_games_per_process,
             generation_progress_every_plies=config.generation_progress_every_plies,
             board_backend=config.board_backend,
             max_plies=config.max_plies,
@@ -720,7 +720,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
             yaneuraou=config.yaneuraou,
             engine_go_command=config.engine_go_command,
             games=config.games,
-            parallel_games=config.parallel_games,
+            concurrent_games_per_process=config.concurrent_games_per_process,
             generation_progress_every_plies=config.generation_progress_every_plies,
             board_backend=config.board_backend,
             max_plies=config.max_plies,
@@ -830,7 +830,7 @@ def _run_generate_games(
     out: Path,
     generation_summary_path: Path | None,
     games: int,
-    parallel_games: int,
+    concurrent_games_per_process: int,
     generation_progress_every_plies: int,
     board_backend: str,
     max_plies: int,
@@ -863,8 +863,8 @@ def _run_generate_games(
         checkpoint_device,
         "--games",
         str(games),
-        "--parallel-games",
-        str(parallel_games),
+        "--concurrent-games-per-process",
+        str(concurrent_games_per_process),
         "--generation-worker-processes",
         str(generation_worker_processes),
         "--progress-every-plies",

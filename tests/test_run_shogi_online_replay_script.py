@@ -54,7 +54,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "data/shogi/training-data-bundles/online/data-selection.json",
                     "--games",
                     "4",
-                    "--parallel-games",
+                    "--concurrent-games-per-process",
                     "2",
                     "--generation-worker-processes",
                     "3",
@@ -88,7 +88,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             Path("data/shogi/training-data-bundles/online/data-selection.json"),
         )
         self.assertEqual(config.games, 4)
-        self.assertEqual(config.parallel_games, 2)
+        self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.generation_progress_every_plies, 16)
         self.assertEqual(config.board_backend, "cshogi")

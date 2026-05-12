@@ -53,7 +53,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "go nodes 2",
                     "--games",
                     "2",
-                    "--parallel-games",
+                    "--concurrent-games-per-process",
                     "2",
                     "--board-backend",
                     "cshogi",
@@ -96,7 +96,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.yaneuraou, "engine-command")
         self.assertEqual(config.engine_go_command, "go nodes 2")
         self.assertEqual(config.games, 2)
-        self.assertEqual(config.parallel_games, 2)
+        self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_plies, 4)
         self.assertEqual(config.simulations, 3)

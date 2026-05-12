@@ -224,7 +224,7 @@ evaluation and backup. It is a narrower form of MCTS leaf parallelization.
 It is different from running multiple games at the same time. It is also
 different from the neural evaluation batch size:
 
-- parallel games: multiple games or root positions are active at once
+- concurrent games per process: multiple games or root positions are active at once
 - in-tree leaf selection parallelism: one MCTS tree has multiple in-flight leaf
   selections
 - evaluation batch size: the maximum number of selected leaf positions sent to
@@ -242,7 +242,7 @@ not implement in-tree leaf selection parallelism.
 Concurrent Games Per Process is the number of games advanced together inside one
 generator process.
 
-In the current shogi self-play CLI, this is the `--parallel-games` value. It is
+In the current shogi self-play CLI, this is the `--concurrent-games-per-process` value. It is
 not process-level parallelism. It supplies leaf positions from multiple active
 games so neural-network evaluation can be batched.
 
