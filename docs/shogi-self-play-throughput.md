@@ -132,6 +132,8 @@ worker 8 / batch 32 setting:
   this document instead of relying on run-local paths.
 - The measured rows use RTX 4000 Ada. Do not assume the same ranking holds on
   RTX 4090 or RTX 5090 without measuring.
+- On 2026-05-12, RTX 4000 Ada secure Pod creation with
+  `minVCPUPerGPU=10` and `minVCPUPerGPU=12` returned no available instances.
 - The initial throughput grid did not record GPU utilization over time. It
   confirms CUDA execution, but not whether the GPU was saturated.
 - Increasing simulations from 16 to 32 reduced throughput in the initial grid.
