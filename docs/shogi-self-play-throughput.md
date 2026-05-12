@@ -92,6 +92,44 @@ Measured results:
 | `p8_s16_b32` | 8 | 8 | 1 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | not recorded | not recorded | 6 of 8 games reached max plies. |
 | `p16_s16_b32` | 16 | 16 | 1 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | not recorded | not recorded | 10 of 16 games reached max plies. |
 
+## 2026-05-12 RTX 4000 Ada Generation Worker Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| vCPU/RAM | 6 vCPU, 31 GiB RAM |
+| RunPod rate | $0.20/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | 667.394s |
+| remote workload runtime | 623.491s |
+| estimated total cost | about $0.04 |
+
+Measured results:
+
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `p4_s16_b32` | 4 | 4 | 1 | 16 | 32 | 177.8 | 62.64 | 11.35 | 6.22% | 10.00% | 322 MiB / 20475 MiB | 106.94% | 139.00% | 39907 MiB / 257818 MiB | 1042 MiB | 1 of 4 games reached max plies. |
+| `p8_s16_b32` | 8 | 8 | 1 | 16 | 32 | 199.1 | 125.53 | 12.69 | 5.45% | 10.00% | 368 MiB / 20475 MiB | 103.94% | 139.00% | 40970 MiB / 257818 MiB | 951 MiB | 3 of 8 games reached max plies. |
+| `p16_s16_b32` | 16 | 16 | 1 | 16 | 32 | 217.9 | 238.56 | 14.62 | 5.29% | 10.00% | 474 MiB / 20475 MiB | 101.71% | 125.00% | 40931 MiB / 257818 MiB | 965 MiB | 7 of 16 games reached max plies. |
+| `w4_c8_s16_b32` | 32 | 8 | 4 | 16 | 32 | 238.3 | 182.34 | 41.82 | 24.38% | 55.00% | 1415 MiB / 20475 MiB | 366.41% | 469.20% | 42863 MiB / 257818 MiB | 3838 MiB | 13 of 32 games reached max plies. |
+
+Observed facts:
+
+- `w4_c8_s16_b32` reached 41.82 plies/sec, about 2.9x the same-run
+  `p16_s16_b32` throughput.
+- Generator CPU average rose from about 1 core to about 3.7 cores.
+- GPU utilization average rose from about 5% to about 24%.
+- Generator RSS rose to about 3.8 GiB.
+- `System RAM used` is recorded from container-visible `/proc/meminfo`; in this
+  run it exposed a larger memory total than the Pod's 31 GiB setting. Use
+  `Generator RSS` for process-scoped memory comparison.
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
@@ -111,3 +149,5 @@ Measured results:
   tree.
 - The RTX 4000 Ada utilization check recorded low GPU utilization. The generator
   process stayed near one CPU core while GPU memory use remained below 500 MiB.
+- The generation worker check recorded higher throughput and higher GPU
+  utilization by running multiple generator processes.
