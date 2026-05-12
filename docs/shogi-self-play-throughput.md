@@ -61,9 +61,9 @@ Measured results:
 Observed best in this small grid:
 
 ```text
-parallel-games=4
-simulations=16
-evaluation-batch-size=32
+concurrent-games-per-process=4
+mcts-simulations-per-move=16
+nn-leaf-eval-batch-limit=32
 ```
 
 ## 2026-05-12 RTX 4000 Ada GPU Utilization Check
@@ -73,23 +73,23 @@ Context:
 | Item | Value |
 | --- | --- |
 | GPU | RunPod RTX 4000 Ada Generation |
-| RunPod rate | TBD |
-| torch/CUDA | RunPod PyTorch 2.8 template, CUDA available |
+| RunPod rate | $0.20/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
 | model | `d256-h1024-heads8-l6-shogi` |
 | board backend | `cshogi` |
 | max plies | 320 |
 | player profile | checkpoint self-play MCTS on both sides |
-| total job runtime | TBD |
-| remote workload runtime | TBD |
-| estimated total cost | TBD |
+| total job runtime | 560.415s |
+| remote workload runtime | 505.343s |
+| estimated total cost | about $0.03 |
 
 Measured results:
 
 | Case | Total games | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Notes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
-| `p4_s16_b32` | 4 | 4 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
-| `p8_s16_b32` | 8 | 8 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
-| `p16_s16_b32` | 16 | 16 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| `p4_s16_b32` | 4 | 4 | 16 | 32 | 176.5 | 64.57 | 10.93 | 5.78% | 10.00% | 322 MiB / 20475 MiB | 106.28% | 140.00% | 1 of 4 games reached max plies. |
+| `p8_s16_b32` | 8 | 8 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | 6 of 8 games reached max plies. |
+| `p16_s16_b32` | 16 | 16 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | 10 of 16 games reached max plies. |
 
 ## Notes
 
@@ -99,11 +99,13 @@ Measured results:
   this document instead of relying on run-local paths.
 - The measured grid used RTX 4000 Ada. Do not assume the same ranking holds on
   RTX 4090 or RTX 5090 without measuring.
-- The run did not record GPU utilization over time. It confirms CUDA execution,
-  but not whether the GPU was saturated.
+- The throughput grid did not record GPU utilization over time. It confirms CUDA
+  execution, but not whether the GPU was saturated.
 - Increasing simulations from 16 to 32 reduced throughput in this grid.
 - Process-level game parallelism is still unresolved. Current `parallel-games`
   batches multiple active games inside one Python process.
 - Current measurements do not use in-tree leaf selection parallelism; batching
   comes from multiple active games, not multiple pending leaves from one MCTS
   tree.
+- The RTX 4000 Ada utilization check recorded low GPU utilization. The generator
+  process stayed near one CPU core while GPU memory use remained below 500 MiB.
