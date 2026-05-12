@@ -32,12 +32,6 @@ cycle's `generation-summary.json`.
 
 ## 2026-05-12 Throughput Grid
 
-Artifact:
-
-```text
-runs/shogi/runpod-shogi-generation-throughput-grid-20260512T104325Z
-```
-
 Context:
 
 | Item | Value |
@@ -72,10 +66,37 @@ simulations=16
 evaluation-batch-size=32
 ```
 
+## 2026-05-12 RTX 4000 Ada GPU Utilization Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| RunPod rate | TBD |
+| torch/CUDA | RunPod PyTorch 2.8 template, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | TBD |
+| remote workload runtime | TBD |
+| estimated total cost | TBD |
+
+Measured results:
+
+| Case | Games | Parallel games | Simulations | Eval batch | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | CPU observation | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| `p4_s16_b32` | 4 | 4 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| `p8_s16_b32` | 8 | 8 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| `p16_s16_b32` | 16 | 16 | 16 | 32 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
   throughput across self-play settings.
+- `runs/` is disposable. Measurements that should survive must be summarized in
+  this document instead of relying on run-local paths.
 - The measured grid used RTX 4000 Ada. Do not assume the same ranking holds on
   RTX 4090 or RTX 5090 without measuring.
 - The run did not record GPU utilization over time. It confirms CUDA execution,
