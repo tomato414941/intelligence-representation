@@ -137,7 +137,7 @@ Context:
 | Item | Value |
 | --- | --- |
 | GPU | RunPod RTX 4000 Ada Generation |
-| data center | `EU-RO-1` requested |
+| data center | not pinned; assigned machine location was US |
 | vCPU/RAM | 6 vCPU, 31 GiB RAM |
 | RunPod rate | $0.20/hr observed at run time |
 | torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
@@ -168,6 +168,39 @@ Observed facts:
 - Generator RSS increased from about 1.0 GiB to about 5.5 GiB.
 - The 6-worker case was still below full GPU saturation.
 
+## 2026-05-12 RTX 4000 Ada NN Batch Limit Check
+
+Context:
+
+| Item | Value |
+| --- | --- |
+| GPU | RunPod RTX 4000 Ada Generation |
+| data center | not pinned; assigned machine location was US |
+| vCPU/RAM | 6 vCPU, 31 GiB RAM |
+| RunPod rate | $0.20/hr observed at run time |
+| torch/CUDA | RunPod PyTorch 2.8 template, torch 2.8.0+cu128, CUDA available |
+| model | `d256-h1024-heads8-l6-shogi` |
+| board backend | `cshogi` |
+| max plies | 320 |
+| player profile | checkpoint self-play MCTS on both sides |
+| total job runtime | 264.221s |
+| remote workload runtime | 199.024s |
+| estimated total cost | about $0.02 |
+
+Measured results:
+
+| Case | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | System RAM used | Generator RSS | Notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `w6_c8_s16_b64` | 48 | 8 | 6 | 16 | 64 | 201.1 | 194.30 | 49.68 | 34.17% | 58.00% | 2063 MiB / 20475 MiB | 447.00% | 570.70% | 43336 MiB / 257818 MiB | 5678 MiB | 18 of 48 games reached max plies. |
+
+Observed facts:
+
+- Increasing `NN leaf eval batch limit` from 32 to 64 at 6 worker processes did
+  not increase GPU utilization in this run.
+- The comparable 6-worker batch-32 run recorded 53.24 plies/sec and 35.65% GPU
+  utilization average.
+- The batch-64 run recorded 49.68 plies/sec and 34.17% GPU utilization average.
+
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
@@ -191,3 +224,5 @@ Observed facts:
   utilization by running multiple generator processes.
 - The generation worker scaling check recorded continued throughput gains
   through 6 worker processes on a 6 vCPU RTX 4000 Ada Pod.
+- The 6-worker batch limit check did not show an advantage for increasing
+  `NN leaf eval batch limit` from 32 to 64.

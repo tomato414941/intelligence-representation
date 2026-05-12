@@ -10,10 +10,17 @@ ARENA_REPO=${ARENA_REPO:-"$PROJECTS_ROOT/shogi-arena-agent"}
 OUTPUT_DIR=${OUTPUT_DIR:-"intelligence-representation/runs/shogi/self-play-throughput-rtx4000ada-$(date -u +%Y%m%d-%H%M%S)"}
 GPU_TYPE=${GPU_TYPE:-"NVIDIA RTX 4000 Ada Generation"}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-60}
+CASE_SET=${CASE_SET:-"worker-scaling"}
+DATA_CENTER_IDS=${DATA_CENTER_IDS:-""}
 
 if [[ ! -d "$ARENA_REPO" ]]; then
   echo "shogi-arena-agent repo not found: $ARENA_REPO" >&2
   exit 1
+fi
+
+EXTRA_RUNPOD_ARGS=()
+if [[ -n "$DATA_CENTER_IDS" ]]; then
+  EXTRA_RUNPOD_ARGS+=(--data-center-ids "$DATA_CENTER_IDS")
 fi
 
 python3 "$RUNPOD_JOB" \
@@ -24,6 +31,7 @@ python3 "$RUNPOD_JOB" \
   --gpu-count 1 \
   --container-disk-size 20 \
   --volume-size 0 \
+  "${EXTRA_RUNPOD_ARGS[@]}" \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 900 \
   --ssh-wait-seconds 240 \
@@ -60,12 +68,28 @@ ARENA = REMOTE / 'shogi-arena-agent'
 PYTHON = INTREP / '.venv/bin/python'
 CHECKPOINT = INTREP / 'models/d256-h1024-heads8-l6-shogi/checkpoint.pt'
 OUT = REMOTE / os.environ['MEASURE_OUT']
-CASES = [
-    ('w1_c16_s16_b32', 16, 16, 1, 16, 32),
-    ('w2_c8_s16_b32', 16, 8, 2, 16, 32),
-    ('w4_c8_s16_b32', 32, 8, 4, 16, 32),
-    ('w6_c8_s16_b32', 48, 8, 6, 16, 32),
-]
+CASE_SET = os.environ.get('MEASURE_CASE_SET', 'worker-scaling')
+CASE_SETS = {
+    'worker-scaling': [
+        ('w1_c16_s16_b32', 16, 16, 1, 16, 32),
+        ('w2_c8_s16_b32', 16, 8, 2, 16, 32),
+        ('w4_c8_s16_b32', 32, 8, 4, 16, 32),
+        ('w6_c8_s16_b32', 48, 8, 6, 16, 32),
+    ],
+    'worker8': [
+        ('w8_c8_s16_b32', 64, 8, 8, 16, 32),
+    ],
+    'worker6-batch64': [
+        ('w6_c8_s16_b64', 48, 8, 6, 16, 64),
+    ],
+    'worker8-batch64': [
+        ('w8_c8_s16_b64', 64, 8, 8, 16, 64),
+    ],
+}
+try:
+    CASES = CASE_SETS[CASE_SET]
+except KeyError as exc:
+    raise ValueError(f'unknown MEASURE_CASE_SET: {CASE_SET}') from exc
 
 
 def gpu_sample() -> tuple[float | None, str | None]:
@@ -280,5 +304,5 @@ def main() -> None:
 if __name__ == '__main__':
     main()
 PY
-REMOTE_DIR=\"\$REMOTE_DIR\" MEASURE_OUT=\"\$OUT\" \"intelligence-representation/.venv/bin/python\" /tmp/measure_self_play.py" \
+REMOTE_DIR=\"\$REMOTE_DIR\" MEASURE_OUT=\"\$OUT\" MEASURE_CASE_SET=\"$CASE_SET\" \"intelligence-representation/.venv/bin/python\" /tmp/measure_self_play.py" \
   "$@"
