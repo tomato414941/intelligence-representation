@@ -33,6 +33,9 @@ from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 STANDARD_SHOGI_MAX_PLIES = 320
 DEFAULT_SHOGI_MAX_PLIES = 320
+DEFAULT_REPLAY_CAPACITY = 32768
+DEFAULT_REPLAY_SAMPLE_SIZE = 4096
+DEFAULT_MIN_REPLAY_SIZE = 8192
 
 
 @dataclass(frozen=True)
@@ -96,8 +99,9 @@ class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
     cycles: int = 1
-    replay_capacity: int = 1024
-    replay_sample_size: int = 128
+    replay_capacity: int = DEFAULT_REPLAY_CAPACITY
+    replay_sample_size: int = DEFAULT_REPLAY_SAMPLE_SIZE
+    min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
@@ -175,6 +179,7 @@ class ShogiOnlineReplayCycleResult:
     appended_examples: int
     replay_size: int
     sampled_examples: int
+    training_skipped: bool
     checkpoint: Path
     best_checkpoint: Path
     metrics: Path
@@ -187,6 +192,7 @@ class ShogiOnlineReplayCycleResult:
             "appended_examples": self.appended_examples,
             "replay_size": self.replay_size,
             "sampled_examples": self.sampled_examples,
+            "training_skipped": self.training_skipped,
             "checkpoint": str(self.checkpoint),
             "best_checkpoint": str(self.best_checkpoint),
             "metrics": str(self.metrics),
@@ -376,35 +382,61 @@ def run_shogi_online_replay(
         new_examples = _load_generated_policy_value_examples(train_jsonl)
         eval_examples = _load_generated_policy_value_examples(eval_jsonl)
         replay.extend(new_examples)
-        sampled_examples = replay.sample(min(config.replay_sample_size, len(replay)), generator=generator)
-        training_config = _training_config_from_checkpoint(checkpoint, config)
-        training_result = train_shogi_policy_value_model(
-            sampled_examples,
-            eval_examples=eval_examples,
-            config=training_config,
-            initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=config.device),
-        )
-        save_shogi_policy_value_checkpoint(checkpoint_path, training_result)
-        if training_result.best_model_state_dict is not None:
-            save_shogi_policy_value_state_checkpoint(
-                best_checkpoint_path,
-                training_result.best_model_state_dict,
-                training_result.config,
-            )
+        if len(replay) < config.min_replay_size:
+            sampled_examples: list[ShogiPolicyValueExample] = []
+            training_skipped = True
+            effective_checkpoint = checkpoint
+            effective_best_checkpoint = checkpoint
+            metrics = {
+                "schema": "shogi_online_replay_v1",
+                "cycle_index": cycle_index,
+                "training_skipped": True,
+                "skip_reason": "min_replay_size",
+                "appended_examples": len(new_examples),
+                "replay_size": len(replay),
+                "min_replay_size": config.min_replay_size,
+                "sampled_examples": 0,
+                "init_checkpoint_path": str(checkpoint),
+                "checkpoint_path": str(effective_checkpoint),
+                "best_checkpoint_path": str(effective_best_checkpoint),
+                "config": None,
+                "metrics": None,
+            }
         else:
-            save_shogi_policy_value_checkpoint(best_checkpoint_path, training_result)
-        metrics = {
-            "schema": "shogi_online_replay_v1",
-            "cycle_index": cycle_index,
-            "appended_examples": len(new_examples),
-            "replay_size": len(replay),
-            "sampled_examples": len(sampled_examples),
-            "init_checkpoint_path": str(checkpoint),
-            "checkpoint_path": str(checkpoint_path),
-            "best_checkpoint_path": str(best_checkpoint_path),
-            "config": asdict(training_result.config),
-            "metrics": asdict(training_result.metrics),
-        }
+            sampled_examples = replay.sample(min(config.replay_sample_size, len(replay)), generator=generator)
+            training_config = _training_config_from_checkpoint(checkpoint, config)
+            training_result = train_shogi_policy_value_model(
+                sampled_examples,
+                eval_examples=eval_examples,
+                config=training_config,
+                initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=config.device),
+            )
+            save_shogi_policy_value_checkpoint(checkpoint_path, training_result)
+            if training_result.best_model_state_dict is not None:
+                save_shogi_policy_value_state_checkpoint(
+                    best_checkpoint_path,
+                    training_result.best_model_state_dict,
+                    training_result.config,
+                )
+            else:
+                save_shogi_policy_value_checkpoint(best_checkpoint_path, training_result)
+            training_skipped = False
+            effective_checkpoint = checkpoint_path
+            effective_best_checkpoint = best_checkpoint_path
+            metrics = {
+                "schema": "shogi_online_replay_v1",
+                "cycle_index": cycle_index,
+                "training_skipped": False,
+                "appended_examples": len(new_examples),
+                "replay_size": len(replay),
+                "min_replay_size": config.min_replay_size,
+                "sampled_examples": len(sampled_examples),
+                "init_checkpoint_path": str(checkpoint),
+                "checkpoint_path": str(effective_checkpoint),
+                "best_checkpoint_path": str(effective_best_checkpoint),
+                "config": asdict(training_result.config),
+                "metrics": asdict(training_result.metrics),
+            }
         metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
         cycle_result = ShogiOnlineReplayCycleResult(
             cycle_index=cycle_index,
@@ -413,8 +445,9 @@ def run_shogi_online_replay(
             appended_examples=len(new_examples),
             replay_size=len(replay),
             sampled_examples=len(sampled_examples),
-            checkpoint=checkpoint_path,
-            best_checkpoint=best_checkpoint_path,
+            training_skipped=training_skipped,
+            checkpoint=effective_checkpoint,
+            best_checkpoint=effective_best_checkpoint,
             metrics=metrics_path,
         )
         cycle_results.append(cycle_result)
@@ -502,6 +535,10 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("replay_capacity must be positive")
     if config.replay_sample_size <= 0:
         raise ValueError("replay_sample_size must be positive")
+    if config.min_replay_size <= 0:
+        raise ValueError("min_replay_size must be positive")
+    if config.min_replay_size > config.replay_capacity:
+        raise ValueError("min_replay_size must be less than or equal to replay_capacity")
     _validate_loop_config(
         ShogiGeneratedDataTrainingLoopConfig(
             checkpoint=config.checkpoint,

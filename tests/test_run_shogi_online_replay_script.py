@@ -39,6 +39,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "8",
                     "--replay-sample-size",
                     "3",
+                    "--min-replay-size",
+                    "2",
                     "--games",
                     "4",
                     "--parallel-games",
@@ -60,6 +62,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.cycles, 2)
         self.assertEqual(config.replay_capacity, 8)
         self.assertEqual(config.replay_sample_size, 3)
+        self.assertEqual(config.min_replay_size, 2)
         self.assertEqual(config.games, 4)
         self.assertEqual(config.parallel_games, 2)
         self.assertEqual(config.board_backend, "cshogi")

@@ -6,6 +6,9 @@ from pathlib import Path
 
 from intrep.problems.shogi_policy_value.generated_data_cycle import (
     DEFAULT_SHOGI_MAX_PLIES,
+    DEFAULT_MIN_REPLAY_SIZE,
+    DEFAULT_REPLAY_CAPACITY,
+    DEFAULT_REPLAY_SAMPLE_SIZE,
     ShogiOnlineReplayConfig,
     run_shogi_online_replay,
 )
@@ -16,8 +19,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=1)
-    parser.add_argument("--replay-capacity", type=int, default=1024)
-    parser.add_argument("--replay-sample-size", type=int, default=128)
+    parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
+    parser.add_argument("--replay-sample-size", type=int, default=DEFAULT_REPLAY_SAMPLE_SIZE)
+    parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
     parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
     parser.add_argument("--opponent", choices=("self", "yaneuraou"), default="self")
@@ -48,6 +52,7 @@ def main(argv: list[str] | None = None) -> None:
             cycles=args.cycles,
             replay_capacity=args.replay_capacity,
             replay_sample_size=args.replay_sample_size,
+            min_replay_size=args.min_replay_size,
             next_checkpoint=args.next_checkpoint,
             arena_repo=args.arena_repo,
             opponent=args.opponent,

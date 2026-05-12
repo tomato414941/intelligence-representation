@@ -342,6 +342,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         cycles=2,
                         replay_capacity=4,
                         replay_sample_size=3,
+                        min_replay_size=1,
                         arena_repo=arena_repo,
                         games=2,
                         max_steps=1,
@@ -360,6 +361,70 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
                 str(result.cycles[0].best_checkpoint.resolve()),
+            )
+
+    def test_online_replay_skips_training_until_min_replay_size(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            train_batches: list[int] = []
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _record(("7g7f", "3c3d"), "black"),
+                            _record(("2g2f", "8c8d"), "white"),
+                        ],
+                    )
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                train_batches.append(len(examples))
+                return _training_result(config)
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=2,
+                        replay_capacity=4,
+                        replay_sample_size=3,
+                        min_replay_size=3,
+                        arena_repo=arena_repo,
+                        games=2,
+                        max_steps=1,
+                    )
+                )
+
+            self.assertEqual(train_batches, [3])
+            self.assertTrue(result.cycles[0].training_skipped)
+            self.assertEqual(result.cycles[0].sampled_examples, 0)
+            self.assertEqual(result.cycles[0].best_checkpoint, checkpoint_path)
+            self.assertFalse(result.cycles[1].training_skipped)
+            first_metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
+            self.assertTrue(first_metrics["training_skipped"])
+            self.assertEqual(first_metrics["skip_reason"], "min_replay_size")
+            second_generate_command = run.call_args_list[1].args[0]
+            self.assertEqual(
+                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
+                str(checkpoint_path.resolve()),
             )
 
 
