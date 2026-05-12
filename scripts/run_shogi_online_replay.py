@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--yaneuraou", help="USI engine command used when --opponent yaneuraou.")
     parser.add_argument("--engine-go-command", default="go nodes 1")
     parser.add_argument("--games", type=int, default=4)
-    parser.add_argument("--concurrent-games-per-process", "--parallel-games", type=int, default=1)
+    parser.add_argument("--concurrent-games-per-process", type=int, default=1)
     parser.add_argument("--generation-progress-every-plies", type=int, default=0)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
     parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
