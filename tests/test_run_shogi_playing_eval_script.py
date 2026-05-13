@@ -31,12 +31,12 @@ class RunShogiPlayingEvalScriptTest(unittest.TestCase):
 
         self.assertIn("scripts/evaluate_shogi_players.py", command)
         self.assertEqual(command[command.index("--player-kind") + 1], "checkpoint")
-        self.assertEqual(command[command.index("--player-checkpoint-profile") + 1], "evaluation")
-        self.assertEqual(command[command.index("--player-checkpoint-simulations") + 1], "128")
-        self.assertEqual(command[command.index("--player-checkpoint-evaluation-batch-size") + 1], "64")
-        self.assertEqual(command[command.index("--player-checkpoint-device") + 1], "cuda")
-        self.assertEqual(command[command.index("--player-checkpoint-board-backend") + 1], "cshogi")
-        self.assertEqual(command[command.index("--player-checkpoint-move-time-limit-sec") + 1], "10.0")
+        self.assertEqual(command[command.index("--player-move-selection-profile") + 1], "evaluation")
+        self.assertEqual(command[command.index("--player-mcts-simulations") + 1], "128")
+        self.assertEqual(command[command.index("--player-mcts-evaluation-batch-size") + 1], "64")
+        self.assertEqual(command[command.index("--player-device") + 1], "cuda")
+        self.assertEqual(command[command.index("--player-board-backend") + 1], "cshogi")
+        self.assertEqual(command[command.index("--player-mcts-move-time-limit-sec") + 1], "10.0")
         self.assertEqual(command[command.index("--opponent-kind") + 1], "yaneuraou")
         self.assertEqual(command[command.index("--opponent-yaneuraou-command") + 1], "engine")
         self.assertEqual(command[command.index("--opponent-yaneuraou-go-command") + 1], "go nodes 2")
@@ -65,9 +65,9 @@ class RunShogiPlayingEvalScriptTest(unittest.TestCase):
         command = module.build_shogi_playing_eval_command(args)
 
         self.assertEqual(command[command.index("--opponent-kind") + 1], "checkpoint")
-        self.assertEqual(command[command.index("--opponent-checkpoint-profile") + 1], "evaluation")
-        self.assertEqual(command[command.index("--opponent-checkpoint-policy") + 1], "mcts")
-        self.assertEqual(command[command.index("--opponent-checkpoint-simulations") + 1], "16")
+        self.assertEqual(command[command.index("--opponent-move-selection-profile") + 1], "evaluation")
+        self.assertEqual(command[command.index("--opponent-move-selector") + 1], "mcts")
+        self.assertEqual(command[command.index("--opponent-mcts-simulations") + 1], "16")
         self.assertNotIn("--opponent-yaneuraou-command", command)
 
     def test_main_runs_arena_evaluator(self) -> None:

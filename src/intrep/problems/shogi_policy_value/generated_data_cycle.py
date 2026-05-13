@@ -851,16 +851,18 @@ def _run_generate_games(
         "checkpoint",
         "--black-checkpoint",
         str(checkpoint.resolve()),
-        "--black-checkpoint-profile",
+        "--black-move-selection-profile",
         "self-play",
-        "--black-checkpoint-policy",
+        "--black-move-selector",
         "mcts",
-        "--black-checkpoint-simulations",
+        "--black-mcts-simulations",
         str(simulations),
-        "--black-checkpoint-evaluation-batch-size",
+        "--black-mcts-evaluation-batch-size",
         str(evaluation_batch_size),
-        "--black-checkpoint-device",
+        "--black-device",
         checkpoint_device,
+        "--black-board-backend",
+        board_backend,
         "--games",
         str(games),
         "--concurrent-games-per-process",
@@ -879,7 +881,7 @@ def _run_generate_games(
     if seed is not None:
         command.extend(["--seed", str(seed)])
     if mcts_move_time_limit_sec is not None:
-        command.extend(["--black-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
+        command.extend(["--black-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
     if opponent == "yaneuraou":
         command.extend(
             [
@@ -898,20 +900,22 @@ def _run_generate_games(
                 "checkpoint",
                 "--white-checkpoint",
                 str(checkpoint.resolve()),
-                "--white-checkpoint-profile",
+                "--white-move-selection-profile",
                 "self-play",
-                "--white-checkpoint-policy",
+                "--white-move-selector",
                 "mcts",
-                "--white-checkpoint-simulations",
+                "--white-mcts-simulations",
                 str(simulations),
-                "--white-checkpoint-evaluation-batch-size",
+                "--white-mcts-evaluation-batch-size",
                 str(evaluation_batch_size),
-                "--white-checkpoint-device",
+                "--white-device",
                 checkpoint_device,
+                "--white-board-backend",
+                board_backend,
             ]
         )
         if mcts_move_time_limit_sec is not None:
-            command.extend(["--white-checkpoint-move-time-limit-sec", str(mcts_move_time_limit_sec)])
+            command.extend(["--white-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
     completed = subprocess.run(command, cwd=arena_repo.resolve(), check=True, stdout=subprocess.PIPE, text=True)
     stdout = completed.stdout if completed is not None else ""
     if stdout:

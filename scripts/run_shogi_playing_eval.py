@@ -42,17 +42,17 @@ def build_shogi_playing_eval_command(args: argparse.Namespace) -> list[str]:
         "checkpoint",
         "--player-checkpoint",
         str(args.checkpoint.resolve()),
-        "--player-checkpoint-profile",
+        "--player-move-selection-profile",
         "evaluation",
-        "--player-checkpoint-policy",
+        "--player-move-selector",
         "mcts",
-        "--player-checkpoint-simulations",
+        "--player-mcts-simulations",
         str(args.simulations),
-        "--player-checkpoint-evaluation-batch-size",
+        "--player-mcts-evaluation-batch-size",
         str(args.evaluation_batch_size),
-        "--player-checkpoint-device",
+        "--player-device",
         args.device,
-        "--player-checkpoint-board-backend",
+        "--player-board-backend",
         args.board_backend,
         "--games",
         str(args.games),
@@ -62,7 +62,7 @@ def build_shogi_playing_eval_command(args: argparse.Namespace) -> list[str]:
         str(args.out.resolve()),
     ]
     if args.move_time_limit_sec is not None:
-        command.extend(["--player-checkpoint-move-time-limit-sec", str(args.move_time_limit_sec)])
+        command.extend(["--player-mcts-move-time-limit-sec", str(args.move_time_limit_sec)])
     if args.opponent_kind == "checkpoint":
         command.extend(
             [
@@ -70,22 +70,22 @@ def build_shogi_playing_eval_command(args: argparse.Namespace) -> list[str]:
                 "checkpoint",
                 "--opponent-checkpoint",
                 str(args.opponent_checkpoint.resolve()),
-                "--opponent-checkpoint-profile",
+                "--opponent-move-selection-profile",
                 "evaluation",
-                "--opponent-checkpoint-policy",
+                "--opponent-move-selector",
                 "mcts",
-                "--opponent-checkpoint-simulations",
+                "--opponent-mcts-simulations",
                 str(args.simulations),
-                "--opponent-checkpoint-evaluation-batch-size",
+                "--opponent-mcts-evaluation-batch-size",
                 str(args.evaluation_batch_size),
-                "--opponent-checkpoint-device",
+                "--opponent-device",
                 args.device,
-                "--opponent-checkpoint-board-backend",
+                "--opponent-board-backend",
                 args.board_backend,
             ]
         )
         if args.move_time_limit_sec is not None:
-            command.extend(["--opponent-checkpoint-move-time-limit-sec", str(args.move_time_limit_sec)])
+            command.extend(["--opponent-mcts-move-time-limit-sec", str(args.move_time_limit_sec)])
     elif args.opponent_kind == "yaneuraou":
         command.extend(
             [
