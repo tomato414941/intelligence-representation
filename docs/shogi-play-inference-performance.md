@@ -1,7 +1,7 @@
 # Shogi Play Inference Performance
 
-This document catalogs wall-clock inference and interaction performance. It is
-not a run log and it is not a cloud cost ledger.
+This document records measured latency for shogi one-game move decisions. It is
+not a run log, a model-quality report, or a cloud cost ledger.
 
 `runs/` is disposable. Measurements that should survive must be summarized here
 or in a promoted model note.
@@ -44,7 +44,7 @@ Minimum context for future one-game checks:
 - MCTS simulations per move
 - NN leaf eval batch limit
 - move time limit
-- GPU, vCPU, and PyTorch/CUDA stack
+- cloud, data center, GPU, vCPU, and PyTorch/CUDA stack
 
 Purpose: measure one-game, one-move latency behavior. This is different from
 self-play generation throughput, where multiple games can be sharded across
@@ -66,17 +66,18 @@ Unless noted otherwise:
 
 ### Detailed Measurements
 
-| Case | GPU | vCPU/RAM | Rate | MCTS simulations per move | NN leaf eval batch limit | Actual NN leaf eval batch avg | Actual NN leaf eval batch max | Move time limit | Games | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Notes |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| `rtx4000ada_mcts1024_b64` | RTX 4000 Ada | 5 vCPU, 47 GB | $0.20/hr | 1024 | 64 | not measured | not measured | 9.0s | 1 | 1.625s | 3.619s | 4.862s | 27.906 | 1.324s | 0.301s | 764.8 | 53 | 19.3% | 30.6% | 8.3% | 16.0% | 1602 MiB | 0-1, game_over, 64 plies | Stayed below 10s with margin; low GPU utilization means the measured model wall time does not imply GPU saturation. |
-| `rtx4000ada_mcts2048_b64` | RTX 4000 Ada | 5 vCPU, 47 GB | $0.20/hr | 2048 | 64 | not measured | not measured | 9.0s | 1 | 2.944s | 3.995s | 6.715s | 45.192 | 2.421s | 0.523s | 742.1 | 76 | 18.4% | 32.2% | 8.9% | 16.0% | 1138 MiB | 0-1, game_over, 52 plies | Stayed below 10s in this one-game check; GPU utilization remained low, so increasing simulations mostly increases serialized work rather than saturating the GPU. |
-| `rtxa4000_mcts1024_b64_actualbatch` | RTX A4000 | 14 vCPU, 62 GB | $0.17/hr | 1024 | 64 | 51.3 | 64 | 9.0s | 1 | 1.312s | 1.595s | 2.231s | 22.125 | 1.053s | 0.259s | 824.8 | 64 | 2.0% | 5.0% | 15.0% | 27.0% | 1537 MiB | 0-1, game_over, 96 plies | Actual leaf batches often approached the configured limit, but GPU utilization stayed low. |
-| `rtxa4000_mcts2048_b64_actualbatch` | RTX A4000 | 14 vCPU, 62 GB | $0.17/hr | 2048 | 64 | 42.6 | 64 | 9.0s | 1 | 2.329s | 4.155s | 4.255s | 54.286 | 1.877s | 0.452s | 992.7 | 66 | 2.1% | 5.4% | 16.2% | 31.0% | 757 MiB | 0-1, game_over, 56 plies | Actual leaf batches still reached 64, but average batch size fell versus MCTS1024 and GPU utilization remained low. |
+| Case | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | MCTS simulations per move | NN leaf eval batch limit | Actual NN leaf eval batch avg | Actual NN leaf eval batch max | Move time limit | Games | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | Container CPU util avg | Container CPU util max | GPU util avg | GPU util max | GPU memory used | Result | Notes |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| `rtx4000ada_mcts1024_b64` | RTX 4000 Ada | 5 vCPU, 47 GB | not recorded | not recorded | $0.20/hr | 1024 | 64 | not measured | not measured | 9.0s | 1 | 1.625s | 3.619s | 4.862s | 27.906 | 1.324s | 0.301s | 764.8 | 53 | 19.3% | 30.6% | 8.3% | 16.0% | 1602 MiB | 0-1, game_over, 64 plies | Stayed below 10s with margin; low GPU utilization means the measured model wall time does not imply GPU saturation. |
+| `rtx4000ada_mcts2048_b64` | RTX 4000 Ada | 5 vCPU, 47 GB | not recorded | not recorded | $0.20/hr | 2048 | 64 | not measured | not measured | 9.0s | 1 | 2.944s | 3.995s | 6.715s | 45.192 | 2.421s | 0.523s | 742.1 | 76 | 18.4% | 32.2% | 8.9% | 16.0% | 1138 MiB | 0-1, game_over, 52 plies | Stayed below 10s in this one-game check; GPU utilization remained low, so increasing simulations mostly increases serialized work rather than saturating the GPU. |
+| `rtxa4000_mcts1024_b64_actualbatch` | RTX A4000 | 14 vCPU, 62 GB | not recorded | not recorded | $0.17/hr | 1024 | 64 | 51.3 | 64 | 9.0s | 1 | 1.312s | 1.595s | 2.231s | 22.125 | 1.053s | 0.259s | 824.8 | 64 | 2.0% | 5.0% | 15.0% | 27.0% | 1537 MiB | 0-1, game_over, 96 plies | Actual leaf batches often approached the configured limit, but GPU utilization stayed low. |
+| `rtxa4000_mcts2048_b64_actualbatch` | RTX A4000 | 14 vCPU, 62 GB | not recorded | not recorded | $0.17/hr | 2048 | 64 | 42.6 | 64 | 9.0s | 1 | 2.329s | 4.155s | 4.255s | 54.286 | 1.877s | 0.452s | 992.7 | 66 | 2.1% | 5.4% | 16.2% | 31.0% | 757 MiB | 0-1, game_over, 56 plies | Actual leaf batches still reached 64, but average batch size fell versus MCTS1024 and GPU utilization remained low. |
 
 ## Notes
 
-- CPU/GPU utilization columns are populated from `gpu_summary.json` produced by
-  the RunPod evaluation wrapper. Sampling interval was 1 second.
+- Container CPU and GPU utilization columns are populated from
+  `gpu_summary.json` produced by the RunPod evaluation wrapper. Sampling
+  interval was 1 second.
 - Game-level worker processes are not listed because this workload is one live
   game; sharding other games would not speed up the current move.
 - Concurrent games per process is not listed because there is only one current
