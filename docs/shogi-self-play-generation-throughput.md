@@ -3,6 +3,9 @@
 This document records facts for planning shogi self-play data generation. It is
 not a model-quality report and it is not a complete run history.
 
+`runs/` is disposable. Measurements that should survive must be summarized in
+this document instead of relying on run-local paths.
+
 ## Current Path
 
 Self-play generation currently runs through `shogi-arena-agent`:
@@ -128,8 +131,6 @@ worker 8 / batch 32 setting:
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
   throughput across self-play settings.
-- `runs/` is disposable. Measurements that should survive must be summarized in
-  this document instead of relying on run-local paths.
 - The measured rows use RTX 4000 Ada. Do not assume the same ranking holds on
   RTX 4090 or RTX 5090 without measuring.
 - On 2026-05-12, RTX 4000 Ada secure Pod creation with
