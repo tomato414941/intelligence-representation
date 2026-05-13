@@ -81,6 +81,24 @@ In agentic settings, an agent is not only an observer. It has a viewpoint,
 action interface, history, constraints, and identity, and its state or outputs
 can become part of the world.
 
+### Actor
+
+An Actor is the recorded subject that produced or is credited with producing a
+sample, experience record, evaluation result, or log entry.
+
+Actor is a provenance concept, not necessarily a runtime object. It answers
+"who or what generated this record?"
+
+Examples:
+
+- checkpoint plus runtime search settings
+- teacher engine
+- deterministic rule
+- human labeler
+
+In shogi, checkpoint plus MCTS settings, YaneuraOu, and deterministic legal
+move selection can be Actors.
+
 ### Observation
 
 An observation is a view, signal, or recorded appearance made available from a
@@ -113,6 +131,29 @@ Examples:
 - tool call
 - generated response that changes later context
 - memory, context, planning, or self-evaluation update
+
+### Player
+
+A Player is a runtime object used mainly in games, reinforcement learning, or
+interactive environments. It receives state from an environment and returns an
+action.
+
+Player is not the same as Actor. A Player is the executable mechanism; an Actor
+is the recorded provenance identity.
+
+In shogi, USI engines, external USI processes, and checkpoint-backed players are
+Players.
+
+### Move Selector
+
+A Move Selector is the strategy inside an in-process Player that chooses one
+action from a state.
+
+Use this term for runtime action selection strategies. Do not use `Policy` for
+this meaning when the distinction matters.
+
+In shogi, MCTS, direct checkpoint move selection, and deterministic legal move
+selection are Move Selectors.
 
 ### Feedback
 
@@ -562,6 +603,26 @@ Examples:
 
 Model output is a role, not a representation type. It may describe a form, an
 encoding, a scalar, a tensor, or a distribution over choices.
+
+### Policy
+
+A Policy is an action distribution produced by a model or teacher, or the
+training target for such a distribution.
+
+Do not use `Policy` as the generic name for a runtime action-selection object.
+Use `Move Selector` for that meaning.
+
+In shogi, a policy is usually the legal-move prior distribution or policy
+target.
+
+### Evaluator
+
+An Evaluator scores or evaluates state for a downstream decision, target
+construction rule, or metric.
+
+In MCTS, an Evaluator returns action priors and value estimates for leaf
+positions. It does not itself choose the final move unless wrapped by a Move
+Selector or Player.
 
 ### Target
 
