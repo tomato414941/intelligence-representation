@@ -6,10 +6,10 @@ not a run log and it is not a cloud cost ledger.
 `runs/` is disposable. Measurements that should survive must be summarized here
 or in a promoted model note.
 
-## Current Decision Status
+## Current Reading
 
-The current Floodgate-like latency baseline is the 2026-05-13 RTX 4000 Ada
-YaneuraOu one-game check below.
+The most relevant current Floodgate-like latency measurements are the
+2026-05-13 YaneuraOu one-game checks below.
 
 Short deterministic grids and smoke runs below are historical measurements, not
 current deployment evidence.
@@ -41,9 +41,9 @@ Record enough context to explain latency and throughput:
 - `output_count`: number of output units produced or evaluated.
 - `output_per_sec`: `output_count / request_wall_time_sec`.
 
-## Current Baseline
+## Current One-Game Checks
 
-Minimum context for future baselines:
+Minimum context for future one-game checks:
 
 - entrypoint: `evaluate_shogi_players.py` or `python -m shogi_arena_agent`
 - board backend: `cshogi`
@@ -273,7 +273,8 @@ Result:
 
 Notes:
 
-- Historical status: useful CPU-overhead warning, but not a current baseline
+- Historical status: useful CPU-overhead warning, but not current deployment
+  evidence
   because it used max 80 plies and an older runtime stack.
 - This arena-like workload exceeded a 10-second move wall-clock budget on
   average and had a much higher tail than the short deterministic grids.
