@@ -140,19 +140,13 @@ Context:
 - Settings: MCTS32, checkpoint device cuda
 - Workload: 2 games vs deterministic legal player, max 40 plies
 
-Measured performance:
-
-| Evaluation batch size | Avg model calls | Avg request wall | P95 request wall | Avg model wall | Avg non-model wall | Avg output/sec |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 33.000 | 0.219s | 0.295s | 0.120s | 0.099s | 170.8 |
-| 4 | 9.225 | 0.157s | 0.239s | 0.058s | 0.098s | 240.6 |
-| 8 | 5.389 | 0.152s | 0.247s | 0.052s | 0.100s | 275.6 |
-| 16 | 3.325 | 0.156s | 0.280s | 0.046s | 0.110s | 269.5 |
-
 Notes:
 
 - Historical status: batch-mechanism check against a deterministic legal player;
   not a deployment workload.
+- Batch 1 to 8 reduced average model calls from 33.000 to 5.389 and average
+  model wall time from 0.120s to 0.052s.
+- Batch 16 did not improve request wall time beyond batch 8 in this workload.
 - Result: no illegal moves; batch 8 had one game end before max plies, so its
   request count was 36 instead of 40.
 - Batched evaluation reduced model calls and model wall time substantially, but
