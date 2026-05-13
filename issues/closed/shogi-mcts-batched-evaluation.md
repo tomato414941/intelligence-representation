@@ -85,4 +85,4 @@ RunPod measurements confirmed reduced model-call overhead.
 
 The remaining bottleneck is CPU-side MCTS/search overhead rather than the lack
 of neural-network evaluation batching. Track that follow-up in
-[`../shogi-mcts-cpu-overhead.md`](../shogi-mcts-cpu-overhead.md).
+[`../shogi-mcts-runtime-bottleneck-classification.md`](../shogi-mcts-runtime-bottleneck-classification.md).
