@@ -76,10 +76,10 @@ Context:
 - Torch/CUDA: torch 2.8.0+cu128
 - Measured: 2026-05-13
 
-| MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Interpretation |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 1024 | 64 | 9.0s | 1 | N/A | N/A | 1.625s | 3.619s | 4.862s | 27.906 | 1.324s | 0.301s | 764.8 | 53 | 19.3% | 30.6% | 8.3% | 16.0% | 1602 MiB | 0-1, game_over, 64 plies | Stayed below 10s with margin; low GPU utilization means the measured model wall time does not imply GPU saturation. |
-| 2048 | 64 | 9.0s | 1 | N/A | N/A | 2.944s | 3.995s | 6.715s | 45.192 | 2.421s | 0.523s | 742.1 | 76 | 18.4% | 32.2% | 8.9% | 16.0% | 1138 MiB | 0-1, game_over, 52 plies | Stayed below 10s in this one-game check; GPU utilization remained low, so increasing simulations mostly increases serialized work rather than saturating the GPU. |
+| MCTS simulations per move | NN leaf eval batch limit | Actual NN leaf eval batch avg | Actual NN leaf eval batch max | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Interpretation |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1024 | 64 | not measured | not measured | 9.0s | 1 | N/A | N/A | 1.625s | 3.619s | 4.862s | 27.906 | 1.324s | 0.301s | 764.8 | 53 | 19.3% | 30.6% | 8.3% | 16.0% | 1602 MiB | 0-1, game_over, 64 plies | Stayed below 10s with margin; low GPU utilization means the measured model wall time does not imply GPU saturation. |
+| 2048 | 64 | not measured | not measured | 9.0s | 1 | N/A | N/A | 2.944s | 3.995s | 6.715s | 45.192 | 2.421s | 0.523s | 742.1 | 76 | 18.4% | 32.2% | 8.9% | 16.0% | 1138 MiB | 0-1, game_over, 52 plies | Stayed below 10s in this one-game check; GPU utilization remained low, so increasing simulations mostly increases serialized work rather than saturating the GPU. |
 
 Notes:
 
@@ -92,9 +92,8 @@ Notes:
 - `Concurrent games per process` is N/A because there is only one current game.
 - The relevant batching mechanism is one-tree MCTS leaf batching through
   `NN leaf eval batch limit`.
-- `MCTS2048` averaged 2041.0 completed simulations per request because the
-  9-second move time limit can stop search before the configured simulation
-  count.
+- `Actual NN leaf eval batch` measures how many leaf positions were actually
+  sent to one model call. It excludes the root expansion call.
 
 ## Historical Measurements
 
