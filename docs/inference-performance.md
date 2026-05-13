@@ -119,13 +119,6 @@ Fallback actual-batch instrumentation check:
 | 1024 | 64 | 51.3 | 64 | 9.0s | 1 | 1.312s | 1.595s | 2.231s | 22.125 | 1.053s | 0.259s | 824.8 | 64 | 2.0% | 5.0% | 15.0% | 27.0% | 1537 MiB | 0-1, game_over, 96 plies | Actual leaf batches often approached the configured limit, but GPU utilization stayed low. |
 | 2048 | 64 | 42.6 | 64 | 9.0s | 1 | 2.329s | 4.155s | 4.255s | 54.286 | 1.877s | 0.452s | 992.7 | 66 | 2.1% | 5.4% | 16.2% | 31.0% | 757 MiB | 0-1, game_over, 56 plies | Actual leaf batches still reached 64, but average batch size fell versus MCTS1024 and GPU utilization remained low. |
 
-Additional run attempts:
-
-- RTX 4000 Ada community pod creation returned `There are no instances
-  currently available`.
-- RTX 4090 community pod was created but did not become SSH ready; it was
-  deleted before evaluation.
-
 ## Historical Measurements
 
 These entries preserve measured facts. Do not use short deterministic grids,
