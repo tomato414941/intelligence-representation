@@ -61,14 +61,24 @@ community Pods, generation worker processes increased throughput through 6
 workers:
 
 ```text
-worker=1: 12.16 plies/sec, GPU avg  4.44%
-worker=2: 22.01 plies/sec, GPU avg 10.60%
-worker=4: 38.59 plies/sec, GPU avg 24.95%
-worker=6: 53.24 plies/sec, GPU avg 35.65%
+worker=1: 12.72 plies/sec, GPU avg  4.37%
+worker=2: 18.99 plies/sec, GPU avg  9.95%
+worker=4: 40.77 plies/sec, GPU avg 24.60%
+worker=6: 50.40 plies/sec, GPU avg 33.64%
 worker=8: 52.10 plies/sec, GPU avg 35.14%
 ```
 
 On the observed 6 vCPU Pod, worker 8 did not improve over worker 6.
+
+In the 2026-05-13 current-code worker-scaling profile, the measured non-model
+MCTS phases were still dominated by expansion and selection:
+
+```text
+worker=1: expand 63.81%, selection 23.38%, legal_moves 8.38%, board_copy 3.17%
+worker=2: expand 64.08%, selection 22.75%, legal_moves 8.45%, board_copy 3.53%
+worker=4: expand 62.76%, selection 23.94%, legal_moves 8.31%, board_copy 3.64%
+worker=6: expand 65.81%, selection 21.63%, legal_moves 7.73%, board_copy 3.52%
+```
 
 ### NN Batch Limit
 
@@ -95,6 +105,10 @@ worker 8 / batch 32 setting:
 
 | Case | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |
+| `w1_c16_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 212.1 | 266.82 | 12.72 | 4.37% | 11.00% | 640 MiB / 20475 MiB | 102.42% | 142.00% | 995 MiB | 2026-05-13 current-code profile. Measured phase share: expand 63.81%, selection 23.38%. |
+| `w2_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
+| `w4_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
+| `w6_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 241.7 | 230.17 | 50.40 | 33.64% | 59.00% | 2089 MiB / 20475 MiB | 485.50% | 567.50% | 5825 MiB | 2026-05-13 current-code profile. Measured phase share: expand 65.81%, selection 21.63%. |
 | `p1_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 1 | 1 | 16 | 16 | 110.5 | 55.00 | 8.04 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
 | `p2_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 2 | 1 | 16 | 16 | 304.5 | 114.64 | 10.62 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
 | `p4_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 16 | 185.2 | 74.26 | 9.98 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
@@ -126,6 +140,7 @@ worker 8 / batch 32 setting:
 | NN batch limit check | 264.221s | 199.024s | about $0.02 |
 | Worker 8 check | 339.589s | 284.899s | about $0.02 |
 | Worker 8 secure 9 vCPU check | 225.423s | 152.079s | about $0.02 |
+| 2026-05-13 current-code worker-scaling profile | 926.557s | 880.379s | about $0.05 |
 
 ## Notes
 
