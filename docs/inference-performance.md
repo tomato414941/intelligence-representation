@@ -8,12 +8,11 @@ or in a promoted model note.
 
 ## Current Decision Status
 
-There is no current Floodgate-ready latency baseline yet.
+The current Floodgate-like latency baseline is the 2026-05-13 RTX 4000 Ada
+YaneuraOu one-game check below.
 
-The next baseline should measure a current `shogi-arena-agent` entrypoint with
-`board_backend=cshogi`, a YaneuraOu workload, and enough plies to expose tail
-latency. Short deterministic grids and smoke runs below are historical
-measurements, not current deployment evidence.
+Short deterministic grids and smoke runs below are historical measurements, not
+current deployment evidence.
 
 The strongest current warning is that a 2026-05-10 YaneuraOu workload with
 MCTS4096 and evaluation batch size 64 averaged more than 10 seconds per move
@@ -44,9 +43,7 @@ Record enough context to explain latency and throughput:
 
 ## Current Baseline
 
-No current baseline is recorded.
-
-Minimum context for the next baseline:
+Minimum context for future baselines:
 
 - entrypoint: `evaluate_shogi_players.py` or `python -m shogi_arena_agent`
 - board backend: `cshogi`
@@ -56,7 +53,7 @@ Minimum context for the next baseline:
 - move time limit
 - GPU, vCPU, and PyTorch/CUDA stack
 
-### Planned Floodgate-Like One-Game Check
+### Floodgate-Like One-Game Check
 
 Purpose: measure one-game, one-move latency behavior. This is different from
 self-play throughput, where multiple games can be sharded across worker
@@ -72,22 +69,29 @@ Context:
 - Board backend: `cshogi`
 - Device: cuda
 - GPU: RTX 4000 Ada
-- vCPU: TBD
+- vCPU: 6
 - Max plies: 320
-- Measured: TBD
+- Template: `runpod-torch-v280`
+- Torch/CUDA: torch 2.8.0+cu128
+- Measured: 2026-05-13
 
 | MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Result | Interpretation |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 1024 | 64 | 9.0s | 1 | N/A | N/A | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Check whether current single-game latency has margin under 10s. |
-| 2048 | 64 | 9.0s | 1 | N/A | N/A | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Check whether a larger search still fits the move budget. |
+| 1024 | 64 | 9.0s | 1 | N/A | N/A | 2.363s | 4.085s | 5.043s | 23.929 | 1.956s | 0.407s | 481.6 | 0-1, game_over, 84 plies | Stayed below 10s with margin in this one-game check. |
+| 2048 | 64 | 9.0s | 1 | N/A | N/A | 4.600s | 8.376s | 9.005s | 56.763 | 3.834s | 0.766s | 502.1 | 0-1, game_over, 76 plies | Stayed below 10s in this one-game check, but tail latency is close to the move budget. |
 
 Notes:
 
+- Both rows used `shogi-arena-agent` main at `ceb702d` and the d256 checkpoint.
+- RunPod reported `costPerHr=0.20`, 31 GB RAM, and 6 vCPU for both pods.
 - `Game-level worker processes` is N/A because this workload is one live game;
   sharding other games would not speed up the current move.
 - `Concurrent games per process` is N/A because there is only one current game.
 - The relevant batching mechanism is one-tree MCTS leaf batching through
   `NN leaf eval batch limit`.
+- `MCTS2048` averaged 2041.0 completed simulations per request because the
+  9-second move time limit can stop search before the configured simulation
+  count.
 
 ## Historical Measurements
 
