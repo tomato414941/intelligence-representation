@@ -1,6 +1,6 @@
 # Shogi MCTS Batched Evaluation
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -74,3 +74,15 @@ The first version should stay shogi-specific and small:
   evaluation batch sizes 32/64/128 found only small differences among these
   larger batch sizes. MCTS4096 with batch 128 averaged 7.507s per move in the
   short deterministic workload; MCTS8192 exceeded the 10-second budget.
+
+## Resolution
+
+Closed on 2026-05-13.
+
+The original scope is complete: one-game MCTS can evaluate multiple leaf
+positions per model call, the behavior has deterministic test coverage, and
+RunPod measurements confirmed reduced model-call overhead.
+
+The remaining bottleneck is CPU-side MCTS/search overhead rather than the lack
+of neural-network evaluation batching. Track that follow-up in
+[`../shogi-mcts-cpu-overhead.md`](../shogi-mcts-cpu-overhead.md).
