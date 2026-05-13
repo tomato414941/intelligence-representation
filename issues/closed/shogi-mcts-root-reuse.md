@@ -1,6 +1,6 @@
 # Shogi MCTS Root Reuse
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -33,3 +33,19 @@ Keep the first version shogi-specific and small:
 - repeated play can carry the MCTS tree across at least one legal move
 - reuse falls back cleanly when the played move is not in the tree
 - a small deterministic test covers both reuse and fallback
+
+## Resolution
+
+Implemented in `shogi-arena-agent` commit `3ef3a61`.
+
+- `MctsMoveSelector` supports opt-in `MctsConfig(root_reuse=True)`.
+- CLI/player actor settings record `root_reuse`.
+- Reuse is enabled only for one-game `MctsMoveSelector` paths.
+- `--concurrent-games-per-process` rejects root reuse because batched
+  self-play uses `BatchedMctsMoveSelector`, which does not yet maintain one
+  persistent tree per active game.
+
+Verification:
+
+- `uv run --with pytest python -m pytest tests/test_mcts.py tests/test_main.py tests/test_generate_shogi_games_script.py`
+- `PYTHONPATH=/home/dev/projects/intelligence-representation/src uv run --with pytest python -m pytest`
