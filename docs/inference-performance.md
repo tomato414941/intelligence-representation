@@ -75,15 +75,18 @@ Context:
 - Torch/CUDA: torch 2.8.0+cu128
 - Measured: 2026-05-13
 
-| MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Result | Interpretation |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 1024 | 64 | 9.0s | 1 | N/A | N/A | 2.363s | 4.085s | 5.043s | 23.929 | 1.956s | 0.407s | 481.6 | 0-1, game_over, 84 plies | Stayed below 10s with margin in this one-game check. |
-| 2048 | 64 | 9.0s | 1 | N/A | N/A | 4.600s | 8.376s | 9.005s | 56.763 | 3.834s | 0.766s | 502.1 | 0-1, game_over, 76 plies | Stayed below 10s in this one-game check, but tail latency is close to the move budget. |
+| MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Interpretation |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1024 | 64 | 9.0s | 1 | N/A | N/A | 2.363s | 4.085s | 5.043s | 23.929 | 1.956s | 0.407s | 481.6 | not measured | not measured | not measured | not measured | not measured | not measured | 0-1, game_over, 84 plies | Stayed below 10s with margin in this one-game check. |
+| 2048 | 64 | 9.0s | 1 | N/A | N/A | 4.600s | 8.376s | 9.005s | 56.763 | 3.834s | 0.766s | 502.1 | not measured | not measured | not measured | not measured | not measured | not measured | 0-1, game_over, 76 plies | Stayed below 10s in this one-game check, but tail latency is close to the move budget. |
 
 Notes:
 
 - Both rows used `shogi-arena-agent` main at `ceb702d` and the d256 checkpoint.
 - RunPod reported `costPerHr=0.20`, 31 GB RAM, and 6 vCPU for both pods.
+- CPU/GPU utilization columns are intended to be populated from
+  `gpu_summary.json` produced by the RunPod evaluation wrapper. The first two
+  rows predate that sampler.
 - `Game-level worker processes` is N/A because this workload is one live game;
   sharding other games would not speed up the current move.
 - `Concurrent games per process` is N/A because there is only one current game.
