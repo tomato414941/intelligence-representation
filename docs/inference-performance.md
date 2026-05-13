@@ -69,7 +69,8 @@ Context:
 - Board backend: `cshogi`
 - Device: cuda
 - GPU: RTX 4000 Ada
-- vCPU: 6
+- vCPU: 5
+- RAM: 47 GB
 - Max plies: 320
 - Template: `runpod-torch-v280`
 - Torch/CUDA: torch 2.8.0+cu128
@@ -77,16 +78,15 @@ Context:
 
 | MCTS simulations per move | NN leaf eval batch limit | Move time limit | Games | Game-level worker processes | Concurrent games per process | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Interpretation |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| 1024 | 64 | 9.0s | 1 | N/A | N/A | 2.363s | 4.085s | 5.043s | 23.929 | 1.956s | 0.407s | 481.6 | not measured | not measured | not measured | not measured | not measured | not measured | 0-1, game_over, 84 plies | Stayed below 10s with margin in this one-game check. |
-| 2048 | 64 | 9.0s | 1 | N/A | N/A | 4.600s | 8.376s | 9.005s | 56.763 | 3.834s | 0.766s | 502.1 | not measured | not measured | not measured | not measured | not measured | not measured | 0-1, game_over, 76 plies | Stayed below 10s in this one-game check, but tail latency is close to the move budget. |
+| 1024 | 64 | 9.0s | 1 | N/A | N/A | 1.625s | 3.619s | 4.862s | 27.906 | 1.324s | 0.301s | 764.8 | 53 | 19.3% | 30.6% | 8.3% | 16.0% | 1602 MiB | 0-1, game_over, 64 plies | Stayed below 10s with margin; low GPU utilization means the measured model wall time does not imply GPU saturation. |
+| 2048 | 64 | 9.0s | 1 | N/A | N/A | 2.944s | 3.995s | 6.715s | 45.192 | 2.421s | 0.523s | 742.1 | 76 | 18.4% | 32.2% | 8.9% | 16.0% | 1138 MiB | 0-1, game_over, 52 plies | Stayed below 10s in this one-game check; GPU utilization remained low, so increasing simulations mostly increases serialized work rather than saturating the GPU. |
 
 Notes:
 
-- Both rows used `shogi-arena-agent` main at `ceb702d` and the d256 checkpoint.
-- RunPod reported `costPerHr=0.20`, 31 GB RAM, and 6 vCPU for both pods.
-- CPU/GPU utilization columns are intended to be populated from
-  `gpu_summary.json` produced by the RunPod evaluation wrapper. The first two
-  rows predate that sampler.
+- Both rows used `shogi-arena-agent` main at `e39d0bf` and the d256 checkpoint.
+- RunPod reported `costPerHr=0.20`, 47 GB RAM, and 5 vCPU for both pods.
+- CPU/GPU utilization columns are populated from `gpu_summary.json` produced by
+  the RunPod evaluation wrapper. Sampling interval was 1 second.
 - `Game-level worker processes` is N/A because this workload is one live game;
   sharding other games would not speed up the current move.
 - `Concurrent games per process` is N/A because there is only one current game.
