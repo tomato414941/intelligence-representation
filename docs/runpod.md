@@ -101,4 +101,5 @@ The `runpod-torch-v280` template was verified with RTX 5090 on 2026-05-10:
 ## Records
 
 - Cost, runtime, memory, and throughput: `docs/compute-costs.md`
-- Inference latency and output throughput: `docs/inference-performance.md`
+- Shogi play inference latency and output throughput:
+  `docs/shogi-play-inference-performance.md`

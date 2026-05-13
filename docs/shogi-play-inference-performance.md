@@ -1,4 +1,4 @@
-# Inference Performance
+# Shogi Play Inference Performance
 
 This document catalogs wall-clock inference and interaction performance. It is
 not a run log and it is not a cloud cost ledger.
