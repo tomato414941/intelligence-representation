@@ -94,6 +94,37 @@ Notes:
   `NN leaf eval batch limit`.
 - `Actual NN leaf eval batch` measures how many leaf positions were actually
   sent to one model call. It excludes the root expansion call.
+- A 2026-05-13 rerun intended to fill the actual-batch columns could not rent
+  RTX 4000 Ada community pods. A fallback RTX A4000 instrumentation check is
+  recorded below.
+
+Fallback actual-batch instrumentation check:
+
+- Entry point: `evaluate_shogi_players.py`
+- Model: d256-h1024-heads8-l6-shogi
+- Workload: checkpoint vs YaneuraOu MaterialLv1 `go nodes 1`
+- Board backend: `cshogi`
+- Device: cuda
+- GPU: RTX A4000
+- vCPU: 14
+- RAM: 62 GB
+- Cost: $0.17/hr
+- Max plies: 320
+- Template: `runpod-torch-v280`
+- Torch/CUDA: torch 2.8.0+cu128
+- Measured: 2026-05-13
+
+| MCTS simulations per move | NN leaf eval batch limit | Actual NN leaf eval batch avg | Actual NN leaf eval batch max | Move time limit | Games | Avg request wall | P95 request wall | Max request wall | Avg model calls | Avg model wall | Avg non-model wall | Avg output/sec | Sample count | CPU util avg | CPU util max | GPU util avg | GPU util max | GPU memory max | Result | Interpretation |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1024 | 64 | 51.3 | 64 | 9.0s | 1 | 1.312s | 1.595s | 2.231s | 22.125 | 1.053s | 0.259s | 824.8 | 64 | 2.0% | 5.0% | 15.0% | 27.0% | 1537 MiB | 0-1, game_over, 96 plies | Actual leaf batches often approached the configured limit, but GPU utilization stayed low. |
+| 2048 | 64 | 42.6 | 64 | 9.0s | 1 | 2.329s | 4.155s | 4.255s | 54.286 | 1.877s | 0.452s | 992.7 | 66 | 2.1% | 5.4% | 16.2% | 31.0% | 757 MiB | 0-1, game_over, 56 plies | Actual leaf batches still reached 64, but average batch size fell versus MCTS1024 and GPU utilization remained low. |
+
+Additional run attempts:
+
+- RTX 4000 Ada community pod creation returned `There are no instances
+  currently available`.
+- RTX 4090 community pod was created but did not become SSH ready; it was
+  deleted before evaluation.
 
 ## Historical Measurements
 
