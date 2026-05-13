@@ -144,15 +144,7 @@ Notes:
 
 - Historical status: batch-mechanism check against a deterministic legal player;
   not a deployment workload.
-- Batch 1 to 8 reduced average model calls from 33.000 to 5.389 and average
-  model wall time from 0.120s to 0.052s.
-- Batch 16 did not improve request wall time beyond batch 8 in this workload.
-- Result: no illegal moves; batch 8 had one game end before max plies, so its
-  request count was 36 instead of 40.
-- Batched evaluation reduced model calls and model wall time substantially, but
-  non-model search overhead became the dominant remaining cost.
-- GPU: NVIDIA GeForce RTX 4090
-- Measured: 2026-05-10
+- Batched leaf evaluation reduced model-call overhead in this workload.
 
 #### Shogi Checkpoint MCTS N / Batch Grid
 
