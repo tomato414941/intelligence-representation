@@ -94,11 +94,7 @@ Notes:
   `NN leaf eval batch limit`.
 - `Actual NN leaf eval batch` measures how many leaf positions were actually
   sent to one model call. It excludes the root expansion call.
-- A 2026-05-13 rerun intended to fill the actual-batch columns could not rent
-  RTX 4000 Ada community pods. A fallback RTX A4000 instrumentation check is
-  recorded below.
-
-Fallback actual-batch instrumentation check:
+Actual-batch check on RTX A4000:
 
 - Entry point: `evaluate_shogi_players.py`
 - Model: d256-h1024-heads8-l6-shogi
