@@ -1,4 +1,4 @@
-# Shogi Self-Play Throughput
+# Shogi Self-Play Generation Throughput
 
 This document records facts for planning shogi self-play data generation. It is
 not a model-quality report and it is not a complete run history.

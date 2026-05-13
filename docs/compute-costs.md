@@ -59,7 +59,7 @@ pricing page before using these rows for future cost estimates.
 | 2026-05-09 | d256 shogi vs YaneuraOu nodes1 MCTS16/32 EU | measured | RunPod RTX 4090, $0.69/hr | d256-h1024-heads8-layers6 checkpoint vs YaneuraOu `go nodes 1` | 20 | checkpoint MCTS16 and MCTS32 CUDA vs YaneuraOu nodes1 | 5m04s total, 2m27s evaluation | about $0.06 | 10 games each for MCTS16 and MCTS32; GPU confirmed as NVIDIA GeForce RTX 4090. |
 | 2026-05-10 | shared runner secure smoke vs YaneuraOu nodes1 | smoke | RunPod secure RTX 5090, $0.99/hr | d256-h1024-heads8-layers6 checkpoint vs YaneuraOu `go nodes 1` | 1 | checkpoint MCTS2048 batch64 CUDA vs YaneuraOu nodes1 | 2m56s total, 1m44s remote eval/build command | about $0.05 | Shared runner path completed setup, evaluation, output sync, timings output, and pod deletion; GPU confirmed as NVIDIA GeForce RTX 5090. |
 
-## Shogi Self-Play Throughput
+## Shogi Self-Play Generation Throughput
 
 Self-play generation throughput and cost notes are tracked in
-`docs/shogi-self-play-throughput.md`.
+`docs/shogi-self-play-generation-throughput.md`.
