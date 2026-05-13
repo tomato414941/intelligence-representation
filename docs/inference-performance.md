@@ -126,37 +126,6 @@ deployment evidence.
 This path covers inference where a search or planning loop repeatedly chooses
 model inputs. MCTS-style play belongs here.
 
-#### Shogi Checkpoint MCTS
-
-Context:
-
-- Inference path: search-driven repeated calls
-- Model: d256-h1024-heads8-l6-shogi
-- Environment: RunPod RTX 4090, CUDA, torch 2.11.0+cu130
-- Input shape: shogi position tokens plus legal candidate moves
-- Output shape: candidate move logits plus value
-- Request: one move decision
-- Output unit: MCTS simulation
-- Settings: MCTS32, batch=1 model calls, checkpoint device cuda
-- Workload: 4 games vs YaneuraOu `go nodes 1`, max 80 plies
-
-Measured performance:
-
-- `request_wall_time_sec`: avg 0.306s, p95 0.431s, max 0.601s
-- `model_call_count`: avg 33.0 per request
-- `model_wall_time_sec`: avg 0.184s per request
-- `non_model_wall_time_sec`: avg 0.122s per request
-- `output_count`: avg 32.0 simulations per request
-- `output_per_sec`: avg 111.8 simulations/sec
-
-Notes:
-
-- Historical status: low-simulation baseline; not a current Floodgate candidate
-  setting.
-- Result: 0-4-0, all game_over, avg 58.0 plies
-- GPU: NVIDIA GeForce RTX 4090
-- Measured: 2026-05-09
-
 #### Shogi Checkpoint MCTS Batched Leaf Evaluation
 
 Context:
@@ -327,45 +296,4 @@ Notes:
   reused due to GLIBC/GLIBCXX version mismatch. YaneuraOu MaterialLv1 was built
   inside the container before evaluation.
 - GPU: NVIDIA GeForce RTX 4090
-- Measured: 2026-05-10
-
-#### Shogi Checkpoint MCTS2048 Versus YaneuraOu Secure Smoke
-
-Context:
-
-- Inference path: search-driven repeated calls
-- Model: d256-h1024-heads8-l6-shogi
-- Environment: RunPod secure RTX 5090, CUDA, torch 2.8.0+cu128
-- Input shape: shogi position tokens plus legal candidate moves
-- Output shape: candidate move logits plus value
-- Request: one move decision
-- Output unit: MCTS simulation
-- Settings: MCTS2048, evaluation batch size 64, checkpoint device cuda
-- Workload: 1 game vs YaneuraOu MaterialLv1 `go nodes 1`, max 16 plies
-
-Measured performance:
-
-- `request_wall_time_sec`: avg 4.810s, p95 5.907s, max 5.907s
-- `model_call_count`: avg 57.875 per request
-- `model_wall_time_sec`: avg 1.684s per request
-- `non_model_wall_time_sec`: avg 3.125s per request
-- `output_count`: avg 2048.0 simulations per request
-- `output_per_sec`: avg 430.2 simulations/sec
-
-Result:
-
-- 1 game: draw by max plies
-- Average plies: 16.0
-- Illegal moves: 0
-
-Notes:
-
-- Historical status: smoke only; too few plies for tail-latency conclusions.
-- This was a shared RunPod runner smoke, not a strength or stable performance
-  benchmark.
-- The run completed setup, YaneuraOu build, evaluation, output sync, timings
-  output, and pod deletion through `runpod-job-runner`.
-- The 8 measured move requests stayed within a 10-second move wall-clock
-  budget, but the workload is too small for tail-latency conclusions.
-- GPU: NVIDIA GeForce RTX 5090
 - Measured: 2026-05-10
