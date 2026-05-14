@@ -48,13 +48,6 @@ Unless noted otherwise:
 
 ## Findings
 
-### Concurrent Games
-
-The initial small grid used 4 games per case and did not record GPU utilization.
-Within that grid, `concurrent-games-per-process=4`,
-`mcts-simulations-per-move=16`, and `nn-leaf-eval-batch-limit=32` had the
-highest recorded throughput at 12.21 plies/sec.
-
 ### Generation Worker Processes
 
 Single-process generation left the GPU mostly idle. With 6 vCPU / 31 GiB
