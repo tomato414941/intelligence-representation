@@ -1,6 +1,6 @@
 # Shogi Decision Performance Schema
 
-Status: open. Priority: low.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -24,7 +24,7 @@ can become hard to manage:
 
 Introduce a small structured field for decision-time performance, for example:
 
-`ShogiTransitionRecord.decision_performance: ShogiDecisionPerformance | None`
+`ShogiTransitionRecord.decision_telemetry: ShogiDecisionTelemetry | None`
 
 Keep USI `info` lines for actual engine info. Use structured performance data
 for internal timing.
@@ -35,3 +35,17 @@ for internal timing.
 - evaluation summaries read structured performance data.
 - existing USI info lines remain available separately.
 
+## Resolution
+
+Closed on 2026-05-14.
+
+`ShogiTransitionRecord` now has a structured `decision_telemetry` field with
+separate `move_performance` and `batch_performance` payloads.
+
+`decision_usi_info_lines` remains available for USI-originated engine info
+lines. New in-process checkpoint/MCTS performance telemetry is no longer
+emitted as `info string intrep_performance ...` or
+`info string intrep_batch_performance ...`.
+
+Existing JSONL records that contain those legacy `info string intrep_*`
+payloads are migrated to `decision_telemetry` when loaded.

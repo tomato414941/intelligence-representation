@@ -7,6 +7,7 @@ import shogi
 
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
+    ShogiDecisionTelemetry,
     ShogiGameRecord,
     ShogiTransitionRecord,
     load_shogi_game_records_jsonl,
@@ -151,6 +152,86 @@ class ShogiGameRecordTest(unittest.TestCase):
             records = load_shogi_game_records_jsonl(path)
 
         self.assertEqual(records[0].transitions[0].action_usi, "2g2f")
+
+    def test_round_trips_decision_telemetry(self) -> None:
+        board = shogi.Board()
+        legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
+        board.push_usi("2g2f")
+        record = ShogiGameRecord(
+            black_actor=ShogiActorSpec(kind="checkpoint", name="direct", settings={}),
+            white_actor=ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={}),
+            initial_position_sfen=shogi.Board().sfen(),
+            transitions=(
+                ShogiTransitionRecord(
+                    ply=0,
+                    side="black",
+                    position_sfen=shogi.Board().sfen(),
+                    legal_moves=legal_moves,
+                    action_usi="2g2f",
+                    next_position_sfen=board.sfen(),
+                    reward=0.0,
+                    done=True,
+                    decision_telemetry=ShogiDecisionTelemetry(
+                        move_performance={"request_wall_time_sec": 0.4},
+                        batch_performance={"position_count": 4},
+                    ),
+                ),
+            ),
+            winner=None,
+            end_reason="max_plies",
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            write_shogi_game_records_jsonl(path, [record])
+            records = load_shogi_game_records_jsonl(path)
+
+        self.assertEqual(records, [record])
+
+    def test_loads_legacy_performance_info_lines_as_decision_telemetry(self) -> None:
+        board = shogi.Board()
+        legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
+        board.push_usi("2g2f")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            path.write_text(
+                json.dumps(
+                    {
+                        "black_actor": {"kind": "checkpoint", "name": "direct", "settings": {}},
+                        "white_actor": {"kind": "yaneuraou", "name": "yaneuraou", "settings": {}},
+                        "initial_position_sfen": shogi.Board().sfen(),
+                        "transitions": [
+                            {
+                                "ply": 0,
+                                "side": "black",
+                                "position_sfen": shogi.Board().sfen(),
+                                "legal_moves": list(legal_moves),
+                                "action_usi": "2g2f",
+                                "next_position_sfen": board.sfen(),
+                                "reward": 0.0,
+                                "done": True,
+                                "decision_usi_info_lines": [
+                                    "info depth 1 nodes 1 pv 2g2f",
+                                    'info string intrep_performance {"request_wall_time_sec": 0.4}',
+                                    'info string intrep_batch_performance {"position_count": 4}',
+                                ],
+                            }
+                        ],
+                        "end_reason": "max_plies",
+                        "winner": None,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            records = load_shogi_game_records_jsonl(path)
+
+        transition = records[0].transitions[0]
+        self.assertEqual(transition.decision_usi_info_lines, ("info depth 1 nodes 1 pv 2g2f",))
+        self.assertIsNotNone(transition.decision_telemetry)
+        assert transition.decision_telemetry is not None
+        self.assertEqual(transition.decision_telemetry.move_performance, {"request_wall_time_sec": 0.4})
+        self.assertEqual(transition.decision_telemetry.batch_performance, {"position_count": 4})
 
 
 if __name__ == "__main__":
