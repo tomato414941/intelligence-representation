@@ -45,7 +45,6 @@ Unless noted otherwise:
 - board backend: `cshogi`
 - max plies: 320
 - player profile: checkpoint self-play MCTS on both sides
-- MCTS simulations per move: 16
 
 ## Findings
 
