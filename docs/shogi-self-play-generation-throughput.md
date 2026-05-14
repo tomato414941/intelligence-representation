@@ -127,13 +127,6 @@ worker 8 / batch 32 setting:
 
 | Measurement | Date | Total job runtime | Remote workload runtime | Estimated cost |
 | --- | --- | ---: | ---: | ---: |
-| Initial small grid | not recorded | 571.164s | 514.209s | about $0.03 |
-| GPU utilization check | not recorded | 560.415s | 505.343s | about $0.03 |
-| Generation worker check | not recorded | 667.394s | 623.491s | about $0.04 |
-| Generation worker scaling check | not recorded | 906.726s | 841.622s | about $0.05 |
-| NN batch limit check | not recorded | 264.221s | 199.024s | about $0.02 |
-| Worker 8 check | not recorded | 339.589s | 284.899s | about $0.02 |
-| Worker 8 secure 9 vCPU check | not recorded | 225.423s | 152.079s | about $0.02 |
 | Current-code worker-scaling profile | 2026-05-13 | 926.557s | 880.379s | about $0.05 |
 
 ## Notes
