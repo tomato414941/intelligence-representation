@@ -5,12 +5,12 @@ from pathlib import Path
 
 import torch
 
-from intrep.problems.language_modeling.causal_model import CausalTextConfig, CausalTextModel
+from intrep.problems.language_modeling.model import LanguageModelingConfig, LanguageModelingModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate text from a causal text checkpoint.")
+    parser = argparse.ArgumentParser(description="Generate text from a language modeling checkpoint.")
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--max-new-tokens", type=int, default=200)
@@ -49,7 +49,7 @@ def generate_text_from_checkpoint(
     if temperature < 0.0:
         raise ValueError("temperature must be non-negative")
     torch.manual_seed(seed)
-    model, tokenizer = load_causal_text_checkpoint(checkpoint_path, device=device)
+    model, tokenizer = load_language_modeling_checkpoint(checkpoint_path, device=device)
     token_ids = tokenizer.encode(prompt)
     for _ in range(max_new_tokens):
         next_token_id = _next_token_id(
@@ -62,15 +62,15 @@ def generate_text_from_checkpoint(
     return tokenizer.decode(token_ids)
 
 
-def load_causal_text_checkpoint(
+def load_language_modeling_checkpoint(
     checkpoint_path: Path,
     *,
     device: str = "cpu",
-) -> tuple[CausalTextModel, TextTokenizer]:
+) -> tuple[LanguageModelingModel, TextTokenizer]:
     payload = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    if payload.get("schema_version") != "intrep.causal_text_checkpoint.v1":
+    if payload.get("schema_version") != "intrep.language_modeling_checkpoint.v1":
         raise ValueError("unsupported checkpoint schema")
-    model = CausalTextModel(CausalTextConfig(**payload["model_config"])).to(device)
+    model = LanguageModelingModel(LanguageModelingConfig(**payload["model_config"])).to(device)
     model.load_state_dict(payload["model_state_dict"])
     model.eval()
     tokenizer = text_tokenizer_from_payload(payload.get("tokenizer"))
@@ -81,7 +81,7 @@ def load_causal_text_checkpoint(
 
 def _next_token_id(
     *,
-    model: CausalTextModel,
+    model: LanguageModelingModel,
     token_ids: list[int],
     temperature: float,
     device: str,

@@ -9,9 +9,12 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.problems.language_modeling.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
+from intrep.problems.language_modeling.model import (
+    LanguageModelingConfig,
+    LanguageModelingModel,
+    language_modeling_config_to_dict,
+)
 from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.problems.language_modeling.model import LanguageModelingModel
 from intrep.text.tokenizer import (
     TextTokenizer,
     TextTokenizerKind,
@@ -153,8 +156,8 @@ def train_language_modeling_with_artifacts(
     *,
     train_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...],
     training_config: LanguageModelingTrainingConfig | None = None,
-    model_config: CausalTextConfig | None = None,
-    initial_model: CausalTextModel | None = None,
+    model_config: LanguageModelingConfig | None = None,
+    initial_model: LanguageModelingModel | None = None,
     eval_examples: list[LanguageModelingExample] | tuple[LanguageModelingExample, ...] | None = None,
     tokenizer_override: TextTokenizer | None = None,
 ) -> LanguageModelingTrainingArtifacts:
@@ -172,8 +175,8 @@ def _train_text_corpus_with_artifacts(
     *,
     corpus: str,
     training_config: LanguageModelingTrainingConfig | None = None,
-    model_config: CausalTextConfig | None = None,
-    initial_model: CausalTextModel | None = None,
+    model_config: LanguageModelingConfig | None = None,
+    initial_model: LanguageModelingModel | None = None,
     eval_corpus: str | None = None,
     tokenizer_override: TextTokenizer | None = None,
 ) -> LanguageModelingTrainingArtifacts:
@@ -226,17 +229,17 @@ def _train_text_corpus_with_artifacts(
     if initial_model is not None and model_config is not None:
         _validate_initial_model_config(initial_model, model_config)
     if initial_model is not None:
-        causal_text_config = initial_model.config
+        language_modeling_config = initial_model.config
     else:
-        causal_text_config = model_config or CausalTextConfig(
+        language_modeling_config = model_config or LanguageModelingConfig(
             vocab_size=tokenizer.vocab_size,
             context_length=config.context_length,
         )
-    if causal_text_config.vocab_size != tokenizer.vocab_size:
+    if language_modeling_config.vocab_size != tokenizer.vocab_size:
         raise ValueError("model_config.vocab_size must match the tokenizer vocab size")
-    if causal_text_config.context_length != config.context_length:
+    if language_modeling_config.context_length != config.context_length:
         raise ValueError("model_config.context_length must match training_config.context_length")
-    model = _language_modeling_model(initial_model, causal_text_config).to(device)
+    model = _language_modeling_model(initial_model, language_modeling_config).to(device)
     optimizer = build_adamw(
         model,
         learning_rate=config.learning_rate,
@@ -326,10 +329,10 @@ def _train_text_corpus_with_artifacts(
         device=str(device),
     )
     if config.checkpoint_path is not None:
-        save_causal_text_checkpoint(
+        save_language_modeling_checkpoint(
             path=config.checkpoint_path,
             model=model,
-            model_config=causal_text_config,
+            model_config=language_modeling_config,
             training_config=config,
             result=result,
             tokenizer=tokenizer,
@@ -337,11 +340,11 @@ def _train_text_corpus_with_artifacts(
     return LanguageModelingTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
 
 
-def save_causal_text_checkpoint(
+def save_language_modeling_checkpoint(
     *,
     path: Path,
     model: LanguageModelingModel,
-    model_config: CausalTextConfig,
+    model_config: LanguageModelingConfig,
     training_config: LanguageModelingTrainingConfig,
     result: LanguageModelingTrainingResult,
     tokenizer: TextTokenizer,
@@ -351,12 +354,12 @@ def save_causal_text_checkpoint(
     if training_config.checkpoint_path is not None:
         training_payload["checkpoint_path"] = str(training_config.checkpoint_path)
     payload = {
-        "schema_version": "intrep.causal_text_checkpoint.v1",
+        "schema_version": "intrep.language_modeling_checkpoint.v1",
         "model_state_dict": {
             name: tensor.detach().cpu()
             for name, tensor in model.state_dict().items()
         },
-        "model_config": causal_text_config_to_dict(model_config),
+        "model_config": language_modeling_config_to_dict(model_config),
         "tokenizer": text_tokenizer_to_payload(tokenizer),
         "training_config": training_payload,
         "result": asdict(result),
@@ -444,14 +447,14 @@ def _validate_training_config(config: LanguageModelingTrainingConfig) -> None:
         raise ValueError("eval_batch_limit must be positive")
 
 
-def _validate_initial_model_config(model: CausalTextModel, config: CausalTextConfig) -> None:
-    if causal_text_config_to_dict(model.config) != causal_text_config_to_dict(config):
+def _validate_initial_model_config(model: LanguageModelingModel, config: LanguageModelingConfig) -> None:
+    if language_modeling_config_to_dict(model.config) != language_modeling_config_to_dict(config):
         raise ValueError("initial_model config must match model_config")
 
 
 def _language_modeling_model(
-    initial_model: CausalTextModel | None,
-    config: CausalTextConfig,
+    initial_model: LanguageModelingModel | None,
+    config: LanguageModelingConfig,
 ) -> LanguageModelingModel:
     if initial_model is None:
         return LanguageModelingModel(config)

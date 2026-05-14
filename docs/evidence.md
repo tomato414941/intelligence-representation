@@ -217,7 +217,7 @@ learned.
 
 ## Historical Reading
 
-Retired Signal-era experiments showed that a small byte-level causal text model
+Retired Signal-era experiments showed that a small byte-level language model
 could reduce loss on rendered streams, but did not show robust
 action-conditioned future prediction. Those runs are diagnostic history, not
 the current implementation direction.

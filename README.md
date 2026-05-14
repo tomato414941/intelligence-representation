@@ -120,7 +120,7 @@ The current prototype supports four single-task training paths:
 
 ```text
 text LM
-  text corpus -> token sequence -> causal text model
+  text corpus -> token sequence -> language model
 
 image classification
   image -> class label

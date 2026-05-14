@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.problems.language_modeling.causal_model import CausalTextConfig, CausalTextModel
+from intrep.problems.language_modeling.model import LanguageModelingConfig, LanguageModelingModel
 from intrep.problems.language_modeling.generate import generate_text_from_checkpoint, main
 from intrep.text.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
 
@@ -79,20 +79,20 @@ def _write_checkpoint(
     vocab_size: int = ByteTokenizer.vocab_size,
     tokenizer_payload: dict[str, object] | None = None,
 ) -> None:
-    config = CausalTextConfig(
+    config = LanguageModelingConfig(
         vocab_size=vocab_size,
         context_length=8,
         embedding_dim=8,
         num_heads=2,
         hidden_dim=16,
     )
-    model = CausalTextModel(config)
+    model = LanguageModelingModel(config)
     with torch.no_grad():
         model.token_output.output.weight.zero_()
         model.token_output.output.bias.zero_()
         model.token_output.output.bias[ord("B")] = 1.0
     payload = {
-        "schema_version": "intrep.causal_text_checkpoint.v1",
+        "schema_version": "intrep.language_modeling_checkpoint.v1",
         "model_state_dict": model.state_dict(),
         "model_config": {
             "vocab_size": config.vocab_size,

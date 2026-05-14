@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from intrep.vision.classification import ImagePatchInputLayer
-from intrep.problems.language_modeling.causal_model import CausalTextModel, build_causal_text_config
+from intrep.problems.language_modeling.model import LanguageModelingModel, build_language_modeling_config
 from intrep.core.model_input import concatenate_input_embedding_sequences
 from intrep.text.token_scoring import next_token_loss
 from intrep.core.transformer_core import SharedTransformerCore
@@ -18,8 +18,8 @@ class ModelInputBoundariesTest(unittest.TestCase):
             hidden_dim=16,
             num_layers=1,
         )
-        text_model = CausalTextModel(
-            build_causal_text_config(
+        text_model = LanguageModelingModel(
+            build_language_modeling_config(
                 vocab_size=16,
                 context_length=8,
                 embedding_dim=embedding_dim,
@@ -81,8 +81,8 @@ class ModelInputBoundariesTest(unittest.TestCase):
             hidden_dim=16,
             num_layers=1,
         )
-        text_model = CausalTextModel(
-            build_causal_text_config(
+        text_model = LanguageModelingModel(
+            build_language_modeling_config(
                 vocab_size=16,
                 context_length=8,
                 embedding_dim=embedding_dim,
@@ -112,8 +112,8 @@ class ModelInputBoundariesTest(unittest.TestCase):
     def test_image_and_text_embeddings_can_produce_token_logits(self) -> None:
         embedding_dim = 8
         vocab_size = 16
-        text_model = CausalTextModel(
-            build_causal_text_config(
+        text_model = LanguageModelingModel(
+            build_language_modeling_config(
                 vocab_size=vocab_size,
                 context_length=8,
                 embedding_dim=embedding_dim,
@@ -144,8 +144,8 @@ class ModelInputBoundariesTest(unittest.TestCase):
     def test_multimodal_token_logits_can_be_scored_with_loss_mask(self) -> None:
         embedding_dim = 8
         vocab_size = 16
-        text_model = CausalTextModel(
-            build_causal_text_config(
+        text_model = LanguageModelingModel(
+            build_language_modeling_config(
                 vocab_size=vocab_size,
                 context_length=8,
                 embedding_dim=embedding_dim,

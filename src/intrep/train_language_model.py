@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.problems.language_modeling.causal_model import build_causal_text_config
+from intrep.problems.language_modeling.model import build_language_modeling_config
 from intrep.problems.language_modeling.metrics import language_modeling_metrics_from_training_result
 from intrep.problems.language_modeling.training import (
     LanguageModelingTrainingConfig,
@@ -22,7 +22,7 @@ from intrep.text.tokenizer import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train a causal text model on a text corpus.")
+    parser = argparse.ArgumentParser(description="Train a language model on a text corpus.")
     parser.add_argument("--corpus-path", type=Path, action="append", required=True)
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--checkpoint-path", type=Path)
@@ -85,7 +85,7 @@ def main(argv: list[str] | None = None) -> None:
         train_examples=(LanguageModelingExample(train_text),),
         eval_examples=(LanguageModelingExample(eval_text),),
         training_config=training_config,
-        model_config=build_causal_text_config(
+        model_config=build_language_modeling_config(
             vocab_size=vocab_size,
             context_length=args.context_length,
             embedding_dim=args.embedding_dim,

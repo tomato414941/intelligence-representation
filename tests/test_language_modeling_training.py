@@ -5,8 +5,7 @@ from pathlib import Path
 import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.problems.language_modeling.causal_model import CausalTextModel, CausalTextConfig
-from intrep.problems.language_modeling.model import LanguageModelingModel
+from intrep.problems.language_modeling.model import LanguageModelingModel, LanguageModelingConfig
 from intrep.problems.language_modeling.training import (
     LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,
@@ -80,9 +79,9 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertIn("window_count=", logs.output[0])
         self.assertIn("dropped_window_count=", logs.output[0])
 
-    def test_causal_text_model_forward_returns_token_logits(self) -> None:
-        model = CausalTextModel(
-            CausalTextConfig(
+    def test_language_modeling_model_forward_returns_token_logits(self) -> None:
+        model = LanguageModelingModel(
+            LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -107,7 +106,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=11,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=32,
                 embedding_dim=16,
@@ -156,7 +155,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=23,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -185,7 +184,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=29,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=16,
                 embedding_dim=16,
@@ -208,7 +207,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
 
     def test_training_writes_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            checkpoint_path = Path(temp_dir) / "checkpoints" / "causal-text.pt"
+            checkpoint_path = Path(temp_dir) / "checkpoints" / "language-modeling.pt"
             with unittest.mock.patch.object(torch.cuda, "is_available", return_value=False):
                 artifacts = _train_text_corpus_with_artifacts(
                     corpus="one two three one two three one two three",
@@ -222,7 +221,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                         checkpoint_path=checkpoint_path,
                         tokenizer="byte",
                     ),
-                    model_config=CausalTextConfig(
+                    model_config=LanguageModelingConfig(
                         vocab_size=ByteTokenizer.vocab_size,
                         context_length=8,
                         embedding_dim=16,
@@ -232,7 +231,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 )
             payload = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
-        self.assertEqual(payload["schema_version"], "intrep.causal_text_checkpoint.v1")
+        self.assertEqual(payload["schema_version"], "intrep.language_modeling_checkpoint.v1")
         self.assertEqual(payload["model_config"]["context_length"], 8)
         self.assertEqual(payload["training_config"]["device"], "auto")
         self.assertEqual(payload["training_config"]["checkpoint_path"], str(checkpoint_path))
@@ -246,7 +245,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
 
     def test_training_writes_byte_pair_tokenizer_checkpoint_payload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            checkpoint_path = Path(temp_dir) / "checkpoints" / "causal-text.pt"
+            checkpoint_path = Path(temp_dir) / "checkpoints" / "language-modeling.pt"
             _train_text_corpus_with_artifacts(
                 corpus="hello hello hello hello",
                 training_config=LanguageModelingTrainingConfig(
@@ -259,7 +258,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                     tokenizer="byte-pair",
                     tokenizer_vocab_size=260,
                 ),
-                model_config=CausalTextConfig(
+                model_config=LanguageModelingConfig(
                     vocab_size=260,
                     context_length=4,
                     embedding_dim=16,
@@ -285,7 +284,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=13,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -315,7 +314,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=17,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -353,7 +352,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
                 seed=17,
                 tokenizer="byte",
             ),
-            model_config=CausalTextConfig(
+            model_config=LanguageModelingConfig(
                 vocab_size=tokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -367,8 +366,8 @@ class LanguageModelingTrainingTest(unittest.TestCase):
         self.assertGreater(artifacts.result.token_count, 0)
 
     def test_training_can_continue_from_initial_model(self) -> None:
-        initial_model = CausalTextModel(
-            CausalTextConfig(
+        initial_model = LanguageModelingModel(
+            LanguageModelingConfig(
                 vocab_size=ByteTokenizer.vocab_size,
                 context_length=8,
                 embedding_dim=16,
@@ -423,7 +422,7 @@ class LanguageModelingTrainingTest(unittest.TestCase):
             _train_text_corpus_with_artifacts(
                 corpus="abc abc abc abc abc abc abc abc abc abc",
                 training_config=LanguageModelingTrainingConfig(context_length=16, tokenizer="byte"),
-                model_config=CausalTextConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
+                model_config=LanguageModelingConfig(vocab_size=ByteTokenizer.vocab_size, context_length=8),
             )
 
 

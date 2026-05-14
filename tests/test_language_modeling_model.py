@@ -5,13 +5,13 @@ import unittest
 import torch
 
 from intrep.core.transformer_core import SharedTransformerCore
-from intrep.problems.language_modeling.causal_model import CausalTextModel, build_causal_text_config
+from intrep.problems.language_modeling.model import LanguageModelingModel, build_language_modeling_config
 from intrep.text.output_layer import TokenOutputHead
 
 
-class CausalTextModelConfigTest(unittest.TestCase):
+class LanguageModelingModelConfigTest(unittest.TestCase):
     def test_default_shape_matches_project_training_size(self) -> None:
-        config = build_causal_text_config(vocab_size=256, context_length=64)
+        config = build_language_modeling_config(vocab_size=256, context_length=64)
 
         self.assertEqual(config.embedding_dim, 256)
         self.assertEqual(config.num_heads, 8)
@@ -28,7 +28,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
         self.assertEqual(config.hidden_dim, 16)
 
     def test_uses_explicit_model_shape(self) -> None:
-        config = build_causal_text_config(
+        config = build_language_modeling_config(
             vocab_size=256,
             context_length=16,
             embedding_dim=24,
@@ -46,11 +46,11 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_validates_model_shape(self) -> None:
         with self.assertRaisesRegex(ValueError, "embedding_dim must be positive"):
-            build_causal_text_config(vocab_size=256, context_length=8, embedding_dim=0)
+            build_language_modeling_config(vocab_size=256, context_length=8, embedding_dim=0)
         with self.assertRaisesRegex(ValueError, "dropout"):
-            build_causal_text_config(vocab_size=256, context_length=8, dropout=1.0)
+            build_language_modeling_config(vocab_size=256, context_length=8, dropout=1.0)
         with self.assertRaisesRegex(ValueError, "embedding_dim must be divisible by num_heads"):
-            build_causal_text_config(
+            build_language_modeling_config(
                 vocab_size=256,
                 context_length=8,
                 embedding_dim=10,
@@ -59,7 +59,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_forward_validates_token_ids(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
 
         with self.assertRaisesRegex(ValueError, "rank-2"):
             model(torch.tensor([1, 2], dtype=torch.long))
@@ -72,7 +72,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_model_exposes_input_embedding_sequence_path(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
         token_ids = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
 
         embeddings = model.embed_tokens(token_ids)
@@ -83,11 +83,11 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_embed_tokens_supports_position_offset(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
         token_ids = torch.tensor([[1, 2]], dtype=torch.long)
 
         offset_embeddings = model.embed_tokens(token_ids, position_offset=2)
-        manual_embeddings = model.token_embedding(token_ids) + model.position_embedding(
+        manual_embeddings = model.token_input.token_embedding(token_ids) + model.token_input.position_embedding(
             torch.tensor([[2, 3]], dtype=torch.long)
         )
 
@@ -99,13 +99,13 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_model_uses_shared_transformer_core(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
 
         self.assertIsInstance(model.core, SharedTransformerCore)
 
     def test_model_exposes_token_output_head(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
         hidden = torch.zeros((1, 4, config.embedding_dim), dtype=torch.float32)
 
         logits = model.token_logits(hidden)
@@ -115,7 +115,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_encode_embeddings_validates_input_embedding_sequence_shape(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
 
         with self.assertRaisesRegex(ValueError, "shape"):
             model.encode_embeddings(torch.zeros((4, config.embedding_dim)))
@@ -128,7 +128,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
     def test_token_logits_validates_hidden_states(self) -> None:
         config = _small_config(vocab_size=8, context_length=4)
-        model = CausalTextModel(config)
+        model = LanguageModelingModel(config)
 
         with self.assertRaisesRegex(ValueError, "shape"):
             model.token_logits(torch.zeros((4, config.embedding_dim)))
@@ -139,7 +139,7 @@ class CausalTextModelConfigTest(unittest.TestCase):
 
 
 def _small_config(*, vocab_size: int, context_length: int):
-    return build_causal_text_config(
+    return build_language_modeling_config(
         vocab_size=vocab_size,
         context_length=context_length,
         embedding_dim=8,
