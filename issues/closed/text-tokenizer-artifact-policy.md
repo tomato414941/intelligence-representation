@@ -75,6 +75,10 @@ preserve the tokenizer artifact or payload they used. README keeps only the
 training-doc pointer and does not introduce a tokenizer vocabulary
 recommendation.
 
+`docs/artifact-layout.md` now defines `tokenizers/<tokenizer-name>/tokenizer.json`
+as the long-lived tokenizer location when a tokenizer is reused outside the run
+that created it. Tokenizers under `runs/` remain disposable.
+
 ## Non-Goal
 
 Do not choose a universal vocabulary size before larger text runs create real

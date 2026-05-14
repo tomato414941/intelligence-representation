@@ -51,6 +51,12 @@ It is a property of the tokenizer artifact being created. Multiple tokenizer
 artifacts can coexist, but text checkpoints and text-consuming runs must
 preserve the tokenizer artifact or payload they used.
 
+Tokenizers written under `runs/` are temporary run artifacts. Promote a
+tokenizer that should survive run cleanup to
+`tokenizers/<tokenizer-name>/tokenizer.json` before making later runs depend on
+it. A checkpoint that embeds the tokenizer payload does not need a separate
+tokenizer artifact for loading.
+
 ## Image Classification
 
 Image classification uses image patch embeddings, the shared Transformer core,

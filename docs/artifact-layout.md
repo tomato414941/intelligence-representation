@@ -22,6 +22,14 @@ in [datasets.md](datasets.md).
   state dict needed to load it.
 - Do not put metrics, run logs, player presets, or lineage registries under
   `models/`.
+- `tokenizers/<tokenizer-name>/tokenizer.json` holds a long-lived loadable text
+  tokenizer when the tokenizer is reused outside the run that created it.
+- A text checkpoint may embed the tokenizer payload instead of depending on a
+  separate tokenizer artifact.
+- If a checkpoint or run depends on a separate tokenizer, its metadata must make
+  that tokenizer artifact traceable.
+- Do not put training metrics, run logs, or broad tokenizer registries under
+  `tokenizers/`.
 - Do not use `data/external/`; use source-specific top-level directories.
 - Add helper directories such as `images/` or `cache/` only when they solve an
   active problem for that source.

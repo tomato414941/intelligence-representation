@@ -39,7 +39,7 @@
 - Treat `runs/` as disposable experiment output that may be deleted at any time.
 - Do not make `runs/` the canonical home for models or datasets that must be
   kept.
-- Promote any checkpoint that must survive run cleanup into an explicit
+- Promote any checkpoint or tokenizer that must survive run cleanup into an explicit
   non-`runs/` location before depending on it.
 
 ## Dependencies
