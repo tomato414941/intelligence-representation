@@ -15,7 +15,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Run shogi Online Experience Replay v1.")
+    parser = argparse.ArgumentParser(description="Run shogi Online Experience Replay.")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=1)

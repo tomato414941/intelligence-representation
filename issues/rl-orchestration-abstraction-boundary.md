@@ -27,7 +27,7 @@ Use clear shogi-specific names and boundaries instead of generic abstractions
 such as `Actor`, `Learner`, `Evaluator`, or `Publisher` until a second concrete
 use case exists.
 
-Online Replay v1 exists as a shogi-local loop under
+The current shogi Online Replay implementation lives under
 `problems/shogi_policy_value/generated_data_cycle.py`. It uses the generic
 `intrep.learning.ReplayBuffer` utility, but the orchestration itself remains
 shogi-specific.
