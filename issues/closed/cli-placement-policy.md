@@ -1,6 +1,11 @@
 # CLI Placement Policy
 
-Status: open.
+Status: closed.
+
+Resolution: CLI placement now follows responsibility boundaries. Top-level
+`intrep.train_*` modules remain as major training entrypoints; problem-specific,
+world/source-specific, text data preparation, and orchestration CLIs live under
+their owning packages or `scripts/`.
 
 ## Problem
 
@@ -23,14 +28,15 @@ tools are added there by default.
 
 ## Current State
 
+- Top-level `intrep.train_*` modules are major training entrypoints.
 - Shogi policy-value training reads `game_records_jsonl` data-selection sources directly;
   the old shogi policy-value example-preparation CLI has been removed.
 - Language modeling code lives under `intrep.problems.language_modeling`;
   generic text token and corpus utilities remain under `intrep.text`.
 - Hugging Face streaming text slice preparation lives under
   `intrep.text.prepare_hf_text_slice`.
-
-## Current Follow-up
-
 - Shogi policy/value checkpoint evaluation lives under
   `intrep.problems.shogi_policy_value.evaluate`.
+- World/source-specific shogi inspection and splitting live under
+  `intrep.worlds.shogi`.
+- Run orchestration and environment/job entrypoints live under `scripts/`.
