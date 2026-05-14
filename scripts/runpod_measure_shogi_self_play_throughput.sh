@@ -13,6 +13,7 @@ MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-60}
 CASE_SET=${CASE_SET:-"worker-scaling"}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-""}
 MIN_VCPU_PER_GPU=${MIN_VCPU_PER_GPU:-""}
+SECURE_CLOUD=${SECURE_CLOUD:-""}
 
 if [[ ! -d "$ARENA_REPO" ]]; then
   echo "shogi-arena-agent repo not found: $ARENA_REPO" >&2
@@ -25,6 +26,9 @@ if [[ -n "$DATA_CENTER_IDS" ]]; then
 fi
 if [[ -n "$MIN_VCPU_PER_GPU" ]]; then
   EXTRA_RUNPOD_ARGS+=(--min-vcpu-per-gpu "$MIN_VCPU_PER_GPU")
+fi
+if [[ -n "$SECURE_CLOUD" ]]; then
+  EXTRA_RUNPOD_ARGS+=(--secure-cloud)
 fi
 
 python3 "$RUNPOD_JOB" \
@@ -88,6 +92,9 @@ CASE_SETS = {
     ],
     'worker12': [
         ('w12_c8_s16_b32', 96, 8, 12, 16, 32),
+    ],
+    'worker6': [
+        ('w6_c8_s16_b32', 48, 8, 6, 16, 32),
     ],
     'worker6-batch64': [
         ('w6_c8_s16_b64', 48, 8, 6, 16, 64),
