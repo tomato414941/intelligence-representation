@@ -14,9 +14,16 @@ small but important operational facts.
 | Area | Symptom |
 | --- | --- |
 | training commands | The README is acting like a CLI manual. |
-| RunPod setup | Environment-specific details live next to the project overview. |
+| RunPod setup | Detailed RunPod commands were removed from README; README now links to `docs/runpod.md`. |
 | tokenizer workflow | Defaults, examples, and preferred reuse workflow are close together but have different lifetimes. |
-| checkpoint reuse | Compatibility notes are mixed into command examples. |
+| checkpoint reuse | Compatibility notes are still mixed into command examples. |
+
+## Current State
+
+README now keeps only a RunPod pointer and no longer repeats RunPod setup,
+torchvision/CUDA wheel commands, outdated shared multimodal shell wording, or
+image JSONL form lists. Detailed training commands remain in README until a
+focused training doc exists.
 
 ## Candidate Direction
 

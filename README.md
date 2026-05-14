@@ -93,54 +93,26 @@ Local development installs PyTorch through the project optional dependency:
 uv run python -m unittest
 ```
 
-On RunPod, use an official PyTorch template and keep its system PyTorch/CUDA
-stack. Do not run `uv sync`, because it may install a PyTorch wheel that does
-not match the host NVIDIA driver. See [RunPod](docs/runpod.md) for project
-specific image, setup, region, and fallback notes.
-
-```sh
-./scripts/setup_runpod.sh
-python -m unittest
-```
-
-When RunPod also needs torchvision, keep the template's system PyTorch/CUDA stack
-and explicitly install a matching torchvision wheel:
-
-```sh
-./scripts/setup_runpod.sh
-TORCHVISION_PACKAGE='torchvision==0.24.1+cu128' \
-TORCHVISION_INDEX_URL='https://download.pytorch.org/whl/cu128' \
-  ./scripts/setup_runpod_vision.sh
-python -m unittest
-```
+For RunPod setup, image, CUDA/PyTorch, torchvision, region, and fallback notes,
+see [RunPod](docs/runpod.md).
 
 ## Current Training Entrypoints
 
-The current prototype supports four single-task training paths:
+The current prototype includes these training entrypoints:
 
 ```text
-text LM
-  text corpus -> token sequence -> language model
-
-image classification
-  image -> class label
-
-image-text choice
-  image + candidate texts -> selected candidate
-
-image-text answer
-  image + prompt -> answer tokens
+intrep.train_text_tokenizer
+intrep.train_language_model
+intrep.train_image_classification
+intrep.train_image_text_choice
+intrep.train_image_text_answer
+intrep.train_grid_step_prediction
+intrep.train_shogi_policy_value
 ```
 
-The image-text choice and image-text answer paths are different output forms,
-not a temporary/permanent hierarchy. Choice is useful for matching, retrieval,
-and multiple-choice tasks. Answer is useful for token-generating image/text
-tasks.
-
-The shared multimodal model is a shell with problem-specific routes and heads over
-one shared Transformer core. A task may leave some routes unused; unused
-tokenizer, text embedding, image input, token output, choice scoring, or
-classification components do not make that task secondary.
+Problem models compose task-specific input layers, the shared Transformer core
+where useful, and task-specific output heads. See [Model Boundaries](docs/model-boundaries.md)
+and [Learning Boundaries](docs/learning-boundaries.md) for the current design.
 
 Text language modeling can train a tokenizer by default, but the preferred
 workflow is to train a text tokenizer once and reuse it across text-consuming
@@ -226,18 +198,3 @@ compatible shared multimodal checkpoints. Text-consuming commands accept
 tokenizer path are provided, the explicit tokenizer path is used. Checkpoint
 initialization loads compatible model weights independent of the source task
 name.
-
-Image classification uses the same shared multimodal model shell, with the
-image route, shared Transformer core, and classification head active.
-Its checkpoint restores the model state for that training run. Reusing a
-checkpoint for another run is a compatibility question about the components
-that the next task needs, not about which task produced the checkpoint.
-
-IDX datasets such as MNIST and Fashion-MNIST, and CIFAR-10 python batches, can
-produce these image JSONL forms:
-
-```text
-image-classification JSONL
-image-text-choice JSONL
-image-text-answer JSONL
-```
