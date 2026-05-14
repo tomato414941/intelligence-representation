@@ -46,6 +46,11 @@ Text-consuming commands accept `--tokenizer-path` to reuse a fixed tokenizer.
 If both a checkpoint and a tokenizer path are provided, the explicit tokenizer
 path is used.
 
+The tokenizer vocabulary size in these examples is not a project-wide default.
+It is a property of the tokenizer artifact being created. Multiple tokenizer
+artifacts can coexist, but text checkpoints and text-consuming runs must
+preserve the tokenizer artifact or payload they used.
+
 ## Image Classification
 
 Image classification uses image patch embeddings, the shared Transformer core,
