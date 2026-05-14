@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import shogi
 
-from intrep.evaluate_shogi_policy_value import main
+from intrep.problems.shogi_policy_value.evaluate import main
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 from intrep.worlds.shogi.game_record import (
@@ -76,7 +76,7 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "evaluate_shogi_policy_value",
+                    "intrep.problems.shogi_policy_value.evaluate",
                     "--data-selection",
                     str(data_selection_path),
                     "--checkpoint-path",

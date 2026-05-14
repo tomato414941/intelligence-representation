@@ -32,5 +32,5 @@ tools are added there by default.
 
 ## Current Follow-up
 
-- Decide whether `intrep.evaluate_shogi_policy_value` should stay as a top-level
-  evaluation entrypoint or move under `intrep.problems.shogi_policy_value`.
+- Shogi policy/value checkpoint evaluation lives under
+  `intrep.problems.shogi_policy_value.evaluate`.
