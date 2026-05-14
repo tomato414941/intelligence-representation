@@ -37,7 +37,9 @@ cycle's `generation-summary.json`.
 
 Unless noted otherwise:
 
-- GPU: RunPod RTX 4000 Ada Generation
+- GPU: not fixed. Record the actual GPU used by each measurement. Current
+  candidates are RTX A5000, RTX 4090, and RTX 4000 Ada Generation when
+  available.
 - template: RunPod PyTorch 2.8, torch 2.8.0+cu128 where recorded
 - model: `d256-h1024-heads8-l6-shogi`
 - board backend: `cshogi`
@@ -146,8 +148,8 @@ worker 8 / batch 32 setting:
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
   throughput across self-play settings.
-- The measured rows use RTX 4000 Ada. Do not assume the same ranking holds on
-  RTX 4090 or RTX 5090 without measuring.
+- Most recorded rows so far used RTX 4000 Ada. Treat GPU type as a measurement
+  condition, not as a document-wide default.
 - On 2026-05-12, RTX 4000 Ada secure Pod creation with
   `minVCPUPerGPU=10` and `minVCPUPerGPU=12` returned no available instances.
 - The initial throughput grid did not record GPU utilization over time. It
