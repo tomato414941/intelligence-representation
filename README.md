@@ -165,7 +165,7 @@ FineWeb-Edu can be sampled into a local text corpus before training. This
 command requires the Hugging Face `datasets` package in the active environment:
 
 ```sh
-python -m intrep.prepare_fineweb_edu_text \
+python -m intrep.text.prepare_hf_text_slice \
   --output-path data/external/fineweb_edu_sample.txt \
   --max-bytes 1000000
 ```

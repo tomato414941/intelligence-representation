@@ -5,15 +5,15 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from intrep import prepare_fineweb_edu_text
+from intrep.text import prepare_hf_text_slice
 
 
-class PrepareFineWebEduTextCLITest(unittest.TestCase):
+class PrepareHFTextSliceCLITest(unittest.TestCase):
     def test_writes_text_slice_until_byte_limit(self) -> None:
         with TemporaryDirectory() as directory:
             output_path = Path(directory) / "fineweb.txt"
 
-            result = prepare_fineweb_edu_text.write_text_slice(
+            result = prepare_hf_text_slice.write_text_slice(
                 records=(
                     {"text": "alpha"},
                     {"text": ""},
@@ -32,7 +32,7 @@ class PrepareFineWebEduTextCLITest(unittest.TestCase):
     def test_rejects_non_positive_byte_limit(self) -> None:
         with TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "max_bytes must be positive"):
-                prepare_fineweb_edu_text.write_text_slice(
+                prepare_hf_text_slice.write_text_slice(
                     records=(),
                     output_path=Path(directory) / "fineweb.txt",
                     max_bytes=0,
@@ -42,7 +42,7 @@ class PrepareFineWebEduTextCLITest(unittest.TestCase):
         with TemporaryDirectory() as directory:
             output_path = Path(directory) / "fineweb.txt"
 
-            result = prepare_fineweb_edu_text.write_text_slice(
+            result = prepare_hf_text_slice.write_text_slice(
                 records=({"text": "alpha あ"},),
                 output_path=output_path,
                 max_bytes=8,
@@ -60,12 +60,12 @@ class PrepareFineWebEduTextCLITest(unittest.TestCase):
             records = ({"text": "first document"}, {"text": "second document"})
 
             with mock.patch.object(
-                prepare_fineweb_edu_text,
+                prepare_hf_text_slice,
                 "load_streaming_dataset",
                 return_value=records,
             ) as load_streaming_dataset:
                 with redirect_stdout(output):
-                    prepare_fineweb_edu_text.main(
+                    prepare_hf_text_slice.main(
                         [
                             "--output-path",
                             str(output_path),
@@ -87,7 +87,7 @@ class PrepareFineWebEduTextCLITest(unittest.TestCase):
         )
         self.assertIn("first document", payload)
         self.assertIn("second document", payload)
-        self.assertIn("intrep prepare fineweb edu text", output.getvalue())
+        self.assertIn("intrep prepare hf text slice", output.getvalue())
         self.assertIn("documents=2", output.getvalue())
 
 

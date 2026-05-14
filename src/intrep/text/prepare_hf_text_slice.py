@@ -14,7 +14,7 @@ DEFAULT_TEXT_COLUMN = "text"
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Prepare a local text slice from FineWeb-Edu.")
+    parser = argparse.ArgumentParser(description="Prepare a local text slice from a Hugging Face streaming dataset.")
     parser.add_argument("--output-path", type=Path, required=True)
     parser.add_argument("--max-bytes", type=int, required=True)
     parser.add_argument("--dataset-name", default=DEFAULT_DATASET_NAME)
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> None:
         text_column=args.text_column,
         max_documents=args.max_documents,
     )
-    print("intrep prepare fineweb edu text")
+    print("intrep prepare hf text slice")
     print(
         f"dataset={args.dataset_name}"
         f" split={args.split}"
@@ -65,7 +65,7 @@ def load_streaming_dataset(
         from datasets import load_dataset
     except ImportError as error:
         raise RuntimeError(
-            "Preparing FineWeb-Edu text requires the Hugging Face datasets package. "
+            "Preparing a Hugging Face text slice requires the Hugging Face datasets package. "
             "Install it with `uv pip install datasets` or an equivalent environment command."
         ) from error
 

@@ -25,10 +25,12 @@ tools are added there by default.
 
 - Shogi policy-value training reads `game_records_jsonl` data-selection sources directly;
   the old shogi policy-value example-preparation CLI has been removed.
-- Causal text modeling code lives under `intrep.problems.language_modeling`;
+- Language modeling code lives under `intrep.problems.language_modeling`;
   generic text token and corpus utilities remain under `intrep.text`.
+- Hugging Face streaming text slice preparation lives under
+  `intrep.text.prepare_hf_text_slice`.
 
 ## Current Follow-up
 
-- `intrep.prepare_fineweb_edu_text` should be reconsidered when text dataset
-  preparation ownership is next changed.
+- Decide whether `intrep.evaluate_shogi_policy_value` should stay as a top-level
+  evaluation entrypoint or move under `intrep.problems.shogi_policy_value`.
