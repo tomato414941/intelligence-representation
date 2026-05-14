@@ -1,7 +1,7 @@
 # Datasets
 
 This document records datasets that are already supported or under discussion
-for this project. It is not a downloader guide.
+for this project. It is not a complete downloader or ingestion guide.
 
 Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 
@@ -38,3 +38,23 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | TinyStories raw data | Local raw data is `data/tinystories/raw/TinyStoriesV2-GPT4-train.txt` and `data/tinystories/raw/TinyStoriesV2-GPT4-valid.txt` from `roneneldan/TinyStories` on Hugging Face. |
 | Qhapaq raw data | Local raw data is partial: `data/qhapaq/raw/results/` contains all fetched `kifdownload` result CSVs, while `data/qhapaq/raw/kiffiles/` contains only selected available `.7z` kif archives. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
 | Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval splits belong in Data Selection or fixed training data bundles, not in `processed/`. |
+
+## Preparation Entrypoints
+
+Large Hugging Face text datasets can be sampled into a local text corpus before
+training:
+
+```sh
+python -m intrep.text.prepare_hf_text_slice \
+  --dataset-name HuggingFaceFW/fineweb-edu \
+  --output-path data/external/fineweb_edu_sample.txt \
+  --max-bytes 1000000
+```
+
+CIFAR-10 python batches and IDX image datasets can be converted into local JSONL
+records with:
+
+```text
+intrep.vision.cifar10_corpus
+intrep.vision.idx_corpus
+```

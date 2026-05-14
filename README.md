@@ -55,6 +55,7 @@ Read these first:
 - [Learning Boundaries](docs/learning-boundaries.md)
 - [Worlds and Experience](docs/worlds-and-experience.md)
 - [Datasets](docs/datasets.md)
+- [Training](docs/training.md)
 - [RunPod](docs/runpod.md)
 - [Compute Costs](docs/compute-costs.md)
 - [World Model Centering](docs/world-model.md)
@@ -98,7 +99,9 @@ see [RunPod](docs/runpod.md).
 
 ## Current Training Entrypoints
 
-The current prototype includes these training entrypoints:
+The current prototype includes text, image, image/text, grid, and shogi
+training entrypoints. See [Training](docs/training.md) for command examples,
+tokenizer reuse, and checkpoint initialization notes.
 
 ```text
 intrep.train_text_tokenizer
@@ -110,91 +113,4 @@ intrep.train_grid_step_prediction
 intrep.train_shogi_policy_value
 ```
 
-Problem models compose task-specific input layers, the shared Transformer core
-where useful, and task-specific output heads. See [Model Boundaries](docs/model-boundaries.md)
-and [Learning Boundaries](docs/learning-boundaries.md) for the current design.
-
-Text language modeling can train a tokenizer by default, but the preferred
-workflow is to train a text tokenizer once and reuse it across text-consuming
-tasks:
-
-```sh
-uv run python -m intrep.train_text_tokenizer \
-  --corpus-path data/tiny-shakespeare/raw/tiny-shakespeare.txt \
-  --tokenizer-path runs/text-tokenizer.json \
-  --tokenizer-vocab-size 1024
-```
-
-```sh
-uv run python -m intrep.train_language_model \
-  --corpus-path data/tiny-shakespeare/raw/tiny-shakespeare.txt \
-  --tokenizer-path runs/text-tokenizer.json \
-  --metrics-path runs/text.json \
-  --checkpoint-path runs/text.pt
-```
-
-FineWeb-Edu can be sampled into a local text corpus before training. This
-command requires the Hugging Face `datasets` package in the active environment:
-
-```sh
-python -m intrep.text.prepare_hf_text_slice \
-  --output-path data/external/fineweb_edu_sample.txt \
-  --max-bytes 1000000
-```
-
-Image classification uses image patch embeddings, the shared Transformer core,
-and a classification head:
-
-```sh
-uv run python -m intrep.vision.cifar10_corpus \
-  --batch-path data/cifar-10-batches-py/data_batch_1 \
-  --output-path runs/cifar10-train.jsonl \
-  --image-output-dir runs/cifar10-train-images
-
-uv run python -m intrep.train_image_classification \
-  --train-path runs/cifar10-train.jsonl \
-  --metrics-path runs/cifar10.json \
-  --checkpoint-path runs/cifar10.pt
-```
-
-The same training command can read torchvision-style ImageFolder datasets:
-
-```sh
-uv run python -m intrep.train_image_classification \
-  --train-image-folder data/images/train \
-  --eval-image-folder data/images/eval \
-  --image-size 224 224 \
-  --metrics-path runs/image-folder.json \
-  --checkpoint-path runs/image-folder.pt
-```
-
-Image-text choice trains a shared multimodal model to score candidate text
-answers:
-
-```sh
-uv run python -m intrep.train_image_text_choice \
-  --train-path runs/fashion-choice-train.jsonl \
-  --eval-path runs/fashion-choice-eval.jsonl \
-  --tokenizer-path runs/text-tokenizer.json \
-  --prompt "What is this item?" \
-  --metrics-path runs/fashion-choice.json \
-  --checkpoint-path runs/fashion-choice.pt
-```
-
-Image-text answer trains the token output path from image plus prompt to answer
-tokens:
-
-```sh
-uv run python -m intrep.train_image_text_answer \
-  --train-path runs/fashion-answer-train.jsonl \
-  --tokenizer-path runs/text-tokenizer.json \
-  --metrics-path runs/fashion-answer.json \
-  --checkpoint-path runs/fashion-answer.pt
-```
-
-Shared multimodal training commands also accept `--init-checkpoint-path` for
-compatible shared multimodal checkpoints. Text-consuming commands accept
-`--tokenizer-path` to reuse a fixed tokenizer; if both a checkpoint and a
-tokenizer path are provided, the explicit tokenizer path is used. Checkpoint
-initialization loads compatible model weights independent of the source task
-name.
+Dataset preparation notes live in [Datasets](docs/datasets.md).
