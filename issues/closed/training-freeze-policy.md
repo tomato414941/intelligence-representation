@@ -1,6 +1,6 @@
 # Training Freeze Policy
 
-Status: open. Priority: low.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -33,3 +33,15 @@ the required cases are clear.
 - optimizer construction excludes frozen parameters
 - freezing is not confused with `eval()` mode
 - at least one concrete experiment or test exercises partial fine-tuning
+
+## Resolution
+
+Image/text choice and answer training now accept repeated `--freeze-module`
+options. The training config records the selected modules, applies freezing
+after checkpoint initialization and before optimizer construction, and reuses
+the existing `build_adamw()` behavior that excludes `requires_grad=False`
+parameters.
+
+Tests cover partial fine-tuning by initializing from a compatible checkpoint,
+freezing `core` and `image_input_layer`, training for one step, and verifying
+that those modules remain equal to the initialization source.

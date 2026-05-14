@@ -111,3 +111,18 @@ uv run python -m intrep.train_image_text_answer \
 Image/text training commands accept `--init-checkpoint-path` for compatible
 checkpoints. Checkpoint initialization loads compatible model weights
 independent of the source task name.
+
+Image/text training commands also accept repeated `--freeze-module` options.
+Freezing is applied after checkpoint initialization and before optimizer
+construction. It sets `requires_grad = False` for the named module, so frozen
+parameters are excluded from optimization; it is separate from `train()` /
+`eval()` mode. Module names are PyTorch module names on the training model, such
+as `core` or `image_input_layer`.
+
+```sh
+uv run python -m intrep.train_image_text_choice \
+  --train-path runs/fashion-choice-train.jsonl \
+  --init-checkpoint-path models/<model-name>/checkpoint.pt \
+  --freeze-module core \
+  --freeze-module image_input_layer
+```

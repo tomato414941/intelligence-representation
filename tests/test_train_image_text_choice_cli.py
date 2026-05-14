@@ -5,6 +5,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import torch
+
 from intrep.vision.classification import (
     FASHION_MNIST_LABELS,
     ImageClassificationConfig,
@@ -132,6 +134,10 @@ class TrainImageTextChoiceCLITest(unittest.TestCase):
                         str(checkpoint_path),
                         "--init-checkpoint-path",
                         str(answer_checkpoint_path),
+                        "--freeze-module",
+                        "core",
+                        "--freeze-module",
+                        "image_input_layer",
                         "--prompt",
                         "answer: ",
                         "--text-context-length",
@@ -165,6 +171,13 @@ class TrainImageTextChoiceCLITest(unittest.TestCase):
 
         self.assertEqual(payload["init_checkpoint_path"], str(answer_checkpoint_path))
         self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_text_answer_checkpoint.v1")
+        self.assertEqual(payload["frozen_modules"], ["core", "image_input_layer"])
+        self.assertEqual(tuple(checkpoint.config.frozen_modules), ("core", "image_input_layer"))
+        _assert_state_dict_equal(checkpoint.model.core.state_dict(), answer_result.model.core.state_dict())
+        _assert_state_dict_equal(
+            checkpoint.model.image_input_layer.state_dict(),
+            answer_result.model.image_input_layer.state_dict(),
+        )
         self.assertEqual(checkpoint.config.text_context_length, 32)
         self.assertIn("train_cases=2", output.getvalue())
 
@@ -308,6 +321,12 @@ def _classification_examples(root: Path) -> list[ImageClassificationExample]:
         ImageClassificationExample(image_path=root / "a.pgm", label_names=FASHION_MNIST_LABELS, label_index=9),
         ImageClassificationExample(image_path=root / "b.pgm", label_names=FASHION_MNIST_LABELS, label_index=0),
     ]
+
+
+def _assert_state_dict_equal(left: dict[str, torch.Tensor], right: dict[str, torch.Tensor]) -> None:
+    assert left.keys() == right.keys()
+    for key, left_value in left.items():
+        torch.testing.assert_close(left_value, right[key])
 
 
 if __name__ == "__main__":

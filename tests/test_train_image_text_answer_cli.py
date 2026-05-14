@@ -5,6 +5,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import torch
+
 from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
 from intrep.problems.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
 from intrep.problems.image_text_choice.checkpoint import save_image_text_choice_checkpoint
@@ -137,6 +139,10 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
                         str(checkpoint_path),
                         "--init-checkpoint-path",
                         str(choice_checkpoint_path),
+                        "--freeze-module",
+                        "core",
+                        "--freeze-module",
+                        "image_input_layer",
                         "--text-context-length",
                         "32",
                         "--image-patch-size",
@@ -168,6 +174,13 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
 
         self.assertEqual(payload["init_checkpoint_path"], str(choice_checkpoint_path))
         self.assertEqual(payload["init_checkpoint_schema"], "intrep.image_text_choice_checkpoint.v1")
+        self.assertEqual(payload["frozen_modules"], ["core", "image_input_layer"])
+        self.assertEqual(tuple(checkpoint.config.frozen_modules), ("core", "image_input_layer"))
+        _assert_state_dict_equal(checkpoint.model.core.state_dict(), choice_result.model.core.state_dict())
+        _assert_state_dict_equal(
+            checkpoint.model.image_input_layer.state_dict(),
+            choice_result.model.image_input_layer.state_dict(),
+        )
         self.assertEqual(checkpoint.config.text_context_length, 32)
         self.assertIn("train_cases=2", output.getvalue())
 
@@ -220,6 +233,12 @@ class TrainImageTextAnswerCLITest(unittest.TestCase):
 
         self.assertEqual(payload["tokenizer_path"], str(tokenizer_path))
         self.assertEqual(checkpoint.tokenizer.vocab_size, tokenizer.vocab_size)
+
+
+def _assert_state_dict_equal(left: dict[str, torch.Tensor], right: dict[str, torch.Tensor]) -> None:
+    assert left.keys() == right.keys()
+    for key, left_value in left.items():
+        torch.testing.assert_close(left_value, right[key])
 
 
 if __name__ == "__main__":

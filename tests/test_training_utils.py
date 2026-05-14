@@ -3,7 +3,13 @@ import unittest
 import torch
 from torch import nn
 
-from intrep.core.training_utils import build_adamw, build_lr_scheduler, clip_gradients
+from intrep.core.training_utils import (
+    build_adamw,
+    build_lr_scheduler,
+    clip_gradients,
+    freeze_named_modules,
+    trainable_parameter_count,
+)
 
 
 class TrainingUtilsTest(unittest.TestCase):
@@ -21,6 +27,28 @@ class TrainingUtilsTest(unittest.TestCase):
         self.assertEqual(optimizer.param_groups[1]["weight_decay"], 0.0)
         self.assertEqual(len(optimizer.param_groups[0]["params"]), 1)
         self.assertEqual(len(optimizer.param_groups[1]["params"]), 4)
+
+    def test_freeze_named_modules_sets_requires_grad_false(self) -> None:
+        model = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.Sequential(nn.Linear(4, 2)),
+        )
+
+        frozen = freeze_named_modules(model, ("1",))
+
+        self.assertEqual(frozen, ("1",))
+        self.assertTrue(all(parameter.requires_grad for parameter in model[0].parameters()))
+        self.assertFalse(any(parameter.requires_grad for parameter in model[1].parameters()))
+        self.assertEqual(
+            trainable_parameter_count(model),
+            sum(parameter.numel() for parameter in model[0].parameters()),
+        )
+
+    def test_freeze_named_modules_rejects_unknown_module(self) -> None:
+        model = nn.Linear(2, 1)
+
+        with self.assertRaisesRegex(ValueError, "unknown frozen module"):
+            freeze_named_modules(model, ("missing",))
 
     def test_clip_gradients_returns_none_when_disabled(self) -> None:
         model = nn.Linear(2, 1)

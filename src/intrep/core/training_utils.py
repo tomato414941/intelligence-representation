@@ -42,6 +42,29 @@ def build_adamw(
     )
 
 
+def freeze_named_modules(model: torch.nn.Module, module_names: tuple[str, ...]) -> tuple[str, ...]:
+    modules = dict(model.named_modules())
+    frozen: list[str] = []
+    seen: set[str] = set()
+    for module_name in module_names:
+        if not module_name:
+            raise ValueError("frozen module name must not be empty")
+        if module_name in seen:
+            raise ValueError(f"duplicate frozen module: {module_name}")
+        module = modules.get(module_name)
+        if module is None:
+            raise ValueError(f"unknown frozen module: {module_name}")
+        for parameter in module.parameters():
+            parameter.requires_grad = False
+        seen.add(module_name)
+        frozen.append(module_name)
+    return tuple(frozen)
+
+
+def trainable_parameter_count(model: torch.nn.Module) -> int:
+    return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+
 def build_lr_scheduler(
     optimizer: torch.optim.Optimizer,
     *,

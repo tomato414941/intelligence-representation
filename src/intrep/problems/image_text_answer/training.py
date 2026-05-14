@@ -14,12 +14,20 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.core.training_utils import TrainingDevice, resolve_training_device
+from intrep.core.training_utils import (
+    LearningRateSchedule,
+    TrainingDevice,
+    build_adamw,
+    build_lr_scheduler,
+    clip_gradients,
+    freeze_named_modules,
+    resolve_training_device,
+    trainable_parameter_count,
+)
 from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.problems.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.text.token_scoring import next_token_loss
-from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
 @dataclass(frozen=True)
@@ -54,6 +62,7 @@ class ImageTextAnswerTrainingConfig:
     dropout: float = 0.0
     device: TrainingDevice = "cpu"
     tokenizer_vocab_size: int = 512
+    frozen_modules: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -167,6 +176,10 @@ def train_image_text_answer_model(
             initial_model_state_dict,
             module_names=("core", "image_input_layer"),
         )
+    if training_config.frozen_modules:
+        freeze_named_modules(model, training_config.frozen_modules)
+        if trainable_parameter_count(model) == 0:
+            raise ValueError("at least one parameter must remain trainable")
 
     optimizer = build_adamw(
         model,
@@ -446,3 +459,5 @@ def _validate_config(config: ImageTextAnswerTrainingConfig) -> None:
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer_vocab_size <= 0:
         raise ValueError("tokenizer_vocab_size must be positive")
+    if len(set(config.frozen_modules)) != len(config.frozen_modules):
+        raise ValueError("frozen_modules must not contain duplicates")

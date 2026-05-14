@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--metrics-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path)
     parser.add_argument("--init-checkpoint-path", type=Path)
+    parser.add_argument("--freeze-module", action="append", default=[])
     parser.add_argument("--text-context-length", type=int, default=32)
     parser.add_argument("--image-patch-size", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -79,6 +80,7 @@ def main(argv: list[str] | None = None) -> None:
             dropout=args.dropout,
             device=args.device,
             tokenizer_vocab_size=args.tokenizer_vocab_size,
+            frozen_modules=tuple(args.freeze_module),
         ),
         tokenizer_override=tokenizer,
         initial_model_state_dict=(
@@ -98,6 +100,7 @@ def main(argv: list[str] | None = None) -> None:
                     "tokenizer_path": str(args.tokenizer_path) if args.tokenizer_path is not None else None,
                     "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
                     "init_checkpoint_schema": initialization.source_schema if initialization is not None else None,
+                    "frozen_modules": list(args.freeze_module),
                     "metrics": asdict(result.metrics),
                 },
                 indent=2,

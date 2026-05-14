@@ -18,7 +18,9 @@ from intrep.core.training_utils import (
     build_adamw,
     build_lr_scheduler,
     clip_gradients,
+    freeze_named_modules,
     resolve_training_device,
+    trainable_parameter_count,
 )
 from intrep.problems.language_modeling.training import LanguageModelingDataset
 from intrep.core.shared_state_loading import load_compatible_module_state
@@ -45,6 +47,7 @@ class ImageTextChoiceTrainingConfig:
     dropout: float = 0.0
     device: TrainingDevice = "cpu"
     tokenizer_vocab_size: int = 512
+    frozen_modules: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -198,6 +201,10 @@ def train_image_text_choice_model(
             initial_model_state_dict,
             module_names=("core", "image_input_layer"),
         )
+    if training_config.frozen_modules:
+        freeze_named_modules(model, training_config.frozen_modules)
+        if trainable_parameter_count(model) == 0:
+            raise ValueError("at least one parameter must remain trainable")
     prompt_token_ids = prompt_token_ids.to(device)
     prompt_token_options = [row.to(device) for row in prompt_token_options]
     choice_token_ids = choice_token_ids.to(device)
@@ -539,3 +546,5 @@ def _validate_config(config: ImageTextChoiceTrainingConfig) -> None:
         raise ValueError("device must be one of: auto, cpu, cuda")
     if config.tokenizer_vocab_size <= 0:
         raise ValueError("tokenizer_vocab_size must be positive")
+    if len(set(config.frozen_modules)) != len(config.frozen_modules):
+        raise ValueError("frozen_modules must not contain duplicates")
