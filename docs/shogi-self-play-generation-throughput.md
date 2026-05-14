@@ -97,44 +97,44 @@ worker 8 / batch 32 setting:
 
 ## Detailed Measurements
 
-| Case | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |
-| `w1_c16_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 212.1 | 266.82 | 12.72 | 4.37% | 11.00% | 640 MiB / 20475 MiB | 102.42% | 142.00% | 995 MiB | 2026-05-13 current-code profile. Measured phase share: expand 63.81%, selection 23.38%. |
-| `w2_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
-| `w4_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
-| `w6_c8_s16_b32` | 6 vCPU, 31 GiB | community | US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 241.7 | 230.17 | 50.40 | 33.64% | 59.00% | 2089 MiB / 20475 MiB | 485.50% | 567.50% | 5825 MiB | 2026-05-13 current-code profile. Measured phase share: expand 65.81%, selection 21.63%. |
-| `p1_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 1 | 1 | 16 | 16 | 110.5 | 55.00 | 8.04 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p2_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 2 | 1 | 16 | 16 | 304.5 | 114.64 | 10.62 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_b16` | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 16 | 185.2 | 74.26 | 9.98 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_b32` | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 251.5 | 82.40 | 12.21 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_s32_b32` | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 32 | 32 | 221.2 | 179.84 | 4.92 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 176.5 | 64.57 | 10.93 | 5.78% | 10.00% | 322 MiB / 20475 MiB | 106.28% | 140.00% | not recorded | 1 of 4 games reached max plies. |
-| `p8_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 8 | 8 | 1 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | not recorded | 6 of 8 games reached max plies. |
-| `p16_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | not recorded | 10 of 16 games reached max plies. |
-| `p4_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 177.8 | 62.64 | 11.35 | 6.22% | 10.00% | 322 MiB / 20475 MiB | 106.94% | 139.00% | 1042 MiB | 1 of 4 games reached max plies. |
-| `p8_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 8 | 8 | 1 | 16 | 32 | 199.1 | 125.53 | 12.69 | 5.45% | 10.00% | 368 MiB / 20475 MiB | 103.94% | 139.00% | 951 MiB | 3 of 8 games reached max plies. |
-| `p16_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 217.9 | 238.56 | 14.62 | 5.29% | 10.00% | 474 MiB / 20475 MiB | 101.71% | 125.00% | 965 MiB | 7 of 16 games reached max plies. |
-| `w4_c8_s16_b32` | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 238.3 | 182.34 | 41.82 | 24.38% | 55.00% | 1415 MiB / 20475 MiB | 366.41% | 469.20% | 3838 MiB | 13 of 32 games reached max plies. |
-| `w1_c16_s16_b32` | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 195.5 | 257.17 | 12.16 | 4.44% | 10.00% | 542 MiB / 20475 MiB | 101.93% | 140.00% | 968 MiB | 5 of 16 games reached max plies. |
-| `w2_c8_s16_b32` | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 257.4 | 187.10 | 22.01 | 10.60% | 30.00% | 705 MiB / 20475 MiB | 205.55% | 300.80% | 1946 MiB | 9 of 16 games reached max plies. |
-| `w4_c8_s16_b32` | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 215.4 | 178.59 | 38.59 | 24.95% | 58.00% | 1415 MiB / 20475 MiB | 381.92% | 498.30% | 3793 MiB | 12 of 32 games reached max plies. |
-| `w6_c8_s16_b32` | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 230.8 | 208.04 | 53.24 | 35.65% | 62.00% | 2113 MiB / 20475 MiB | 478.39% | 569.20% | 5667 MiB | 22 of 48 games reached max plies. |
-| `w6_c8_s16_b64` | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 48 | 8 | 6 | 16 | 64 | 201.1 | 194.30 | 49.68 | 34.17% | 58.00% | 2063 MiB / 20475 MiB | 447.00% | 570.70% | 5678 MiB | 18 of 48 games reached max plies. |
-| `w8_c8_s16_b32` | 6 vCPU, 31 GiB | community | `EU-RO-1` requested; assigned US | $0.20/hr | 64 | 8 | 8 | 16 | 32 | 227.4 | 279.35 | 52.10 | 35.14% | 53.00% | 2816 MiB / 20475 MiB | 463.94% | 586.80% | 7555 MiB | 29 of 64 games reached max plies. |
-| `w8_c8_s16_b32` | 9 vCPU, 50 GiB | secure | `EU-RO-1` | $0.26/hr | 64 | 8 | 8 | 16 | 32 | 225.9 | 147.35 | 98.10 | 54.48% | 84.00% | 2777 MiB / 20475 MiB | 643.07% | 830.40% | 7825 MiB | 28 of 64 games reached max plies. |
+| Case | Date | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
+| --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| `w1_c16_s16_b32` | 2026-05-13 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 212.1 | 266.82 | 12.72 | 4.37% | 11.00% | 640 MiB / 20475 MiB | 102.42% | 142.00% | 995 MiB | 2026-05-13 current-code profile. Measured phase share: expand 63.81%, selection 23.38%. |
+| `w2_c8_s16_b32` | 2026-05-13 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
+| `w4_c8_s16_b32` | 2026-05-13 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
+| `w6_c8_s16_b32` | 2026-05-13 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 241.7 | 230.17 | 50.40 | 33.64% | 59.00% | 2089 MiB / 20475 MiB | 485.50% | 567.50% | 5825 MiB | 2026-05-13 current-code profile. Measured phase share: expand 65.81%, selection 21.63%. |
+| `p1_b16` | not recorded | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 1 | 1 | 16 | 16 | 110.5 | 55.00 | 8.04 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
+| `p2_b16` | not recorded | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 2 | 1 | 16 | 16 | 304.5 | 114.64 | 10.62 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
+| `p4_b16` | not recorded | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 16 | 185.2 | 74.26 | 9.98 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
+| `p4_b32` | not recorded | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 251.5 | 82.40 | 12.21 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
+| `p4_s32_b32` | not recorded | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 32 | 32 | 221.2 | 179.84 | 4.92 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
+| `p4_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 176.5 | 64.57 | 10.93 | 5.78% | 10.00% | 322 MiB / 20475 MiB | 106.28% | 140.00% | not recorded | 1 of 4 games reached max plies. |
+| `p8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 8 | 8 | 1 | 16 | 32 | 295.9 | 159.16 | 14.87 | 5.73% | 10.00% | 354 MiB / 20475 MiB | 103.23% | 137.00% | not recorded | 6 of 8 games reached max plies. |
+| `p16_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 255.2 | 271.63 | 15.04 | 5.05% | 9.00% | 422 MiB / 20475 MiB | 101.73% | 138.00% | not recorded | 10 of 16 games reached max plies. |
+| `p4_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 177.8 | 62.64 | 11.35 | 6.22% | 10.00% | 322 MiB / 20475 MiB | 106.94% | 139.00% | 1042 MiB | 1 of 4 games reached max plies. |
+| `p8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 8 | 8 | 1 | 16 | 32 | 199.1 | 125.53 | 12.69 | 5.45% | 10.00% | 368 MiB / 20475 MiB | 103.94% | 139.00% | 951 MiB | 3 of 8 games reached max plies. |
+| `p16_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 217.9 | 238.56 | 14.62 | 5.29% | 10.00% | 474 MiB / 20475 MiB | 101.71% | 125.00% | 965 MiB | 7 of 16 games reached max plies. |
+| `w4_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 238.3 | 182.34 | 41.82 | 24.38% | 55.00% | 1415 MiB / 20475 MiB | 366.41% | 469.20% | 3838 MiB | 13 of 32 games reached max plies. |
+| `w1_c16_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 195.5 | 257.17 | 12.16 | 4.44% | 10.00% | 542 MiB / 20475 MiB | 101.93% | 140.00% | 968 MiB | 5 of 16 games reached max plies. |
+| `w2_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 257.4 | 187.10 | 22.01 | 10.60% | 30.00% | 705 MiB / 20475 MiB | 205.55% | 300.80% | 1946 MiB | 9 of 16 games reached max plies. |
+| `w4_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 215.4 | 178.59 | 38.59 | 24.95% | 58.00% | 1415 MiB / 20475 MiB | 381.92% | 498.30% | 3793 MiB | 12 of 32 games reached max plies. |
+| `w6_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 230.8 | 208.04 | 53.24 | 35.65% | 62.00% | 2113 MiB / 20475 MiB | 478.39% | 569.20% | 5667 MiB | 22 of 48 games reached max plies. |
+| `w6_c8_s16_b64` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 48 | 8 | 6 | 16 | 64 | 201.1 | 194.30 | 49.68 | 34.17% | 58.00% | 2063 MiB / 20475 MiB | 447.00% | 570.70% | 5678 MiB | 18 of 48 games reached max plies. |
+| `w8_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | `EU-RO-1` requested; assigned US | $0.20/hr | 64 | 8 | 8 | 16 | 32 | 227.4 | 279.35 | 52.10 | 35.14% | 53.00% | 2816 MiB / 20475 MiB | 463.94% | 586.80% | 7555 MiB | 29 of 64 games reached max plies. |
+| `w8_c8_s16_b32` | not recorded | RTX 4000 Ada | 9 vCPU, 50 GiB | secure | `EU-RO-1` | $0.26/hr | 64 | 8 | 8 | 16 | 32 | 225.9 | 147.35 | 98.10 | 54.48% | 84.00% | 2777 MiB / 20475 MiB | 643.07% | 830.40% | 7825 MiB | 28 of 64 games reached max plies. |
 
 ## Job-Level Context
 
-| Measurement | Total job runtime | Remote workload runtime | Estimated cost |
-| --- | ---: | ---: | ---: |
-| Initial small grid | 571.164s | 514.209s | about $0.03 |
-| GPU utilization check | 560.415s | 505.343s | about $0.03 |
-| Generation worker check | 667.394s | 623.491s | about $0.04 |
-| Generation worker scaling check | 906.726s | 841.622s | about $0.05 |
-| NN batch limit check | 264.221s | 199.024s | about $0.02 |
-| Worker 8 check | 339.589s | 284.899s | about $0.02 |
-| Worker 8 secure 9 vCPU check | 225.423s | 152.079s | about $0.02 |
-| 2026-05-13 current-code worker-scaling profile | 926.557s | 880.379s | about $0.05 |
+| Measurement | Date | Total job runtime | Remote workload runtime | Estimated cost |
+| --- | --- | ---: | ---: | ---: |
+| Initial small grid | not recorded | 571.164s | 514.209s | about $0.03 |
+| GPU utilization check | not recorded | 560.415s | 505.343s | about $0.03 |
+| Generation worker check | not recorded | 667.394s | 623.491s | about $0.04 |
+| Generation worker scaling check | not recorded | 906.726s | 841.622s | about $0.05 |
+| NN batch limit check | not recorded | 264.221s | 199.024s | about $0.02 |
+| Worker 8 check | not recorded | 339.589s | 284.899s | about $0.02 |
+| Worker 8 secure 9 vCPU check | not recorded | 225.423s | 152.079s | about $0.02 |
+| Current-code worker-scaling profile | 2026-05-13 | 926.557s | 880.379s | about $0.05 |
 
 ## Notes
 
