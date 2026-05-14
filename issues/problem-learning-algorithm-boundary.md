@@ -24,9 +24,17 @@ The same problem shape can be trained with different algorithms, for example:
 
 Keep existing `problems/*/training.py` files as-is for now.
 
+`src/intrep/learning/` exists, but it currently holds learning-time utilities
+such as `ReplayBuffer`, not a generic Learner or algorithm framework.
+
 Do not introduce a generic Learner or algorithm framework until one concrete
 problem needs multiple learning algorithms or one learning algorithm is reused
 across multiple problems.
+
+The shogi generated-data and online-replay cycle is currently kept under
+`problems/shogi_policy_value/` as problem-local orchestration. Move it toward
+`learning/` only if it becomes a reusable learning algorithm or if shogi policy
+value needs multiple clearly distinct update algorithms.
 
 ## Desired Direction
 
