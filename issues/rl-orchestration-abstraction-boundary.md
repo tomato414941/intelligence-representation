@@ -27,6 +27,16 @@ Use clear shogi-specific names and boundaries instead of generic abstractions
 such as `Actor`, `Learner`, `Evaluator`, or `Publisher` until a second concrete
 use case exists.
 
+Online Replay v1 exists as a shogi-local loop under
+`problems/shogi_policy_value/generated_data_cycle.py`. It uses the generic
+`intrep.learning.ReplayBuffer` utility, but the orchestration itself remains
+shogi-specific.
+
+Experience Store and Online Replay Buffer are intentionally independent:
+Experience Store is durable source storage, while Replay Buffer is
+learner-facing dynamic sampling state. Training Data Bundle remains a fixed
+training/evaluation input artifact, not the replay buffer.
+
 ## Why It Matters
 
 Extracting a generic abstraction from only shogi would likely bake in shogi
@@ -36,6 +46,16 @@ At the same time, leaving the roles unnamed can make Online Replay absorb too
 many responsibilities.
 
 The near-term target is clear local boundaries, not shared framework code.
+
+Current local boundaries are:
+
+- `shogi-arena-agent`: game generation runtime and raw game record JSONL
+- `intrep.worlds.shogi`: shogi source-side records, Experience Store, and
+  Training Data Bundle behavior
+- `intrep.problems.shogi_policy_value`: policy/value sample construction,
+  training, evaluation, generated-data cycles, and Online Replay orchestration
+- `intrep.learning`: small reusable learning-time utilities such as
+  `ReplayBuffer`
 
 ## Acceptance Criteria
 
