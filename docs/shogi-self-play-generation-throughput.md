@@ -123,12 +123,6 @@ worker 8 / batch 32 setting:
 | `w8_c8_s16_b32` | not recorded | RTX 4000 Ada | 6 vCPU, 31 GiB | community | `EU-RO-1` requested; assigned US | $0.20/hr | 64 | 8 | 8 | 16 | 32 | 227.4 | 279.35 | 52.10 | 35.14% | 53.00% | 2816 MiB / 20475 MiB | 463.94% | 586.80% | 7555 MiB | 29 of 64 games reached max plies. |
 | `w8_c8_s16_b32` | not recorded | RTX 4000 Ada | 9 vCPU, 50 GiB | secure | `EU-RO-1` | $0.26/hr | 64 | 8 | 8 | 16 | 32 | 225.9 | 147.35 | 98.10 | 54.48% | 84.00% | 2777 MiB / 20475 MiB | 643.07% | 830.40% | 7825 MiB | 28 of 64 games reached max plies. |
 
-## Job-Level Context
-
-| Measurement | Date | Total job runtime | Remote workload runtime | Estimated cost |
-| --- | --- | ---: | ---: | ---: |
-| Current-code worker-scaling profile | 2026-05-13 | 926.557s | 880.379s | about $0.05 |
-
 ## Notes
 
 - Wall time is sensitive to game length. Use `plies/sec` when comparing
