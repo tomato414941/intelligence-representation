@@ -14,7 +14,7 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
+from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.problems.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
@@ -52,7 +52,7 @@ class ImageTextAnswerTrainingConfig:
     hidden_dim: int = 1024
     num_layers: int = 6
     dropout: float = 0.0
-    device: LanguageModelingTrainingDevice = "cpu"
+    device: TrainingDevice = "cpu"
     tokenizer_vocab_size: int = 512
 
 

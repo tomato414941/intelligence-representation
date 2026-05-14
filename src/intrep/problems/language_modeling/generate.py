@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.text.causal_model import CausalTextConfig, CausalTextModel
+from intrep.problems.language_modeling.causal_model import CausalTextConfig, CausalTextModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload
 
 

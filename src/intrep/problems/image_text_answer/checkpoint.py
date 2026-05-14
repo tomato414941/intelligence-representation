@@ -5,8 +5,8 @@ from pathlib import Path
 
 import torch
 
+from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.problems.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
-from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 from intrep.problems.image_text_answer.model import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
@@ -39,7 +39,7 @@ def save_image_text_answer_checkpoint(path: str | Path, result: ImageTextAnswerT
 def load_image_text_answer_checkpoint(
     path: str | Path,
     *,
-    device: LanguageModelingTrainingDevice = "auto",
+    device: TrainingDevice = "auto",
 ) -> ImageTextAnswerCheckpoint:
     resolved_device = resolve_training_device(device)
     payload = torch.load(Path(path), map_location=resolved_device, weights_only=False)

@@ -7,6 +7,7 @@ import torch
 from torch import nn
 
 from intrep.core.transformer_core import SharedTransformerCore
+from intrep.text.output_layer import TokenOutputHead
 
 
 @dataclass(frozen=True)
@@ -73,17 +74,6 @@ def causal_text_config_to_dict(config: CausalTextConfig) -> dict[str, int | floa
         "num_layers": config.num_layers,
         "dropout": config.dropout,
     }
-
-
-class TokenOutputHead(nn.Module):
-    def __init__(self, *, embedding_dim: int, vocab_size: int) -> None:
-        super().__init__()
-        self.output = nn.Linear(embedding_dim, vocab_size)
-
-    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
-        if hidden.ndim != 3:
-            raise ValueError("hidden states must have shape [batch, sequence, hidden]")
-        return self.output(hidden)
 
 
 class CausalTextModel(nn.Module):

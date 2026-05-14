@@ -6,8 +6,8 @@ from pathlib import Path
 import torch
 
 from intrep.core.transformer_core import SharedTransformerCore
+from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, GridStepTrainingArtifacts
-from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ def save_grid_core_checkpoint(path: str | Path, artifacts: GridStepTrainingArtif
 def load_grid_core_checkpoint(
     path: str | Path,
     *,
-    device: LanguageModelingTrainingDevice = "auto",
+    device: TrainingDevice = "auto",
 ) -> GridCoreCheckpoint:
     resolved_device = resolve_training_device(device)
     payload = torch.load(Path(path), map_location=resolved_device, weights_only=False)

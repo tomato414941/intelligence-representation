@@ -3,14 +3,13 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.text.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
+from intrep.problems.language_modeling.causal_model import CausalTextModel, CausalTextConfig, causal_text_config_to_dict
 from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
 from intrep.problems.language_modeling.model import LanguageModelingModel
 from intrep.text.tokenizer import (
@@ -19,9 +18,14 @@ from intrep.text.tokenizer import (
     build_text_tokenizer,
     text_tokenizer_to_payload,
 )
-from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
-
-LanguageModelingTrainingDevice = Literal["auto", "cpu", "cuda"]
+from intrep.core.training_utils import (
+    LearningRateSchedule,
+    TrainingDevice,
+    build_adamw,
+    build_lr_scheduler,
+    clip_gradients,
+    resolve_training_device,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +41,7 @@ class LanguageModelingTrainingConfig:
     lr_schedule: LearningRateSchedule = "constant"
     warmup_steps: int = 0
     seed: int = 7
-    device: LanguageModelingTrainingDevice = "cpu"
+    device: TrainingDevice = "cpu"
     checkpoint_path: Path | None = None
     tokenizer: TextTokenizerKind = "byte-pair"
     tokenizer_vocab_size: int = 512
@@ -331,14 +335,6 @@ def _train_text_corpus_with_artifacts(
             tokenizer=tokenizer,
         )
     return LanguageModelingTrainingArtifacts(result=result, model=model, tokenizer=tokenizer)
-
-
-def resolve_training_device(requested_device: LanguageModelingTrainingDevice) -> torch.device:
-    if requested_device == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if requested_device == "cuda" and not torch.cuda.is_available():
-        raise ValueError("CUDA device requested but torch.cuda.is_available() is false")
-    return torch.device(requested_device)
 
 
 def save_causal_text_checkpoint(

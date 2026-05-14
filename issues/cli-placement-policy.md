@@ -25,8 +25,10 @@ tools are added there by default.
 
 - Shogi policy-value training reads `game_records_jsonl` data-selection sources directly;
   the old shogi policy-value example-preparation CLI has been removed.
+- Causal text modeling code lives under `intrep.problems.language_modeling`;
+  generic text token and corpus utilities remain under `intrep.text`.
 
 ## Current Follow-up
 
-- `intrep.prepare_fineweb_edu_text` and `intrep.generate_text` should be
-  reconsidered when text CLI ownership is next changed.
+- `intrep.prepare_fineweb_edu_text` should be reconsidered when text dataset
+  preparation ownership is next changed.

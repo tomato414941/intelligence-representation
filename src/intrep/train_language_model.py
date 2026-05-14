@@ -5,9 +5,9 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.text.causal_model import build_causal_text_config
-from intrep.text.language_modeling_metrics import language_modeling_metrics_from_training_result
-from intrep.text.language_modeling_training import (
+from intrep.problems.language_modeling.causal_model import build_causal_text_config
+from intrep.problems.language_modeling.metrics import language_modeling_metrics_from_training_result
+from intrep.problems.language_modeling.training import (
     LanguageModelingTrainingConfig,
     train_language_modeling_with_artifacts,
 )

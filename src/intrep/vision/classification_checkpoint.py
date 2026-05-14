@@ -9,7 +9,7 @@ from intrep.vision.classification import (
     ImageClassificationConfig,
     ImageClassificationTrainingResult,
 )
-from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
+from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.problems.image_classification.model import ImageClassificationModel
 
 
@@ -41,7 +41,7 @@ def save_image_classification_checkpoint(path: str | Path, result: ImageClassifi
 def load_image_classification_checkpoint(
     path: str | Path,
     *,
-    device: LanguageModelingTrainingDevice = "auto",
+    device: TrainingDevice = "auto",
 ) -> ImageClassificationCheckpoint:
     resolved_device = resolve_training_device(device)
     payload = torch.load(Path(path), map_location=resolved_device, weights_only=False)

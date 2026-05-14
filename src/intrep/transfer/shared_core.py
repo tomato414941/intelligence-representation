@@ -8,7 +8,7 @@ import torch
 from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
 from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
-from intrep.text.language_modeling_training import LanguageModelingTrainingDevice, resolve_training_device
+from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.text.tokenizer import TextTokenizer
 
 
@@ -22,7 +22,7 @@ class SharedCoreInitialization:
 def load_shared_core_initialization(
     path: str | Path,
     *,
-    device: LanguageModelingTrainingDevice = "auto",
+    device: TrainingDevice = "auto",
 ) -> SharedCoreInitialization:
     """Load compatible shared-core state from supported checkpoints."""
     resolved_device = resolve_training_device(device)

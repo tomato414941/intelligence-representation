@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from intrep.vision.classification import ImagePatchInputLayer
-from intrep.text.causal_model import CausalTextModel, build_causal_text_config
+from intrep.problems.language_modeling.causal_model import CausalTextModel, build_causal_text_config
 from intrep.core.model_input import concatenate_input_embedding_sequences
 from intrep.text.token_scoring import next_token_loss
 from intrep.core.transformer_core import SharedTransformerCore

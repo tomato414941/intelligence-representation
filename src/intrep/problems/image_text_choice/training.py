@@ -12,15 +12,18 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.text.language_modeling_training import (
-    LanguageModelingDataset,
-    LanguageModelingTrainingDevice,
+from intrep.core.training_utils import (
+    LearningRateSchedule,
+    TrainingDevice,
+    build_adamw,
+    build_lr_scheduler,
+    clip_gradients,
     resolve_training_device,
 )
+from intrep.problems.language_modeling.training import LanguageModelingDataset
 from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.problems.image_text_choice.model import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
-from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 
 @dataclass(frozen=True)
@@ -40,7 +43,7 @@ class ImageTextChoiceTrainingConfig:
     hidden_dim: int = 1024
     num_layers: int = 6
     dropout: float = 0.0
-    device: LanguageModelingTrainingDevice = "cpu"
+    device: TrainingDevice = "cpu"
     tokenizer_vocab_size: int = 512
 
 

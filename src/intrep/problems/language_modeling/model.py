@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from intrep.text.causal_model import CausalTextModel
+from intrep.problems.language_modeling.causal_model import CausalTextModel
 
 
 class LanguageModelingModel(CausalTextModel):

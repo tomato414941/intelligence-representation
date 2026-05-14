@@ -7,8 +7,8 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.text.causal_model import CausalTextConfig, CausalTextModel
-from intrep.generate_text import generate_text_from_checkpoint, main
+from intrep.problems.language_modeling.causal_model import CausalTextConfig, CausalTextModel
+from intrep.problems.language_modeling.generate import generate_text_from_checkpoint, main
 from intrep.text.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
 
 

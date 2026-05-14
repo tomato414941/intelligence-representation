@@ -6,6 +6,15 @@ from typing import Literal
 import torch
 
 LearningRateSchedule = Literal["constant", "warmup_cosine"]
+TrainingDevice = Literal["auto", "cpu", "cuda"]
+
+
+def resolve_training_device(requested_device: TrainingDevice) -> torch.device:
+    if requested_device == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA device requested but torch.cuda.is_available() is false")
+    return torch.device(requested_device)
 
 
 def build_adamw(

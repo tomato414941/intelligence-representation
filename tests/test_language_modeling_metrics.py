@@ -2,7 +2,7 @@ import math
 import unittest
 from dataclasses import dataclass
 
-from intrep.text.language_modeling_metrics import (
+from intrep.problems.language_modeling.metrics import (
     language_modeling_metrics_from_training_result,
     perplexity_from_loss,
 )
