@@ -17,66 +17,70 @@ payloads.
 
 ## Training Runs
 
-| Run | Date | Initial checkpoint | Final checkpoint policy | Cycles | Experience sources per cycle | Environment | Remote job time | Status |
-| --- | --- | --- | --- | ---: | --- | --- | ---: | --- |
-| `online-replay-runpod-20260515-174845` | 2026-05-15 | `d256-h1024-heads8-l6-shogi/checkpoint.pt` | final | 4 | `self:64`, `usi:64` | RTX 4000 Ada, 16 vCPU, 62 GiB, secure, EUR-IS-1, $0.26/hr | 42.9 min | completed |
+| Experiment | Date | Method | Starting checkpoint | Cycle checkpoint promotion | Cycles | Experience sources per cycle | Environment | Remote job time | Status |
+| --- | --- | --- | --- | --- | ---: | --- | --- | ---: | --- |
+| `shogi-learning-20260515-001` | 2026-05-15 | online replay | `models/d256-h1024-heads8-l6-shogi/checkpoint.pt` | final checkpoint from each cycle | 4 | `self:64`, `usi:64` | RTX 4000 Ada, 16 vCPU, 62 GiB, secure, EUR-IS-1, $0.26/hr | 42.9 min | completed |
+
+`Cycle checkpoint promotion` records which checkpoint from one cycle is used as
+the starting checkpoint for the next cycle. `final checkpoint from each cycle`
+means the next cycle used `cycle-N/checkpoint.pt`, not `cycle-N/best-checkpoint.pt`.
 
 ## Generation Settings
 
-| Run | Generation worker processes | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Max plies | USI opponent | USI side assignment |
+| Experiment | Generation worker processes | Concurrent games per process | MCTS simulations per move | NN leaf eval batch limit | Max plies | USI opponent | USI side assignment |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| `online-replay-runpod-20260515-174845` | 8 | self-play: 8; USI: 1 effective | 16 | 32 | 320 | YaneuraOu | checkpoint black, USI white |
+| `shogi-learning-20260515-001` | 8 | self-play: 8; USI: 1 effective | 16 | 32 | 320 | YaneuraOu | checkpoint black, USI white |
 
 ## Optimization Settings
 
-| Run | Optimizer steps/cycle | Batch size | Learning rate | Policy loss weight | Value loss weight | Num workers | Early stopping | Eval during training |
+| Experiment | Optimizer steps/cycle | Batch size | Learning rate | Policy loss weight | Value loss weight | Num workers | Early stopping | Eval during training |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| `online-replay-runpod-20260515-174845` | 1,000 | 512 | 0.0001 | 1.0 | 1.0 | 0 | not wired | disabled |
+| `shogi-learning-20260515-001` | 1,000 | 512 | 0.0001 | 1.0 | 1.0 | 0 | not wired | disabled |
 
 ## Replay And Evaluation Settings
 
-| Run | Replay capacity | Min replay size | Replay sample size/cycle | Steps per replay sample pass | Effective passes/cycle | Eval ratio for generated games | Training eval source |
+| Experiment | Replay capacity | Min replay size | Replay sample size/cycle | Steps per replay sample pass | Effective passes/cycle | Eval ratio for generated games | Training eval source |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `online-replay-runpod-20260515-174845` | 131,072 | 8,192 | 8,192 | 16 | 62.5 | 0.05 | fixed eval selection |
+| `shogi-learning-20260515-001` | 131,072 | 8,192 | 8,192 | 16 | 62.5 | 0.05 | fixed eval selection |
 
 `Steps per replay sample pass` is `replay_sample_size / batch_size`.
 `Effective passes/cycle` is `optimizer_steps_per_cycle / steps_per_replay_sample_pass`.
 
 ## Training Data
 
-| Run | Replay seed selection | Replay seed examples | Fixed eval selection | Fixed eval examples | Generated games | Generated train examples | Generated eval examples | Training eval used | Final replay size |
+| Experiment | Replay seed selection | Replay seed examples | Fixed eval selection | Fixed eval examples | Generated games | Generated train examples | Generated eval examples | Training eval used | Final replay size |
 | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | --- | ---: |
-| `online-replay-runpod-20260515-174845` | `data/shogi/training-data-bundles/online-replay-seed-20260512/data-selection.json` | 17,644 | same data-selection artifact | 5,967 | 512 | 65,992 | 3,473 | fixed eval, not generated eval | 83,636 |
+| `shogi-learning-20260515-001` | `data/shogi/training-data-bundles/online-replay-seed-20260512/data-selection.json` | 17,644 | same data-selection artifact | 5,967 | 512 | 65,992 | 3,473 | fixed eval, not generated eval | 83,636 |
 
 ## Cycle Metrics
 
-| Run | Cycle | Generated train examples | Generated eval examples | Replay size after append | Sampled examples | Optimizer steps | Train loss before | Train loss after | Fixed eval loss before | Fixed eval loss after | Best eval loss | Best eval step | Fixed eval accuracy after |
+| Experiment | Cycle | Generated train examples | Generated eval examples | Replay size after append | Sampled examples | Optimizer steps | Train loss before | Train loss after | Fixed eval loss before | Fixed eval loss after | Best eval loss | Best eval step | Fixed eval accuracy after |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `online-replay-runpod-20260515-174845` | 1 | 16,493 | 588 | 34,137 | 8,192 | 1,000 | 2.4425 | 0.0293 | 2.5003 | 7.7066 | 2.5003 | 0 | 0.3566 |
-| `online-replay-runpod-20260515-174845` | 2 | 16,209 | 891 | 50,346 | 8,192 | 1,000 | 4.0264 | 0.0287 | 7.7066 | 9.6335 | 7.7066 | 0 | 0.3255 |
-| `online-replay-runpod-20260515-174845` | 3 | 17,544 | 906 | 67,890 | 8,192 | 1,000 | 3.8232 | 0.0302 | 9.6335 | 8.9047 | 8.9047 | 1000 | 0.3377 |
-| `online-replay-runpod-20260515-174845` | 4 | 15,746 | 1,088 | 83,636 | 8,192 | 1,000 | 3.7654 | 0.0315 | 8.9047 | 10.9028 | 8.9047 | 0 | 0.3057 |
+| `shogi-learning-20260515-001` | 1 | 16,493 | 588 | 34,137 | 8,192 | 1,000 | 2.4425 | 0.0293 | 2.5003 | 7.7066 | 2.5003 | 0 | 0.3566 |
+| `shogi-learning-20260515-001` | 2 | 16,209 | 891 | 50,346 | 8,192 | 1,000 | 4.0264 | 0.0287 | 7.7066 | 9.6335 | 7.7066 | 0 | 0.3255 |
+| `shogi-learning-20260515-001` | 3 | 17,544 | 906 | 67,890 | 8,192 | 1,000 | 3.8232 | 0.0302 | 9.6335 | 8.9047 | 8.9047 | 1000 | 0.3377 |
+| `shogi-learning-20260515-001` | 4 | 15,746 | 1,088 | 83,636 | 8,192 | 1,000 | 3.7654 | 0.0315 | 8.9047 | 10.9028 | 8.9047 | 0 | 0.3057 |
 
 ## Generated Experience Summary
 
-| Run | Source | Games | Average plies | Wins by checkpoint side | Wins by opponent side | Draws / max-plies | Generated train examples |
+| Experiment | Source | Games | Average plies | Wins by checkpoint side | Wins by opponent side | Draws / max-plies | Generated train examples |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `online-replay-runpod-20260515-174845` | self-play | 256 | 220.7 | 63 black wins | 84 white wins | 109 | included in 65,992 total |
-| `online-replay-runpod-20260515-174845` | checkpoint-vs-USI | 256 | 50.6 | 0 checkpoint black wins | 256 USI white wins | 0 | included in 65,992 total |
+| `shogi-learning-20260515-001` | self-play | 256 | 220.7 | 63 black wins | 84 white wins | 109 | included in 65,992 total |
+| `shogi-learning-20260515-001` | checkpoint-vs-USI | 256 | 50.6 | 0 checkpoint black wins | 256 USI white wins | 0 | included in 65,992 total |
 
 ## Inference Batch Observations
 
-| Run | Source | Configured NN leaf eval batch limit | Actual NN leaf eval batch size avg | Fill ratio avg | Notes |
+| Experiment | Source | Configured NN leaf eval batch limit | Actual NN leaf eval batch size avg | Fill ratio avg | Notes |
 | --- | --- | ---: | ---: | ---: | --- |
-| `online-replay-runpod-20260515-174845` | self-play | 32 | about 6.1-6.4 | about 0.19-0.20 | Batches did not fill close to the configured limit. |
-| `online-replay-runpod-20260515-174845` | checkpoint-vs-USI | 32 | about 14.3-14.5 | about 0.45 | USI games ended quickly and used effective concurrent games per process of 1. |
+| `shogi-learning-20260515-001` | self-play | 32 | about 6.1-6.4 | about 0.19-0.20 | Batches did not fill close to the configured limit. |
+| `shogi-learning-20260515-001` | checkpoint-vs-USI | 32 | about 14.3-14.5 | about 0.45 | USI games ended quickly and used effective concurrent games per process of 1. |
 
 ## Strength Evidence
 
-| Run | Evidence | Before | After | Result | Conclusion |
+| Experiment | Evidence | Before | After | Result | Conclusion |
 | --- | --- | ---: | ---: | --- | --- |
-| `online-replay-runpod-20260515-174845` | Fixed eval loss | 2.5003 | 10.9028 | worsened | Not evidence of strength improvement. |
-| `online-replay-runpod-20260515-174845` | Initial-vs-final checkpoint match | not run | not run | unavailable | Strength improvement is undetermined. |
+| `shogi-learning-20260515-001` | Fixed eval loss | 2.5003 | 10.9028 | worsened | Not evidence of strength improvement. |
+| `shogi-learning-20260515-001` | Initial-vs-final checkpoint match | not run | not run | unavailable | Strength improvement is undetermined. |
 
 ## Observations
 
