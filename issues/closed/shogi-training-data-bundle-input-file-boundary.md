@@ -1,6 +1,6 @@
 # Shogi Training Data Bundle Input File Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -50,3 +50,13 @@ are used.
 - redesign Experience Store
 - introduce a generic dataset registry
 - remove support for temporary experiment inputs
+
+## Resolution
+
+Keep repeated `--train-games` support. It is useful for temporary experiments
+and explicit source mixes, and avoids requiring ad-hoc combined JSONL files.
+
+The normal durable path is still a stable record set or Experience
+Store-derived game-record JSONL. `scripts/create_shogi_training_data_bundle.py`
+now warns when multiple train inputs are passed, and bundle manifests continue
+to record every original train source path.

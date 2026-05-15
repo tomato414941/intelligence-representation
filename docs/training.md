@@ -126,3 +126,15 @@ uv run python -m intrep.train_image_text_choice \
   --freeze-module core \
   --freeze-module image_input_layer
 ```
+
+## Shogi Training Data Bundles
+
+Shogi policy/value training consumes a fixed Training Data Bundle through its
+`data-selection.json`. The normal durable input for creating a bundle should be
+a stable record set or Experience Store-derived game-record JSONL, not a long
+command line of run-local outputs.
+
+`scripts/create_shogi_training_data_bundle.py` still accepts repeated
+`--train-games` inputs for temporary experiments and explicit source mixes. When
+multiple train inputs are used, the bundle manifest records every source path
+and the CLI prints a warning.

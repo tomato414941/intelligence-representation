@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from intrep.worlds.shogi.training_data_bundle import create_shogi_training_data_bundle, parse_shogi_actor_pair_ratios
@@ -37,6 +38,14 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
     args = parser.parse_args(argv)
+
+    if len(args.train_games) > 1:
+        print(
+            "warning: multiple --train-games inputs are intended for temporary experiments "
+            "or explicit source mixes. Prefer a stable record set or Experience Store-derived "
+            "input for durable Training Data Bundles.",
+            file=sys.stderr,
+        )
 
     result = create_shogi_training_data_bundle(
         train_games=tuple(args.train_games),

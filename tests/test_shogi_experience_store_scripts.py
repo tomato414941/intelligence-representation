@@ -317,6 +317,38 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             self.assertTrue((output_root / "cli-view" / "data-selection.json").exists())
 
+    def test_training_data_bundle_script_warns_on_multiple_train_inputs(self) -> None:
+        view_module = _load_script_module("create_shogi_training_data_bundle")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_a = root / "train-a.jsonl"
+            train_b = root / "train-b.jsonl"
+            eval_path = root / "eval.jsonl"
+            output_root = root / "datasets"
+            write_shogi_game_records_jsonl(train_a, [_record(("7g7f", "3c3d"), "black")])
+            write_shogi_game_records_jsonl(train_b, [_record(("2g2f", "8c8d"), "white")])
+            write_shogi_game_records_jsonl(eval_path, [_record(("5g5f", "5c5d"), "black")])
+
+            stderr = StringIO()
+            with patch("sys.stdout", new_callable=StringIO), patch("sys.stderr", stderr):
+                view_module.main(
+                    [
+                        "--train-games",
+                        str(train_a),
+                        "--train-games",
+                        str(train_b),
+                        "--eval-games",
+                        str(eval_path),
+                        "--name",
+                        "cli-view-multi-train",
+                        "--output-root",
+                        str(output_root),
+                    ]
+                )
+
+            self.assertIn("multiple --train-games inputs", stderr.getvalue())
+            self.assertTrue((output_root / "cli-view-multi-train" / "data-selection.json").exists())
+
     def test_creates_training_data_bundle_from_selected_game_record_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
