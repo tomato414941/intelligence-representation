@@ -8,7 +8,7 @@ It does not treat `runs/` as a durable source of truth.
 
 | Experiment | Date | Question | Setup | Data | Result | Conclusion |
 | --- | --- | --- | --- | --- | --- | --- |
-| `shogi-learning-20260515-001` | 2026-05-15 | Does online experience replay improve the checkpoint? | 4 cycles; start checkpoint ID not recorded; start path `models/d256-h1024-heads8-l6-shogi/checkpoint.pt`; self-play 64/cycle + checkpoint-vs-USI 64/cycle | seeded replay; 512 generated games; 65,992 generated train examples | fixed eval worsened from 2.5003 to 10.9028; no head-to-head match | strength improvement undetermined |
+| `shogi-learning-20260515-001` | 2026-05-15 | Does online experience replay improve the checkpoint? | 4 cycles; next-cycle checkpoint = cycle final; start checkpoint ID not recorded; start path `models/d256-h1024-heads8-l6-shogi/checkpoint.pt`; self-play 64/cycle + checkpoint-vs-YaneuraOu 64/cycle with checkpoint black fixed | seeded replay; 512 generated games; 65,992 generated train examples | fixed eval worsened from 2.5003 to 10.9028; no head-to-head match | strength improvement undetermined |
 
 Checkpoint paths are run-time paths, not immutable checkpoint identities.
 
