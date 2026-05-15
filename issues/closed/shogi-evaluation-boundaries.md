@@ -1,6 +1,6 @@
 # Shogi Evaluation Boundaries
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -34,3 +34,9 @@ turning those interpretations into a single overloaded "evaluation" concept.
 - Existing shogi docs use the terms consistently.
 - `shogi-checkpoint-match-evaluation.md` remains focused on player-vs-player
   match evaluation, not all evaluation boundaries.
+
+## Resolution
+
+`docs/shogi/learning-boundaries.md` now records the shogi evaluation roles and
+their sources of truth. Playing-strength evidence uses game-record JSONL, while
+stdout summaries remain derived convenience output.

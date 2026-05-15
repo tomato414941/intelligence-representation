@@ -62,6 +62,21 @@ entry point uses `player_a` and `player_b`; it does not name one side as the
 opponent. Side assignment is handled by the arena evaluator and should be
 recorded with the match result.
 
+The durable evidence is the game-record JSONL. The stdout match summary is a
+derived convenience view, not a second source of truth.
+
+## Evaluation Boundaries
+
+Training-time eval, playing-strength eval, inference-performance eval, and
+learning experiment summaries are separate roles:
+
+- training metrics are the source for loss, early stopping, and best-checkpoint
+  selection
+- player match game records are the source for playing-strength evidence
+- inference-performance docs summarize latency, throughput, and CPU/GPU behavior
+- learning experiment docs summarize conclusions and cite evidence without
+  duplicating raw artifacts
+
 ## Online Replay Progress
 
 Policy/value training reports generic training progress events. Online Replay
