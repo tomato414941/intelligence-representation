@@ -43,7 +43,7 @@ in-process MCTS policies through `decision_usi_info_lines`, and
 `evaluate_shogi_players.py` aggregates them in stdout.
 
 The first catalog entry is recorded in
-[`docs/shogi-play-inference-performance.md`](../docs/shogi-play-inference-performance.md):
+[`docs/shogi/play-inference-performance.md`](../../docs/shogi/play-inference-performance.md):
 
 - workload: d256-h1024-heads8-l6-shogi MCTS32 vs YaneuraOu `go nodes 1`
 - environment: RunPod RTX 4090, CUDA

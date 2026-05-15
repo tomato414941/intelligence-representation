@@ -62,4 +62,4 @@ pricing page before using these rows for future cost estimates.
 ## Shogi Self-Play Generation Throughput
 
 Self-play generation throughput and cost notes are tracked in
-`docs/shogi-self-play-generation-throughput.md`.
+`docs/shogi/self-play-generation-throughput.md`.

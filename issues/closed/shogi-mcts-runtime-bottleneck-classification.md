@@ -129,7 +129,7 @@ This issue can close when:
 - the dominant bottleneck class is identified from those measurements
 - any required optimization work is split into narrower follow-up issues
 - the diagnosis is recorded in this issue's resolution or in
-  `docs/shogi-play-inference-performance.md`
+  `docs/shogi/play-inference-performance.md`
 
 ## Resolution
 

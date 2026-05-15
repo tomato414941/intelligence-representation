@@ -45,7 +45,7 @@ Met.
 
 ## Resolution
 
-The boundary is documented in `docs/shogi-learning-boundaries.md`, with a short
+The boundary is documented in `docs/shogi/learning-boundaries.md`, with a short
 link from `docs/learning-boundaries.md`.
 
 The documented rule is source-side versus problem-side:
