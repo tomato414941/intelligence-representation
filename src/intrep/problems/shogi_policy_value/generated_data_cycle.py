@@ -851,6 +851,8 @@ def _run_generate_games(
         "checkpoint",
         "--black-checkpoint",
         str(checkpoint.resolve()),
+        "--black-checkpoint-id",
+        _checkpoint_actor_id(checkpoint),
         "--black-move-selection-profile",
         "self-play",
         "--black-move-selector",
@@ -900,6 +902,8 @@ def _run_generate_games(
                 "checkpoint",
                 "--white-checkpoint",
                 str(checkpoint.resolve()),
+                "--white-checkpoint-id",
+                _checkpoint_actor_id(checkpoint),
                 "--white-move-selection-profile",
                 "self-play",
                 "--white-move-selector",
@@ -929,6 +933,12 @@ def _shogi_arena_python_command() -> list[str]:
     if python:
         return [python]
     return ["uv", "run", "python"]
+
+
+def _checkpoint_actor_id(checkpoint: Path) -> str:
+    if checkpoint.name == "checkpoint.pt" or checkpoint.name == "best-checkpoint.pt":
+        return checkpoint.parent.name
+    return checkpoint.stem
 
 
 def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:

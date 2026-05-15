@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from intrep.worlds.shogi.game_record import ShogiGameRecord
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord
 
 
 @dataclass(frozen=True)
@@ -83,5 +83,71 @@ def shogi_actor_pair_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def shogi_checkpoint_actor_summaries(records: list[ShogiGameRecord]) -> list[dict[str, object]]:
+    counts: dict[str, int] = {}
+    summaries: dict[str, dict[str, object]] = {}
+    actor_names: dict[str, set[str]] = {}
+    for record in records:
+        for actor in (record.black_actor, record.white_actor):
+            if actor.kind != "checkpoint":
+                continue
+            summary = _checkpoint_actor_summary(actor)
+            key = _summary_key(summary)
+            summaries[key] = summary
+            actor_names.setdefault(key, set()).add(actor.name)
+            counts[key] = counts.get(key, 0) + 1
+
+    output: list[dict[str, object]] = []
+    for key in sorted(summaries):
+        output.append({"count": counts[key], "actor_names": sorted(actor_names[key]), **summaries[key]})
+    return output
+
+
 def _position_set(records: list[ShogiGameRecord]) -> set[str]:
     return {transition.position_sfen for record in records for transition in record.transitions}
+
+
+def _checkpoint_actor_summary(actor: ShogiActorSpec) -> dict[str, object]:
+    settings = actor.settings
+    summary: dict[str, object] = {
+        "checkpoint_id": _setting_text(settings, "checkpoint_id")
+        or _setting_text(settings, "checkpoint_name")
+        or actor.name,
+        "checkpoint_path": _setting_text(settings, "checkpoint_path")
+        or _setting_text(settings, "checkpoint")
+        or "unknown",
+        "move_selector": _setting_text(settings, "move_selector")
+        or _setting_text(settings, "policy")
+        or "unknown",
+    }
+    _add_optional_setting(summary, settings, "move_selection_profile")
+    _add_optional_setting(summary, settings, "mcts_simulations_per_move", fallback_key="simulations")
+    _add_optional_setting(summary, settings, "nn_leaf_eval_batch_limit", fallback_key="evaluation_batch_size")
+    _add_optional_setting(summary, settings, "mcts_move_time_limit_sec")
+    _add_optional_setting(summary, settings, "board_backend")
+    return summary
+
+
+def _add_optional_setting(
+    summary: dict[str, object],
+    settings: dict[str, str | int | float | bool | None],
+    key: str,
+    *,
+    fallback_key: str | None = None,
+) -> None:
+    value = settings.get(key)
+    if value is None and fallback_key is not None:
+        value = settings.get(fallback_key)
+    if value is not None:
+        summary[key] = value
+
+
+def _setting_text(settings: dict[str, str | int | float | bool | None], key: str) -> str | None:
+    value = settings.get(key)
+    if value is None:
+        return None
+    return str(value)
+
+
+def _summary_key(summary: dict[str, object]) -> str:
+    return "|".join(f"{key}={summary[key]}" for key in sorted(summary))

@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Literal
 
 from intrep.worlds.shogi.engine_analysis import load_shogi_engine_analysis_jsonl
-from intrep.worlds.shogi.experience_stats import shogi_actor_pair, shogi_actor_pair_counts, shogi_position_stats, shogi_train_eval_position_stats
+from intrep.worlds.shogi.experience_stats import (
+    shogi_actor_pair,
+    shogi_actor_pair_counts,
+    shogi_checkpoint_actor_summaries,
+    shogi_position_stats,
+    shogi_train_eval_position_stats,
+)
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
 
 ShogiEvalPositionPolicy = Literal["allow_overlap", "exclude_train_position_games"]
@@ -130,6 +136,9 @@ def create_shogi_training_data_bundle(
         "actor_pair_counts": shogi_actor_pair_counts(records),
         "train_actor_pair_counts": shogi_actor_pair_counts(train_records),
         "eval_actor_pair_counts": shogi_actor_pair_counts(eval_records),
+        "checkpoint_actor_summaries": shogi_checkpoint_actor_summaries(records),
+        "train_checkpoint_actor_summaries": shogi_checkpoint_actor_summaries(train_records),
+        "eval_checkpoint_actor_summaries": shogi_checkpoint_actor_summaries(eval_records),
         "train_games": len(train_records),
         "eval_games": len(eval_records),
         "target_construction": data_selection["target_construction"],

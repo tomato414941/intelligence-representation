@@ -1,6 +1,6 @@
 # Shogi Checkpoint Actor Provenance
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -70,3 +70,27 @@ This issue can close when checkpoint-generated shogi experience has a clear,
 durable provenance policy, and Experience Store / Training Data Bundle metadata can
 explain which checkpoint generation and search settings a training slice came
 from.
+
+## Resolution
+
+Checkpoint actors should not use a checkpoint file path as their only identity.
+The runtime player may load a checkpoint from a path, but the recorded actor
+provenance should also carry a `checkpoint_id` when the caller can provide one.
+
+The shogi arena generation CLI now accepts per-side checkpoint IDs. Generated
+records can therefore distinguish:
+
+- checkpoint identity: `checkpoint_id`, `checkpoint_path`
+- runtime move selection: `move_selector`, `move_selection_profile`
+- MCTS settings: `mcts_simulations_per_move`, `nn_leaf_eval_batch_limit`,
+  `mcts_move_time_limit_sec`, `board_backend`
+
+`intelligence-representation` passes a checkpoint ID when it invokes
+`shogi-arena-agent` for generated-data cycles and Online Replay. Experience
+Store manifest/history and Training Data Bundle manifests now include
+structured checkpoint actor summaries in addition to legacy count strings.
+
+This does not introduce a model registry and does not require keeping every
+run-local checkpoint forever. The durable rule is that generated experience
+must carry enough actor provenance to understand the model generation and search
+settings even if a disposable `runs/` path is later removed.

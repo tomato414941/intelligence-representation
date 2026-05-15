@@ -140,6 +140,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             generate_command = run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-id") + 1], "source")
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-id") + 1], "source")
             self.assertEqual(generate_command[generate_command.index("--concurrent-games-per-process") + 1], "2")
             self.assertEqual(generate_command[generate_command.index("--generation-worker-processes") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--seed") + 1], "11")

@@ -103,6 +103,19 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 manifest["checkpoint_actor_counts"],
                 {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 3},
             )
+            self.assertEqual(
+                manifest["checkpoint_actor_summaries"],
+                [
+                    {
+                        "count": 3,
+                        "actor_names": ["black-model"],
+                        "checkpoint_id": "black-model",
+                        "checkpoint_path": "runs/shogi/model-a/checkpoint.pt",
+                        "move_selector": "mcts",
+                        "mcts_simulations_per_move": 8,
+                    }
+                ],
+            )
             history_lines = (store_dir / "history.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(history_lines), 2)
             second_history = json.loads(history_lines[1])
@@ -111,6 +124,8 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 second_history["added_checkpoint_actor_counts"],
                 {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 1},
             )
+            self.assertEqual(second_history["added_checkpoint_actor_summaries"][0]["count"], 1)
+            self.assertEqual(second_history["total_checkpoint_actor_summaries"][0]["count"], 3)
             self.assertEqual(second_history["total_games"], 3)
             self.assertEqual(second_history["total_position_stats"]["unique_position_count"], 4)
 
@@ -127,6 +142,53 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             self.assertTrue((store_dir / "games.jsonl").exists())
             self.assertTrue((store_dir / "manifest.json").exists())
+
+    def test_checkpoint_actor_summary_groups_same_checkpoint_settings_across_sides(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "games.jsonl"
+            store_dir = root / "store"
+            black_actor = ShogiActorSpec(
+                kind="checkpoint",
+                name="black",
+                settings={
+                    "checkpoint_id": "model-a",
+                    "checkpoint_path": "models/model-a/checkpoint.pt",
+                    "move_selector": "mcts",
+                    "mcts_simulations_per_move": 16,
+                },
+            )
+            white_actor = ShogiActorSpec(
+                kind="checkpoint",
+                name="white",
+                settings={
+                    "checkpoint_id": "model-a",
+                    "checkpoint_path": "models/model-a/checkpoint.pt",
+                    "move_selector": "mcts",
+                    "mcts_simulations_per_move": 16,
+                },
+            )
+            write_shogi_game_records_jsonl(
+                input_path,
+                [_record(("7g7f", "3c3d"), "black", black_actor=black_actor, white_actor=white_actor)],
+            )
+
+            append_shogi_experience_store(input_path=input_path, store_dir=store_dir)
+
+            manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                manifest["checkpoint_actor_summaries"],
+                [
+                    {
+                        "count": 2,
+                        "actor_names": ["black", "white"],
+                        "checkpoint_id": "model-a",
+                        "checkpoint_path": "models/model-a/checkpoint.pt",
+                        "move_selector": "mcts",
+                        "mcts_simulations_per_move": 16,
+                    }
+                ],
+            )
 
     def test_creates_fixed_training_data_bundle_from_explicit_train_eval_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -182,6 +244,13 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2})
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(manifest["checkpoint_actor_summaries"][0]["count"], 2)
+            self.assertEqual(manifest["train_checkpoint_actor_summaries"][0]["count"], 1)
+            self.assertEqual(manifest["eval_checkpoint_actor_summaries"][0]["count"], 1)
+            self.assertEqual(
+                manifest["checkpoint_actor_summaries"][0]["checkpoint_path"],
+                "runs/shogi/model-a/checkpoint.pt",
+            )
             self.assertEqual(manifest["train_games"], 1)
             self.assertEqual(manifest["eval_games"], 1)
             self.assertEqual(manifest["train_position_stats"]["transition_count"], 2)
