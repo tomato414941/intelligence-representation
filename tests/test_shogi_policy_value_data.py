@@ -25,7 +25,7 @@ from intrep.worlds.shogi.game_record import (
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
-WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"go_command": "go nodes 1"})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:

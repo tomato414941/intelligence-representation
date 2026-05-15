@@ -96,7 +96,7 @@ Examples:
 - deterministic rule
 - human labeler
 
-In shogi, checkpoint plus MCTS settings, YaneuraOu, and deterministic legal
+In shogi, checkpoint plus MCTS settings, USI engines, and deterministic legal
 move selection can be Actors.
 
 ### Observation

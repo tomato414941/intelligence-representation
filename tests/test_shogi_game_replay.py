@@ -7,7 +7,7 @@ from intrep.worlds.shogi.game_replay import replay_shogi_game_record, validate_s
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
-WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"go_command": "go nodes 1"})
 
 
 def _record(moves: tuple[str, ...], winner: str | None = None, end_reason: str | None = None) -> ShogiGameRecord:

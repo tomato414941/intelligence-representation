@@ -9,15 +9,16 @@ from unittest.mock import patch
 
 
 class RunShogiPlayingEvalScriptTest(unittest.TestCase):
-    def test_builds_checkpoint_vs_yaneuraou_command(self) -> None:
+    def test_builds_checkpoint_vs_usi_command(self) -> None:
         module = _load_script_module()
         args = Namespace(
             checkpoint=Path("model.pt"),
             out=Path("runs/eval/games.jsonl"),
-            opponent_kind="yaneuraou",
+            opponent_kind="usi",
             opponent_checkpoint=None,
-            yaneuraou="engine",
-            engine_go_command="go nodes 2",
+            usi_command="engine",
+            usi_option=["Threads=2"],
+            usi_go_command="go nodes 2",
             games=4,
             max_plies=320,
             simulations=128,
@@ -37,9 +38,10 @@ class RunShogiPlayingEvalScriptTest(unittest.TestCase):
         self.assertEqual(command[command.index("--player-device") + 1], "cuda")
         self.assertEqual(command[command.index("--player-board-backend") + 1], "cshogi")
         self.assertEqual(command[command.index("--player-mcts-move-time-limit-sec") + 1], "10.0")
-        self.assertEqual(command[command.index("--opponent-kind") + 1], "yaneuraou")
-        self.assertEqual(command[command.index("--opponent-yaneuraou-command") + 1], "engine")
-        self.assertEqual(command[command.index("--opponent-yaneuraou-go-command") + 1], "go nodes 2")
+        self.assertEqual(command[command.index("--opponent-kind") + 1], "usi")
+        self.assertEqual(command[command.index("--opponent-usi-command") + 1], "engine")
+        self.assertEqual(command[command.index("--opponent-usi-option") + 1], "Threads=2")
+        self.assertEqual(command[command.index("--opponent-usi-go-command") + 1], "go nodes 2")
         self.assertEqual(command[command.index("--games") + 1], "4")
         self.assertEqual(command[command.index("--max-plies") + 1], "320")
         self.assertEqual(command[command.index("--out") + 1], str(Path("runs/eval/games.jsonl").resolve()))
@@ -51,8 +53,9 @@ class RunShogiPlayingEvalScriptTest(unittest.TestCase):
             out=Path("games.jsonl"),
             opponent_kind="checkpoint",
             opponent_checkpoint=Path("baseline.pt"),
-            yaneuraou=None,
-            engine_go_command="go nodes 1",
+            usi_command=None,
+            usi_option=[],
+            usi_go_command="go nodes 1",
             games=2,
             max_plies=320,
             simulations=16,
@@ -68,7 +71,7 @@ class RunShogiPlayingEvalScriptTest(unittest.TestCase):
         self.assertEqual(command[command.index("--opponent-move-selection-profile") + 1], "evaluation")
         self.assertEqual(command[command.index("--opponent-move-selector") + 1], "mcts")
         self.assertEqual(command[command.index("--opponent-mcts-simulations") + 1], "16")
-        self.assertNotIn("--opponent-yaneuraou-command", command)
+        self.assertNotIn("--opponent-usi-command", command)
 
     def test_main_runs_arena_evaluator(self) -> None:
         module = _load_script_module()

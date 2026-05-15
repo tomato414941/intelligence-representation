@@ -30,8 +30,8 @@ BLACK_ACTOR = ShogiActorSpec(
     name="black-model",
     settings={"checkpoint": "runs/shogi/model-a/checkpoint.pt", "policy": "mcts", "simulations": 8},
 )
-WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
-YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"})
+WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"go_command": "go nodes 1"})
+USI_ENGINE_ACTOR = ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={"go_command": "go nodes 1"})
 
 
 def _record(
@@ -98,7 +98,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["position_stats"]["unique_position_count"], 4)
             self.assertEqual(manifest["position_stats"]["duplicate_position_count"], 2)
             self.assertEqual(manifest["position_stats"]["max_position_repeat_count"], 3)
-            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 3})
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:usi_engine": 3})
             self.assertEqual(
                 manifest["checkpoint_actor_counts"],
                 {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 3},
@@ -119,7 +119,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             history_lines = (store_dir / "history.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(history_lines), 2)
             second_history = json.loads(history_lines[1])
-            self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:usi_engine": 1})
             self.assertEqual(
                 second_history["added_checkpoint_actor_counts"],
                 {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 1},
@@ -198,11 +198,11 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             output_root = root / "data" / "shogi" / "datasets"
             train_records = [
                 _record(("7g7f", "3c3d"), "black"),
-                _record(("5g5f", "5c5d"), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("5g5f", "5c5d"), "black", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
             ]
             eval_records = [
                 _record(("2g2f", "8c8d"), "white"),
-                _record(("6g6f", "6c6d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("6g6f", "6c6d"), "white", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
             ]
             write_shogi_game_records_jsonl(train_path, train_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
@@ -241,9 +241,9 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["eval_position_policy"], "allow_overlap")
             self.assertEqual(manifest["selected_eval_games_before_position_policy"], 1)
             self.assertEqual(manifest["skipped_eval_games_for_train_position_overlap"], 0)
-            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2})
-            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
-            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:usi_engine": 2})
+            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:usi_engine": 1})
+            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:usi_engine": 1})
             self.assertEqual(manifest["checkpoint_actor_summaries"][0]["count"], 2)
             self.assertEqual(manifest["train_checkpoint_actor_summaries"][0]["count"], 1)
             self.assertEqual(manifest["eval_checkpoint_actor_summaries"][0]["count"], 1)
@@ -307,7 +307,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                     ShogiEngineAnalysis(
                         position_sfen=train_transition.position_sfen,
                         legal_moves=train_transition.legal_moves,
-                        engine=YANEURAOU_ACTOR,
+                        engine=USI_ENGINE_ACTOR,
                         usi_info_lines=("info multipv 1 score cp 100 pv 7g7f",),
                     )
                 ],
@@ -430,17 +430,17 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 _record(("2g2f", "8c8d"), "white"),
                 _record(("5g5f", "5c5d"), "black"),
             ]
-            yaneuraou_records = [
-                _record(("6g6f", "6c6d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
-                _record(("4g4f", "4c4d"), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
-                _record(("3g3f", "3c3d"), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+            usi_engine_records = [
+                _record(("6g6f", "6c6d"), "white", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
+                _record(("4g4f", "4c4d"), "black", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
+                _record(("3g3f", "3c3d"), "white", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
             ]
             eval_records = [
                 _record(("8g8f", "8c8d"), "black"),
                 _record(("9g9f", "9c9d"), "white"),
             ]
             write_shogi_game_records_jsonl(train_a, checkpoint_records)
-            write_shogi_game_records_jsonl(train_b, yaneuraou_records)
+            write_shogi_game_records_jsonl(train_b, usi_engine_records)
             write_shogi_game_records_jsonl(eval_path, eval_records)
 
             result = create_shogi_training_data_bundle(
@@ -450,7 +450,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
                 output_root=output_root,
                 max_train_games=4,
                 max_eval_games=1,
-                actor_pair_ratios={"checkpoint:yaneuraou": 0.5, "yaneuraou:yaneuraou": 0.5},
+                actor_pair_ratios={"checkpoint:usi_engine": 0.5, "usi_engine:usi_engine": 0.5},
                 seed=11,
             )
 
@@ -468,9 +468,9 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_a), str(train_b)])
             self.assertEqual(manifest["available_train_games"], 6)
             self.assertEqual(manifest["available_eval_games"], 2)
-            self.assertEqual(manifest["actor_pair_ratios"], {"checkpoint:yaneuraou": 0.5, "yaneuraou:yaneuraou": 0.5})
-            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 2, "yaneuraou:yaneuraou": 2})
-            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
+            self.assertEqual(manifest["actor_pair_ratios"], {"checkpoint:usi_engine": 0.5, "usi_engine:usi_engine": 0.5})
+            self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:usi_engine": 2, "usi_engine:usi_engine": 2})
+            self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:usi_engine": 1})
 
     def test_training_data_bundle_script_selects_from_input_games(self) -> None:
         view_module = _load_script_module("create_shogi_training_data_bundle")

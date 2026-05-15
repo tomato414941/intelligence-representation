@@ -13,10 +13,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--opponent-kind", choices=("checkpoint", "yaneuraou", "deterministic_legal"), default="yaneuraou")
+    parser.add_argument("--opponent-kind", choices=("checkpoint", "usi", "deterministic_legal"), default="usi")
     parser.add_argument("--opponent-checkpoint", type=Path)
-    parser.add_argument("--yaneuraou", help="USI engine command used when --opponent-kind yaneuraou.")
-    parser.add_argument("--engine-go-command", default="go nodes 1")
+    parser.add_argument("--usi-command", help="USI engine command used when --opponent-kind usi.")
+    parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
+    parser.add_argument("--usi-go-command", default="go nodes 1")
     parser.add_argument("--games", type=int, default=20)
     parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
     parser.add_argument("--simulations", type=int, default=128)
@@ -28,8 +29,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.opponent_kind == "checkpoint" and args.opponent_checkpoint is None:
         parser.error("--opponent-checkpoint is required when --opponent-kind checkpoint")
-    if args.opponent_kind == "yaneuraou" and not args.yaneuraou:
-        parser.error("--yaneuraou is required when --opponent-kind yaneuraou")
+    if args.opponent_kind == "usi" and not args.usi_command:
+        parser.error("--usi-command is required when --opponent-kind usi")
 
     subprocess.run(build_shogi_playing_eval_command(args), cwd=args.arena_repo.resolve(), check=True)
 
@@ -86,17 +87,19 @@ def build_shogi_playing_eval_command(args: argparse.Namespace) -> list[str]:
         )
         if args.move_time_limit_sec is not None:
             command.extend(["--opponent-mcts-move-time-limit-sec", str(args.move_time_limit_sec)])
-    elif args.opponent_kind == "yaneuraou":
+    elif args.opponent_kind == "usi":
         command.extend(
             [
                 "--opponent-kind",
-                "yaneuraou",
-                "--opponent-yaneuraou-command",
-                args.yaneuraou,
-                "--opponent-yaneuraou-go-command",
-                args.engine_go_command,
+                "usi",
+                "--opponent-usi-command",
+                args.usi_command,
+                "--opponent-usi-go-command",
+                args.usi_go_command,
             ]
         )
+        for option in args.usi_option:
+            command.extend(["--opponent-usi-option", option])
     else:
         command.extend(["--opponent-kind", "deterministic_legal"])
     return command

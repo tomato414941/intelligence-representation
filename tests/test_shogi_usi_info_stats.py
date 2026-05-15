@@ -19,7 +19,7 @@ from intrep.worlds.shogi.inspect_usi_info import main
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="baseline", name="black", settings={})
-WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white", settings={"go_command": "go nodes 10"})
+WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white", settings={"go_command": "go nodes 10"})
 
 
 class ShogiUsiInfoStatsTest(unittest.TestCase):

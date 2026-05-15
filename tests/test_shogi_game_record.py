@@ -17,7 +17,7 @@ from intrep.worlds.shogi.game_record import (
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
-WHITE_ACTOR = ShogiActorSpec(kind="yaneuraou", name="white-engine", settings={"go_command": "go nodes 1"})
+WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"go_command": "go nodes 1"})
 
 
 def _record(moves: tuple[str, ...], winner: str | None, end_reason: str | None = None) -> ShogiGameRecord:
@@ -60,7 +60,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                             "settings": {"checkpoint": "model.pt"},
                         },
                         "white_actor": {
-                            "kind": "yaneuraou",
+                            "kind": "usi_engine",
                             "name": "yaneuraou",
                             "settings": {"go_command": "go nodes 1"},
                         },
@@ -95,7 +95,7 @@ class ShogiGameRecordTest(unittest.TestCase):
             [
                 ShogiGameRecord(
                     black_actor=ShogiActorSpec(kind="checkpoint", name="direct", settings={"checkpoint": "model.pt"}),
-                    white_actor=ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={"go_command": "go nodes 1"}),
+                    white_actor=ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={"go_command": "go nodes 1"}),
                     initial_position_sfen=shogi.Board().sfen(),
                     transitions=(
                         ShogiTransitionRecord(
@@ -126,7 +126,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                 json.dumps(
                     {
                         "black_actor": {"kind": "checkpoint", "name": "direct", "settings": {}},
-                        "white_actor": {"kind": "yaneuraou", "name": "yaneuraou", "settings": {}},
+                        "white_actor": {"kind": "usi_engine", "name": "yaneuraou", "settings": {}},
                         "initial_position_sfen": shogi.Board().sfen(),
                         "transitions": [
                             {
@@ -159,7 +159,7 @@ class ShogiGameRecordTest(unittest.TestCase):
         board.push_usi("2g2f")
         record = ShogiGameRecord(
             black_actor=ShogiActorSpec(kind="checkpoint", name="direct", settings={}),
-            white_actor=ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={}),
+            white_actor=ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={}),
             initial_position_sfen=shogi.Board().sfen(),
             transitions=(
                 ShogiTransitionRecord(
@@ -198,7 +198,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                 json.dumps(
                     {
                         "black_actor": {"kind": "checkpoint", "name": "direct", "settings": {}},
-                        "white_actor": {"kind": "yaneuraou", "name": "yaneuraou", "settings": {}},
+                        "white_actor": {"kind": "usi_engine", "name": "yaneuraou", "settings": {}},
                         "initial_position_sfen": shogi.Board().sfen(),
                         "transitions": [
                             {

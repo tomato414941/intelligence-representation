@@ -27,8 +27,9 @@ NN_LEAF_EVAL_BATCH_LIMIT=${NN_LEAF_EVAL_BATCH_LIMIT:-32}
 MAX_PLIES=${MAX_PLIES:-320}
 GENERATION_PROGRESS_EVERY_PLIES=${GENERATION_PROGRESS_EVERY_PLIES:-100}
 OPPONENT=${OPPONENT:-self}
-YANEURAOU=${YANEURAOU:-}
-ENGINE_GO_COMMAND=${ENGINE_GO_COMMAND:-go nodes 1}
+USI_COMMAND=${USI_COMMAND:-}
+USI_OPTIONS=${USI_OPTIONS:-}
+USI_GO_COMMAND=${USI_GO_COMMAND:-go nodes 1}
 YANEURAOU_REPOSITORY_URL=${YANEURAOU_REPOSITORY_URL:-https://github.com/yaneurao/YaneuraOu.git}
 
 REPLAY_CAPACITY=${REPLAY_CAPACITY:-131072}
@@ -67,8 +68,8 @@ if [[ ! -d "$REPO_PARENT/$ARENA_REL" ]]; then
   echo "shogi-arena-agent not found: $REPO_PARENT/$ARENA_REL" >&2
   exit 1
 fi
-if [[ "$OPPONENT" != "self" && "$OPPONENT" != "yaneuraou" ]]; then
-  echo "OPPONENT must be self or yaneuraou: $OPPONENT" >&2
+if [[ "$OPPONENT" != "self" && "$OPPONENT" != "usi" ]]; then
+  echo "OPPONENT must be self or usi: $OPPONENT" >&2
   exit 1
 fi
 
@@ -110,23 +111,29 @@ python3 "$RUNPOD_JOB" \
   --output "$PROJECT_REL/$OUTPUT_DIR" \
   --timings-output "$PROJECT_REL/$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR/$PROJECT_REL\"; mkdir -p \"$OUTPUT_DIR\"
-YANEURAOU_COMMAND=\"$YANEURAOU\"
-if [[ \"$OPPONENT\" == \"yaneuraou\" && -z \"\$YANEURAOU_COMMAND\" ]]; then
+USI_COMMAND_REMOTE=\"$USI_COMMAND\"
+if [[ \"$OPPONENT\" == \"usi\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
   apt-get update >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential >/dev/null
   rm -rf /root/YaneuraOu
   GIT_TERMINAL_PROMPT=0 git clone --depth 1 \"$YANEURAOU_REPOSITORY_URL\" /root/YaneuraOu
   make -s -C /root/YaneuraOu/source -f Makefile -j\"\$(nproc)\" normal TARGET_CPU=AVX2 YANEURAOU_EDITION=YANEURAOU_ENGINE_MATERIAL COMPILER=g++ TARGET=YaneuraOu-runpod
-  YANEURAOU_COMMAND=/root/YaneuraOu/source/YaneuraOu-runpod
+  USI_COMMAND_REMOTE=/root/YaneuraOu/source/YaneuraOu-runpod
 fi
 ONLINE_REPLAY_ARGS=(
   --opponent \"$OPPONENT\"
-  --engine-go-command \"$ENGINE_GO_COMMAND\"
+  --usi-go-command \"$USI_GO_COMMAND\"
 )
-if [[ \"$OPPONENT\" == \"yaneuraou\" ]]; then
-  ONLINE_REPLAY_ARGS+=(--yaneuraou \"\$YANEURAOU_COMMAND\")
+if [[ \"$OPPONENT\" == \"usi\" ]]; then
+  ONLINE_REPLAY_ARGS+=(--usi-command \"\$USI_COMMAND_REMOTE\")
+  IFS=';' read -ra USI_OPTION_ITEMS <<< \"$USI_OPTIONS\"
+  for usi_option in \"\${USI_OPTION_ITEMS[@]}\"; do
+    if [[ -n \"\$usi_option\" ]]; then
+      ONLINE_REPLAY_ARGS+=(--usi-option \"\$usi_option\")
+    fi
+  done
 fi
-echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES opponent=$OPPONENT engine_go_command=$ENGINE_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES opponent=$OPPONENT usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \

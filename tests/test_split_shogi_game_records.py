@@ -16,7 +16,7 @@ from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})
 WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
-YANEURAOU_ACTOR = ShogiActorSpec(kind="yaneuraou", name="yaneuraou", settings={})
+USI_ENGINE_ACTOR = ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={})
 
 
 def _record(
@@ -51,10 +51,10 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             train_path = root / "train.jsonl"
             eval_path = root / "eval.jsonl"
             records = [
-                _record(("7g7f",), "black", black_actor=BLACK_ACTOR, white_actor=YANEURAOU_ACTOR),
-                _record(("2g2f",), "white", black_actor=BLACK_ACTOR, white_actor=YANEURAOU_ACTOR),
-                _record(("5g5f",), "black", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
-                _record(("6g6f",), "white", black_actor=YANEURAOU_ACTOR, white_actor=YANEURAOU_ACTOR),
+                _record(("7g7f",), "black", black_actor=BLACK_ACTOR, white_actor=USI_ENGINE_ACTOR),
+                _record(("2g2f",), "white", black_actor=BLACK_ACTOR, white_actor=USI_ENGINE_ACTOR),
+                _record(("5g5f",), "black", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
+                _record(("6g6f",), "white", black_actor=USI_ENGINE_ACTOR, white_actor=USI_ENGINE_ACTOR),
             ]
             write_shogi_game_records_jsonl(games_path, records)
 
@@ -70,8 +70,8 @@ class SplitShogiGameRecordsTest(unittest.TestCase):
             eval_records = load_shogi_game_records_jsonl(eval_path)
             self.assertEqual(train_count, 2)
             self.assertEqual(eval_count, 2)
-            self.assertEqual(_actor_pair_counts(train_records), {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
-            self.assertEqual(_actor_pair_counts(eval_records), {"checkpoint:yaneuraou": 1, "yaneuraou:yaneuraou": 1})
+            self.assertEqual(_actor_pair_counts(train_records), {"checkpoint:usi_engine": 1, "usi_engine:usi_engine": 1})
+            self.assertEqual(_actor_pair_counts(eval_records), {"checkpoint:usi_engine": 1, "usi_engine:usi_engine": 1})
 
     def test_split_is_reproducible_for_seed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

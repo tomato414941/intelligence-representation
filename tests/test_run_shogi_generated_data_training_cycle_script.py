@@ -23,7 +23,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
             best_checkpoint=Path("/tmp/cycle/best-checkpoint.pt"),
             metrics=Path("/tmp/cycle/metrics.json"),
             generation={
-                "opponent": "yaneuraou",
+                "opponent": "usi",
                 "games": 2,
                 "max_plies": 4,
                 "simulations": 3,
@@ -46,10 +46,12 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "--arena-repo",
                     "arena",
                     "--opponent",
-                    "yaneuraou",
-                    "--yaneuraou",
+                    "usi",
+                    "--usi-command",
                     "engine-command",
-                    "--engine-go-command",
+                    "--usi-option",
+                    "Threads=2",
+                    "--usi-go-command",
                     "go nodes 2",
                     "--games",
                     "2",
@@ -92,9 +94,10 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.checkpoint, Path("source.pt"))
         self.assertEqual(config.run_dir, Path("cycle"))
         self.assertEqual(config.arena_repo, Path("arena"))
-        self.assertEqual(config.opponent, "yaneuraou")
-        self.assertEqual(config.yaneuraou, "engine-command")
-        self.assertEqual(config.engine_go_command, "go nodes 2")
+        self.assertEqual(config.opponent, "usi")
+        self.assertEqual(config.usi_command, "engine-command")
+        self.assertEqual(config.usi_options, ("Threads=2",))
+        self.assertEqual(config.usi_go_command, "go nodes 2")
         self.assertEqual(config.games, 2)
         self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.board_backend, "cshogi")

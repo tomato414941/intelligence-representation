@@ -56,8 +56,9 @@ class ShogiOnlineReplayConfig:
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
-    yaneuraou: str | None = None
-    engine_go_command: str = "go nodes 1"
+    usi_command: str | None = None
+    usi_options: tuple[str, ...] = ()
+    usi_go_command: str = "go nodes 1"
     games: int = 4
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -283,8 +284,9 @@ def _generate_online_replay_cycle_experience(
         arena_repo=config.arena_repo,
         checkpoint=checkpoint,
         opponent=config.opponent,
-        yaneuraou=config.yaneuraou,
-        engine_go_command=config.engine_go_command,
+        usi_command=config.usi_command,
+        usi_options=config.usi_options,
+        usi_go_command=config.usi_go_command,
         out=artifacts.games_jsonl,
         generation_summary_path=artifacts.generation_summary_path,
         games=config.games,
@@ -411,10 +413,10 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("cycles must be positive")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
-    if config.opponent not in {"self", "yaneuraou"}:
-        raise ValueError("opponent must be self or yaneuraou")
-    if config.opponent == "yaneuraou" and not config.yaneuraou:
-        raise ValueError("yaneuraou is required when opponent is yaneuraou")
+    if config.opponent not in {"self", "usi"}:
+        raise ValueError("opponent must be self or usi")
+    if config.opponent == "usi" and not config.usi_command:
+        raise ValueError("usi_command is required when opponent is usi")
     if config.games <= 0:
         raise ValueError("games must be positive")
     if config.concurrent_games_per_process <= 0:

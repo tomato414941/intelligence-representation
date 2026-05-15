@@ -80,13 +80,13 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
         run.assert_not_called()
 
-    def test_requires_yaneuraou_command_for_yaneuraou_opponent(self) -> None:
-        with self.assertRaisesRegex(ValueError, "yaneuraou"):
+    def test_requires_usi_command_for_usi_opponent(self) -> None:
+        with self.assertRaisesRegex(ValueError, "usi"):
             run_shogi_generated_data_training_cycle(
                 ShogiGeneratedDataTrainingCycleConfig(
                     checkpoint=Path("source.pt"),
                     run_dir=Path("cycle"),
-                    opponent="yaneuraou",
+                    opponent="usi",
                 )
             )
 
@@ -183,7 +183,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 },
             )
 
-    def test_passes_yaneuraou_generation_options(self) -> None:
+    def test_passes_usi_generation_options(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
@@ -209,9 +209,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         arena_repo=arena_repo,
-                        opponent="yaneuraou",
-                        yaneuraou="engine-command",
-                        engine_go_command="go nodes 2",
+                        opponent="usi",
+                        usi_command="engine-command",
+                        usi_options=("Threads=2",),
+                        usi_go_command="go nodes 2",
                         games=2,
                         device="cuda",
                     )
@@ -219,9 +220,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             generate_command = run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "yaneuraou")
-            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-command") + 1], "engine-command")
-            self.assertEqual(generate_command[generate_command.index("--white-yaneuraou-go-command") + 1], "go nodes 2")
+            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "usi")
+            self.assertEqual(generate_command[generate_command.index("--white-usi-command") + 1], "engine-command")
+            self.assertEqual(generate_command[generate_command.index("--white-usi-option") + 1], "Threads=2")
+            self.assertEqual(generate_command[generate_command.index("--white-usi-go-command") + 1], "go nodes 2")
             self.assertEqual(generate_command[generate_command.index("--black-device") + 1], "cuda")
             self.assertEqual(generate_command[generate_command.index("--black-board-backend") + 1], "cshogi")
             self.assertNotIn("--white-device", generate_command)

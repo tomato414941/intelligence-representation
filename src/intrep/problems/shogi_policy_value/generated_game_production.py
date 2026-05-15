@@ -14,8 +14,9 @@ def run_shogi_generated_games(
     arena_repo: Path,
     checkpoint: Path,
     opponent: str,
-    yaneuraou: str | None,
-    engine_go_command: str,
+    usi_command: str | None,
+    usi_go_command: str,
+    usi_options: tuple[str, ...] = (),
     out: Path,
     generation_summary_path: Path | None,
     games: int,
@@ -30,8 +31,8 @@ def run_shogi_generated_games(
     checkpoint_device: str,
     mcts_move_time_limit_sec: float | None,
 ) -> None:
-    if opponent == "yaneuraou" and not yaneuraou:
-        raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
+    if opponent == "usi" and not usi_command:
+        raise SystemExit("--usi-command is required when --opponent usi")
 
     arena_repo = arena_repo.resolve()
     command = [
@@ -74,17 +75,19 @@ def run_shogi_generated_games(
         command.extend(["--seed", str(seed)])
     if mcts_move_time_limit_sec is not None:
         command.extend(["--black-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    if opponent == "yaneuraou":
+    if opponent == "usi":
         command.extend(
             [
                 "--white-kind",
-                "yaneuraou",
-                "--white-yaneuraou-command",
-                yaneuraou or "",
-                "--white-yaneuraou-go-command",
-                engine_go_command,
+                "usi",
+                "--white-usi-command",
+                usi_command or "",
+                "--white-usi-go-command",
+                usi_go_command,
             ]
         )
+        for option in usi_options:
+            command.extend(["--white-usi-option", option])
     else:
         command.extend(
             [

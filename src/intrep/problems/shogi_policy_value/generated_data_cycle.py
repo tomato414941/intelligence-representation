@@ -57,8 +57,9 @@ class ShogiGeneratedDataTrainingCycleConfig:
     run_dir: Path
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
-    yaneuraou: str | None = None
-    engine_go_command: str = "go nodes 1"
+    usi_command: str | None = None
+    usi_options: tuple[str, ...] = ()
+    usi_go_command: str = "go nodes 1"
     games: int = 4
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -89,8 +90,9 @@ class ShogiGeneratedDataTrainingLoopConfig:
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     opponent: str = "self"
-    yaneuraou: str | None = None
-    engine_go_command: str = "go nodes 1"
+    usi_command: str | None = None
+    usi_options: tuple[str, ...] = ()
+    usi_go_command: str = "go nodes 1"
     games: int = 4
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -132,8 +134,9 @@ def run_shogi_generated_data_training_cycle(
         arena_repo=config.arena_repo,
         checkpoint=config.checkpoint,
         opponent=config.opponent,
-        yaneuraou=config.yaneuraou,
-        engine_go_command=config.engine_go_command,
+        usi_command=config.usi_command,
+        usi_options=config.usi_options,
+        usi_go_command=config.usi_go_command,
         out=games_jsonl,
         generation_summary_path=generation_summary_path,
         games=config.games,
@@ -169,6 +172,23 @@ def run_shogi_generated_data_training_cycle(
         device=config.device,
         num_workers=config.num_workers,
     )
+    generation = {
+        "opponent": config.opponent,
+        "games": config.games,
+        "concurrent_games_per_process": config.concurrent_games_per_process,
+        "generation_progress_every_plies": config.generation_progress_every_plies,
+        "board_backend": config.board_backend,
+        "max_plies": config.max_plies,
+        "simulations": config.simulations,
+        "evaluation_batch_size": config.evaluation_batch_size,
+        "generation_worker_processes": config.generation_worker_processes,
+        "seed": config.seed,
+        "checkpoint_device": config.device,
+        "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
+    }
+    if config.opponent == "usi":
+        generation["usi_options"] = config.usi_options
+        generation["usi_go_command"] = config.usi_go_command
     return ShogiGeneratedDataTrainingCycleResult(
         run_dir=run_dir,
         generated_games_jsonl=games_jsonl,
@@ -178,20 +198,7 @@ def run_shogi_generated_data_training_cycle(
         checkpoint=checkpoint_path,
         best_checkpoint=best_checkpoint_path,
         metrics=metrics_path,
-        generation={
-            "opponent": config.opponent,
-            "games": config.games,
-            "concurrent_games_per_process": config.concurrent_games_per_process,
-            "generation_progress_every_plies": config.generation_progress_every_plies,
-            "board_backend": config.board_backend,
-            "max_plies": config.max_plies,
-            "simulations": config.simulations,
-            "evaluation_batch_size": config.evaluation_batch_size,
-            "generation_worker_processes": config.generation_worker_processes,
-            "seed": config.seed,
-            "checkpoint_device": config.device,
-            "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
-        },
+        generation=generation,
     )
 
 
@@ -210,8 +217,9 @@ def run_shogi_generated_data_training_loop(
                 run_dir=run_dir / f"cycle-{cycle_index:04d}",
                 arena_repo=config.arena_repo,
                 opponent=config.opponent,
-                yaneuraou=config.yaneuraou,
-                engine_go_command=config.engine_go_command,
+                usi_command=config.usi_command,
+                usi_options=config.usi_options,
+                usi_go_command=config.usi_go_command,
                 games=config.games,
                 concurrent_games_per_process=config.concurrent_games_per_process,
                 generation_progress_every_plies=config.generation_progress_every_plies,
@@ -244,10 +252,10 @@ def run_shogi_generated_data_training_loop(
 
 
 def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
-    if config.opponent not in {"self", "yaneuraou"}:
-        raise ValueError("opponent must be self or yaneuraou")
-    if config.opponent == "yaneuraou" and not config.yaneuraou:
-        raise ValueError("yaneuraou is required when opponent is yaneuraou")
+    if config.opponent not in {"self", "usi"}:
+        raise ValueError("opponent must be self or usi")
+    if config.opponent == "usi" and not config.usi_command:
+        raise ValueError("usi_command is required when opponent is usi")
     if config.games <= 0:
         raise ValueError("games must be positive")
     if config.concurrent_games_per_process <= 0:
@@ -294,8 +302,9 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             run_dir=config.run_dir,
             arena_repo=config.arena_repo,
             opponent=config.opponent,
-            yaneuraou=config.yaneuraou,
-            engine_go_command=config.engine_go_command,
+            usi_command=config.usi_command,
+            usi_options=config.usi_options,
+            usi_go_command=config.usi_go_command,
             games=config.games,
             concurrent_games_per_process=config.concurrent_games_per_process,
             generation_progress_every_plies=config.generation_progress_every_plies,

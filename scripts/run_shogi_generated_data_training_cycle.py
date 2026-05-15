@@ -16,9 +16,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
-    parser.add_argument("--opponent", choices=("self", "yaneuraou"), default="self")
-    parser.add_argument("--yaneuraou", help="USI engine command used when --opponent yaneuraou.")
-    parser.add_argument("--engine-go-command", default="go nodes 1")
+    parser.add_argument("--opponent", choices=("self", "usi"), default="self")
+    parser.add_argument("--usi-command", help="USI engine command used when --opponent usi.")
+    parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
+    parser.add_argument("--usi-go-command", default="go nodes 1")
     parser.add_argument("--games", type=int, default=4)
     parser.add_argument("--concurrent-games-per-process", type=int, default=1)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
@@ -44,8 +45,9 @@ def main(argv: list[str] | None = None) -> None:
             run_dir=args.run_dir,
             arena_repo=args.arena_repo,
             opponent=args.opponent,
-            yaneuraou=args.yaneuraou,
-            engine_go_command=args.engine_go_command,
+            usi_command=args.usi_command,
+            usi_options=tuple(args.usi_option),
+            usi_go_command=args.usi_go_command,
             games=args.games,
             concurrent_games_per_process=args.concurrent_games_per_process,
             board_backend=args.board_backend,
