@@ -33,11 +33,15 @@ context to compare runs:
 - win/loss/draw result
 - wall-clock/runtime context when relevant
 
+The durable evidence is the game-record JSONL. The stdout summary is a derived
+convenience view and is not a second source of truth.
+
 ## Close Condition
 
 - A standard checkpoint-vs-checkpoint playing evaluation exists for shogi.
 - The external CLI uses player-vs-player terms throughout.
 - The evaluation can compare any two checkpoint players.
-- The evaluation records side assignment and search settings.
+- The game-record JSONL records player identity, side assignment, and actor
+  settings needed to recover search settings.
 - `docs/shogi/learning-experiments.md` can cite the strength result instead
   of recording the checkpoint strength as undetermined.
