@@ -42,10 +42,16 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "2",
                     "--replay-capacity",
                     "8",
-                    "--replay-sample-size",
+                    "--sampled-examples-per-cycle",
                     "3",
                     "--min-replay-size",
                     "2",
+                    "--training-batch-size",
+                    "64",
+                    "--target-sample-passes",
+                    "2.5",
+                    "--max-optimizer-steps-per-cycle",
+                    "5",
                     "--experience-store-dir",
                     "data/shogi/experiences/online",
                     "--replay-seed-data-selection",
@@ -62,10 +68,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "16",
                     "--board-backend",
                     "cshogi",
-                    "--max-steps",
-                    "5",
-                    "--batch-size",
-                    "64",
                     "--learning-rate",
                     "0.01",
                     "--weight-decay",
@@ -101,8 +103,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.run_dir, Path("online"))
         self.assertEqual(config.cycles, 2)
         self.assertEqual(config.replay_capacity, 8)
-        self.assertEqual(config.replay_sample_size, 3)
         self.assertEqual(config.min_replay_size, 2)
+        self.assertEqual(config.training_budget.sampled_examples_per_cycle, 3)
+        self.assertEqual(config.training_budget.batch_size, 64)
+        self.assertEqual(config.training_budget.target_sample_passes, 2.5)
+        self.assertEqual(config.training_budget.max_optimizer_steps, 5)
         self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
         self.assertEqual(
             config.replay_seed_data_selection,
@@ -120,8 +125,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.generation_progress_every_plies, 16)
         self.assertEqual(config.board_backend, "cshogi")
-        self.assertEqual(config.training_config.max_steps, 5)
-        self.assertEqual(config.training_config.batch_size, 64)
         self.assertEqual(config.training_config.learning_rate, 0.01)
         self.assertEqual(config.training_config.weight_decay, 0.02)
         self.assertEqual(config.training_config.policy_loss_weight, 0.7)

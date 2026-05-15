@@ -64,4 +64,23 @@ and fixed training-eval example count.
 
 RunPod Online Replay jobs set `PROGRESS_EVERY=100` unless overridden.
 
+## Online Replay Step Budget
+
+Online Replay owns the per-cycle training budget. A run specifies
+`sampled_examples_per_cycle`, `training_batch_size`, `target_sample_passes`,
+and an optional `max_optimizer_steps_per_cycle`.
+
+The policy/value training loop still runs on optimizer steps, but Online Replay
+derives those steps from the budget before calling the training loop.
+
+Cycle metrics record `effective_sample_passes` as:
+
+```text
+actual_steps * training_batch_size / sampled_examples
+```
+
+This is an accounting metric. The intended budget is
+`target_sample_passes`; the effective value records what actually ran after
+step capping or early stopping.
+
 Do not introduce a shared world/problem data framework from shogi alone.

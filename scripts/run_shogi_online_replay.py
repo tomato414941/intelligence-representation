@@ -8,9 +8,12 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     DEFAULT_SHOGI_MAX_PLIES,
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
-    DEFAULT_REPLAY_SAMPLE_SIZE,
+    DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE,
+    DEFAULT_TARGET_SAMPLE_PASSES,
+    DEFAULT_TRAINING_BATCH_SIZE,
     ShogiOnlineReplayConfig,
     ShogiGeneratedExperienceSource,
+    ShogiOnlineReplayTrainingBudget,
     run_shogi_online_replay,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
@@ -27,8 +30,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=1)
     parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
-    parser.add_argument("--replay-sample-size", type=int, default=DEFAULT_REPLAY_SAMPLE_SIZE)
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
+    parser.add_argument("--sampled-examples-per-cycle", type=int, default=DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE)
+    parser.add_argument("--training-batch-size", type=int, default=DEFAULT_TRAINING_BATCH_SIZE)
+    parser.add_argument("--target-sample-passes", type=float, default=DEFAULT_TARGET_SAMPLE_PASSES)
+    parser.add_argument("--max-optimizer-steps-per-cycle", type=int)
     parser.add_argument("--experience-store-dir", type=Path)
     parser.add_argument("--replay-seed-data-selection", type=Path)
     parser.add_argument("--training-eval-data-selection", type=Path, required=True)
@@ -56,8 +62,6 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--evaluation-batch-size", type=int, default=1)
     parser.add_argument("--generation-worker-processes", type=int, default=1)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
-    parser.add_argument("--max-steps", type=int, default=100)
-    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=0.0005)
     parser.add_argument("--weight-decay", type=float, default=0.0)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
@@ -80,8 +84,13 @@ def main(argv: list[str] | None = None) -> None:
             run_dir=args.run_dir,
             cycles=args.cycles,
             replay_capacity=args.replay_capacity,
-            replay_sample_size=args.replay_sample_size,
             min_replay_size=args.min_replay_size,
+            training_budget=ShogiOnlineReplayTrainingBudget(
+                sampled_examples_per_cycle=args.sampled_examples_per_cycle,
+                batch_size=args.training_batch_size,
+                target_sample_passes=args.target_sample_passes,
+                max_optimizer_steps=args.max_optimizer_steps_per_cycle,
+            ),
             experience_store_dir=args.experience_store_dir,
             replay_seed_data_selection=args.replay_seed_data_selection,
             training_eval_data_selection=args.training_eval_data_selection,
@@ -97,8 +106,6 @@ def main(argv: list[str] | None = None) -> None:
             generation_worker_processes=args.generation_worker_processes,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
             training_config=ShogiPolicyValueTrainingConfig(
-                max_steps=args.max_steps,
-                batch_size=args.batch_size,
                 learning_rate=args.learning_rate,
                 weight_decay=args.weight_decay,
                 policy_loss_weight=args.policy_loss_weight,

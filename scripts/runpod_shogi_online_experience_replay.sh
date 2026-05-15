@@ -33,10 +33,11 @@ USI_READ_TIMEOUT_SECONDS=${USI_READ_TIMEOUT_SECONDS:-30}
 YANEURAOU_REPOSITORY_URL=${YANEURAOU_REPOSITORY_URL:-https://github.com/yaneurao/YaneuraOu.git}
 
 REPLAY_CAPACITY=${REPLAY_CAPACITY:-131072}
-REPLAY_SAMPLE_SIZE=${REPLAY_SAMPLE_SIZE:-8192}
 MIN_REPLAY_SIZE=${MIN_REPLAY_SIZE:-8192}
-MAX_STEPS=${MAX_STEPS:-1000}
-BATCH_SIZE=${BATCH_SIZE:-512}
+SAMPLED_EXAMPLES_PER_CYCLE=${SAMPLED_EXAMPLES_PER_CYCLE:-8192}
+TRAINING_BATCH_SIZE=${TRAINING_BATCH_SIZE:-512}
+TARGET_SAMPLE_PASSES=${TARGET_SAMPLE_PASSES:-4}
+MAX_OPTIMIZER_STEPS_PER_CYCLE=${MAX_OPTIMIZER_STEPS_PER_CYCLE:-}
 LEARNING_RATE=${LEARNING_RATE:-0.0001}
 WEIGHT_DECAY=${WEIGHT_DECAY:-0.0}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
@@ -178,14 +179,19 @@ fi
 if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
   TRAINING_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
 fi
-echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+if [[ -n \"$MAX_OPTIMIZER_STEPS_PER_CYCLE\" ]]; then
+  TRAINING_ARGS+=(--max-optimizer-steps-per-cycle \"$MAX_OPTIMIZER_STEPS_PER_CYCLE\")
+fi
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY sampled_examples_per_cycle=$SAMPLED_EXAMPLES_PER_CYCLE min_replay_size=$MIN_REPLAY_SIZE training_batch_size=$TRAINING_BATCH_SIZE target_sample_passes=$TARGET_SAMPLE_PASSES max_optimizer_steps_per_cycle=$MAX_OPTIMIZER_STEPS_PER_CYCLE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
   --cycles \"$CYCLES\" \
   --replay-capacity \"$REPLAY_CAPACITY\" \
-  --replay-sample-size \"$REPLAY_SAMPLE_SIZE\" \
   --min-replay-size \"$MIN_REPLAY_SIZE\" \
+  --sampled-examples-per-cycle \"$SAMPLED_EXAMPLES_PER_CYCLE\" \
+  --training-batch-size \"$TRAINING_BATCH_SIZE\" \
+  --target-sample-passes \"$TARGET_SAMPLE_PASSES\" \
   --experience-store-dir \"$OUTPUT_DIR/experience-store\" \
   --replay-seed-data-selection \"$REPLAY_SEED_DATA_SELECTION\" \
   --training-eval-data-selection \"$TRAINING_EVAL_DATA_SELECTION\" \
@@ -199,8 +205,6 @@ echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERI
   --max-plies \"$MAX_PLIES\" \
   --simulations \"$SIMULATIONS\" \
   --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
-  --max-steps \"$MAX_STEPS\" \
-  --batch-size \"$BATCH_SIZE\" \
   --learning-rate \"$LEARNING_RATE\" \
   --policy-loss-weight \"$POLICY_LOSS_WEIGHT\" \
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \

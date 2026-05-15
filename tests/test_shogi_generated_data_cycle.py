@@ -16,6 +16,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedDataTrainingLoopConfig,
     ShogiGeneratedExperienceSource,
     ShogiOnlineReplayConfig,
+    ShogiOnlineReplayTrainingBudget,
     run_shogi_online_replay,
     run_shogi_generated_data_training_loop,
     run_shogi_generated_data_training_cycle,
@@ -440,12 +441,16 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         cycles=2,
                         replay_capacity=4,
-                        replay_sample_size=3,
                         min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(
+                            sampled_examples_per_cycle=3,
+                            batch_size=6,
+                            target_sample_passes=2.0,
+                            max_optimizer_steps=5,
+                        ),
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=2),),
-                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -463,6 +468,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
                 str(result.cycles[0].best_checkpoint.resolve()),
             )
+            metrics = json.loads(result.cycles[0].metrics.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["sampled_examples"], 3)
+            self.assertEqual(metrics["sampled_examples_per_cycle"], 3)
+            self.assertEqual(metrics["training_batch_size"], 6)
+            self.assertEqual(metrics["target_sample_passes"], 2.0)
+            self.assertEqual(metrics["optimizer_steps_per_cycle"], 1)
+            self.assertEqual(metrics["max_optimizer_steps_per_cycle"], 5)
+            self.assertEqual(metrics["effective_sample_passes"], 2.0)
 
     def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -539,14 +552,13 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         cycles=1,
                         replay_capacity=8,
-                        replay_sample_size=8,
                         min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=8),
                         experience_store_dir=store_dir,
                         replay_seed_data_selection=bundle_dir / "data-selection.json",
                         training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=2),),
-                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -629,8 +641,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         cycles=1,
                         replay_capacity=8,
-                        replay_sample_size=8,
                         min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=8),
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(
@@ -639,7 +651,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _usi_vs_checkpoint_source(games=1),
                         ),
                         concurrent_games_per_process=8,
-                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -719,14 +730,16 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         cycles=1,
                         replay_capacity=8,
-                        replay_sample_size=8,
                         min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(
+                            sampled_examples_per_cycle=8,
+                            batch_size=4,
+                            target_sample_passes=3.0,
+                        ),
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=1),),
                         training_config=ShogiPolicyValueTrainingConfig(
-                            max_steps=9,
-                            batch_size=4,
                             learning_rate=0.01,
                             weight_decay=0.02,
                             policy_loss_weight=0.7,
@@ -748,7 +761,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             self.assertIsNotNone(captured_config)
             assert captured_config is not None
-            self.assertEqual(captured_config.max_steps, 9)
+            self.assertEqual(captured_config.max_steps, 3)
             self.assertEqual(captured_config.batch_size, 4)
             self.assertEqual(captured_config.learning_rate, 0.01)
             self.assertEqual(captured_config.weight_decay, 0.02)
@@ -810,15 +823,19 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     run_shogi_online_replay(
                         ShogiOnlineReplayConfig(
                             checkpoint=checkpoint_path,
-                            run_dir=run_dir,
-                            cycles=1,
-                            replay_capacity=8,
-                            replay_sample_size=2,
-                            min_replay_size=1,
-                            training_eval_data_selection=training_eval_data_selection,
-                            arena_repo=arena_repo,
-                            experience_sources=(_self_play_source(games=1),),
-                            training_config=ShogiPolicyValueTrainingConfig(max_steps=4, progress_every=2),
+                        run_dir=run_dir,
+                        cycles=1,
+                        replay_capacity=8,
+                        min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(
+                            sampled_examples_per_cycle=2,
+                            batch_size=1,
+                            target_sample_passes=2.0,
+                        ),
+                        training_eval_data_selection=training_eval_data_selection,
+                        arena_repo=arena_repo,
+                        experience_sources=(_self_play_source(games=1),),
+                        training_config=ShogiPolicyValueTrainingConfig(progress_every=2),
                         )
                     )
 
@@ -874,12 +891,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         run_dir=run_dir,
                         cycles=2,
                         replay_capacity=8,
-                        replay_sample_size=3,
                         min_replay_size=5,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=3),
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=2),),
-                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -891,6 +907,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             first_metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertTrue(first_metrics["training_skipped"])
             self.assertEqual(first_metrics["skip_reason"], "min_replay_size")
+            self.assertIsNone(first_metrics["effective_sample_passes"])
             second_generate_command = run.call_args_list[1].args[0]
             self.assertEqual(
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],

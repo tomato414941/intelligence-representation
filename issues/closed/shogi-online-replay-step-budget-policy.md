@@ -1,6 +1,6 @@
 # Shogi Online Replay Step Budget Policy
 
-Status: open
+Status: closed
 Priority: high
 
 ## Problem
@@ -10,11 +10,13 @@ clear policy for how they should be chosen together:
 
 - `replay_capacity`
 - `min_replay_size`
-- `replay_sample_size`
-- `batch_size`
+- `sampled_examples_per_cycle`
+- `training_batch_size`
+- `target_sample_passes`
+- `max_optimizer_steps_per_cycle`
 - optimizer steps per cycle
 
-The 2026-05-15 run used `replay_sample_size=8192`, `batch_size=512`, and
+The 2026-05-15 run used `sampled_examples_per_cycle=8192`, `training_batch_size=512`, and
 `1000` optimizer steps per cycle. That means one replay sample pass was 16
 steps, and each cycle trained for 62.5 effective passes over the sampled replay
 examples.
@@ -45,3 +47,14 @@ a small sampled set.
   optimizer steps interact.
 - A future online replay run can be interpreted without recomputing the training
   budget by hand.
+
+## Resolution
+
+Online Replay now has an explicit `ShogiOnlineReplayTrainingBudget`.
+The CLI and RunPod wrapper expose `sampled_examples_per_cycle`,
+`training_batch_size`, `target_sample_passes`, and optional
+`max_optimizer_steps_per_cycle`.
+
+The policy/value training loop still receives optimizer steps, but Online Replay
+derives those steps from the budget. Cycle metrics record the intended budget
+and the actual effective sample passes.

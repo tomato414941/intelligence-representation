@@ -27,10 +27,13 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
 from intrep.problems.shogi_policy_value.online_replay import (
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
-    DEFAULT_REPLAY_SAMPLE_SIZE,
+    DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE,
+    DEFAULT_TARGET_SAMPLE_PASSES,
+    DEFAULT_TRAINING_BATCH_SIZE,
     ShogiOnlineReplayConfig,
     ShogiOnlineReplayCycleResult,
     ShogiGeneratedExperienceSource,
+    ShogiOnlineReplayTrainingBudget,
     ShogiOnlineReplayResult,
     run_shogi_online_replay,
 )
@@ -39,7 +42,9 @@ from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 __all__ = [
     "DEFAULT_MIN_REPLAY_SIZE",
     "DEFAULT_REPLAY_CAPACITY",
-    "DEFAULT_REPLAY_SAMPLE_SIZE",
+    "DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE",
+    "DEFAULT_TARGET_SAMPLE_PASSES",
+    "DEFAULT_TRAINING_BATCH_SIZE",
     "DEFAULT_SHOGI_MAX_PLIES",
     "ShogiGeneratedDataTrainingCycleConfig",
     "ShogiGeneratedDataTrainingCycleResult",
@@ -49,6 +54,7 @@ __all__ = [
     "ShogiOnlineReplayConfig",
     "ShogiOnlineReplayCycleResult",
     "ShogiGeneratedExperienceSource",
+    "ShogiOnlineReplayTrainingBudget",
     "ShogiOnlineReplayResult",
     "run_shogi_generated_data_training_cycle",
     "run_shogi_generated_data_training_loop",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,8 +42,10 @@ from intrep.problems.shogi_policy_value.training import (
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 
 DEFAULT_REPLAY_CAPACITY = 32768
-DEFAULT_REPLAY_SAMPLE_SIZE = 4096
+DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE = 4096
 DEFAULT_MIN_REPLAY_SIZE = 8192
+DEFAULT_TARGET_SAMPLE_PASSES = 1.0
+DEFAULT_TRAINING_BATCH_SIZE = 128
 
 
 @dataclass(frozen=True)
@@ -54,14 +57,28 @@ class ShogiGeneratedExperienceSource:
 
 
 @dataclass(frozen=True)
+class ShogiOnlineReplayTrainingBudget:
+    sampled_examples_per_cycle: int = DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE
+    batch_size: int = DEFAULT_TRAINING_BATCH_SIZE
+    target_sample_passes: float = DEFAULT_TARGET_SAMPLE_PASSES
+    max_optimizer_steps: int | None = None
+
+    def optimizer_steps_for(self, sampled_examples: int) -> int:
+        requested_steps = math.ceil(sampled_examples * self.target_sample_passes / self.batch_size)
+        if self.max_optimizer_steps is None:
+            return requested_steps
+        return min(requested_steps, self.max_optimizer_steps)
+
+
+@dataclass(frozen=True)
 class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
     training_eval_data_selection: Path
     cycles: int = 1
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
-    replay_sample_size: int = DEFAULT_REPLAY_SAMPLE_SIZE
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
+    training_budget: ShogiOnlineReplayTrainingBudget = ShogiOnlineReplayTrainingBudget()
     experience_store_dir: Path | None = None
     replay_seed_data_selection: Path | None = None
     next_checkpoint: str = "best"
@@ -188,7 +205,10 @@ def run_shogi_online_replay(
             training_result = None
             skip_reason = "min_replay_size"
         else:
-            sampled_examples = replay.sample(min(config.replay_sample_size, len(replay)), generator=generator)
+            sampled_examples = replay.sample(
+                min(config.training_budget.sampled_examples_per_cycle, len(replay)),
+                generator=generator,
+            )
             training_result = _train_online_replay_cycle(
                 config=config,
                 cycle_index=cycle_index,
@@ -347,7 +367,12 @@ def _train_online_replay_cycle(
     replay_size: int,
     training_eval_examples: int,
 ) -> ShogiPolicyValueTrainingResult:
-    training_config = _training_config_from_checkpoint(checkpoint, config)
+    training_config = _training_config_from_checkpoint(
+        checkpoint,
+        config,
+        optimizer_steps=config.training_budget.optimizer_steps_for(len(sampled_examples)),
+        batch_size=config.training_budget.batch_size,
+    )
     training_result = train_shogi_policy_value_model(
         sampled_examples,
         eval_examples=eval_examples,
@@ -433,6 +458,14 @@ def _online_replay_cycle_metrics(
         "generation_summary_path": str(artifacts.generation_summary_path),
         "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
         "sampled_examples": sampled_examples,
+        "sampled_examples_per_cycle": config.training_budget.sampled_examples_per_cycle,
+        "training_batch_size": config.training_budget.batch_size,
+        "target_sample_passes": config.training_budget.target_sample_passes,
+        "max_optimizer_steps_per_cycle": config.training_budget.max_optimizer_steps,
+        "optimizer_steps_per_cycle": (
+            training_result.metrics.actual_steps if training_result is not None else None
+        ),
+        "effective_sample_passes": _effective_sample_passes(training_result, config, sampled_examples),
         "init_checkpoint_path": str(init_checkpoint),
         "checkpoint_path": str(checkpoint),
         "best_checkpoint_path": str(best_checkpoint),
@@ -444,6 +477,16 @@ def _online_replay_cycle_metrics(
     return metrics
 
 
+def _effective_sample_passes(
+    training_result: ShogiPolicyValueTrainingResult | None,
+    config: ShogiOnlineReplayConfig,
+    sampled_examples: int,
+) -> float | None:
+    if training_result is None or sampled_examples == 0:
+        return None
+    return training_result.metrics.actual_steps * config.training_budget.batch_size / sampled_examples
+
+
 def _load_json_if_exists(path: Path) -> object | None:
     if not path.exists():
         return None
@@ -453,8 +496,6 @@ def _load_json_if_exists(path: Path) -> object | None:
 def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
     if config.replay_capacity <= 0:
         raise ValueError("replay_capacity must be positive")
-    if config.replay_sample_size <= 0:
-        raise ValueError("replay_sample_size must be positive")
     if config.min_replay_size <= 0:
         raise ValueError("min_replay_size must be positive")
     if config.min_replay_size > config.replay_capacity:
@@ -469,6 +510,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("experience_sources must not be empty")
     for source in config.experience_sources:
         _validate_experience_source(source)
+    _validate_training_budget(config.training_budget)
     if config.concurrent_games_per_process <= 0:
         raise ValueError("concurrent_games_per_process must be positive")
     if config.generation_progress_every_plies < 0:
@@ -485,10 +527,6 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
         raise ValueError("mcts_move_time_limit_sec must be positive")
     training_config = config.training_config
-    if training_config.max_steps <= 0:
-        raise ValueError("max_steps must be positive")
-    if training_config.batch_size <= 0:
-        raise ValueError("batch_size must be positive")
     if training_config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
     if training_config.weight_decay < 0.0:
@@ -515,6 +553,17 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("early_stopping_patience must be positive")
     if training_config.early_stopping_patience is not None and training_config.eval_every is None:
         raise ValueError("eval_every is required when early_stopping_patience is set")
+
+
+def _validate_training_budget(training_budget: ShogiOnlineReplayTrainingBudget) -> None:
+    if training_budget.sampled_examples_per_cycle <= 0:
+        raise ValueError("sampled_examples_per_cycle must be positive")
+    if training_budget.batch_size <= 0:
+        raise ValueError("training budget batch_size must be positive")
+    if training_budget.target_sample_passes <= 0.0:
+        raise ValueError("target_sample_passes must be positive")
+    if training_budget.max_optimizer_steps is not None and training_budget.max_optimizer_steps <= 0:
+        raise ValueError("max_optimizer_steps must be positive")
 
 
 def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
@@ -634,12 +683,15 @@ def _load_generated_policy_value_examples(path: Path) -> list[ShogiPolicyValueEx
 def _training_config_from_checkpoint(
     checkpoint: Path,
     config: ShogiOnlineReplayConfig,
+    *,
+    optimizer_steps: int,
+    batch_size: int,
 ) -> ShogiPolicyValueTrainingConfig:
     training_config = config.training_config
     checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint, device=training_config.device)
     return ShogiPolicyValueTrainingConfig(
-        max_steps=training_config.max_steps,
-        batch_size=training_config.batch_size,
+        max_steps=optimizer_steps,
+        batch_size=batch_size,
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
         seed=training_config.seed,
