@@ -1,7 +1,7 @@
-# Shogi Online Experience Replay
+# Shogi Learning Experiments
 
-This document records facts from shogi online experience replay runs. It is not
-a complete run log and it does not treat `runs/` as a durable source of truth.
+This document records facts from shogi learning experiments. It is not a
+complete run log and it does not treat `runs/` as a durable source of truth.
 
 ## Scope
 
@@ -12,7 +12,7 @@ Record:
 - strength evidence for the trained checkpoint
 - known limits that affect strength interpretation
 
-Do not record transient RunPod acquisition attempts or full shard-level JSON
+Do not record transient compute acquisition attempts or full shard-level JSON
 payloads.
 
 ## Training Runs
@@ -96,3 +96,8 @@ payloads.
 - `issues/shogi-usi-generated-experience-side-balance.md`
 - `issues/shogi-online-replay-training-progress-visibility.md`
 - `issues/shogi-online-replay-training-config-boundary.md`
+- `issues/shogi-online-replay-strength-evaluation.md`
+- `issues/shogi-online-replay-step-budget-policy.md`
+- `issues/shogi-self-play-max-plies-draw-quality.md`
+- `issues/shogi-generated-eval-responsibility.md`
+- `issues/shogi-nn-leaf-eval-batch-fill.md`

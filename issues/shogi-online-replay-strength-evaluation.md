@@ -36,5 +36,5 @@ context to compare runs:
 - A standard post-training strength evaluation exists for shogi online replay.
 - The evaluation can compare initial checkpoint vs trained checkpoint.
 - The evaluation records side assignment and search settings.
-- `docs/shogi/online-experience-replay.md` can cite the strength result instead
+- `docs/shogi/learning-experiments.md` can cite the strength result instead
   of recording the checkpoint strength as undetermined.
