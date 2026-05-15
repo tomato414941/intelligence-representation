@@ -15,5 +15,4 @@ Checkpoint paths are run-time paths, not immutable checkpoint identities.
 ## Follow-Up Issues
 
 - `issues/shogi-checkpoint-immutable-identity.md`
-- `issues/shogi-online-replay-strength-evaluation.md`
-- `issues/shogi-online-replay-step-budget-policy.md`
+- `issues/shogi-checkpoint-match-evaluation.md`
