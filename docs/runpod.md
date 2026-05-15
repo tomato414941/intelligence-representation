@@ -69,6 +69,29 @@ The script uses disposable compute and currently avoids RunPod network volumes.
 Network-volume use is tracked separately in
 `issues/runpod-network-volume-revisit.md`.
 
+## GPU Selection
+
+This project currently assumes NVIDIA CUDA GPUs on the RunPod PyTorch 2.8
+template. Do not use AMD GPUs for the current RunPod shogi jobs.
+
+Prefer cost-sensitive CUDA GPUs first:
+
+- RTX 3090
+- RTX A5000
+- A40
+
+Use faster or larger CUDA GPUs when cheaper GPUs are unavailable:
+
+- RTX A6000
+- RTX 4090
+- RTX 5090
+
+Use datacenter CUDA GPUs only when the run justifies the cost:
+
+- A100
+- H100
+- H200
+
 ## Images
 
 Repository-local RunPod job helper default template:
