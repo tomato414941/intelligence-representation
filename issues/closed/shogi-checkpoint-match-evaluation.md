@@ -1,6 +1,6 @@
 # Shogi Checkpoint Match Evaluation
 
-Status: open
+Status: closed
 Priority: high
 
 ## Problem
@@ -43,5 +43,21 @@ convenience view and is not a second source of truth.
 - The evaluation can compare any two checkpoint players.
 - The game-record JSONL records player identity, side assignment, and actor
   settings needed to recover search settings.
-- `docs/shogi/learning-experiments.md` can cite the strength result instead
-  of recording the checkpoint strength as undetermined.
+- Learning experiment docs can cite game-record JSONL evidence from this
+  evaluator when a match has been run.
+
+## Resolution
+
+Shogi player-vs-player match evaluation now has a standard project-facing
+entry point:
+
+- `scripts/run_shogi_player_match.py`
+- `shogi-arena-agent/scripts/evaluate_shogi_players.py`
+
+Both use `player_a` / `player_b` terms. The durable evidence is the generated
+game-record JSONL; stdout summaries are derived convenience output and are not a
+second source of truth.
+
+The 2026-05-15 online replay experiment still needs an actual checkpoint match
+before its strength conclusion can change. That is experiment work, not part of
+this evaluation-entrypoint issue.
