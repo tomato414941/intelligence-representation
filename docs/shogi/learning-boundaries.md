@@ -55,6 +55,13 @@ Generated games are learner experience. They are added to the replay buffer and
 are not split into a generated eval holdout. Playing-strength evaluation is a
 separate post-training concern.
 
+## Playing Strength Evaluation
+
+Playing-strength evaluation is a player-vs-player match. The project-facing
+entry point uses `player_a` and `player_b`; it does not name one side as the
+opponent. Side assignment is handled by the arena evaluator and should be
+recorded with the match result.
+
 ## Online Replay Progress
 
 Policy/value training reports generic training progress events. Online Replay
