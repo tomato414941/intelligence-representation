@@ -1,21 +1,19 @@
 # Qhapaq Processed Regeneration
 
-Status: open. Priority: low.
+Status: closed.
 
 ## Issue
 
 Qhapaq raw data can now contain multiple `.7z` kif archives under
-`data/qhapaq/raw/kiffiles/`, but there is no clear procedure for regenerating
-`data/qhapaq/processed/qhapaq_all_games.jsonl` from the current raw archive
-set.
+`data/qhapaq/raw/kiffiles/`, but there was no clear procedure for regenerating
+the processed source records from the current raw archive set.
 
-The existing KIF conversion code can convert KIF files to `ShogiGameRecord`
-JSONL, but it does not own:
+The existing KIF conversion code could convert KIF files, but it did not own:
 
 - extracting selected Qhapaq `.7z` archives
 - collecting KIF paths from temporary extraction directories
 - preserving or reporting conversion failures
-- writing a refreshed `qhapaq_all_games.jsonl`
+- writing refreshed processed records
 - documenting whether processed output covers all local raw archives or only a
   selected subset
 
@@ -24,8 +22,9 @@ JSONL, but it does not own:
 `processed/` now intentionally contains only source-derived records:
 
 ```text
-data/qhapaq/processed/qhapaq_all_games.jsonl
-data/qhapaq/processed/qhapaq_all_games_failures.jsonl
+data/qhapaq/processed/qhapaq_games.jsonl
+data/qhapaq/processed/qhapaq_game_failures.jsonl
+data/qhapaq/processed/manifest.json
 ```
 
 After adding new raw `.7z` archives, it is unclear whether these processed
@@ -36,9 +35,6 @@ look organized while the processed records still reflect an older subset.
 
 ## Initial Policy
 
-This is intentionally deferred for now. The current processed data is usable,
-and Qhapaq is not the main near-term bottleneck.
-
 Do not keep persistent extracted/interim KIF directories unless conversion cost
 or debugging requires it.
 
@@ -48,9 +44,27 @@ records, records failures, and writes the processed JSONL outputs.
 
 ## Acceptance Criteria
 
-This issue can close when the project has a simple way to regenerate
-`qhapaq_all_games.jsonl` from the intended local raw Qhapaq archive set, and the
-processed output records which raw archives it covers.
+This issue can close when the project has a simple way to regenerate processed
+records from the intended local raw Qhapaq archive set, and the processed output
+records which raw archives it covers.
+
+## Resolution
+
+`scripts/prepare_qhapaq_shogi_records.py` regenerates compact Qhapaq source
+records from local `.7z` archives using temporary extraction directories.
+
+The generated local outputs are:
+
+```text
+data/qhapaq/processed/qhapaq_games.jsonl
+data/qhapaq/processed/qhapaq_game_failures.jsonl
+data/qhapaq/processed/manifest.json
+```
+
+On 2026-05-15, the local refresh processed 64 archives into 39,740 games and
+5,213,204 moves, with 0 conversion failures. The source page had 65 `.7z`
+links; `Rota_orqha1018_2739Games.7z` returned HTTP 403 and is recorded as
+unavailable in the local raw manifest.
 
 ## Non-Goals
 
