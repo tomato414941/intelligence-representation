@@ -35,6 +35,10 @@ def run_shogi_generated_games(
         raise SystemExit("--usi-command is required when --opponent usi")
 
     arena_repo = arena_repo.resolve()
+    effective_concurrent_games_per_process = _effective_concurrent_games_per_process(
+        opponent=opponent,
+        concurrent_games_per_process=concurrent_games_per_process,
+    )
     command = [
         *_shogi_arena_python_command(),
         str(arena_repo / "scripts/generate_shogi_games.py"),
@@ -59,7 +63,7 @@ def run_shogi_generated_games(
         "--games",
         str(games),
         "--concurrent-games-per-process",
-        str(concurrent_games_per_process),
+        str(effective_concurrent_games_per_process),
         "--generation-worker-processes",
         str(generation_worker_processes),
         "--progress-every-plies",
@@ -142,6 +146,12 @@ def _shogi_arena_python_command() -> list[str]:
     if python:
         return [python]
     return [sys.executable]
+
+
+def _effective_concurrent_games_per_process(*, opponent: str, concurrent_games_per_process: int) -> int:
+    if opponent == "usi":
+        return 1
+    return concurrent_games_per_process
 
 
 def _shogi_arena_env(arena_repo: Path) -> dict[str, str]:

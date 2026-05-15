@@ -562,15 +562,25 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                                 usi_go_command="go nodes 4",
                             ),
                         ),
+                        concurrent_games_per_process=8,
                         max_steps=1,
                     )
                 )
 
             self.assertEqual(result.cycles[0].appended_examples, 2)
             self.assertEqual(run.call_count, 2)
-            self.assertEqual(run.call_args_list[0].args[0][run.call_args_list[0].args[0].index("--seed") + 1], "7")
-            self.assertEqual(run.call_args_list[1].args[0][run.call_args_list[1].args[0].index("--seed") + 1], "8")
+            self_play_command = run.call_args_list[0].args[0]
+            self.assertEqual(self_play_command[self_play_command.index("--seed") + 1], "7")
+            self.assertEqual(
+                self_play_command[self_play_command.index("--concurrent-games-per-process") + 1],
+                "8",
+            )
             usi_command = run.call_args_list[1].args[0]
+            self.assertEqual(usi_command[usi_command.index("--seed") + 1], "8")
+            self.assertEqual(
+                usi_command[usi_command.index("--concurrent-games-per-process") + 1],
+                "1",
+            )
             self.assertEqual(usi_command[usi_command.index("--white-kind") + 1], "usi")
             self.assertEqual(usi_command[usi_command.index("--white-usi-command") + 1], "engine")
             self.assertEqual(usi_command[usi_command.index("--white-usi-option") + 1], "Threads=2")
