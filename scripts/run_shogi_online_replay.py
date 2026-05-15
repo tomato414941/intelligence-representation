@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
     parser.add_argument("--experience-store-dir", type=Path)
     parser.add_argument("--replay-seed-data-selection", type=Path)
-    parser.add_argument("--training-eval-data-selection", type=Path)
+    parser.add_argument("--training-eval-data-selection", type=Path, required=True)
     parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
     parser.add_argument(
@@ -56,7 +56,6 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--evaluation-batch-size", type=int, default=1)
     parser.add_argument("--generation-worker-processes", type=int, default=1)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
-    parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=0.0005)
@@ -97,7 +96,6 @@ def main(argv: list[str] | None = None) -> None:
             evaluation_batch_size=args.evaluation_batch_size,
             generation_worker_processes=args.generation_worker_processes,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
-            eval_ratio=args.eval_ratio,
             training_config=ShogiPolicyValueTrainingConfig(
                 max_steps=args.max_steps,
                 batch_size=args.batch_size,

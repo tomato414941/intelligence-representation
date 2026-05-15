@@ -35,7 +35,6 @@ YANEURAOU_REPOSITORY_URL=${YANEURAOU_REPOSITORY_URL:-https://github.com/yaneurao
 REPLAY_CAPACITY=${REPLAY_CAPACITY:-131072}
 REPLAY_SAMPLE_SIZE=${REPLAY_SAMPLE_SIZE:-8192}
 MIN_REPLAY_SIZE=${MIN_REPLAY_SIZE:-8192}
-EVAL_RATIO=${EVAL_RATIO:-0.05}
 MAX_STEPS=${MAX_STEPS:-1000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 LEARNING_RATE=${LEARNING_RATE:-0.0001}
@@ -179,7 +178,7 @@ fi
 if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
   TRAINING_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
 fi
-echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
@@ -200,7 +199,6 @@ echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERI
   --max-plies \"$MAX_PLIES\" \
   --simulations \"$SIMULATIONS\" \
   --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
-  --eval-ratio \"$EVAL_RATIO\" \
   --max-steps \"$MAX_STEPS\" \
   --batch-size \"$BATCH_SIZE\" \
   --learning-rate \"$LEARNING_RATE\" \

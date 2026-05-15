@@ -91,6 +91,33 @@ def _usi_vs_checkpoint_source(*, games: int, name: str = "usi-vs-checkpoint") ->
     )
 
 
+def _write_training_eval_bundle(bundle_dir: Path) -> Path:
+    write_shogi_game_records_jsonl(bundle_dir / "train-games.jsonl", [_record(("9g9f", "9c9d"), "black")])
+    write_shogi_game_records_jsonl(bundle_dir / "eval-games.jsonl", [_record(("1g1f", "1c1d"), "white")])
+    (bundle_dir / "data-selection.json").write_text(
+        json.dumps(
+            {
+                "name": bundle_dir.name,
+                "objective": "shogi move-choice policy/value",
+                "target_construction": {
+                    "policy": "chosen_move",
+                    "policy_temperature_cp": 100.0,
+                    "policy_mate_cp": 100000.0,
+                    "value": "winner",
+                    "score_cp_scale": 600.0,
+                },
+                "analysis_sources": [],
+                "train_sources": [{"kind": "game_records_jsonl", "path": "train-games.jsonl"}],
+                "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return bundle_dir / "data-selection.json"
+
+
 class ShogiGeneratedDataCycleTest(unittest.TestCase):
     def test_rejects_invalid_loop_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "cycles"):
@@ -373,6 +400,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
             train_batches: list[int] = []
 
             def fake_run(command: list[str], **_kwargs: object) -> None:
@@ -411,6 +439,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_capacity=4,
                         replay_sample_size=3,
                         min_replay_size=1,
+                        training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=2),),
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
@@ -418,12 +447,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(len(result.cycles), 2)
-            self.assertEqual(train_batches, [2, 3])
-            self.assertEqual(result.cycles[0].appended_examples, 2)
-            self.assertEqual(result.cycles[0].replay_size, 2)
-            self.assertEqual(result.cycles[0].sampled_examples, 2)
+            self.assertEqual(train_batches, [3, 3])
+            self.assertEqual(result.cycles[0].appended_examples, 4)
+            self.assertEqual(result.cycles[0].replay_size, 4)
+            self.assertEqual(result.cycles[0].sampled_examples, 3)
             self.assertIsNone(result.cycles[0].experience_store_append)
-            self.assertEqual(result.cycles[1].appended_examples, 2)
+            self.assertEqual(result.cycles[1].appended_examples, 4)
             self.assertEqual(result.cycles[1].replay_size, 4)
             self.assertEqual(result.cycles[1].sampled_examples, 3)
             second_generate_command = run.call_args_list[1].args[0]
@@ -519,21 +548,21 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(result.preloaded_examples, 2)
-            self.assertEqual(result.fixed_eval_examples, 2)
+            self.assertEqual(result.training_eval_examples, 2)
             self.assertEqual(result.experience_store_dir, store_dir)
             self.assertEqual(result.replay_seed_data_selection, bundle_dir / "data-selection.json")
             self.assertEqual(result.training_eval_data_selection, bundle_dir / "data-selection.json")
-            self.assertEqual(train_batches, [4])
+            self.assertEqual(train_batches, [6])
             self.assertEqual(eval_batches, [2])
-            self.assertEqual(result.cycles[0].replay_size, 4)
+            self.assertEqual(result.cycles[0].replay_size, 6)
             self.assertIsNotNone(result.cycles[0].experience_store_append)
             self.assertEqual(result.cycles[0].experience_store_append["added_games"], 2)
             self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), generated_records)
             metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["preloaded_examples"], 2)
-            self.assertEqual(metrics["fixed_eval_examples"], 2)
-            self.assertEqual(metrics["generated_eval_examples"], 2)
-            self.assertEqual(metrics["training_eval_source"], "fixed")
+            self.assertEqual(metrics["training_eval_examples"], 2)
+            self.assertEqual(metrics["generated_holdout_examples"], 0)
+            self.assertEqual(metrics["training_eval_source"], "fixed_data_selection")
             self.assertEqual(metrics["experience_store_dir"], str(store_dir))
             self.assertEqual(metrics["replay_seed_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["training_eval_data_selection"], str(bundle_dir / "data-selection.json"))
@@ -549,6 +578,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
 
             def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
@@ -598,6 +628,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_capacity=8,
                         replay_sample_size=8,
                         min_replay_size=1,
+                        training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(
                             _self_play_source(games=1),
@@ -609,7 +640,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(result.cycles[0].appended_examples, 4)
+            self.assertEqual(result.cycles[0].appended_examples, 6)
             self.assertEqual(run.call_count, 3)
             self_play_command = run.call_args_list[0].args[0]
             self.assertEqual(self_play_command[self_play_command.index("--seed") + 1], "7")
@@ -649,6 +680,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
             captured_config: ShogiPolicyValueTrainingConfig | None = None
 
             def fake_run(command: list[str], **_kwargs: object) -> None:
@@ -686,6 +718,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_capacity=8,
                         replay_sample_size=8,
                         min_replay_size=1,
+                        training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=1),),
                         training_config=ShogiPolicyValueTrainingConfig(
@@ -735,6 +768,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
             train_batches: list[int] = []
 
             def fake_run(command: list[str], **_kwargs: object) -> None:
@@ -768,9 +802,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         cycles=2,
-                        replay_capacity=4,
+                        replay_capacity=8,
                         replay_sample_size=3,
-                        min_replay_size=3,
+                        min_replay_size=5,
+                        training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=2),),
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),

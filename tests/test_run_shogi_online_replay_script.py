@@ -21,9 +21,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             replay_capacity=8,
             experience_store_dir=None,
             replay_seed_data_selection=None,
-            training_eval_data_selection=None,
+            training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
-            fixed_eval_examples=0,
+            training_eval_examples=0,
             cycles=(),
         )
         run_replay = Mock(return_value=result)
@@ -148,9 +148,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             replay_capacity=8,
             experience_store_dir=None,
             replay_seed_data_selection=None,
-            training_eval_data_selection=None,
+            training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
-            fixed_eval_examples=0,
+            training_eval_examples=0,
             cycles=(),
         )
         run_replay = Mock(return_value=result)
@@ -165,6 +165,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "source.pt",
                     "--run-dir",
                     "online",
+                    "--training-eval-data-selection",
+                    "data/shogi/training-data-bundles/online/data-selection.json",
                     "--experience-source",
                     "checkpoint-self:2",
                     "--experience-source",

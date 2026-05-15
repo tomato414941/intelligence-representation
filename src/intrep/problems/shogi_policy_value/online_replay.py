@@ -37,7 +37,6 @@ from intrep.problems.shogi_policy_value.training import (
     train_shogi_policy_value_model,
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
-from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 32768
 DEFAULT_REPLAY_SAMPLE_SIZE = 4096
@@ -56,13 +55,13 @@ class ShogiGeneratedExperienceSource:
 class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
+    training_eval_data_selection: Path
     cycles: int = 1
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
     replay_sample_size: int = DEFAULT_REPLAY_SAMPLE_SIZE
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     experience_store_dir: Path | None = None
     replay_seed_data_selection: Path | None = None
-    training_eval_data_selection: Path | None = None
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     experience_sources: tuple[ShogiGeneratedExperienceSource, ...] = (
@@ -81,7 +80,6 @@ class ShogiOnlineReplayConfig:
     evaluation_batch_size: int = 1
     generation_worker_processes: int = 1
     mcts_move_time_limit_sec: float | None = None
-    eval_ratio: float = 0.25
     training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
     seed: int = 7
 
@@ -125,9 +123,9 @@ class ShogiOnlineReplayResult:
     replay_capacity: int
     experience_store_dir: Path | None
     replay_seed_data_selection: Path | None
-    training_eval_data_selection: Path | None
+    training_eval_data_selection: Path
     preloaded_examples: int
-    fixed_eval_examples: int
+    training_eval_examples: int
     cycles: tuple[ShogiOnlineReplayCycleResult, ...]
 
     def to_json(self) -> dict[str, object]:
@@ -139,9 +137,9 @@ class ShogiOnlineReplayResult:
             "replay_capacity": self.replay_capacity,
             "experience_store_dir": str(self.experience_store_dir) if self.experience_store_dir is not None else None,
             "replay_seed_data_selection": str(self.replay_seed_data_selection) if self.replay_seed_data_selection is not None else None,
-            "training_eval_data_selection": str(self.training_eval_data_selection) if self.training_eval_data_selection is not None else None,
+            "training_eval_data_selection": str(self.training_eval_data_selection),
             "preloaded_examples": self.preloaded_examples,
-            "fixed_eval_examples": self.fixed_eval_examples,
+            "training_eval_examples": self.training_eval_examples,
             "cycles": [cycle.to_json() for cycle in self.cycles],
         }
 
@@ -150,8 +148,7 @@ class ShogiOnlineReplayResult:
 class ShogiOnlineReplayCycleArtifacts:
     cycle_dir: Path
     games_jsonl: Path
-    train_jsonl: Path
-    eval_jsonl: Path
+    generated_train_jsonl: Path
     generation_summary_path: Path
     checkpoint_path: Path
     best_checkpoint_path: Path
@@ -167,8 +164,8 @@ def run_shogi_online_replay(
     checkpoint = config.checkpoint
     replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
     preloaded_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
-    fixed_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
-    fixed_eval_samples = tensorize_shogi_policy_value_examples(fixed_eval_examples)
+    training_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
+    training_eval_samples = tensorize_shogi_policy_value_examples(training_eval_examples)
     replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
     generator = torch.Generator().manual_seed(config.seed)
     cycle_results: list[ShogiOnlineReplayCycleResult] = []
@@ -179,11 +176,7 @@ def run_shogi_online_replay(
             store_dir=config.experience_store_dir,
             games_jsonl=artifacts.games_jsonl,
         )
-        new_examples, generated_eval_examples = _load_online_replay_cycle_examples(
-            artifacts=artifacts,
-            eval_ratio=config.eval_ratio,
-        )
-        eval_samples = fixed_eval_samples or tensorize_shogi_policy_value_examples(generated_eval_examples)
+        new_examples = _load_online_replay_cycle_examples(artifacts=artifacts)
         replay.extend(tensorize_shogi_policy_value_examples(new_examples))
         if len(replay) < config.min_replay_size:
             sampled_examples: list[TensorizedShogiPolicyValueSample] = []
@@ -199,7 +192,7 @@ def run_shogi_online_replay(
                 checkpoint=checkpoint,
                 artifacts=artifacts,
                 sampled_examples=sampled_examples,
-                eval_examples=eval_samples,
+                eval_examples=training_eval_samples,
             )
             training_skipped = False
             effective_checkpoint = artifacts.checkpoint_path
@@ -214,8 +207,7 @@ def run_shogi_online_replay(
             appended_examples=len(new_examples),
             replay_size=len(replay),
             preloaded_examples=len(preloaded_examples),
-            fixed_eval_examples=len(fixed_eval_examples),
-            generated_eval_examples=len(generated_eval_examples),
+            training_eval_examples=len(training_eval_examples),
             experience_store_append=experience_store_append,
             sampled_examples=len(sampled_examples),
             init_checkpoint=checkpoint,
@@ -249,7 +241,7 @@ def run_shogi_online_replay(
         replay_seed_data_selection=config.replay_seed_data_selection,
         training_eval_data_selection=config.training_eval_data_selection,
         preloaded_examples=len(preloaded_examples),
-        fixed_eval_examples=len(fixed_eval_examples),
+        training_eval_examples=len(training_eval_examples),
         cycles=tuple(cycle_results),
     )
 
@@ -272,8 +264,7 @@ def _online_replay_cycle_artifacts(run_dir: Path, cycle_index: int) -> ShogiOnli
     return ShogiOnlineReplayCycleArtifacts(
         cycle_dir=cycle_dir,
         games_jsonl=cycle_dir / "generated-games.jsonl",
-        train_jsonl=cycle_dir / "train-games.jsonl",
-        eval_jsonl=cycle_dir / "eval-games.jsonl",
+        generated_train_jsonl=cycle_dir / "generated-train-games.jsonl",
         generation_summary_path=cycle_dir / "generation-summary.json",
         checkpoint_path=cycle_dir / "checkpoint.pt",
         best_checkpoint_path=cycle_dir / "best-checkpoint.pt",
@@ -335,17 +326,9 @@ def _generate_online_replay_cycle_experience(
 def _load_online_replay_cycle_examples(
     *,
     artifacts: ShogiOnlineReplayCycleArtifacts,
-    eval_ratio: float,
-) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
-    split_shogi_game_records_jsonl(
-        games_jsonl=artifacts.games_jsonl,
-        train_jsonl=artifacts.train_jsonl,
-        eval_jsonl=artifacts.eval_jsonl,
-        eval_ratio=eval_ratio,
-    )
-    new_examples = _load_generated_policy_value_examples(artifacts.train_jsonl)
-    generated_eval_examples = _load_generated_policy_value_examples(artifacts.eval_jsonl)
-    return new_examples, generated_eval_examples
+) -> list[ShogiPolicyValueExample]:
+    artifacts.generated_train_jsonl.write_text(artifacts.games_jsonl.read_text(encoding="utf-8"), encoding="utf-8")
+    return _load_generated_policy_value_examples(artifacts.generated_train_jsonl)
 
 
 def _train_online_replay_cycle(
@@ -385,8 +368,7 @@ def _online_replay_cycle_metrics(
     appended_examples: int,
     replay_size: int,
     preloaded_examples: int,
-    fixed_eval_examples: int,
-    generated_eval_examples: int,
+    training_eval_examples: int,
     experience_store_append: dict[str, object] | None,
     sampled_examples: int,
     init_checkpoint: Path,
@@ -403,11 +385,11 @@ def _online_replay_cycle_metrics(
         "min_replay_size": config.min_replay_size,
         "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
         "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
-        "training_eval_data_selection": str(config.training_eval_data_selection) if config.training_eval_data_selection is not None else None,
+        "training_eval_data_selection": str(config.training_eval_data_selection),
         "preloaded_examples": preloaded_examples,
-        "fixed_eval_examples": fixed_eval_examples,
-        "generated_eval_examples": generated_eval_examples,
-        "training_eval_source": "fixed" if fixed_eval_examples else "generated_cycle",
+        "training_eval_examples": training_eval_examples,
+        "training_eval_source": "fixed_data_selection",
+        "generated_holdout_examples": 0,
         "experience_store_append": experience_store_append,
         "generation_summary_path": str(artifacts.generation_summary_path),
         "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
@@ -442,6 +424,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("cycles must be positive")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
+    if config.training_eval_data_selection is None:
+        raise ValueError("training_eval_data_selection is required")
     if not config.experience_sources:
         raise ValueError("experience_sources must not be empty")
     for source in config.experience_sources:
@@ -461,8 +445,6 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("generation_worker_processes must be positive")
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
         raise ValueError("mcts_move_time_limit_sec must be positive")
-    if not 0.0 < config.eval_ratio < 1.0:
-        raise ValueError("eval_ratio must be between 0 and 1")
     training_config = config.training_config
     if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
@@ -587,9 +569,7 @@ def _load_replay_seed_examples(data_selection_path: Path | None) -> list[ShogiPo
     return train_examples
 
 
-def _load_training_eval_examples(data_selection_path: Path | None) -> list[ShogiPolicyValueExample]:
-    if data_selection_path is None:
-        return []
+def _load_training_eval_examples(data_selection_path: Path) -> list[ShogiPolicyValueExample]:
     selection = load_shogi_policy_value_data_selection(data_selection_path)
     _train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(selection)
     return eval_examples
