@@ -55,4 +55,13 @@ Generated games are learner experience. They are added to the replay buffer and
 are not split into a generated eval holdout. Playing-strength evaluation is a
 separate post-training concern.
 
+## Online Replay Progress
+
+Policy/value training reports generic training progress events. Online Replay
+owns the cycle context for those events and prints lightweight progress lines
+that include the cycle, step, loss, elapsed time, replay size, sampled examples,
+and fixed training-eval example count.
+
+RunPod Online Replay jobs set `PROGRESS_EVERY=100` unless overridden.
+
 Do not introduce a shared world/problem data framework from shogi alone.

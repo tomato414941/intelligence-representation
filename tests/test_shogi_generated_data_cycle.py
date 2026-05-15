@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,6 +28,7 @@ from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyVal
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
+    ShogiPolicyValueTrainingProgress,
     ShogiPolicyValueTrainingResult,
     build_shogi_policy_value_model,
 )
@@ -759,6 +762,74 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(captured_config.progress_every, 8)
             self.assertEqual(captured_config.eval_every, 3)
             self.assertEqual(captured_config.early_stopping_patience, 2)
+
+    def test_online_replay_reports_training_progress_with_cycle_context(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(out_path, [_record(("7g7f", "3c3d"), "black")])
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                result = _training_result(config)
+                self.assertIsNotNone(progress_callback)
+                assert progress_callback is not None
+                progress_callback(
+                    ShogiPolicyValueTrainingProgress(
+                        step=2,
+                        max_steps=4,
+                        loss=1.25,
+                        elapsed_seconds=3.5,
+                        model=result.model,
+                        config=config,
+                    )
+                )
+                return result
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
+            ):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    run_shogi_online_replay(
+                        ShogiOnlineReplayConfig(
+                            checkpoint=checkpoint_path,
+                            run_dir=run_dir,
+                            cycles=1,
+                            replay_capacity=8,
+                            replay_sample_size=2,
+                            min_replay_size=1,
+                            training_eval_data_selection=training_eval_data_selection,
+                            arena_repo=arena_repo,
+                            experience_sources=(_self_play_source(games=1),),
+                            training_config=ShogiPolicyValueTrainingConfig(max_steps=4, progress_every=2),
+                        )
+                    )
+
+            output = stdout.getvalue()
+            self.assertIn("online_replay_training_progress", output)
+            self.assertIn("cycle=1", output)
+            self.assertIn("step=2/4", output)
+            self.assertIn("loss=1.250000", output)
+            self.assertIn("replay_size=2", output)
+            self.assertIn("sampled_examples=2", output)
+            self.assertIn("training_eval_examples=2", output)
 
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

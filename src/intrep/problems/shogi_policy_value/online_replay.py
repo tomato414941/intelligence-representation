@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import torch
 
@@ -33,6 +34,7 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
 )
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
+    ShogiPolicyValueTrainingProgress,
     ShogiPolicyValueTrainingResult,
     train_shogi_policy_value_model,
 )
@@ -189,10 +191,13 @@ def run_shogi_online_replay(
             sampled_examples = replay.sample(min(config.replay_sample_size, len(replay)), generator=generator)
             training_result = _train_online_replay_cycle(
                 config=config,
+                cycle_index=cycle_index,
                 checkpoint=checkpoint,
                 artifacts=artifacts,
                 sampled_examples=sampled_examples,
                 eval_examples=training_eval_samples,
+                replay_size=len(replay),
+                training_eval_examples=len(training_eval_samples),
             )
             training_skipped = False
             effective_checkpoint = artifacts.checkpoint_path
@@ -334,10 +339,13 @@ def _load_online_replay_cycle_examples(
 def _train_online_replay_cycle(
     *,
     config: ShogiOnlineReplayConfig,
+    cycle_index: int,
     checkpoint: Path,
     artifacts: ShogiOnlineReplayCycleArtifacts,
     sampled_examples: list[TensorizedShogiPolicyValueSample],
     eval_examples: list[TensorizedShogiPolicyValueSample],
+    replay_size: int,
+    training_eval_examples: int,
 ) -> ShogiPolicyValueTrainingResult:
     training_config = _training_config_from_checkpoint(checkpoint, config)
     training_result = train_shogi_policy_value_model(
@@ -345,6 +353,12 @@ def _train_online_replay_cycle(
         eval_examples=eval_examples,
         config=training_config,
         initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=training_config.device),
+        progress_callback=_online_replay_training_progress_callback(
+            cycle_index=cycle_index,
+            replay_size=replay_size,
+            sampled_examples=len(sampled_examples),
+            training_eval_examples=training_eval_examples,
+        ),
     )
     save_shogi_policy_value_checkpoint(artifacts.checkpoint_path, training_result)
     if training_result.best_model_state_dict is not None:
@@ -356,6 +370,31 @@ def _train_online_replay_cycle(
     else:
         save_shogi_policy_value_checkpoint(artifacts.best_checkpoint_path, training_result)
     return training_result
+
+
+def _online_replay_training_progress_callback(
+    *,
+    cycle_index: int,
+    replay_size: int,
+    sampled_examples: int,
+    training_eval_examples: int,
+) -> Callable[[ShogiPolicyValueTrainingProgress], None]:
+    def report(progress: ShogiPolicyValueTrainingProgress) -> None:
+        parts = [
+            "online_replay_training_progress",
+            f"cycle={cycle_index}",
+            f"step={progress.step}/{progress.max_steps}",
+            f"loss={progress.loss:.6f}",
+            f"elapsed_sec={progress.elapsed_seconds:.1f}",
+            f"replay_size={replay_size}",
+            f"sampled_examples={sampled_examples}",
+            f"training_eval_examples={training_eval_examples}",
+        ]
+        if progress.eval_metrics is not None:
+            parts.append(f"eval_loss={progress.eval_metrics.loss:.6f}")
+        print(" ".join(parts), flush=True)
+
+    return report
 
 
 def _online_replay_cycle_metrics(
