@@ -592,6 +592,89 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(summary["game_count"], 2)
             self.assertEqual([source["name"] for source in summary["sources"]], ["self-play", "checkpoint-vs-usi"])
 
+    def test_online_replay_passes_training_config_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            captured_config: ShogiPolicyValueTrainingConfig | None = None
+
+            def fake_run(command: list[str], **_kwargs: object) -> None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _record(("7g7f", "3c3d"), "black"),
+                            _record(("2g2f", "8c8d"), "white"),
+                        ],
+                    )
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                nonlocal captured_config
+                captured_config = config
+                return _training_result(config)
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
+            ):
+                run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=1,
+                        replay_capacity=8,
+                        replay_sample_size=8,
+                        min_replay_size=1,
+                        arena_repo=arena_repo,
+                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=1),),
+                        max_steps=9,
+                        batch_size=4,
+                        learning_rate=0.01,
+                        weight_decay=0.02,
+                        policy_loss_weight=0.7,
+                        value_loss_weight=0.3,
+                        device="cpu",
+                        max_train_eval_examples=5,
+                        max_eval_examples=6,
+                        log_every=7,
+                        num_workers=0,
+                        pin_memory=True,
+                        progress_every=8,
+                        eval_every=3,
+                        early_stopping_patience=2,
+                        seed=13,
+                    )
+                )
+
+            self.assertIsNotNone(captured_config)
+            assert captured_config is not None
+            self.assertEqual(captured_config.max_steps, 9)
+            self.assertEqual(captured_config.batch_size, 4)
+            self.assertEqual(captured_config.learning_rate, 0.01)
+            self.assertEqual(captured_config.weight_decay, 0.02)
+            self.assertEqual(captured_config.seed, 13)
+            self.assertEqual(captured_config.policy_loss_weight, 0.7)
+            self.assertEqual(captured_config.value_loss_weight, 0.3)
+            self.assertEqual(captured_config.max_train_eval_examples, 5)
+            self.assertEqual(captured_config.max_eval_examples, 6)
+            self.assertEqual(captured_config.log_every, 7)
+            self.assertTrue(captured_config.pin_memory)
+            self.assertEqual(captured_config.progress_every, 8)
+            self.assertEqual(captured_config.eval_every, 3)
+            self.assertEqual(captured_config.early_stopping_patience, 2)
+
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

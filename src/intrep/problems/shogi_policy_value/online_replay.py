@@ -82,10 +82,18 @@ class ShogiOnlineReplayConfig:
     max_steps: int = 100
     batch_size: int = 128
     learning_rate: float = 0.0005
+    weight_decay: float = 0.0
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     device: str = "cpu"
+    max_train_eval_examples: int | None = None
+    max_eval_examples: int | None = None
+    log_every: int | None = None
     num_workers: int = 0
+    pin_memory: bool = False
+    progress_every: int | None = None
+    eval_every: int | None = None
+    early_stopping_patience: int | None = None
     seed: int = 7
 
 
@@ -474,14 +482,30 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("batch_size must be positive")
     if config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
+    if config.weight_decay < 0.0:
+        raise ValueError("weight_decay must be non-negative")
     if config.policy_loss_weight < 0.0:
         raise ValueError("policy_loss_weight must be non-negative")
     if config.value_loss_weight < 0.0:
         raise ValueError("value_loss_weight must be non-negative")
     if config.policy_loss_weight == 0.0 and config.value_loss_weight == 0.0:
         raise ValueError("at least one loss weight must be positive")
+    if config.max_train_eval_examples is not None and config.max_train_eval_examples <= 0:
+        raise ValueError("max_train_eval_examples must be positive")
+    if config.max_eval_examples is not None and config.max_eval_examples <= 0:
+        raise ValueError("max_eval_examples must be positive")
+    if config.log_every is not None and config.log_every <= 0:
+        raise ValueError("log_every must be positive")
     if config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+    if config.progress_every is not None and config.progress_every <= 0:
+        raise ValueError("progress_every must be positive")
+    if config.eval_every is not None and config.eval_every <= 0:
+        raise ValueError("eval_every must be positive")
+    if config.early_stopping_patience is not None and config.early_stopping_patience <= 0:
+        raise ValueError("early_stopping_patience must be positive")
+    if config.early_stopping_patience is not None and config.eval_every is None:
+        raise ValueError("eval_every is required when early_stopping_patience is set")
 
 
 def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
@@ -585,6 +609,8 @@ def _training_config_from_checkpoint(
         max_steps=config.max_steps,
         batch_size=config.batch_size,
         learning_rate=config.learning_rate,
+        weight_decay=config.weight_decay,
+        seed=config.seed,
         embedding_dim=checkpoint_config.embedding_dim,
         hidden_dim=checkpoint_config.hidden_dim,
         num_heads=checkpoint_config.num_heads,
@@ -593,5 +619,12 @@ def _training_config_from_checkpoint(
         policy_loss_weight=config.policy_loss_weight,
         value_loss_weight=config.value_loss_weight,
         device=config.device,
+        max_train_eval_examples=config.max_train_eval_examples,
+        max_eval_examples=config.max_eval_examples,
+        log_every=config.log_every,
         num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
+        progress_every=config.progress_every,
+        eval_every=config.eval_every,
+        early_stopping_patience=config.early_stopping_patience,
     )

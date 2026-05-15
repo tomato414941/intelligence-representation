@@ -52,10 +52,18 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=0.0005)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--max-train-eval-examples", type=int)
+    parser.add_argument("--max-eval-examples", type=int)
+    parser.add_argument("--log-every", type=int)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--progress-every", type=int)
+    parser.add_argument("--eval-every", type=int)
+    parser.add_argument("--early-stopping-patience", type=int)
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args(argv)
 
@@ -85,10 +93,18 @@ def main(argv: list[str] | None = None) -> None:
             max_steps=args.max_steps,
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
+            weight_decay=args.weight_decay,
             policy_loss_weight=args.policy_loss_weight,
             value_loss_weight=args.value_loss_weight,
             device=args.device,
+            max_train_eval_examples=args.max_train_eval_examples,
+            max_eval_examples=args.max_eval_examples,
+            log_every=args.log_every,
             num_workers=args.num_workers,
+            pin_memory=args.pin_memory,
+            progress_every=args.progress_every,
+            eval_every=args.eval_every,
+            early_stopping_patience=args.early_stopping_patience,
             seed=args.seed,
         )
     )

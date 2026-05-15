@@ -39,9 +39,17 @@ EVAL_RATIO=${EVAL_RATIO:-0.05}
 MAX_STEPS=${MAX_STEPS:-1000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 LEARNING_RATE=${LEARNING_RATE:-0.0001}
+WEIGHT_DECAY=${WEIGHT_DECAY:-0.0}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
 VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-1.0}
+MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-}
+MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-}
+LOG_EVERY=${LOG_EVERY:-}
 NUM_WORKERS=${NUM_WORKERS:-0}
+PIN_MEMORY=${PIN_MEMORY:-0}
+PROGRESS_EVERY=${PROGRESS_EVERY:-}
+EVAL_EVERY=${EVAL_EVERY:-}
+EARLY_STOPPING_PATIENCE=${EARLY_STOPPING_PATIENCE:-}
 NEXT_CHECKPOINT=${NEXT_CHECKPOINT:-best}
 SEED=${SEED:-7}
 
@@ -147,7 +155,31 @@ if [[ \"\$NEEDS_USI\" == \"1\" ]]; then
     fi
   done
 fi
-echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+TRAINING_ARGS=(
+  --weight-decay \"$WEIGHT_DECAY\"
+)
+if [[ -n \"$MAX_TRAIN_EVAL_EXAMPLES\" ]]; then
+  TRAINING_ARGS+=(--max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\")
+fi
+if [[ -n \"$MAX_EVAL_EXAMPLES\" ]]; then
+  TRAINING_ARGS+=(--max-eval-examples \"$MAX_EVAL_EXAMPLES\")
+fi
+if [[ -n \"$LOG_EVERY\" ]]; then
+  TRAINING_ARGS+=(--log-every \"$LOG_EVERY\")
+fi
+if [[ \"$PIN_MEMORY\" == \"1\" ]]; then
+  TRAINING_ARGS+=(--pin-memory)
+fi
+if [[ -n \"$PROGRESS_EVERY\" ]]; then
+  TRAINING_ARGS+=(--progress-every \"$PROGRESS_EVERY\")
+fi
+if [[ -n \"$EVAL_EVERY\" ]]; then
+  TRAINING_ARGS+=(--eval-every \"$EVAL_EVERY\")
+fi
+if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
+  TRAINING_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
+fi
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
@@ -176,5 +208,6 @@ echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERI
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
   --device cuda \
   --num-workers \"$NUM_WORKERS\" \
+  \"\${TRAINING_ARGS[@]}\" \
   --seed \"$SEED\"" \
   "$@"

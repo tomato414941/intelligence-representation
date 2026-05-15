@@ -64,10 +64,35 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "cshogi",
                     "--max-steps",
                     "5",
+                    "--batch-size",
+                    "64",
+                    "--learning-rate",
+                    "0.01",
+                    "--weight-decay",
+                    "0.02",
+                    "--policy-loss-weight",
+                    "0.7",
+                    "--value-loss-weight",
+                    "0.3",
                     "--device",
                     "cuda",
+                    "--max-train-eval-examples",
+                    "100",
+                    "--max-eval-examples",
+                    "50",
+                    "--log-every",
+                    "10",
                     "--seed",
                     "11",
+                    "--num-workers",
+                    "2",
+                    "--pin-memory",
+                    "--progress-every",
+                    "20",
+                    "--eval-every",
+                    "25",
+                    "--early-stopping-patience",
+                    "3",
                 ]
             )
 
@@ -95,7 +120,20 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.generation_progress_every_plies, 16)
         self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_steps, 5)
+        self.assertEqual(config.batch_size, 64)
+        self.assertEqual(config.learning_rate, 0.01)
+        self.assertEqual(config.weight_decay, 0.02)
+        self.assertEqual(config.policy_loss_weight, 0.7)
+        self.assertEqual(config.value_loss_weight, 0.3)
         self.assertEqual(config.device, "cuda")
+        self.assertEqual(config.max_train_eval_examples, 100)
+        self.assertEqual(config.max_eval_examples, 50)
+        self.assertEqual(config.log_every, 10)
+        self.assertEqual(config.num_workers, 2)
+        self.assertTrue(config.pin_memory)
+        self.assertEqual(config.progress_every, 20)
+        self.assertEqual(config.eval_every, 25)
+        self.assertEqual(config.early_stopping_patience, 3)
         self.assertEqual(config.seed, 11)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())
 

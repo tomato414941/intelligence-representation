@@ -42,3 +42,20 @@ Online replay should pass a complete training config into the training function 
 - `eval_every` and `early_stopping_patience` can be configured through the online replay CLI and RunPod wrapper.
 - Tests cover that online replay passes early stopping and eval cadence into `train_shogi_policy_value_model`.
 - Online replay metrics continue to include the effective training config and early stopping result fields.
+
+## Progress
+
+2026-05-15:
+
+- Online replay CLI accepts the remaining shogi policy-value training controls:
+  `weight_decay`, `max_train_eval_examples`, `max_eval_examples`, `log_every`,
+  `pin_memory`, `progress_every`, `eval_every`, and
+  `early_stopping_patience`.
+- RunPod online replay wrapper forwards those controls.
+- Tests cover CLI parsing and propagation into `train_shogi_policy_value_model`.
+
+Remaining:
+
+- Replace the duplicated training fields on `ShogiOnlineReplayConfig` with a
+  training-owned config object, or explicitly decide that the current
+  flattened wrapper config is the intended boundary.
