@@ -55,6 +55,9 @@ belongs in the objective and execution loop, not in a universal raw schema.
 
 ## Shogi RL Artifact Boundary
 
+For shogi-specific source-side versus policy/value-problem ownership, see
+[Shogi Learning Boundaries](shogi-learning-boundaries.md).
+
 The current shogi RL loop uses a CLI/subprocess and artifact boundary between
 `intelligence-representation` and `shogi-arena-agent`.
 

@@ -1,6 +1,6 @@
 # Shogi World / Problem Data Lifecycle Boundary
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -40,6 +40,19 @@ framework from shogi alone.
 This issue can close when the current shogi data lifecycle files have clear
 documented ownership, and there is no active ambiguity about where new shogi
 source-side versus policy/value-problem code belongs.
+
+Met.
+
+## Resolution
+
+The boundary is documented in `docs/shogi-learning-boundaries.md`, with a short
+link from `docs/learning-boundaries.md`.
+
+The documented rule is source-side versus problem-side:
+
+- `intrep.worlds.shogi` owns source-side shogi data and formats.
+- `intrep.problems.shogi_policy_value` owns policy/value targets, samples,
+  tensor caches, model training/evaluation, and learner loops.
 
 ## Non-Goals
 
