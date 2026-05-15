@@ -42,6 +42,7 @@ SEED=${SEED:-7}
 
 GPU_TYPE=${GPU_TYPE:-NVIDIA RTX A5000}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-180}
+VOLUME_SIZE=${VOLUME_SIZE:-0}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 MIN_VCPU_PER_GPU=${MIN_VCPU_PER_GPU:-}
 SECURE_CLOUD=${SECURE_CLOUD:-1}
@@ -78,6 +79,7 @@ python3 "$RUNPOD_JOB" \
   --repo-root "$REPO_PARENT" \
   --name intrep-shogi-online-experience-replay \
   --gpu-type "$GPU_TYPE" \
+  --volume-size "$VOLUME_SIZE" \
   "${RUNNER_ARGS[@]}" \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 600 \
