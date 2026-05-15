@@ -66,6 +66,6 @@ The fixed Training Data Bundle builder no longer uses `replay` in its code-level
 - `scripts/create_shogi_training_data_bundle.py`
 - `create_shogi_training_data_bundle`
 - `select_shogi_game_records`
-- `shogi_training_data_bundle_v1`
+- `intrep.shogi_training_data_bundle.v1`
 
 `Replay Buffer` remains reserved for a future training-time sampling component.

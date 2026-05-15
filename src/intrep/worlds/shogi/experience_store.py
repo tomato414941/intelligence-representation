@@ -51,7 +51,7 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
         file.write(json.dumps(event, separators=(",", ":"), sort_keys=True) + "\n")
 
     manifest = {
-        "schema": "shogi_experience_store_v1",
+        "schema_version": "intrep.shogi_experience_store.v1",
         "record_schema": "shogi_game_record_jsonl",
         "updated_at": event["created_at"],
         "game_count": len(all_records),

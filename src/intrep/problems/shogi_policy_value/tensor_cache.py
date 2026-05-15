@@ -18,7 +18,7 @@ from intrep.problems.shogi_policy_value.examples import (
     tensorize_shogi_policy_value_examples,
 )
 
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "shogi_policy_value_tensor_cache"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v1"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors.pt"
 
 
@@ -54,7 +54,7 @@ def build_shogi_policy_value_tensor_cache(
         eval_policy_target_summary=_policy_target_summary(eval_examples),
     )
     return {
-        "schema": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
+        "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "path": str(cache_path),
         "data_selection_path": str(data_selection_path),
         "train_count": len(train_samples),
@@ -74,7 +74,7 @@ def save_shogi_policy_value_tensor_cache(
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
+        "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
         "train_policy_target_summary": train_policy_target_summary,
@@ -91,7 +91,7 @@ def load_shogi_policy_value_tensor_cache(
     expected_data_selection: ShogiPolicyValueDataSelection | None = None,
 ) -> ShogiPolicyValueTensorCache:
     payload = torch.load(path, map_location="cpu", weights_only=False)
-    if not isinstance(payload, dict) or payload.get("schema") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
+    if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
     if expected_data_selection is not None:
         expected = shogi_policy_value_data_selection_to_json(expected_data_selection)

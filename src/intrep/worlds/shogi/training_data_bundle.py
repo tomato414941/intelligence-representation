@@ -112,7 +112,7 @@ def create_shogi_training_data_bundle(
     data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
-        "schema": "shogi_training_data_bundle_v1",
+        "schema_version": "intrep.shogi_training_data_bundle.v1",
         "record_schema": "shogi_game_record_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),

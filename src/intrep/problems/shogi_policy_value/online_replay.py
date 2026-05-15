@@ -364,7 +364,7 @@ def _online_replay_cycle_metrics(
     training_result: ShogiPolicyValueTrainingResult | None,
 ) -> dict[str, object]:
     metrics: dict[str, object] = {
-        "schema": "shogi_online_replay_v1",
+        "schema_version": "intrep.shogi_online_replay_metrics.v1",
         "cycle_index": cycle_index,
         "training_skipped": training_skipped,
         "appended_examples": appended_examples,

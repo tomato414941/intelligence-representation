@@ -44,3 +44,15 @@ enough to rebuild, or needed to explain skipped source records.
 
 `cache/` is not a source of truth. It should be rebuildable from `raw/`,
 `processed/`, or a documented data selection / training data bundle.
+
+## Saved File Formats
+
+File names identify the saved file's role, not its format version. Do not put a
+schema version in names such as `checkpoint.pt`, `tokenizer.json`,
+`manifest.json`, `metrics.json`, or `shogi-policy-value-tensors.pt`.
+
+Reusable or loadable saved files store their format identifier inside the
+payload as `schema_version`. Loaders should check `schema_version` before
+trusting the payload. Run-local metrics and summaries may also use
+`schema_version` when they are machine-read; human-only logs do not need a
+schema marker.

@@ -57,7 +57,7 @@ Updated code-level names include:
 - `src/intrep/worlds/shogi/training_data_bundle.py`
 - `scripts/create_shogi_training_data_bundle.py`
 - `create_shogi_training_data_bundle`
-- `shogi_training_data_bundle_v1`
+- `intrep.shogi_training_data_bundle.v1`
 
 The glossary now defines Training Data Bundle as a materialized, fixed
 collection of training and evaluation inputs derived from source records.
