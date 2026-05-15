@@ -17,13 +17,14 @@ payloads.
 
 ## Training Runs
 
-| Experiment | Date | Method | Starting checkpoint | Next-cycle checkpoint | Cycles | Experience sources per cycle | Environment | Remote job time |
-| --- | --- | --- | --- | --- | ---: | --- | --- | ---: |
-| `shogi-learning-20260515-001` | 2026-05-15 | online replay | `models/d256-h1024-heads8-l6-shogi/checkpoint.pt` | cycle final checkpoint | 4 | `self:64`, `usi:64` | RTX 4000 Ada, 16 vCPU, 62 GiB, secure, EUR-IS-1, $0.26/hr | 42.9 min |
+| Experiment | Date | Method | Starting checkpoint ID | Starting checkpoint path | Next-cycle checkpoint | Cycles | Experience sources per cycle | Environment | Remote job time |
+| --- | --- | --- | --- | --- | --- | ---: | --- | --- | ---: |
+| `shogi-learning-20260515-001` | 2026-05-15 | online replay | not recorded | `models/d256-h1024-heads8-l6-shogi/checkpoint.pt` | cycle final checkpoint | 4 | `self:64`, `usi:64` | RTX 4000 Ada, 16 vCPU, 62 GiB, secure, EUR-IS-1, $0.26/hr | 42.9 min |
 
 `Next-cycle checkpoint` records which checkpoint from one cycle is used as the
 starting checkpoint for the next cycle. `cycle final checkpoint` means
 `cycle-N/checkpoint.pt`, not `cycle-N/best-checkpoint.pt`.
+Checkpoint paths are run-time paths, not immutable checkpoint identities.
 
 ## Generation Settings
 
@@ -105,3 +106,4 @@ starting checkpoint for the next cycle. `cycle final checkpoint` means
 - `issues/shogi-self-play-max-plies-draw-quality.md`
 - `issues/shogi-generated-eval-responsibility.md`
 - `issues/shogi-nn-leaf-eval-batch-fill.md`
+- `issues/shogi-checkpoint-immutable-identity.md`
