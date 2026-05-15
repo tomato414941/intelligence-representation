@@ -79,21 +79,7 @@ class ShogiOnlineReplayConfig:
     generation_worker_processes: int = 1
     mcts_move_time_limit_sec: float | None = None
     eval_ratio: float = 0.25
-    max_steps: int = 100
-    batch_size: int = 128
-    learning_rate: float = 0.0005
-    weight_decay: float = 0.0
-    policy_loss_weight: float = 1.0
-    value_loss_weight: float = 1.0
-    device: str = "cpu"
-    max_train_eval_examples: int | None = None
-    max_eval_examples: int | None = None
-    log_every: int | None = None
-    num_workers: int = 0
-    pin_memory: bool = False
-    progress_every: int | None = None
-    eval_every: int | None = None
-    early_stopping_patience: int | None = None
+    training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
     seed: int = 7
 
 
@@ -323,7 +309,7 @@ def _generate_online_replay_cycle_experience(
             evaluation_batch_size=config.evaluation_batch_size,
             generation_worker_processes=config.generation_worker_processes,
             seed=_source_seed(config.seed, artifacts.cycle_dir.name, source_index),
-            checkpoint_device=config.device,
+            checkpoint_device=config.training_config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
             usi_read_timeout_seconds=source.usi_read_timeout_seconds,
         )
@@ -374,7 +360,7 @@ def _train_online_replay_cycle(
         sampled_examples,
         eval_examples=eval_examples,
         config=training_config,
-        initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=config.device),
+        initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=training_config.device),
     )
     save_shogi_policy_value_checkpoint(artifacts.checkpoint_path, training_result)
     if training_result.best_model_state_dict is not None:
@@ -476,35 +462,36 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("mcts_move_time_limit_sec must be positive")
     if not 0.0 < config.eval_ratio < 1.0:
         raise ValueError("eval_ratio must be between 0 and 1")
-    if config.max_steps <= 0:
+    training_config = config.training_config
+    if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
-    if config.batch_size <= 0:
+    if training_config.batch_size <= 0:
         raise ValueError("batch_size must be positive")
-    if config.learning_rate <= 0.0:
+    if training_config.learning_rate <= 0.0:
         raise ValueError("learning_rate must be positive")
-    if config.weight_decay < 0.0:
+    if training_config.weight_decay < 0.0:
         raise ValueError("weight_decay must be non-negative")
-    if config.policy_loss_weight < 0.0:
+    if training_config.policy_loss_weight < 0.0:
         raise ValueError("policy_loss_weight must be non-negative")
-    if config.value_loss_weight < 0.0:
+    if training_config.value_loss_weight < 0.0:
         raise ValueError("value_loss_weight must be non-negative")
-    if config.policy_loss_weight == 0.0 and config.value_loss_weight == 0.0:
+    if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight == 0.0:
         raise ValueError("at least one loss weight must be positive")
-    if config.max_train_eval_examples is not None and config.max_train_eval_examples <= 0:
+    if training_config.max_train_eval_examples is not None and training_config.max_train_eval_examples <= 0:
         raise ValueError("max_train_eval_examples must be positive")
-    if config.max_eval_examples is not None and config.max_eval_examples <= 0:
+    if training_config.max_eval_examples is not None and training_config.max_eval_examples <= 0:
         raise ValueError("max_eval_examples must be positive")
-    if config.log_every is not None and config.log_every <= 0:
+    if training_config.log_every is not None and training_config.log_every <= 0:
         raise ValueError("log_every must be positive")
-    if config.num_workers < 0:
+    if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
-    if config.progress_every is not None and config.progress_every <= 0:
+    if training_config.progress_every is not None and training_config.progress_every <= 0:
         raise ValueError("progress_every must be positive")
-    if config.eval_every is not None and config.eval_every <= 0:
+    if training_config.eval_every is not None and training_config.eval_every <= 0:
         raise ValueError("eval_every must be positive")
-    if config.early_stopping_patience is not None and config.early_stopping_patience <= 0:
+    if training_config.early_stopping_patience is not None and training_config.early_stopping_patience <= 0:
         raise ValueError("early_stopping_patience must be positive")
-    if config.early_stopping_patience is not None and config.eval_every is None:
+    if training_config.early_stopping_patience is not None and training_config.eval_every is None:
         raise ValueError("eval_every is required when early_stopping_patience is set")
 
 
@@ -604,27 +591,28 @@ def _training_config_from_checkpoint(
     checkpoint: Path,
     config: ShogiOnlineReplayConfig,
 ) -> ShogiPolicyValueTrainingConfig:
-    checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint, device=config.device)
+    training_config = config.training_config
+    checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint, device=training_config.device)
     return ShogiPolicyValueTrainingConfig(
-        max_steps=config.max_steps,
-        batch_size=config.batch_size,
-        learning_rate=config.learning_rate,
-        weight_decay=config.weight_decay,
-        seed=config.seed,
+        max_steps=training_config.max_steps,
+        batch_size=training_config.batch_size,
+        learning_rate=training_config.learning_rate,
+        weight_decay=training_config.weight_decay,
+        seed=training_config.seed,
         embedding_dim=checkpoint_config.embedding_dim,
         hidden_dim=checkpoint_config.hidden_dim,
         num_heads=checkpoint_config.num_heads,
         num_layers=checkpoint_config.num_layers,
         use_shared_core=checkpoint_config.use_shared_core,
-        policy_loss_weight=config.policy_loss_weight,
-        value_loss_weight=config.value_loss_weight,
-        device=config.device,
-        max_train_eval_examples=config.max_train_eval_examples,
-        max_eval_examples=config.max_eval_examples,
-        log_every=config.log_every,
-        num_workers=config.num_workers,
-        pin_memory=config.pin_memory,
-        progress_every=config.progress_every,
-        eval_every=config.eval_every,
-        early_stopping_patience=config.early_stopping_patience,
+        policy_loss_weight=training_config.policy_loss_weight,
+        value_loss_weight=training_config.value_loss_weight,
+        device=training_config.device,
+        max_train_eval_examples=training_config.max_train_eval_examples,
+        max_eval_examples=training_config.max_eval_examples,
+        log_every=training_config.log_every,
+        num_workers=training_config.num_workers,
+        pin_memory=training_config.pin_memory,
+        progress_every=training_config.progress_every,
+        eval_every=training_config.eval_every,
+        early_stopping_patience=training_config.early_stopping_patience,
     )

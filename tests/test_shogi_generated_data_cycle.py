@@ -367,7 +367,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         min_replay_size=1,
                         arena_repo=arena_repo,
                         experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
-                        max_steps=1,
+                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -468,7 +468,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
                         experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
-                        max_steps=1,
+                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -564,7 +564,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             ),
                         ),
                         concurrent_games_per_process=8,
-                        max_steps=1,
+                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
@@ -639,21 +639,24 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         min_replay_size=1,
                         arena_repo=arena_repo,
                         experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=1),),
-                        max_steps=9,
-                        batch_size=4,
-                        learning_rate=0.01,
-                        weight_decay=0.02,
-                        policy_loss_weight=0.7,
-                        value_loss_weight=0.3,
-                        device="cpu",
-                        max_train_eval_examples=5,
-                        max_eval_examples=6,
-                        log_every=7,
-                        num_workers=0,
-                        pin_memory=True,
-                        progress_every=8,
-                        eval_every=3,
-                        early_stopping_patience=2,
+                        training_config=ShogiPolicyValueTrainingConfig(
+                            max_steps=9,
+                            batch_size=4,
+                            learning_rate=0.01,
+                            weight_decay=0.02,
+                            policy_loss_weight=0.7,
+                            value_loss_weight=0.3,
+                            device="cpu",
+                            max_train_eval_examples=5,
+                            max_eval_examples=6,
+                            log_every=7,
+                            num_workers=0,
+                            pin_memory=True,
+                            progress_every=8,
+                            eval_every=3,
+                            early_stopping_patience=2,
+                            seed=13,
+                        ),
                         seed=13,
                     )
                 )
@@ -721,7 +724,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         min_replay_size=3,
                         arena_repo=arena_repo,
                         experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
-                        max_steps=1,
+                        training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 

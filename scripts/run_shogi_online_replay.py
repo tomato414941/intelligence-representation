@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     run_shogi_online_replay,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import DEFAULT_USI_READ_TIMEOUT_SECONDS
+from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -90,21 +91,24 @@ def main(argv: list[str] | None = None) -> None:
             generation_worker_processes=args.generation_worker_processes,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
             eval_ratio=args.eval_ratio,
-            max_steps=args.max_steps,
-            batch_size=args.batch_size,
-            learning_rate=args.learning_rate,
-            weight_decay=args.weight_decay,
-            policy_loss_weight=args.policy_loss_weight,
-            value_loss_weight=args.value_loss_weight,
-            device=args.device,
-            max_train_eval_examples=args.max_train_eval_examples,
-            max_eval_examples=args.max_eval_examples,
-            log_every=args.log_every,
-            num_workers=args.num_workers,
-            pin_memory=args.pin_memory,
-            progress_every=args.progress_every,
-            eval_every=args.eval_every,
-            early_stopping_patience=args.early_stopping_patience,
+            training_config=ShogiPolicyValueTrainingConfig(
+                max_steps=args.max_steps,
+                batch_size=args.batch_size,
+                learning_rate=args.learning_rate,
+                weight_decay=args.weight_decay,
+                policy_loss_weight=args.policy_loss_weight,
+                value_loss_weight=args.value_loss_weight,
+                device=args.device,
+                max_train_eval_examples=args.max_train_eval_examples,
+                max_eval_examples=args.max_eval_examples,
+                log_every=args.log_every,
+                num_workers=args.num_workers,
+                pin_memory=args.pin_memory,
+                progress_every=args.progress_every,
+                eval_every=args.eval_every,
+                early_stopping_patience=args.early_stopping_patience,
+                seed=args.seed,
+            ),
             seed=args.seed,
         )
     )
