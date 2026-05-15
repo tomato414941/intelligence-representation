@@ -17,6 +17,7 @@ from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
+    ShogiTransitionRecord,
     load_shogi_game_records_jsonl,
     shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
@@ -46,6 +47,28 @@ def _record(
         initial_position_sfen=shogi.Board().sfen(),
         transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
+        end_reason="game_over",
+    )
+
+
+def _synthetic_record(position_sfen: str) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=BLACK_ACTOR,
+        white_actor=WHITE_ACTOR,
+        initial_position_sfen=position_sfen,
+        transitions=(
+            ShogiTransitionRecord(
+                ply=0,
+                side="black",
+                position_sfen=position_sfen,
+                legal_moves=("7g7f",),
+                action_usi="7g7f",
+                next_position_sfen=f"{position_sfen} after 7g7f",
+                reward=1.0,
+                done=True,
+            ),
+        ),
+        winner="black",
         end_reason="game_over",
     )
 
@@ -153,6 +176,9 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["eval_source_games_jsonl"], str(eval_path))
             self.assertEqual(manifest["max_train_games"], 1)
             self.assertEqual(manifest["max_eval_games"], 1)
+            self.assertEqual(manifest["eval_position_policy"], "allow_overlap")
+            self.assertEqual(manifest["selected_eval_games_before_position_policy"], 1)
+            self.assertEqual(manifest["skipped_eval_games_for_train_position_overlap"], 0)
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:yaneuraou": 2})
             self.assertEqual(manifest["train_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
             self.assertEqual(manifest["eval_actor_pair_counts"], {"checkpoint:yaneuraou": 1})
@@ -164,6 +190,35 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["position_stats"]["unique_position_count"], 3)
             self.assertEqual(manifest["target_construction"]["policy"], "chosen_move")
             self.assertEqual(manifest["target_construction"]["value"], "winner")
+
+    def test_training_data_bundle_can_exclude_eval_games_with_train_positions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_path = root / "train-source.jsonl"
+            eval_path = root / "eval-source.jsonl"
+            output_root = root / "datasets"
+            train_record = _record(("7g7f",), "black")
+            overlapping_eval_record = _record(("2g2f",), "white")
+            heldout_eval_record = _synthetic_record(position_sfen="heldout-position")
+            write_shogi_game_records_jsonl(train_path, [train_record])
+            write_shogi_game_records_jsonl(eval_path, [overlapping_eval_record, heldout_eval_record])
+
+            create_shogi_training_data_bundle(
+                train_games=train_path,
+                eval_games=eval_path,
+                name="heldout-eval",
+                output_root=output_root,
+                eval_position_policy="exclude_train_position_games",
+            )
+
+            bundle_dir = output_root / "heldout-eval"
+            self.assertEqual(load_shogi_game_records_jsonl(bundle_dir / "eval-games.jsonl"), [heldout_eval_record])
+            manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["eval_position_policy"], "exclude_train_position_games")
+            self.assertEqual(manifest["selected_eval_games_before_position_policy"], 2)
+            self.assertEqual(manifest["skipped_eval_games_for_train_position_overlap"], 1)
+            self.assertEqual(manifest["train_eval_position_overlap_count"], 0)
+            self.assertEqual(manifest["train_eval_position_overlap_ratio"], 0.0)
 
     def test_training_data_bundle_can_include_engine_analysis_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

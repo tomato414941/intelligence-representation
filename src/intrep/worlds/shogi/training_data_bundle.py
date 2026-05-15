@@ -6,10 +6,13 @@ import random
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 from intrep.worlds.shogi.engine_analysis import load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_stats import shogi_actor_pair, shogi_actor_pair_counts, shogi_position_stats, shogi_train_eval_position_stats
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+
+ShogiEvalPositionPolicy = Literal["allow_overlap", "exclude_train_position_games"]
 
 
 def create_shogi_training_data_bundle(
@@ -28,6 +31,7 @@ def create_shogi_training_data_bundle(
     value_target_construction: str = "winner",
     score_cp_scale: float = 600.0,
     analysis_sources: tuple[Path, ...] = (),
+    eval_position_policy: ShogiEvalPositionPolicy = "allow_overlap",
 ) -> dict[str, object]:
     output_dir = output_root / name
     games_jsonl = output_dir / "games.jsonl"
@@ -45,6 +49,7 @@ def create_shogi_training_data_bundle(
         policy_target_construction=policy_target_construction,
         value_target_construction=value_target_construction,
     )
+    _validate_eval_position_policy(eval_position_policy)
 
     train_paths = _normalize_train_games(train_games)
     available_train_records = _load_records(train_paths)
@@ -60,7 +65,12 @@ def create_shogi_training_data_bundle(
         actor_pair_ratios=actor_pair_ratios or {},
         seed=seed,
     )
-    eval_records = _limit_records(available_eval_records, max_eval_games)
+    selected_eval_records = _limit_records(available_eval_records, max_eval_games)
+    eval_records, skipped_eval_games = _apply_eval_position_policy(
+        selected_eval_records,
+        train_records=train_records,
+        eval_position_policy=eval_position_policy,
+    )
     if not train_records:
         raise ValueError("training data bundle selection must produce at least one train game")
     if not eval_records:
@@ -106,9 +116,12 @@ def create_shogi_training_data_bundle(
         "seed": seed,
         "max_train_games": max_train_games,
         "max_eval_games": max_eval_games,
+        "eval_position_policy": eval_position_policy,
         "actor_pair_ratios": dict(sorted((actor_pair_ratios or {}).items())),
         "available_train_games": len(available_train_records),
         "available_eval_games": len(available_eval_records),
+        "selected_eval_games_before_position_policy": len(selected_eval_records),
+        "skipped_eval_games_for_train_position_overlap": skipped_eval_games,
         "game_count": len(records),
         "transition_count": sum(len(record.transitions) for record in records),
         "position_stats": shogi_position_stats(records).to_dict(),
@@ -206,6 +219,25 @@ def _load_records(paths: tuple[Path, ...]) -> list[ShogiGameRecord]:
     return records
 
 
+def _apply_eval_position_policy(
+    records: list[ShogiGameRecord],
+    *,
+    train_records: list[ShogiGameRecord],
+    eval_position_policy: ShogiEvalPositionPolicy,
+) -> tuple[list[ShogiGameRecord], int]:
+    if eval_position_policy == "allow_overlap":
+        return records, 0
+    train_positions = _position_set(train_records)
+    selected: list[ShogiGameRecord] = []
+    skipped = 0
+    for record in records:
+        if _position_set([record]) & train_positions:
+            skipped += 1
+            continue
+        selected.append(record)
+    return selected, skipped
+
+
 def _actor_pair_target_counts(
     groups: dict[str, list[ShogiGameRecord]],
     ratios: dict[str, float],
@@ -247,6 +279,15 @@ def _limit_records(records: list[ShogiGameRecord], max_games: int | None) -> lis
     if max_games is None:
         return records
     return records[:max_games]
+
+
+def _position_set(records: list[ShogiGameRecord]) -> set[str]:
+    return {transition.position_sfen for record in records for transition in record.transitions}
+
+
+def _validate_eval_position_policy(eval_position_policy: str) -> None:
+    if eval_position_policy not in {"allow_overlap", "exclude_train_position_games"}:
+        raise ValueError("eval_position_policy must be allow_overlap or exclude_train_position_games")
 
 
 def _source_json(path: str, max_games: int | None) -> dict[str, str | int]:

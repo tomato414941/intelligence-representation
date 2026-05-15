@@ -14,6 +14,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--analysis-source", type=Path, action="append", default=[])
     parser.add_argument("--max-train-games", type=int)
     parser.add_argument("--max-eval-games", type=int)
+    parser.add_argument(
+        "--eval-position-policy",
+        choices=("allow_overlap", "exclude_train_position_games"),
+        default="allow_overlap",
+    )
     parser.add_argument("--actor-pair-ratio", action="append", default=[])
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--name", required=True)
@@ -39,6 +44,7 @@ def main(argv: list[str] | None = None) -> None:
         max_train_games=args.max_train_games,
         max_eval_games=args.max_eval_games,
         analysis_sources=tuple(args.analysis_source),
+        eval_position_policy=args.eval_position_policy,
         actor_pair_ratios=parse_shogi_actor_pair_ratios(args.actor_pair_ratio),
         seed=args.seed,
         name=args.name,

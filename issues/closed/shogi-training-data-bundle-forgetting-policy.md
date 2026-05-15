@@ -45,17 +45,17 @@ Store records.
 
 Train/eval overlap is evaluation leakage rather than Training Data Bundle forgetting.
 It is tracked separately in
-[`shogi-training-data-bundle-train-eval-overlap.md`](shogi-training-data-bundle-train-eval-overlap.md).
+[`shogi-training-data-bundle-eval-position-policy.md`](shogi-training-data-bundle-eval-position-policy.md).
 
 ## Resolution
 
 Closed by splitting the concerns into narrower issues:
 
 - train/eval leakage is tracked by
-  [`../shogi-training-data-bundle-train-eval-overlap.md`](../shogi-training-data-bundle-train-eval-overlap.md)
+  [`shogi-training-data-bundle-eval-position-policy.md`](shogi-training-data-bundle-eval-position-policy.md)
   and is low priority for now.
 - actor-pair inclusion, exclusion, and caps belong to
-  [`../shogi-training-data-bundle-source-mix.md`](../shogi-training-data-bundle-source-mix.md).
+  [`shogi-training-data-bundle-source-mix.md`](shogi-training-data-bundle-source-mix.md).
 
 The remaining principle is simple: do not delete Experience Store records just
 to shape a specific Training Data Bundle.
