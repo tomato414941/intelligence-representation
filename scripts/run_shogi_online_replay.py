@@ -10,6 +10,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     DEFAULT_REPLAY_CAPACITY,
     DEFAULT_REPLAY_SAMPLE_SIZE,
     ShogiOnlineReplayConfig,
+    ShogiGeneratedExperienceSource,
     run_shogi_online_replay,
 )
 
@@ -27,6 +28,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--training-eval-data-selection", type=Path)
     parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
     parser.add_argument("--arena-repo", type=Path, default=Path("../shogi-arena-agent"))
+    parser.add_argument(
+        "--experience-source",
+        action="append",
+        default=[],
+        metavar="KIND:GAMES",
+        help="Generated experience source. Repeatable. KIND is self or usi.",
+    )
     parser.add_argument("--opponent", choices=("self", "usi"), default="self")
     parser.add_argument("--usi-command", help="USI engine command used when --opponent usi.")
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
@@ -64,11 +72,7 @@ def main(argv: list[str] | None = None) -> None:
             training_eval_data_selection=args.training_eval_data_selection,
             next_checkpoint=args.next_checkpoint,
             arena_repo=args.arena_repo,
-            opponent=args.opponent,
-            usi_command=args.usi_command,
-            usi_options=tuple(args.usi_option),
-            usi_go_command=args.usi_go_command,
-            games=args.games,
+            experience_sources=_experience_sources_from_args(args),
             concurrent_games_per_process=args.concurrent_games_per_process,
             generation_progress_every_plies=args.generation_progress_every_plies,
             board_backend=args.board_backend,
@@ -89,6 +93,27 @@ def main(argv: list[str] | None = None) -> None:
         )
     )
     print(json.dumps(result.to_json(), indent=2))
+
+
+def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGeneratedExperienceSource, ...]:
+    values = args.experience_source or [f"{args.opponent}:{args.games}"]
+    sources = []
+    for index, value in enumerate(values):
+        kind, separator, games = value.partition(":")
+        if not separator:
+            raise SystemExit("--experience-source must be KIND:GAMES")
+        if kind not in {"self", "usi"}:
+            raise SystemExit("--experience-source KIND must be self or usi")
+        source = ShogiGeneratedExperienceSource(
+            name=f"self-play-{index}" if kind == "self" else f"checkpoint-vs-usi-{index}",
+            opponent=kind,
+            games=int(games),
+            usi_command=args.usi_command if kind == "usi" else None,
+            usi_options=tuple(args.usi_option) if kind == "usi" else (),
+            usi_go_command=args.usi_go_command,
+        )
+        sources.append(source)
+    return tuple(sources)
 
 
 if __name__ == "__main__":

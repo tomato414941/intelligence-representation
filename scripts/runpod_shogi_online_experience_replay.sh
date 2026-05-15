@@ -27,6 +27,7 @@ NN_LEAF_EVAL_BATCH_LIMIT=${NN_LEAF_EVAL_BATCH_LIMIT:-32}
 MAX_PLIES=${MAX_PLIES:-320}
 GENERATION_PROGRESS_EVERY_PLIES=${GENERATION_PROGRESS_EVERY_PLIES:-100}
 OPPONENT=${OPPONENT:-self}
+EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-}
 USI_COMMAND=${USI_COMMAND:-}
 USI_OPTIONS=${USI_OPTIONS:-}
 USI_GO_COMMAND=${USI_GO_COMMAND:-go nodes 1}
@@ -72,6 +73,15 @@ if [[ "$OPPONENT" != "self" && "$OPPONENT" != "usi" ]]; then
   echo "OPPONENT must be self or usi: $OPPONENT" >&2
   exit 1
 fi
+if [[ -n "$EXPERIENCE_SOURCES" ]]; then
+  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< "$EXPERIENCE_SOURCES"
+  for experience_source in "${EXPERIENCE_SOURCE_ITEMS[@]}"; do
+    if [[ "$experience_source" != self:* && "$experience_source" != usi:* ]]; then
+      echo "EXPERIENCE_SOURCES entries must be self:GAMES or usi:GAMES: $experience_source" >&2
+      exit 1
+    fi
+  done
+fi
 
 RUNNER_ARGS=()
 if [[ "$SECURE_CLOUD" == "1" ]]; then
@@ -112,7 +122,19 @@ python3 "$RUNPOD_JOB" \
   --timings-output "$PROJECT_REL/$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR/$PROJECT_REL\"; mkdir -p \"$OUTPUT_DIR\"
 USI_COMMAND_REMOTE=\"$USI_COMMAND\"
-if [[ \"$OPPONENT\" == \"usi\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
+NEEDS_USI=0
+if [[ \"$OPPONENT\" == \"usi\" ]]; then
+  NEEDS_USI=1
+fi
+if [[ -n \"$EXPERIENCE_SOURCES\" ]]; then
+  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
+  for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
+    if [[ \"\$experience_source\" == usi:* ]]; then
+      NEEDS_USI=1
+    fi
+  done
+fi
+if [[ \"\$NEEDS_USI\" == \"1\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
   apt-get update >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential >/dev/null
   rm -rf /root/YaneuraOu
@@ -121,10 +143,17 @@ if [[ \"$OPPONENT\" == \"usi\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
   USI_COMMAND_REMOTE=/root/YaneuraOu/source/YaneuraOu-runpod
 fi
 ONLINE_REPLAY_ARGS=(
-  --opponent \"$OPPONENT\"
   --usi-go-command \"$USI_GO_COMMAND\"
 )
-if [[ \"$OPPONENT\" == \"usi\" ]]; then
+if [[ -n \"$EXPERIENCE_SOURCES\" ]]; then
+  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
+  for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
+    ONLINE_REPLAY_ARGS+=(--experience-source \"\$experience_source\")
+  done
+else
+  ONLINE_REPLAY_ARGS+=(--opponent \"$OPPONENT\")
+fi
+if [[ \"\$NEEDS_USI\" == \"1\" ]]; then
   ONLINE_REPLAY_ARGS+=(--usi-command \"\$USI_COMMAND_REMOTE\")
   IFS=';' read -ra USI_OPTION_ITEMS <<< \"$USI_OPTIONS\"
   for usi_option in \"\${USI_OPTION_ITEMS[@]}\"; do
@@ -133,7 +162,7 @@ if [[ \"$OPPONENT\" == \"usi\" ]]; then
     fi
   done
 fi
-echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES opponent=$OPPONENT usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES opponent=$OPPONENT usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \

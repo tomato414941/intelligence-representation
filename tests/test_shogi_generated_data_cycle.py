@@ -12,6 +12,7 @@ import shogi
 from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedDataTrainingCycleConfig,
     ShogiGeneratedDataTrainingLoopConfig,
+    ShogiGeneratedExperienceSource,
     ShogiOnlineReplayConfig,
     run_shogi_online_replay,
     run_shogi_generated_data_training_loop,
@@ -365,7 +366,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_sample_size=3,
                         min_replay_size=1,
                         arena_repo=arena_repo,
-                        games=2,
+                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
                         max_steps=1,
                     )
                 )
@@ -466,7 +467,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_seed_data_selection=bundle_dir / "data-selection.json",
                         training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
-                        games=2,
+                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
                         max_steps=1,
                     )
                 )
@@ -493,6 +494,91 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["experience_store_append"]["total_games"], 2)
             self.assertEqual(metrics["generation_summary"]["game_count"], 2)
             self.assertTrue((run_dir / "cycle-0001" / "generation-summary.json").exists())
+
+    def test_online_replay_generates_multiple_experience_sources_per_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    if command[command.index("--white-kind") + 1] == "usi":
+                        records = [_record(("2g2f", "8c8d"), "white")]
+                    else:
+                        records = [_record(("7g7f", "3c3d"), "black")]
+                    write_shogi_game_records_jsonl(out_path, records)
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "game_count": len(records),
+                                "average_plies": 2,
+                                "end_reasons": {"game_over": len(records)},
+                                "black_wins": 1 if records[0].winner == "black" else 0,
+                                "white_wins": 1 if records[0].winner == "white" else 0,
+                                "draws": 0,
+                                "generation_wall_time_sec": 1.0,
+                                "plies_per_sec": 2.0,
+                            }
+                        )
+                        + "\n",
+                    )
+                return None
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=1,
+                        replay_capacity=8,
+                        replay_sample_size=8,
+                        min_replay_size=1,
+                        arena_repo=arena_repo,
+                        experience_sources=(
+                            ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=1),
+                            ShogiGeneratedExperienceSource(
+                                name="checkpoint-vs-usi",
+                                opponent="usi",
+                                games=1,
+                                usi_command="engine",
+                                usi_options=("Threads=2",),
+                                usi_go_command="go nodes 4",
+                            ),
+                        ),
+                        max_steps=1,
+                    )
+                )
+
+            self.assertEqual(result.cycles[0].appended_examples, 2)
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(run.call_args_list[0].args[0][run.call_args_list[0].args[0].index("--seed") + 1], "7")
+            self.assertEqual(run.call_args_list[1].args[0][run.call_args_list[1].args[0].index("--seed") + 1], "8")
+            usi_command = run.call_args_list[1].args[0]
+            self.assertEqual(usi_command[usi_command.index("--white-kind") + 1], "usi")
+            self.assertEqual(usi_command[usi_command.index("--white-usi-command") + 1], "engine")
+            self.assertEqual(usi_command[usi_command.index("--white-usi-option") + 1], "Threads=2")
+            records = load_shogi_game_records_jsonl(run_dir / "cycle-0001" / "generated-games.jsonl")
+            self.assertEqual(len(records), 2)
+            summary = json.loads((run_dir / "cycle-0001" / "generation-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["game_count"], 2)
+            self.assertEqual([source["name"] for source in summary["sources"]], ["self-play", "checkpoint-vs-usi"])
 
     def test_online_replay_skips_training_until_min_replay_size(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -539,7 +625,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_sample_size=3,
                         min_replay_size=3,
                         arena_repo=arena_repo,
-                        games=2,
+                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
                         max_steps=1,
                     )
                 )

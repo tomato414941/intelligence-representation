@@ -87,7 +87,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             config.training_eval_data_selection,
             Path("data/shogi/training-data-bundles/online/data-selection.json"),
         )
-        self.assertEqual(config.games, 4)
+        self.assertEqual(len(config.experience_sources), 1)
+        self.assertEqual(config.experience_sources[0].opponent, "self")
+        self.assertEqual(config.experience_sources[0].games, 4)
         self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.generation_progress_every_plies, 16)
@@ -96,6 +98,56 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.device, "cuda")
         self.assertEqual(config.seed, 11)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())
+
+    def test_passes_multiple_experience_sources(self) -> None:
+        module = _load_script_module()
+        result = ShogiOnlineReplayResult(
+            run_dir=Path("/tmp/online"),
+            initial_checkpoint=Path("source.pt"),
+            final_checkpoint=Path("/tmp/online/cycle-0001/checkpoint.pt"),
+            next_checkpoint="final",
+            replay_capacity=8,
+            experience_store_dir=None,
+            replay_seed_data_selection=None,
+            training_eval_data_selection=None,
+            preloaded_examples=0,
+            fixed_eval_examples=0,
+            cycles=(),
+        )
+        run_replay = Mock(return_value=result)
+
+        with (
+            patch.object(module, "run_shogi_online_replay", run_replay),
+            patch.object(module, "print"),
+        ):
+            module.main(
+                [
+                    "--checkpoint",
+                    "source.pt",
+                    "--run-dir",
+                    "online",
+                    "--experience-source",
+                    "self:2",
+                    "--experience-source",
+                    "usi:3",
+                    "--usi-command",
+                    "engine",
+                    "--usi-option",
+                    "Threads=2",
+                    "--usi-go-command",
+                    "go nodes 4",
+                ]
+            )
+
+        sources = run_replay.call_args.args[0].experience_sources
+        self.assertEqual(len(sources), 2)
+        self.assertEqual(sources[0].opponent, "self")
+        self.assertEqual(sources[0].games, 2)
+        self.assertEqual(sources[1].opponent, "usi")
+        self.assertEqual(sources[1].games, 3)
+        self.assertEqual(sources[1].usi_command, "engine")
+        self.assertEqual(sources[1].usi_options, ("Threads=2",))
+        self.assertEqual(sources[1].usi_go_command, "go nodes 4")
 
 
 def _load_script_module() -> ModuleType:

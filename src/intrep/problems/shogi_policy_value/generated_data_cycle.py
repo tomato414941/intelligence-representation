@@ -28,6 +28,7 @@ from intrep.problems.shogi_policy_value.online_replay import (
     DEFAULT_REPLAY_SAMPLE_SIZE,
     ShogiOnlineReplayConfig,
     ShogiOnlineReplayCycleResult,
+    ShogiGeneratedExperienceSource,
     ShogiOnlineReplayResult,
     run_shogi_online_replay,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "ShogiGeneratedDataTrainingLoopResult",
     "ShogiOnlineReplayConfig",
     "ShogiOnlineReplayCycleResult",
+    "ShogiGeneratedExperienceSource",
     "ShogiOnlineReplayResult",
     "run_shogi_generated_data_training_cycle",
     "run_shogi_generated_data_training_loop",

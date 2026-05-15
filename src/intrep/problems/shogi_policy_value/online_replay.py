@@ -43,6 +43,16 @@ DEFAULT_MIN_REPLAY_SIZE = 8192
 
 
 @dataclass(frozen=True)
+class ShogiGeneratedExperienceSource:
+    name: str
+    opponent: str
+    games: int
+    usi_command: str | None = None
+    usi_options: tuple[str, ...] = ()
+    usi_go_command: str = "go nodes 1"
+
+
+@dataclass(frozen=True)
 class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
@@ -55,11 +65,9 @@ class ShogiOnlineReplayConfig:
     training_eval_data_selection: Path | None = None
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
-    opponent: str = "self"
-    usi_command: str | None = None
-    usi_options: tuple[str, ...] = ()
-    usi_go_command: str = "go nodes 1"
-    games: int = 4
+    experience_sources: tuple[ShogiGeneratedExperienceSource, ...] = (
+        ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=4),
+    )
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
@@ -280,26 +288,49 @@ def _generate_online_replay_cycle_experience(
     checkpoint: Path,
     artifacts: ShogiOnlineReplayCycleArtifacts,
 ) -> None:
-    run_shogi_generated_games(
-        arena_repo=config.arena_repo,
-        checkpoint=checkpoint,
-        opponent=config.opponent,
-        usi_command=config.usi_command,
-        usi_options=config.usi_options,
-        usi_go_command=config.usi_go_command,
-        out=artifacts.games_jsonl,
-        generation_summary_path=artifacts.generation_summary_path,
-        games=config.games,
-        concurrent_games_per_process=config.concurrent_games_per_process,
-        generation_progress_every_plies=config.generation_progress_every_plies,
-        board_backend=config.board_backend,
-        max_plies=config.max_plies,
-        simulations=config.simulations,
-        evaluation_batch_size=config.evaluation_batch_size,
-        generation_worker_processes=config.generation_worker_processes,
-        seed=config.seed,
-        checkpoint_device=config.device,
-        mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+    source_summaries: list[dict[str, object]] = []
+    source_game_paths: list[Path] = []
+    for source_index, source in enumerate(config.experience_sources):
+        source_dir = artifacts.cycle_dir / f"source-{source_index:03d}-{source.name}"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        games_jsonl = source_dir / "generated-games.jsonl"
+        summary_path = source_dir / "generation-summary.json"
+        run_shogi_generated_games(
+            arena_repo=config.arena_repo,
+            checkpoint=checkpoint,
+            opponent=source.opponent,
+            usi_command=source.usi_command,
+            usi_options=source.usi_options,
+            usi_go_command=source.usi_go_command,
+            out=games_jsonl,
+            generation_summary_path=summary_path,
+            games=source.games,
+            concurrent_games_per_process=config.concurrent_games_per_process,
+            generation_progress_every_plies=config.generation_progress_every_plies,
+            board_backend=config.board_backend,
+            max_plies=config.max_plies,
+            simulations=config.simulations,
+            evaluation_batch_size=config.evaluation_batch_size,
+            generation_worker_processes=config.generation_worker_processes,
+            seed=_source_seed(config.seed, artifacts.cycle_dir.name, source_index),
+            checkpoint_device=config.device,
+            mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+        )
+        source_game_paths.append(games_jsonl)
+        source_summaries.append(
+            {
+                "name": source.name,
+                "opponent": source.opponent,
+                "games": source.games,
+                "path": str(games_jsonl),
+                "summary_path": str(summary_path),
+                "summary": _load_json_if_exists(summary_path),
+            }
+        )
+    _merge_jsonl(source_game_paths, artifacts.games_jsonl)
+    artifacts.generation_summary_path.write_text(
+        json.dumps(_combined_generation_summary(source_summaries), indent=2) + "\n",
+        encoding="utf-8",
     )
 
 
@@ -413,12 +444,10 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("cycles must be positive")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
-    if config.opponent not in {"self", "usi"}:
-        raise ValueError("opponent must be self or usi")
-    if config.opponent == "usi" and not config.usi_command:
-        raise ValueError("usi_command is required when opponent is usi")
-    if config.games <= 0:
-        raise ValueError("games must be positive")
+    if not config.experience_sources:
+        raise ValueError("experience_sources must not be empty")
+    for source in config.experience_sources:
+        _validate_experience_source(source)
     if config.concurrent_games_per_process <= 0:
         raise ValueError("concurrent_games_per_process must be positive")
     if config.generation_progress_every_plies < 0:
@@ -450,6 +479,65 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("at least one loss weight must be positive")
     if config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+
+
+def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
+    if not source.name:
+        raise ValueError("experience source name must not be empty")
+    if not all(character.isalnum() or character in "-_" for character in source.name):
+        raise ValueError("experience source name must contain only letters, numbers, hyphen, or underscore")
+    if source.opponent not in {"self", "usi"}:
+        raise ValueError("experience source opponent must be self or usi")
+    if source.opponent == "usi" and not source.usi_command:
+        raise ValueError("usi_command is required when experience source opponent is usi")
+    if source.games <= 0:
+        raise ValueError("experience source games must be positive")
+
+
+def _source_seed(base_seed: int, cycle_dir_name: str, source_index: int) -> int:
+    cycle_index = int(cycle_dir_name.removeprefix("cycle-"))
+    return base_seed + (cycle_index - 1) * 10000 + source_index
+
+
+def _merge_jsonl(inputs: list[Path], output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as merged:
+        for path in inputs:
+            merged.write(path.read_text(encoding="utf-8"))
+
+
+def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> dict[str, object]:
+    game_count = 0
+    total_plies = 0.0
+    wall_time = 0.0
+    end_reasons: dict[str, int] = {}
+    black_wins = 0
+    white_wins = 0
+    draws = 0
+    for source in source_summaries:
+        summary = source.get("summary")
+        if not isinstance(summary, dict):
+            continue
+        source_games = int(summary.get("game_count", 0))
+        game_count += source_games
+        total_plies += float(summary.get("average_plies", 0.0)) * source_games
+        wall_time += float(summary.get("generation_wall_time_sec", 0.0))
+        black_wins += int(summary.get("black_wins", 0))
+        white_wins += int(summary.get("white_wins", 0))
+        draws += int(summary.get("draws", 0))
+        for reason, count in dict(summary.get("end_reasons", {})).items():
+            end_reasons[str(reason)] = end_reasons.get(str(reason), 0) + int(count)
+    return {
+        "game_count": game_count,
+        "end_reasons": end_reasons,
+        "average_plies": total_plies / game_count if game_count else 0.0,
+        "black_wins": black_wins,
+        "white_wins": white_wins,
+        "draws": draws,
+        "generation_wall_time_sec": wall_time,
+        "plies_per_sec": total_plies / wall_time if wall_time > 0.0 else 0.0,
+        "sources": source_summaries,
+    }
 
 
 def _load_replay_seed_examples(data_selection_path: Path | None) -> list[ShogiPolicyValueExample]:
