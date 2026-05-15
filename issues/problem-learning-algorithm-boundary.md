@@ -36,6 +36,12 @@ The shogi generated-data and online-replay cycle is currently kept under
 `learning/` only if it becomes a reusable learning algorithm or if shogi policy
 value needs multiple clearly distinct update algorithms.
 
+This remains the current state after the shogi RL artifact boundary cleanup.
+`docs/learning-boundaries.md` documents the repository/artifact boundary for
+shogi RL, but that does not imply a generic learning algorithm boundary yet.
+The only reusable code under `intrep.learning` is still a small uniform
+`ReplayBuffer`.
+
 ## Desired Direction
 
 World packages should describe what happens or was recorded.
@@ -46,6 +52,20 @@ meaning, and problem-local metrics.
 Learning algorithms should own update rules, rollout/update cadence, bootstrap
 logic, and algorithm-specific losses when those responsibilities become reusable
 or when one problem has multiple training algorithms.
+
+## Current Trigger For Extraction
+
+Move code from `problems/*/training.py` or problem-local orchestration into
+`intrep.learning` only when at least one of these is true:
+
+- one concrete problem needs multiple clearly named learning algorithms
+- one learning algorithm is reused across multiple problems
+- a problem-local loop starts depending on learning concepts that are not part
+  of its sample/target/model meaning
+
+Until then, problem-local training remains acceptable. Shared learning code
+should stay small and mechanical, such as replay buffers or optimizer helpers,
+not broad role objects like `Learner`, `Actor`, `Evaluator`, or `Publisher`.
 
 ## Acceptance Criteria
 
