@@ -29,6 +29,7 @@ GENERATION_PROGRESS_EVERY_PLIES=${GENERATION_PROGRESS_EVERY_PLIES:-100}
 USI_COMMAND=${USI_COMMAND:-}
 USI_OPTIONS=${USI_OPTIONS:-}
 USI_GO_COMMAND=${USI_GO_COMMAND:-go nodes 1}
+USI_READ_TIMEOUT_SECONDS=${USI_READ_TIMEOUT_SECONDS:-30}
 YANEURAOU_REPOSITORY_URL=${YANEURAOU_REPOSITORY_URL:-https://github.com/yaneurao/YaneuraOu.git}
 
 REPLAY_CAPACITY=${REPLAY_CAPACITY:-131072}
@@ -131,6 +132,7 @@ if [[ \"\$NEEDS_USI\" == \"1\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
 fi
 ONLINE_REPLAY_ARGS=(
   --usi-go-command \"$USI_GO_COMMAND\"
+  --usi-read-timeout-seconds \"$USI_READ_TIMEOUT_SECONDS\"
 )
 IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
 for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
@@ -145,7 +147,7 @@ if [[ \"\$NEEDS_USI\" == \"1\" ]]; then
     fi
   done
 fi
-echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \

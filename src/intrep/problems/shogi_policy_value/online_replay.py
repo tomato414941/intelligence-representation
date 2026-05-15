@@ -26,6 +26,7 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
+    DEFAULT_USI_READ_TIMEOUT_SECONDS,
     run_shogi_generated_games,
     warn_short_max_plies,
 )
@@ -50,6 +51,7 @@ class ShogiGeneratedExperienceSource:
     usi_command: str | None = None
     usi_options: tuple[str, ...] = ()
     usi_go_command: str = "go nodes 1"
+    usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -315,6 +317,7 @@ def _generate_online_replay_cycle_experience(
             seed=_source_seed(config.seed, artifacts.cycle_dir.name, source_index),
             checkpoint_device=config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+            usi_read_timeout_seconds=source.usi_read_timeout_seconds,
         )
         source_game_paths.append(games_jsonl)
         source_summaries.append(

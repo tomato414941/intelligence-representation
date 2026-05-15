@@ -13,6 +13,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedExperienceSource,
     run_shogi_online_replay,
 )
+from intrep.problems.shogi_policy_value.generated_game_production import DEFAULT_USI_READ_TIMEOUT_SECONDS
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -38,6 +39,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--usi-command", help="USI engine command used by usi experience sources.")
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
     parser.add_argument("--usi-go-command", default="go nodes 1")
+    parser.add_argument("--usi-read-timeout-seconds", type=float, default=DEFAULT_USI_READ_TIMEOUT_SECONDS)
     parser.add_argument("--concurrent-games-per-process", type=int, default=1)
     parser.add_argument("--generation-progress-every-plies", type=int, default=0)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
@@ -108,6 +110,7 @@ def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGenera
             usi_command=args.usi_command if kind == "usi" else None,
             usi_options=tuple(args.usi_option) if kind == "usi" else (),
             usi_go_command=args.usi_go_command,
+            usi_read_timeout_seconds=args.usi_read_timeout_seconds,
         )
         sources.append(source)
     return tuple(sources)

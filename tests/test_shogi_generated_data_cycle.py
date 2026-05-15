@@ -560,6 +560,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                                 usi_command="engine",
                                 usi_options=("Threads=2",),
                                 usi_go_command="go nodes 4",
+                                usi_read_timeout_seconds=31,
                             ),
                         ),
                         concurrent_games_per_process=8,
@@ -584,6 +585,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(usi_command[usi_command.index("--white-kind") + 1], "usi")
             self.assertEqual(usi_command[usi_command.index("--white-usi-command") + 1], "engine")
             self.assertEqual(usi_command[usi_command.index("--white-usi-option") + 1], "Threads=2")
+            self.assertEqual(usi_command[usi_command.index("--white-usi-read-timeout-seconds") + 1], "31")
             records = load_shogi_game_records_jsonl(run_dir / "cycle-0001" / "generated-games.jsonl")
             self.assertEqual(len(records), 2)
             summary = json.loads((run_dir / "cycle-0001" / "generation-summary.json").read_text(encoding="utf-8"))

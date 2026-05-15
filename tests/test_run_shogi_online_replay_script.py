@@ -136,6 +136,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "Threads=2",
                     "--usi-go-command",
                     "go nodes 4",
+                    "--usi-read-timeout-seconds",
+                    "31",
                 ]
             )
 
@@ -148,6 +150,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(sources[1].usi_command, "engine")
         self.assertEqual(sources[1].usi_options, ("Threads=2",))
         self.assertEqual(sources[1].usi_go_command, "go nodes 4")
+        self.assertEqual(sources[1].usi_read_timeout_seconds, 31)
 
 
 def _load_script_module() -> ModuleType:

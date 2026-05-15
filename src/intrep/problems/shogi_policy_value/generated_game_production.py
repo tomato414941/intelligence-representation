@@ -7,6 +7,7 @@ from pathlib import Path
 
 STANDARD_SHOGI_MAX_PLIES = 320
 DEFAULT_SHOGI_MAX_PLIES = 320
+DEFAULT_USI_READ_TIMEOUT_SECONDS = 30.0
 
 
 def run_shogi_generated_games(
@@ -30,6 +31,7 @@ def run_shogi_generated_games(
     seed: int | None,
     checkpoint_device: str,
     mcts_move_time_limit_sec: float | None,
+    usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS,
 ) -> None:
     if opponent == "usi" and not usi_command:
         raise SystemExit("--usi-command is required when --opponent usi")
@@ -88,6 +90,8 @@ def run_shogi_generated_games(
                 usi_command or "",
                 "--white-usi-go-command",
                 usi_go_command,
+                "--white-usi-read-timeout-seconds",
+                str(usi_read_timeout_seconds),
             ]
         )
         for option in usi_options:
