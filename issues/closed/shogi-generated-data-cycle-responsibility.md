@@ -1,6 +1,6 @@
 # Shogi Generated Data Cycle Responsibility
 
-Status: open.
+Status: closed.
 
 ## Issue
 
@@ -40,6 +40,22 @@ shogi-local unless another concrete use case requires a shared abstraction.
 This issue can close when `generated_data_cycle.py` no longer owns the full
 generated-data and Online Replay lifecycle in one file, and each remaining
 module has a clear single reason to change.
+
+Met.
+
+## Resolution
+
+The generated-data lifecycle is now split into shogi-local modules:
+
+- `generated_game_production.py`: arena-agent generated-game invocation
+- `generated_data_artifacts.py`: generated-data result artifacts and checkpoint
+  promotion
+- `generated_data_cycle.py`: fixed generated-data training cycle orchestration
+- `online_replay.py`: Online Replay orchestration, replay sampling, Experience
+  Store append, and Online Replay metrics
+
+`generated_data_cycle.py` still re-exports the existing public names so script
+entrypoints do not need to change.
 
 ## Non-Goals
 

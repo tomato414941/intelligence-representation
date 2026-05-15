@@ -68,7 +68,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             )
 
     def test_rejects_invalid_config_before_running_commands(self) -> None:
-        with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run") as run:
+        with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run") as run:
             with self.assertRaisesRegex(ValueError, "games"):
                 run_shogi_generated_data_training_cycle(
                     ShogiGeneratedDataTrainingCycleConfig(
@@ -344,15 +344,15 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
-                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -442,15 +442,15 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
-                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -518,15 +518,15 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
-                    "intrep.problems.shogi_policy_value.generated_data_cycle.load_shogi_policy_value_checkpoint_training_config",
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.save_shogi_policy_value_state_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
