@@ -31,15 +31,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--experience-source",
         action="append",
-        default=[],
+        required=True,
         metavar="KIND:GAMES",
         help="Generated experience source. Repeatable. KIND is self or usi.",
     )
-    parser.add_argument("--opponent", choices=("self", "usi"), default="self")
-    parser.add_argument("--usi-command", help="USI engine command used when --opponent usi.")
+    parser.add_argument("--usi-command", help="USI engine command used by usi experience sources.")
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
     parser.add_argument("--usi-go-command", default="go nodes 1")
-    parser.add_argument("--games", type=int, default=4)
     parser.add_argument("--concurrent-games-per-process", type=int, default=1)
     parser.add_argument("--generation-progress-every-plies", type=int, default=0)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
@@ -96,9 +94,8 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGeneratedExperienceSource, ...]:
-    values = args.experience_source or [f"{args.opponent}:{args.games}"]
     sources = []
-    for index, value in enumerate(values):
+    for index, value in enumerate(args.experience_source):
         kind, separator, games = value.partition(":")
         if not separator:
             raise SystemExit("--experience-source must be KIND:GAMES")

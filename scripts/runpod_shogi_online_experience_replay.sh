@@ -19,15 +19,13 @@ TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/online-experience-replay-runpod-$(date -u +%Y%m%d-%H%M%S)}
 
 CYCLES=${CYCLES:-4}
-GAMES=${GAMES:-64}
+EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-self:64}
 CONCURRENT_GAMES_PER_PROCESS=${CONCURRENT_GAMES_PER_PROCESS:-8}
 GENERATION_WORKER_PROCESSES=${GENERATION_WORKER_PROCESSES:-8}
 SIMULATIONS=${SIMULATIONS:-16}
 NN_LEAF_EVAL_BATCH_LIMIT=${NN_LEAF_EVAL_BATCH_LIMIT:-32}
 MAX_PLIES=${MAX_PLIES:-320}
 GENERATION_PROGRESS_EVERY_PLIES=${GENERATION_PROGRESS_EVERY_PLIES:-100}
-OPPONENT=${OPPONENT:-self}
-EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-}
 USI_COMMAND=${USI_COMMAND:-}
 USI_OPTIONS=${USI_OPTIONS:-}
 USI_GO_COMMAND=${USI_GO_COMMAND:-go nodes 1}
@@ -69,19 +67,13 @@ if [[ ! -d "$REPO_PARENT/$ARENA_REL" ]]; then
   echo "shogi-arena-agent not found: $REPO_PARENT/$ARENA_REL" >&2
   exit 1
 fi
-if [[ "$OPPONENT" != "self" && "$OPPONENT" != "usi" ]]; then
-  echo "OPPONENT must be self or usi: $OPPONENT" >&2
-  exit 1
-fi
-if [[ -n "$EXPERIENCE_SOURCES" ]]; then
-  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< "$EXPERIENCE_SOURCES"
-  for experience_source in "${EXPERIENCE_SOURCE_ITEMS[@]}"; do
-    if [[ "$experience_source" != self:* && "$experience_source" != usi:* ]]; then
-      echo "EXPERIENCE_SOURCES entries must be self:GAMES or usi:GAMES: $experience_source" >&2
-      exit 1
-    fi
-  done
-fi
+IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< "$EXPERIENCE_SOURCES"
+for experience_source in "${EXPERIENCE_SOURCE_ITEMS[@]}"; do
+  if [[ "$experience_source" != self:* && "$experience_source" != usi:* ]]; then
+    echo "EXPERIENCE_SOURCES entries must be self:GAMES or usi:GAMES: $experience_source" >&2
+    exit 1
+  fi
+done
 
 RUNNER_ARGS=()
 if [[ "$SECURE_CLOUD" == "1" ]]; then
@@ -123,17 +115,12 @@ python3 "$RUNPOD_JOB" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR/$PROJECT_REL\"; mkdir -p \"$OUTPUT_DIR\"
 USI_COMMAND_REMOTE=\"$USI_COMMAND\"
 NEEDS_USI=0
-if [[ \"$OPPONENT\" == \"usi\" ]]; then
-  NEEDS_USI=1
-fi
-if [[ -n \"$EXPERIENCE_SOURCES\" ]]; then
-  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
-  for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
-    if [[ \"\$experience_source\" == usi:* ]]; then
-      NEEDS_USI=1
-    fi
-  done
-fi
+IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
+for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
+  if [[ \"\$experience_source\" == usi:* ]]; then
+    NEEDS_USI=1
+  fi
+done
 if [[ \"\$NEEDS_USI\" == \"1\" && -z \"\$USI_COMMAND_REMOTE\" ]]; then
   apt-get update >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential >/dev/null
@@ -145,14 +132,10 @@ fi
 ONLINE_REPLAY_ARGS=(
   --usi-go-command \"$USI_GO_COMMAND\"
 )
-if [[ -n \"$EXPERIENCE_SOURCES\" ]]; then
-  IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
-  for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
-    ONLINE_REPLAY_ARGS+=(--experience-source \"\$experience_source\")
-  done
-else
-  ONLINE_REPLAY_ARGS+=(--opponent \"$OPPONENT\")
-fi
+IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
+for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
+  ONLINE_REPLAY_ARGS+=(--experience-source \"\$experience_source\")
+done
 if [[ \"\$NEEDS_USI\" == \"1\" ]]; then
   ONLINE_REPLAY_ARGS+=(--usi-command \"\$USI_COMMAND_REMOTE\")
   IFS=';' read -ra USI_OPTION_ITEMS <<< \"$USI_OPTIONS\"
@@ -162,7 +145,7 @@ if [[ \"\$NEEDS_USI\" == \"1\" ]]; then
     fi
   done
 fi
-echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES opponent=$OPPONENT usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND replay_capacity=$REPLAY_CAPACITY replay_sample_size=$REPLAY_SAMPLE_SIZE min_replay_size=$MIN_REPLAY_SIZE eval_ratio=$EVAL_RATIO max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT num_workers=$NUM_WORKERS next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
@@ -176,7 +159,6 @@ echo \"online_experience_replay_config cycles=$CYCLES games=$GAMES experience_so
   --next-checkpoint \"$NEXT_CHECKPOINT\" \
   --arena-repo \"\$REMOTE_DIR/$ARENA_REL\" \
   \"\${ONLINE_REPLAY_ARGS[@]}\" \
-  --games \"$GAMES\" \
   --concurrent-games-per-process \"$CONCURRENT_GAMES_PER_PROCESS\" \
   --generation-worker-processes \"$GENERATION_WORKER_PROCESSES\" \
   --generation-progress-every-plies \"$GENERATION_PROGRESS_EVERY_PLIES\" \
