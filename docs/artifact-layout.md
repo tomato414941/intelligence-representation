@@ -10,6 +10,8 @@ in [datasets.md](datasets.md).
   logs.
 - `data/shogi/training-data-bundles/<name>/` holds durable shogi Training Data Bundles / Dataset
   Snapshots.
+- `data/shogi/training-data-bundles/<name>/cache/` may hold rebuildable tensor
+  caches derived from that bundle's `data-selection.json`.
 - Keep `data/shogi/training-data-bundles/current/` as the normal active Training Data Bundle. Use
   `runs/` for temporary bundles, and add another durable bundle only when it has a
   concrete reuse reason.

@@ -11,6 +11,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     ShogiPositionValueExample,
     shogi_move_choice_example_from_board,
+    tensorize_shogi_policy_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
@@ -98,6 +99,20 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
     def test_dataset_can_be_batched(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         loader = DataLoader(ShogiPolicyValueDataset(examples), batch_size=2)
+
+        position_token_ids, candidate_move_features, candidate_masks, label_indexes, policy_targets, value_targets = next(iter(loader))
+
+        self.assertEqual(tuple(position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
+        self.assertEqual(tuple(candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(tuple(candidate_masks.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(label_indexes.shape), (2,))
+        self.assertEqual(tuple(policy_targets.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(value_targets.shape), (2,))
+
+    def test_policy_value_dataset_accepts_tensorized_samples(self) -> None:
+        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        samples = [tensorize_shogi_policy_value_example(example) for example in examples]
+        loader = DataLoader(ShogiPolicyValueDataset(samples), batch_size=2)
 
         position_token_ids, candidate_move_features, candidate_masks, label_indexes, policy_targets, value_targets = next(iter(loader))
 

@@ -13,7 +13,11 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyValueDataset,
+    ShogiPolicyValueDatasetItem,
+    ShogiPolicyValueExample,
+)
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
@@ -93,7 +97,7 @@ def evaluate_shogi_policy_value_checkpoint(
 
 
 def _loader(
-    examples: list[ShogiPolicyValueExample],
+    examples: list[ShogiPolicyValueDatasetItem],
     *,
     batch_size: int,
     num_workers: int,

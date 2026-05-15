@@ -16,7 +16,11 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyValueDatasetItem,
+    ShogiPolicyValueExample,
+)
+from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
@@ -27,6 +31,7 @@ from intrep.problems.shogi_policy_value.training import (
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a shogi policy/value model.")
     parser.add_argument("--data-selection", type=Path, required=True)
+    parser.add_argument("--tensor-cache", type=Path)
     parser.add_argument("--init-checkpoint-path", type=Path)
     parser.add_argument("--checkpoint-path", type=Path, required=True)
     parser.add_argument("--best-checkpoint-path", type=Path)
@@ -55,7 +60,27 @@ def main() -> None:
     args = parser.parse_args()
 
     data_selection = load_shogi_policy_value_data_selection(args.data_selection)
-    train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
+    if args.tensor_cache is None:
+        raw_train_examples, raw_eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
+        train_examples: list[ShogiPolicyValueDatasetItem] = raw_train_examples
+        eval_examples: list[ShogiPolicyValueDatasetItem] = raw_eval_examples
+        tensor_cache_path = None
+        raw_train_case_count = len(raw_train_examples)
+        raw_eval_case_count = len(raw_eval_examples)
+        train_policy_target_summary = _policy_target_summary(raw_train_examples)
+        eval_policy_target_summary = _policy_target_summary(raw_eval_examples)
+    else:
+        tensor_cache = load_shogi_policy_value_tensor_cache(
+            args.tensor_cache,
+            expected_data_selection=data_selection,
+        )
+        train_examples = tensor_cache.train_samples
+        eval_examples = tensor_cache.eval_samples
+        tensor_cache_path = str(args.tensor_cache)
+        raw_train_case_count = len(train_examples)
+        raw_eval_case_count = len(eval_examples)
+        train_policy_target_summary = tensor_cache.train_policy_target_summary
+        eval_policy_target_summary = tensor_cache.eval_policy_target_summary
 
     config = ShogiPolicyValueTrainingConfig(
         max_steps=args.max_steps,
@@ -99,13 +124,14 @@ def main() -> None:
         args.best_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         save_shogi_policy_value_state_checkpoint(args.best_checkpoint_path, result.best_model_state_dict, result.config)
     metrics = {
-        "raw_train_case_count": len(train_examples),
-        "raw_eval_case_count": len(eval_examples),
+        "raw_train_case_count": raw_train_case_count,
+        "raw_eval_case_count": raw_eval_case_count,
         "used_eval_case_count": result.metrics.eval_case_count,
-        "train_policy_target_summary": _policy_target_summary(train_examples),
-        "eval_policy_target_summary": _policy_target_summary(eval_examples),
+        "train_policy_target_summary": train_policy_target_summary,
+        "eval_policy_target_summary": eval_policy_target_summary,
         "data_selection_path": str(args.data_selection),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
+        "tensor_cache_path": tensor_cache_path,
         "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,

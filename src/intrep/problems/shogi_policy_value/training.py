@@ -11,7 +11,11 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset, ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyValueDataset,
+    ShogiPolicyValueDatasetItem,
+    ShogiPolicyValueExample,
+)
 from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
@@ -108,9 +112,9 @@ class ShogiPolicyValueTrainingProgress:
 
 
 def train_shogi_policy_value_model(
-    examples: Sequence[ShogiPolicyValueExample],
+    examples: Sequence[ShogiPolicyValueDatasetItem],
     *,
-    eval_examples: Sequence[ShogiPolicyValueExample] | None = None,
+    eval_examples: Sequence[ShogiPolicyValueDatasetItem] | None = None,
     config: ShogiPolicyValueTrainingConfig | None = None,
     initial_state_dict: object | None = None,
     progress_callback: Callable[[ShogiPolicyValueTrainingProgress], None] | None = None,

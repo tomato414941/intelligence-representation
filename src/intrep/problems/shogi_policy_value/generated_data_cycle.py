@@ -26,7 +26,11 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyValueExample,
+    TensorizedShogiPolicyValueSample,
+    tensorize_shogi_policy_value_examples,
+)
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingResult,
@@ -395,10 +399,11 @@ def run_shogi_online_replay(
     run_dir = config.run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = config.checkpoint
-    replay = ReplayBuffer[ShogiPolicyValueExample](capacity=config.replay_capacity)
+    replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
     preloaded_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
     fixed_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
-    replay.extend(preloaded_examples)
+    fixed_eval_samples = tensorize_shogi_policy_value_examples(fixed_eval_examples)
+    replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
     generator = torch.Generator().manual_seed(config.seed)
     cycle_results: list[ShogiOnlineReplayCycleResult] = []
     for cycle_index in range(1, config.cycles + 1):
@@ -408,14 +413,14 @@ def run_shogi_online_replay(
             store_dir=config.experience_store_dir,
             games_jsonl=artifacts.games_jsonl,
         )
-        new_examples, generated_eval_examples, eval_examples = _load_online_replay_cycle_examples(
+        new_examples, generated_eval_examples = _load_online_replay_cycle_examples(
             artifacts=artifacts,
             eval_ratio=config.eval_ratio,
-            fixed_eval_examples=fixed_eval_examples,
         )
-        replay.extend(new_examples)
+        eval_samples = fixed_eval_samples or tensorize_shogi_policy_value_examples(generated_eval_examples)
+        replay.extend(tensorize_shogi_policy_value_examples(new_examples))
         if len(replay) < config.min_replay_size:
-            sampled_examples: list[ShogiPolicyValueExample] = []
+            sampled_examples: list[TensorizedShogiPolicyValueSample] = []
             training_skipped = True
             effective_checkpoint = checkpoint
             effective_best_checkpoint = checkpoint
@@ -428,7 +433,7 @@ def run_shogi_online_replay(
                 checkpoint=checkpoint,
                 artifacts=artifacts,
                 sampled_examples=sampled_examples,
-                eval_examples=eval_examples,
+                eval_examples=eval_samples,
             )
             training_skipped = False
             effective_checkpoint = artifacts.checkpoint_path
@@ -530,8 +535,7 @@ def _load_online_replay_cycle_examples(
     *,
     artifacts: ShogiOnlineReplayCycleArtifacts,
     eval_ratio: float,
-    fixed_eval_examples: list[ShogiPolicyValueExample],
-) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
+) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
     split_shogi_game_records_jsonl(
         games_jsonl=artifacts.games_jsonl,
         train_jsonl=artifacts.train_jsonl,
@@ -540,8 +544,7 @@ def _load_online_replay_cycle_examples(
     )
     new_examples = _load_generated_policy_value_examples(artifacts.train_jsonl)
     generated_eval_examples = _load_generated_policy_value_examples(artifacts.eval_jsonl)
-    eval_examples = fixed_eval_examples or generated_eval_examples
-    return new_examples, generated_eval_examples, eval_examples
+    return new_examples, generated_eval_examples
 
 
 def _train_online_replay_cycle(
@@ -549,8 +552,8 @@ def _train_online_replay_cycle(
     config: ShogiOnlineReplayConfig,
     checkpoint: Path,
     artifacts: ShogiOnlineReplayCycleArtifacts,
-    sampled_examples: list[ShogiPolicyValueExample],
-    eval_examples: list[ShogiPolicyValueExample],
+    sampled_examples: list[TensorizedShogiPolicyValueSample],
+    eval_examples: list[TensorizedShogiPolicyValueSample],
 ) -> ShogiPolicyValueTrainingResult:
     training_config = _training_config_from_checkpoint(checkpoint, config)
     training_result = train_shogi_policy_value_model(

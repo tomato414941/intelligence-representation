@@ -42,7 +42,7 @@ Follow-up work is split into narrower issues:
 
 Existing narrower issues also cover parts of the original list:
 
-- [`../shogi-training-data-bundle-tensor-cache.md`](../shogi-training-data-bundle-tensor-cache.md)
+- [`shogi-training-data-bundle-tensor-cache.md`](shogi-training-data-bundle-tensor-cache.md)
   tracks shogi Training Data Bundle cache format.
 - [`text-tokenizer-artifact-policy.md`](text-tokenizer-artifact-policy.md)
   tracks tokenizer workflow and saved tokenizer expectations.

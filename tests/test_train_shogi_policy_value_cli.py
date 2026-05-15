@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
+from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -220,6 +221,75 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["train_policy_target_summary"]["mean_nonzero_count"], 1.0)
             self.assertEqual(metrics["eval_policy_target_summary"]["available_count"], 0)
             self.assertEqual(metrics["eval_policy_target_summary"]["missing_count"], 2)
+
+    def test_trains_from_tensor_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors.pt"
+            checkpoint_path = root / "shogi.pt"
+            metrics_path = root / "metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+            )
+
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_policy_value",
+                    "--data-selection",
+                    str(data_selection_path),
+                    "--tensor-cache",
+                    str(tensor_cache_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--max-steps",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                ],
+            ), patch("sys.stdout", new_callable=StringIO), patch(
+                "intrep.train_shogi_policy_value.load_shogi_policy_value_data_selection_examples",
+                side_effect=AssertionError("tensor cache training should not rebuild examples from JSONL"),
+            ):
+                main()
+
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
+            self.assertEqual(metrics["raw_train_case_count"], 2)
+            self.assertEqual(metrics["raw_eval_case_count"], 2)
 
     def test_initializes_from_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

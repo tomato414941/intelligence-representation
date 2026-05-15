@@ -17,6 +17,7 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     run_shogi_generated_data_training_loop,
     run_shogi_generated_data_training_cycle,
 )
+from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyValueSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
@@ -338,6 +339,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
+                self.assertIsInstance(examples[0], TensorizedShogiPolicyValueSample)
+                self.assertIsInstance(eval_examples[0], TensorizedShogiPolicyValueSample)
                 return _training_result(config)
 
             with (

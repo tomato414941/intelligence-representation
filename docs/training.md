@@ -134,6 +134,26 @@ Shogi policy/value training consumes a fixed Training Data Bundle through its
 a stable record set or Experience Store-derived game-record JSONL, not a long
 command line of run-local outputs.
 
+Repeated training can use a rebuildable tensor cache derived from the same
+`data-selection.json`:
+
+```sh
+uv run python scripts/build_shogi_policy_value_tensor_cache.py \
+  --data-selection data/shogi/training-data-bundles/current/data-selection.json
+```
+
+```sh
+uv run python -m intrep.train_shogi_policy_value \
+  --data-selection data/shogi/training-data-bundles/current/data-selection.json \
+  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi-policy-value-tensors.pt \
+  --checkpoint-path runs/shogi/checkpoint.pt \
+  --metrics-path runs/shogi/metrics.json
+```
+
+The cache is an acceleration artifact, not a source of truth. The command
+rejects a cache whose embedded data selection does not match the requested
+`data-selection.json`.
+
 `scripts/create_shogi_training_data_bundle.py` still accepts repeated
 `--train-games` inputs for temporary experiments and explicit source mixes. When
 multiple train inputs are used, the bundle manifest records every source path

@@ -55,6 +55,18 @@ class ShogiPolicyValueExample:
         _validate_value_target(self.value_target)
 
 
+@dataclass(frozen=True)
+class TensorizedShogiPolicyValueSample:
+    position_token_ids: torch.Tensor
+    candidate_move_features: torch.Tensor
+    label: torch.Tensor
+    policy_targets: torch.Tensor
+    value_target: torch.Tensor
+
+
+ShogiPolicyValueDatasetItem = ShogiPolicyValueExample | TensorizedShogiPolicyValueSample
+
+
 def shogi_move_choice_example_from_board(board: shogi.Board, chosen_move: str) -> ShogiMoveChoiceExample:
     legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
     return ShogiMoveChoiceExample(
@@ -84,11 +96,11 @@ class ShogiMoveChoiceDataset(TorchDataset):
 
 
 class ShogiPolicyValueDataset(TorchDataset):
-    def __init__(self, examples: Sequence[ShogiPolicyValueExample]) -> None:
+    def __init__(self, examples: Sequence[ShogiPolicyValueDatasetItem]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
         self.examples = tuple(examples)
-        self.max_choice_count = max(len(example.legal_moves) for example in self.examples)
+        self.max_choice_count = max(_choice_count(example) for example in self.examples)
 
     def __len__(self) -> int:
         return len(self.examples)
@@ -96,19 +108,38 @@ class ShogiPolicyValueDataset(TorchDataset):
     def __getitem__(self, index: int):
         if torch is None:
             raise RuntimeError("torch is required to materialize ShogiPolicyValueDataset items")
-        position_token_ids, candidate_move_features, candidate_mask, move_index, policy_targets = _policy_sample(
-            self.examples[index],
-            max_choice_count=self.max_choice_count,
-        )
-        value_target = self.examples[index].value_target
+        sample = _tensorized_policy_value_sample(self.examples[index])
         return (
-            position_token_ids,
-            candidate_move_features,
-            candidate_mask,
-            move_index,
-            policy_targets,
-            torch.tensor(float("nan") if value_target is None else value_target, dtype=torch.float32),
+            sample.position_token_ids,
+            _pad_candidate_move_features(sample.candidate_move_features, max_choice_count=self.max_choice_count),
+            _candidate_mask(_choice_count(sample), max_choice_count=self.max_choice_count),
+            sample.label,
+            _pad_policy_targets(sample.policy_targets, max_choice_count=self.max_choice_count),
+            sample.value_target,
         )
+
+
+def tensorize_shogi_policy_value_example(example: ShogiPolicyValueExample) -> TensorizedShogiPolicyValueSample:
+    position_token_ids, candidate_move_features, _candidate_mask, move_index, policy_targets = _policy_sample(
+        example,
+        max_choice_count=len(example.legal_moves),
+    )
+    return TensorizedShogiPolicyValueSample(
+        position_token_ids=position_token_ids,
+        candidate_move_features=candidate_move_features,
+        label=move_index,
+        policy_targets=policy_targets,
+        value_target=torch.tensor(
+            float("nan") if example.value_target is None else example.value_target,
+            dtype=torch.float32,
+        ),
+    )
+
+
+def tensorize_shogi_policy_value_examples(
+    examples: Sequence[ShogiPolicyValueExample],
+) -> list[TensorizedShogiPolicyValueSample]:
+    return [tensorize_shogi_policy_value_example(example) for example in examples]
 
 
 def _policy_sample(
@@ -143,6 +174,43 @@ def _policy_sample(
         torch.tensor(move_index, dtype=torch.long),
         policy_targets,
     )
+
+
+def _tensorized_policy_value_sample(example: ShogiPolicyValueDatasetItem) -> TensorizedShogiPolicyValueSample:
+    if isinstance(example, TensorizedShogiPolicyValueSample):
+        return example
+    return tensorize_shogi_policy_value_example(example)
+
+
+def _choice_count(example: ShogiPolicyValueDatasetItem) -> int:
+    if isinstance(example, TensorizedShogiPolicyValueSample):
+        return int(example.candidate_move_features.shape[0])
+    return len(example.legal_moves)
+
+
+def _candidate_mask(choice_count: int, *, max_choice_count: int) -> torch.Tensor:
+    candidate_mask = torch.zeros(max_choice_count, dtype=torch.bool)
+    candidate_mask[:choice_count] = True
+    return candidate_mask
+
+
+def _pad_candidate_move_features(candidate_move_features: torch.Tensor, *, max_choice_count: int) -> torch.Tensor:
+    if candidate_move_features.shape[0] == max_choice_count:
+        return candidate_move_features
+    padded = torch.zeros(
+        (max_choice_count, candidate_move_features.shape[1]),
+        dtype=candidate_move_features.dtype,
+    )
+    padded[: candidate_move_features.shape[0]] = candidate_move_features
+    return padded
+
+
+def _pad_policy_targets(policy_targets: torch.Tensor, *, max_choice_count: int) -> torch.Tensor:
+    if policy_targets.shape[0] == max_choice_count:
+        return policy_targets
+    padded = torch.zeros(max_choice_count, dtype=policy_targets.dtype)
+    padded[: policy_targets.shape[0]] = policy_targets
+    return padded
 
 
 def _validate_policy_fields(example: ShogiMoveChoiceExample | ShogiPolicyValueExample) -> None:

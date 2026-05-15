@@ -65,7 +65,7 @@ Candidate paths:
 The immediate operational risk is mitigated by the RunPod default
 `NUM_WORKERS=0`, which avoids private-copy RAM growth from DataLoader workers.
 The remaining cache-format work is tracked by
-[`../shogi-training-data-bundle-tensor-cache.md`](../shogi-training-data-bundle-tensor-cache.md).
+[`shogi-training-data-bundle-tensor-cache.md`](shogi-training-data-bundle-tensor-cache.md).
 
 ## Acceptance Criteria
 
