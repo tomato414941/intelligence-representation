@@ -36,8 +36,8 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | Evidence level | Tiny or toy datasets are useful for quick checks, but larger or problem-specific datasets are needed for stronger evaluation claims. |
 | WikiText-2 raw data | Local raw data is `data/wikitext-2/raw/wiki.train.raw.txt`, `data/wikitext-2/raw/wiki.valid.raw.txt`, and `data/wikitext-2/raw/wiki.test.raw.txt` from `Salesforce/wikitext` on Hugging Face. |
 | TinyStories raw data | Local raw data is `data/tinystories/raw/TinyStoriesV2-GPT4-train.txt` and `data/tinystories/raw/TinyStoriesV2-GPT4-valid.txt` from `roneneldan/TinyStories` on Hugging Face. |
-| Qhapaq raw data | Local raw data is partial: `data/qhapaq/raw/results/` contains all fetched `kifdownload` result CSVs, while `data/qhapaq/raw/kiffiles/` contains only selected available `.7z` kif archives. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
-| Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval splits belong in Data Selection or fixed training data bundles, not in `processed/`. |
+| Qhapaq raw data | Local raw data under `data/qhapaq/raw/results/` contains the fetched `kifdownload` result CSVs. Local raw KIF archives under `data/qhapaq/raw/kiffiles/` contain every currently downloadable `.7z` link found on the source page; unavailable links are recorded in the local manifest. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
+| Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_all_games.jsonl`; train/eval splits belong in Data Selection or fixed training data bundles, not in `processed/`. Processed records may need regeneration after raw KIF archive refreshes. |
 
 ## Preparation Entrypoints
 
