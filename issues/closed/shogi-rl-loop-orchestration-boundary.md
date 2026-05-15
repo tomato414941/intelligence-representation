@@ -1,6 +1,6 @@
 # Shogi RL Loop Orchestration Boundary
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -68,3 +68,30 @@ that:
   replay/training decisions
 - avoids Python import cycles between the two repositories
 - uses a documented artifact contract for generated games and evaluation output
+
+## Resolution
+
+The current boundary is explicit enough to close this issue.
+
+`intelligence-representation` owns the generated-data and Online Replay loops
+in `src/intrep/problems/shogi_policy_value/generated_data_cycle.py`. Those loops
+invoke `shogi-arena-agent` through `scripts/generate_shogi_games.py`, then read
+the produced game-record JSONL, split or append the records, update the model,
+write metrics, and promote the next checkpoint.
+
+`shogi-arena-agent` owns runtime game generation. It constructs checkpoint,
+YaneuraOu, or deterministic players; applies direct or MCTS move selection;
+runs games; and writes raw game-record JSONL. It may load
+`intelligence-representation` checkpoints for inference, but the RL learning
+loop does not import arena internals.
+
+The artifact boundary is now documented in `docs/learning-boundaries.md`.
+Checkpoint actor provenance was addressed separately in
+`closed/shogi-checkpoint-actor-provenance.md`: generated records can carry
+checkpoint identity, move selector, and MCTS search settings, and Experience
+Store / Training Data Bundle manifests summarize those actors.
+
+Reopen or create a new issue if CLI/subprocess overhead becomes measured as a
+material blocker, if self-play needs distributed orchestration, or if a shared
+game-generation schema library becomes smaller than the current artifact
+boundary.
