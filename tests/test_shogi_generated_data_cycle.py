@@ -18,6 +18,10 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     run_shogi_generated_data_training_loop,
     run_shogi_generated_data_training_cycle,
 )
+from intrep.problems.shogi_policy_value.generated_game_production import (
+    checkpoint_generated_player,
+    usi_engine_generated_player,
+)
 from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyValueSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
@@ -45,6 +49,45 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
         initial_position_sfen=shogi.Board().sfen(),
         transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
+    )
+
+
+def _self_play_source(*, games: int, name: str = "self-play") -> ShogiGeneratedExperienceSource:
+    return ShogiGeneratedExperienceSource(
+        name=name,
+        games=games,
+        black_player=checkpoint_generated_player("black"),
+        white_player=checkpoint_generated_player("white"),
+    )
+
+
+def _checkpoint_vs_usi_source(*, games: int, name: str = "checkpoint-vs-usi") -> ShogiGeneratedExperienceSource:
+    return ShogiGeneratedExperienceSource(
+        name=name,
+        games=games,
+        black_player=checkpoint_generated_player("checkpoint"),
+        white_player=usi_engine_generated_player(
+            name="usi-engine",
+            command="engine",
+            options=("Threads=2",),
+            go_command="go nodes 4",
+            read_timeout_seconds=31,
+        ),
+    )
+
+
+def _usi_vs_checkpoint_source(*, games: int, name: str = "usi-vs-checkpoint") -> ShogiGeneratedExperienceSource:
+    return ShogiGeneratedExperienceSource(
+        name=name,
+        games=games,
+        black_player=usi_engine_generated_player(
+            name="usi-engine",
+            command="engine",
+            options=("Threads=2",),
+            go_command="go nodes 4",
+            read_timeout_seconds=31,
+        ),
+        white_player=checkpoint_generated_player("checkpoint"),
     )
 
 
@@ -81,13 +124,13 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
         run.assert_not_called()
 
-    def test_requires_usi_command_for_usi_opponent(self) -> None:
+    def test_requires_usi_command_for_usi_engine_player(self) -> None:
         with self.assertRaisesRegex(ValueError, "usi"):
             run_shogi_generated_data_training_cycle(
                 ShogiGeneratedDataTrainingCycleConfig(
                     checkpoint=Path("source.pt"),
                     run_dir=Path("cycle"),
-                    opponent="usi",
+                    white_player=usi_engine_generated_player(name="engine", command=""),
                 )
             )
 
@@ -169,7 +212,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(
                 result.generation,
                 {
-                    "opponent": "self",
+                    "black_player": {"kind": "checkpoint", "name": "black"},
+                    "white_player": {"kind": "checkpoint", "name": "white"},
                     "games": 2,
                     "concurrent_games_per_process": 2,
                     "generation_progress_every_plies": 0,
@@ -210,10 +254,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         arena_repo=arena_repo,
-                        opponent="usi",
-                        usi_command="engine-command",
-                        usi_options=("Threads=2",),
-                        usi_go_command="go nodes 2",
+                        white_player=usi_engine_generated_player(
+                            name="engine",
+                            command="engine-command",
+                            options=("Threads=2",),
+                            go_command="go nodes 2",
+                        ),
                         games=2,
                         device="cuda",
                     )
@@ -366,7 +412,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_sample_size=3,
                         min_replay_size=1,
                         arena_repo=arena_repo,
-                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
+                        experience_sources=(_self_play_source(games=2),),
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
@@ -467,7 +513,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_seed_data_selection=bundle_dir / "data-selection.json",
                         training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
-                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
+                        experience_sources=(_self_play_source(games=2),),
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
@@ -509,6 +555,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     out_path = Path(command[command.index("--out") + 1])
                     if command[command.index("--white-kind") + 1] == "usi":
                         records = [_record(("2g2f", "8c8d"), "white")]
+                    elif command[command.index("--black-kind") + 1] == "usi":
+                        records = [_record(("7g7f", "3c3d"), "black")]
                     else:
                         records = [_record(("7g7f", "3c3d"), "black")]
                     write_shogi_game_records_jsonl(out_path, records)
@@ -552,24 +600,17 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         min_replay_size=1,
                         arena_repo=arena_repo,
                         experience_sources=(
-                            ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=1),
-                            ShogiGeneratedExperienceSource(
-                                name="checkpoint-vs-usi",
-                                opponent="usi",
-                                games=1,
-                                usi_command="engine",
-                                usi_options=("Threads=2",),
-                                usi_go_command="go nodes 4",
-                                usi_read_timeout_seconds=31,
-                            ),
+                            _self_play_source(games=1),
+                            _checkpoint_vs_usi_source(games=1),
+                            _usi_vs_checkpoint_source(games=1),
                         ),
                         concurrent_games_per_process=8,
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )
 
-            self.assertEqual(result.cycles[0].appended_examples, 2)
-            self.assertEqual(run.call_count, 2)
+            self.assertEqual(result.cycles[0].appended_examples, 4)
+            self.assertEqual(run.call_count, 3)
             self_play_command = run.call_args_list[0].args[0]
             self.assertEqual(self_play_command[self_play_command.index("--seed") + 1], "7")
             self.assertEqual(
@@ -586,11 +627,19 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(usi_command[usi_command.index("--white-usi-command") + 1], "engine")
             self.assertEqual(usi_command[usi_command.index("--white-usi-option") + 1], "Threads=2")
             self.assertEqual(usi_command[usi_command.index("--white-usi-read-timeout-seconds") + 1], "31")
+            reversed_usi_command = run.call_args_list[2].args[0]
+            self.assertEqual(reversed_usi_command[reversed_usi_command.index("--black-kind") + 1], "usi")
+            self.assertEqual(reversed_usi_command[reversed_usi_command.index("--black-usi-command") + 1], "engine")
+            self.assertEqual(reversed_usi_command[reversed_usi_command.index("--white-kind") + 1], "checkpoint")
             records = load_shogi_game_records_jsonl(run_dir / "cycle-0001" / "generated-games.jsonl")
-            self.assertEqual(len(records), 2)
+            self.assertEqual(len(records), 3)
             summary = json.loads((run_dir / "cycle-0001" / "generation-summary.json").read_text(encoding="utf-8"))
-            self.assertEqual(summary["game_count"], 2)
-            self.assertEqual([source["name"] for source in summary["sources"]], ["self-play", "checkpoint-vs-usi"])
+            self.assertEqual(summary["game_count"], 3)
+            self.assertEqual([source["name"] for source in summary["sources"]], ["self-play", "checkpoint-vs-usi", "usi-vs-checkpoint"])
+            self.assertEqual(summary["sources"][1]["black_player"]["kind"], "checkpoint")
+            self.assertEqual(summary["sources"][1]["white_player"]["kind"], "usi_engine")
+            self.assertEqual(summary["sources"][2]["black_player"]["kind"], "usi_engine")
+            self.assertEqual(summary["sources"][2]["white_player"]["kind"], "checkpoint")
 
     def test_online_replay_passes_training_config_fields(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -638,7 +687,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_sample_size=8,
                         min_replay_size=1,
                         arena_repo=arena_repo,
-                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=1),),
+                        experience_sources=(_self_play_source(games=1),),
                         training_config=ShogiPolicyValueTrainingConfig(
                             max_steps=9,
                             batch_size=4,
@@ -723,7 +772,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         replay_sample_size=3,
                         min_replay_size=3,
                         arena_repo=arena_repo,
-                        experience_sources=(ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=2),),
+                        experience_sources=(_self_play_source(games=2),),
                         training_config=ShogiPolicyValueTrainingConfig(max_steps=1),
                     )
                 )

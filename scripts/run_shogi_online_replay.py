@@ -13,7 +13,11 @@ from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedExperienceSource,
     run_shogi_online_replay,
 )
-from intrep.problems.shogi_policy_value.generated_game_production import DEFAULT_USI_READ_TIMEOUT_SECONDS
+from intrep.problems.shogi_policy_value.generated_game_production import (
+    DEFAULT_USI_READ_TIMEOUT_SECONDS,
+    checkpoint_generated_player,
+    usi_engine_generated_player,
+)
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
 
@@ -35,9 +39,12 @@ def main(argv: list[str] | None = None) -> None:
         action="append",
         required=True,
         metavar="KIND:GAMES",
-        help="Generated experience source. Repeatable. KIND is self or usi.",
+        help=(
+            "Generated experience source. Repeatable. KIND is checkpoint-self, "
+            "checkpoint-black-vs-usi, usi-black-vs-checkpoint, or checkpoint-vs-usi-balanced."
+        ),
     )
-    parser.add_argument("--usi-command", help="USI engine command used by usi experience sources.")
+    parser.add_argument("--usi-command", help="USI engine command used by usi_engine players.")
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
     parser.add_argument("--usi-go-command", default="go nodes 1")
     parser.add_argument("--usi-read-timeout-seconds", type=float, default=DEFAULT_USI_READ_TIMEOUT_SECONDS)
@@ -121,19 +128,65 @@ def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGenera
         kind, separator, games = value.partition(":")
         if not separator:
             raise SystemExit("--experience-source must be KIND:GAMES")
-        if kind not in {"self", "usi"}:
-            raise SystemExit("--experience-source KIND must be self or usi")
-        source = ShogiGeneratedExperienceSource(
-            name=f"self-play-{index}" if kind == "self" else f"checkpoint-vs-usi-{index}",
-            opponent=kind,
-            games=int(games),
-            usi_command=args.usi_command if kind == "usi" else None,
-            usi_options=tuple(args.usi_option) if kind == "usi" else (),
-            usi_go_command=args.usi_go_command,
-            usi_read_timeout_seconds=args.usi_read_timeout_seconds,
+        game_count = int(games)
+        if kind == "checkpoint-self":
+            sources.append(
+                ShogiGeneratedExperienceSource(
+                    name=f"checkpoint-self-{index}",
+                    games=game_count,
+                    black_player=checkpoint_generated_player("black"),
+                    white_player=checkpoint_generated_player("white"),
+                )
+            )
+            continue
+        if kind == "checkpoint-black-vs-usi":
+            sources.append(_checkpoint_vs_usi_source(args, name=f"checkpoint-black-vs-usi-{index}", games=game_count))
+            continue
+        if kind == "usi-black-vs-checkpoint":
+            sources.append(_usi_vs_checkpoint_source(args, name=f"usi-black-vs-checkpoint-{index}", games=game_count))
+            continue
+        if kind == "checkpoint-vs-usi-balanced":
+            black_games = game_count // 2 + game_count % 2
+            white_games = game_count // 2
+            sources.append(_checkpoint_vs_usi_source(args, name=f"checkpoint-black-vs-usi-{index}", games=black_games))
+            if white_games:
+                sources.append(_usi_vs_checkpoint_source(args, name=f"usi-black-vs-checkpoint-{index}", games=white_games))
+            continue
+        raise SystemExit(
+            "--experience-source KIND must be checkpoint-self, checkpoint-black-vs-usi, "
+            "usi-black-vs-checkpoint, or checkpoint-vs-usi-balanced"
         )
-        sources.append(source)
     return tuple(sources)
+
+
+def _usi_player(args: argparse.Namespace, *, name: str):
+    if not args.usi_command:
+        raise SystemExit("--usi-command is required for usi_engine experience sources")
+    return usi_engine_generated_player(
+        name=name,
+        command=args.usi_command,
+        options=tuple(args.usi_option),
+        go_command=args.usi_go_command,
+        read_timeout_seconds=args.usi_read_timeout_seconds,
+    )
+
+
+def _checkpoint_vs_usi_source(args: argparse.Namespace, *, name: str, games: int) -> ShogiGeneratedExperienceSource:
+    return ShogiGeneratedExperienceSource(
+        name=name,
+        games=games,
+        black_player=checkpoint_generated_player("checkpoint"),
+        white_player=_usi_player(args, name="usi_engine"),
+    )
+
+
+def _usi_vs_checkpoint_source(args: argparse.Namespace, *, name: str, games: int) -> ShogiGeneratedExperienceSource:
+    return ShogiGeneratedExperienceSource(
+        name=name,
+        games=games,
+        black_player=_usi_player(args, name="usi_engine"),
+        white_player=checkpoint_generated_player("checkpoint"),
+    )
 
 
 if __name__ == "__main__":

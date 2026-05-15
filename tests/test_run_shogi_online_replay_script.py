@@ -53,7 +53,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "--training-eval-data-selection",
                     "data/shogi/training-data-bundles/online/data-selection.json",
                     "--experience-source",
-                    "self:4",
+                    "checkpoint-self:4",
                     "--concurrent-games-per-process",
                     "2",
                     "--generation-worker-processes",
@@ -113,8 +113,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             Path("data/shogi/training-data-bundles/online/data-selection.json"),
         )
         self.assertEqual(len(config.experience_sources), 1)
-        self.assertEqual(config.experience_sources[0].opponent, "self")
         self.assertEqual(config.experience_sources[0].games, 4)
+        self.assertEqual(config.experience_sources[0].black_player.kind, "checkpoint")
+        self.assertEqual(config.experience_sources[0].white_player.kind, "checkpoint")
         self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.generation_progress_every_plies, 16)
@@ -165,9 +166,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "--run-dir",
                     "online",
                     "--experience-source",
-                    "self:2",
+                    "checkpoint-self:2",
                     "--experience-source",
-                    "usi:3",
+                    "checkpoint-vs-usi-balanced:3",
                     "--usi-command",
                     "engine",
                     "--usi-option",
@@ -180,15 +181,20 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             )
 
         sources = run_replay.call_args.args[0].experience_sources
-        self.assertEqual(len(sources), 2)
-        self.assertEqual(sources[0].opponent, "self")
+        self.assertEqual(len(sources), 3)
         self.assertEqual(sources[0].games, 2)
-        self.assertEqual(sources[1].opponent, "usi")
-        self.assertEqual(sources[1].games, 3)
-        self.assertEqual(sources[1].usi_command, "engine")
-        self.assertEqual(sources[1].usi_options, ("Threads=2",))
-        self.assertEqual(sources[1].usi_go_command, "go nodes 4")
-        self.assertEqual(sources[1].usi_read_timeout_seconds, 31)
+        self.assertEqual(sources[0].black_player.kind, "checkpoint")
+        self.assertEqual(sources[0].white_player.kind, "checkpoint")
+        self.assertEqual(sources[1].games, 2)
+        self.assertEqual(sources[1].black_player.kind, "checkpoint")
+        self.assertEqual(sources[1].white_player.kind, "usi_engine")
+        self.assertEqual(sources[1].white_player.usi_command, "engine")
+        self.assertEqual(sources[1].white_player.usi_options, ("Threads=2",))
+        self.assertEqual(sources[1].white_player.usi_go_command, "go nodes 4")
+        self.assertEqual(sources[1].white_player.usi_read_timeout_seconds, 31)
+        self.assertEqual(sources[2].games, 1)
+        self.assertEqual(sources[2].black_player.kind, "usi_engine")
+        self.assertEqual(sources[2].white_player.kind, "checkpoint")
 
 
 def _load_script_module() -> ModuleType:

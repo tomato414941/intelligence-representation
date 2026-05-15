@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 STANDARD_SHOGI_MAX_PLIES = 320
@@ -10,14 +11,44 @@ DEFAULT_SHOGI_MAX_PLIES = 320
 DEFAULT_USI_READ_TIMEOUT_SECONDS = 30.0
 
 
+@dataclass(frozen=True)
+class ShogiGeneratedPlayerSpec:
+    kind: str
+    name: str
+    usi_command: str | None = None
+    usi_options: tuple[str, ...] = ()
+    usi_go_command: str = "go nodes 1"
+    usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS
+
+
+def checkpoint_generated_player(name: str = "checkpoint") -> ShogiGeneratedPlayerSpec:
+    return ShogiGeneratedPlayerSpec(kind="checkpoint", name=name)
+
+
+def usi_engine_generated_player(
+    *,
+    name: str,
+    command: str,
+    options: tuple[str, ...] = (),
+    go_command: str = "go nodes 1",
+    read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS,
+) -> ShogiGeneratedPlayerSpec:
+    return ShogiGeneratedPlayerSpec(
+        kind="usi_engine",
+        name=name,
+        usi_command=command,
+        usi_options=options,
+        usi_go_command=go_command,
+        usi_read_timeout_seconds=read_timeout_seconds,
+    )
+
+
 def run_shogi_generated_games(
     *,
     arena_repo: Path,
     checkpoint: Path,
-    opponent: str,
-    usi_command: str | None,
-    usi_go_command: str,
-    usi_options: tuple[str, ...] = (),
+    black_player: ShogiGeneratedPlayerSpec,
+    white_player: ShogiGeneratedPlayerSpec,
     out: Path,
     generation_summary_path: Path | None,
     games: int,
@@ -31,37 +62,39 @@ def run_shogi_generated_games(
     seed: int | None,
     checkpoint_device: str,
     mcts_move_time_limit_sec: float | None,
-    usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS,
 ) -> None:
-    if opponent == "usi" and not usi_command:
-        raise SystemExit("--usi-command is required when --opponent usi")
+    _validate_player(black_player, side="black")
+    _validate_player(white_player, side="white")
 
     arena_repo = arena_repo.resolve()
     effective_concurrent_games_per_process = _effective_concurrent_games_per_process(
-        opponent=opponent,
+        black_player=black_player,
+        white_player=white_player,
         concurrent_games_per_process=concurrent_games_per_process,
     )
     command = [
         *_shogi_arena_python_command(),
         str(arena_repo / "scripts/generate_shogi_games.py"),
-        "--black-kind",
-        "checkpoint",
-        "--black-checkpoint",
-        str(checkpoint.resolve()),
-        "--black-checkpoint-id",
-        _checkpoint_actor_id(checkpoint),
-        "--black-move-selection-profile",
-        "self-play",
-        "--black-move-selector",
-        "mcts",
-        "--black-mcts-simulations",
-        str(simulations),
-        "--black-mcts-evaluation-batch-size",
-        str(evaluation_batch_size),
-        "--black-device",
-        checkpoint_device,
-        "--black-board-backend",
-        board_backend,
+        *_player_command_args(
+            "black",
+            black_player,
+            checkpoint=checkpoint,
+            simulations=simulations,
+            evaluation_batch_size=evaluation_batch_size,
+            checkpoint_device=checkpoint_device,
+            board_backend=board_backend,
+            mcts_move_time_limit_sec=mcts_move_time_limit_sec,
+        ),
+        *_player_command_args(
+            "white",
+            white_player,
+            checkpoint=checkpoint,
+            simulations=simulations,
+            evaluation_batch_size=evaluation_batch_size,
+            checkpoint_device=checkpoint_device,
+            board_backend=board_backend,
+            mcts_move_time_limit_sec=mcts_move_time_limit_sec,
+        ),
         "--games",
         str(games),
         "--concurrent-games-per-process",
@@ -79,48 +112,6 @@ def run_shogi_generated_games(
     ]
     if seed is not None:
         command.extend(["--seed", str(seed)])
-    if mcts_move_time_limit_sec is not None:
-        command.extend(["--black-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    if opponent == "usi":
-        command.extend(
-            [
-                "--white-kind",
-                "usi",
-                "--white-usi-command",
-                usi_command or "",
-                "--white-usi-go-command",
-                usi_go_command,
-                "--white-usi-read-timeout-seconds",
-                str(usi_read_timeout_seconds),
-            ]
-        )
-        for option in usi_options:
-            command.extend(["--white-usi-option", option])
-    else:
-        command.extend(
-            [
-                "--white-kind",
-                "checkpoint",
-                "--white-checkpoint",
-                str(checkpoint.resolve()),
-                "--white-checkpoint-id",
-                _checkpoint_actor_id(checkpoint),
-                "--white-move-selection-profile",
-                "self-play",
-                "--white-move-selector",
-                "mcts",
-                "--white-mcts-simulations",
-                str(simulations),
-                "--white-mcts-evaluation-batch-size",
-                str(evaluation_batch_size),
-                "--white-device",
-                checkpoint_device,
-                "--white-board-backend",
-                board_backend,
-            ]
-        )
-        if mcts_move_time_limit_sec is not None:
-            command.extend(["--white-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
     completed = subprocess.run(
         command,
         cwd=arena_repo,
@@ -152,8 +143,73 @@ def _shogi_arena_python_command() -> list[str]:
     return [sys.executable]
 
 
-def _effective_concurrent_games_per_process(*, opponent: str, concurrent_games_per_process: int) -> int:
-    if opponent == "usi":
+def _validate_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:
+    if player.kind == "checkpoint":
+        return
+    if player.kind == "usi_engine":
+        if not player.usi_command:
+            raise SystemExit(f"{side} usi_engine player requires usi_command")
+        return
+    raise SystemExit(f"{side} player kind must be checkpoint or usi_engine")
+
+
+def _player_command_args(
+    prefix: str,
+    player: ShogiGeneratedPlayerSpec,
+    *,
+    checkpoint: Path,
+    simulations: int,
+    evaluation_batch_size: int,
+    checkpoint_device: str,
+    board_backend: str,
+    mcts_move_time_limit_sec: float | None,
+) -> list[str]:
+    if player.kind == "checkpoint":
+        command = [
+            f"--{prefix}-kind",
+            "checkpoint",
+            f"--{prefix}-checkpoint",
+            str(checkpoint.resolve()),
+            f"--{prefix}-checkpoint-id",
+            _checkpoint_actor_id(checkpoint),
+            f"--{prefix}-move-selection-profile",
+            "self-play",
+            f"--{prefix}-move-selector",
+            "mcts",
+            f"--{prefix}-mcts-simulations",
+            str(simulations),
+            f"--{prefix}-mcts-evaluation-batch-size",
+            str(evaluation_batch_size),
+            f"--{prefix}-device",
+            checkpoint_device,
+            f"--{prefix}-board-backend",
+            board_backend,
+        ]
+        if mcts_move_time_limit_sec is not None:
+            command.extend([f"--{prefix}-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
+        return command
+    command = [
+        f"--{prefix}-kind",
+        "usi",
+        f"--{prefix}-usi-command",
+        player.usi_command or "",
+        f"--{prefix}-usi-go-command",
+        player.usi_go_command,
+        f"--{prefix}-usi-read-timeout-seconds",
+        str(player.usi_read_timeout_seconds),
+    ]
+    for option in player.usi_options:
+        command.extend([f"--{prefix}-usi-option", option])
+    return command
+
+
+def _effective_concurrent_games_per_process(
+    *,
+    black_player: ShogiGeneratedPlayerSpec,
+    white_player: ShogiGeneratedPlayerSpec,
+    concurrent_games_per_process: int,
+) -> int:
+    if black_player.kind != "checkpoint" or white_player.kind != "checkpoint":
         return 1
     return concurrent_games_per_process
 

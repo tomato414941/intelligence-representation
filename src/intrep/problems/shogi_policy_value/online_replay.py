@@ -26,7 +26,8 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
-    DEFAULT_USI_READ_TIMEOUT_SECONDS,
+    ShogiGeneratedPlayerSpec,
+    checkpoint_generated_player,
     run_shogi_generated_games,
     warn_short_max_plies,
 )
@@ -46,12 +47,9 @@ DEFAULT_MIN_REPLAY_SIZE = 8192
 @dataclass(frozen=True)
 class ShogiGeneratedExperienceSource:
     name: str
-    opponent: str
     games: int
-    usi_command: str | None = None
-    usi_options: tuple[str, ...] = ()
-    usi_go_command: str = "go nodes 1"
-    usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS
+    black_player: ShogiGeneratedPlayerSpec
+    white_player: ShogiGeneratedPlayerSpec
 
 
 @dataclass(frozen=True)
@@ -68,7 +66,12 @@ class ShogiOnlineReplayConfig:
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
     experience_sources: tuple[ShogiGeneratedExperienceSource, ...] = (
-        ShogiGeneratedExperienceSource(name="self-play", opponent="self", games=4),
+        ShogiGeneratedExperienceSource(
+            name="self-play",
+            games=4,
+            black_player=checkpoint_generated_player("black"),
+            white_player=checkpoint_generated_player("white"),
+        ),
     )
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -294,10 +297,8 @@ def _generate_online_replay_cycle_experience(
         run_shogi_generated_games(
             arena_repo=config.arena_repo,
             checkpoint=checkpoint,
-            opponent=source.opponent,
-            usi_command=source.usi_command,
-            usi_options=source.usi_options,
-            usi_go_command=source.usi_go_command,
+            black_player=source.black_player,
+            white_player=source.white_player,
             out=games_jsonl,
             generation_summary_path=summary_path,
             games=source.games,
@@ -311,14 +312,14 @@ def _generate_online_replay_cycle_experience(
             seed=_source_seed(config.seed, artifacts.cycle_dir.name, source_index),
             checkpoint_device=config.training_config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
-            usi_read_timeout_seconds=source.usi_read_timeout_seconds,
         )
         source_game_paths.append(games_jsonl)
         source_summaries.append(
             {
                 "name": source.name,
-                "opponent": source.opponent,
                 "games": source.games,
+                "black_player": _player_summary(source.black_player),
+                "white_player": _player_summary(source.white_player),
                 "path": str(games_jsonl),
                 "summary_path": str(summary_path),
                 "summary": _load_json_if_exists(summary_path),
@@ -500,12 +501,36 @@ def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
         raise ValueError("experience source name must not be empty")
     if not all(character.isalnum() or character in "-_" for character in source.name):
         raise ValueError("experience source name must contain only letters, numbers, hyphen, or underscore")
-    if source.opponent not in {"self", "usi"}:
-        raise ValueError("experience source opponent must be self or usi")
-    if source.opponent == "usi" and not source.usi_command:
-        raise ValueError("usi_command is required when experience source opponent is usi")
     if source.games <= 0:
         raise ValueError("experience source games must be positive")
+    _validate_generated_player(source.black_player, side="black")
+    _validate_generated_player(source.white_player, side="white")
+
+
+def _validate_generated_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:
+    if player.kind == "checkpoint":
+        return
+    if player.kind == "usi_engine":
+        if not player.usi_command:
+            raise ValueError(f"{side} usi_engine player requires usi_command")
+        return
+    raise ValueError(f"{side} player kind must be checkpoint or usi_engine")
+
+
+def _player_summary(player: ShogiGeneratedPlayerSpec) -> dict[str, object]:
+    summary: dict[str, object] = {
+        "kind": player.kind,
+        "name": player.name,
+    }
+    if player.kind == "usi_engine":
+        summary.update(
+            {
+                "usi_options": player.usi_options,
+                "usi_go_command": player.usi_go_command,
+                "usi_read_timeout_seconds": player.usi_read_timeout_seconds,
+            }
+        )
+    return summary
 
 
 def _source_seed(base_seed: int, cycle_dir_name: str, source_index: int) -> int:

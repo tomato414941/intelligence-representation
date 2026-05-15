@@ -19,6 +19,8 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
+    ShogiGeneratedPlayerSpec,
+    checkpoint_generated_player,
     run_shogi_generated_games,
     warn_short_max_plies,
 )
@@ -43,6 +45,7 @@ __all__ = [
     "ShogiGeneratedDataTrainingCycleResult",
     "ShogiGeneratedDataTrainingLoopConfig",
     "ShogiGeneratedDataTrainingLoopResult",
+    "ShogiGeneratedPlayerSpec",
     "ShogiOnlineReplayConfig",
     "ShogiOnlineReplayCycleResult",
     "ShogiGeneratedExperienceSource",
@@ -58,10 +61,8 @@ class ShogiGeneratedDataTrainingCycleConfig:
     checkpoint: Path
     run_dir: Path
     arena_repo: Path = Path("../shogi-arena-agent")
-    opponent: str = "self"
-    usi_command: str | None = None
-    usi_options: tuple[str, ...] = ()
-    usi_go_command: str = "go nodes 1"
+    black_player: ShogiGeneratedPlayerSpec = checkpoint_generated_player("black")
+    white_player: ShogiGeneratedPlayerSpec = checkpoint_generated_player("white")
     games: int = 4
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -91,10 +92,8 @@ class ShogiGeneratedDataTrainingLoopConfig:
     cycles: int = 1
     next_checkpoint: str = "best"
     arena_repo: Path = Path("../shogi-arena-agent")
-    opponent: str = "self"
-    usi_command: str | None = None
-    usi_options: tuple[str, ...] = ()
-    usi_go_command: str = "go nodes 1"
+    black_player: ShogiGeneratedPlayerSpec = checkpoint_generated_player("black")
+    white_player: ShogiGeneratedPlayerSpec = checkpoint_generated_player("white")
     games: int = 4
     concurrent_games_per_process: int = 1
     generation_progress_every_plies: int = 0
@@ -135,10 +134,8 @@ def run_shogi_generated_data_training_cycle(
     run_shogi_generated_games(
         arena_repo=config.arena_repo,
         checkpoint=config.checkpoint,
-        opponent=config.opponent,
-        usi_command=config.usi_command,
-        usi_options=config.usi_options,
-        usi_go_command=config.usi_go_command,
+        black_player=config.black_player,
+        white_player=config.white_player,
         out=games_jsonl,
         generation_summary_path=generation_summary_path,
         games=config.games,
@@ -175,7 +172,8 @@ def run_shogi_generated_data_training_cycle(
         num_workers=config.num_workers,
     )
     generation = {
-        "opponent": config.opponent,
+        "black_player": _player_summary(config.black_player),
+        "white_player": _player_summary(config.white_player),
         "games": config.games,
         "concurrent_games_per_process": config.concurrent_games_per_process,
         "generation_progress_every_plies": config.generation_progress_every_plies,
@@ -188,9 +186,6 @@ def run_shogi_generated_data_training_cycle(
         "checkpoint_device": config.device,
         "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
     }
-    if config.opponent == "usi":
-        generation["usi_options"] = config.usi_options
-        generation["usi_go_command"] = config.usi_go_command
     return ShogiGeneratedDataTrainingCycleResult(
         run_dir=run_dir,
         generated_games_jsonl=games_jsonl,
@@ -218,10 +213,8 @@ def run_shogi_generated_data_training_loop(
                 checkpoint=checkpoint,
                 run_dir=run_dir / f"cycle-{cycle_index:04d}",
                 arena_repo=config.arena_repo,
-                opponent=config.opponent,
-                usi_command=config.usi_command,
-                usi_options=config.usi_options,
-                usi_go_command=config.usi_go_command,
+                black_player=config.black_player,
+                white_player=config.white_player,
                 games=config.games,
                 concurrent_games_per_process=config.concurrent_games_per_process,
                 generation_progress_every_plies=config.generation_progress_every_plies,
@@ -254,10 +247,8 @@ def run_shogi_generated_data_training_loop(
 
 
 def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
-    if config.opponent not in {"self", "usi"}:
-        raise ValueError("opponent must be self or usi")
-    if config.opponent == "usi" and not config.usi_command:
-        raise ValueError("usi_command is required when opponent is usi")
+    _validate_generated_player(config.black_player, side="black")
+    _validate_generated_player(config.white_player, side="white")
     if config.games <= 0:
         raise ValueError("games must be positive")
     if config.concurrent_games_per_process <= 0:
@@ -303,10 +294,8 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             checkpoint=config.checkpoint,
             run_dir=config.run_dir,
             arena_repo=config.arena_repo,
-            opponent=config.opponent,
-            usi_command=config.usi_command,
-            usi_options=config.usi_options,
-            usi_go_command=config.usi_go_command,
+            black_player=config.black_player,
+            white_player=config.white_player,
             games=config.games,
             concurrent_games_per_process=config.concurrent_games_per_process,
             generation_progress_every_plies=config.generation_progress_every_plies,
@@ -327,6 +316,32 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             num_workers=config.num_workers,
         )
     )
+
+
+def _validate_generated_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:
+    if player.kind == "checkpoint":
+        return
+    if player.kind == "usi_engine":
+        if not player.usi_command:
+            raise ValueError(f"{side} usi_engine player requires usi_command")
+        return
+    raise ValueError(f"{side} player kind must be checkpoint or usi_engine")
+
+
+def _player_summary(player: ShogiGeneratedPlayerSpec) -> dict[str, object]:
+    summary: dict[str, object] = {
+        "kind": player.kind,
+        "name": player.name,
+    }
+    if player.kind == "usi_engine":
+        summary.update(
+            {
+                "usi_options": player.usi_options,
+                "usi_go_command": player.usi_go_command,
+                "usi_read_timeout_seconds": player.usi_read_timeout_seconds,
+            }
+        )
+    return summary
 
 
 def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:

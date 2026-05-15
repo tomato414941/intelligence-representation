@@ -19,7 +19,7 @@ TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/online-experience-replay-runpod-$(date -u +%Y%m%d-%H%M%S)}
 
 CYCLES=${CYCLES:-4}
-EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-self:64}
+EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-checkpoint-self:64}
 CONCURRENT_GAMES_PER_PROCESS=${CONCURRENT_GAMES_PER_PROCESS:-8}
 GENERATION_WORKER_PROCESSES=${GENERATION_WORKER_PROCESSES:-8}
 SIMULATIONS=${SIMULATIONS:-16}
@@ -78,8 +78,8 @@ if [[ ! -d "$REPO_PARENT/$ARENA_REL" ]]; then
 fi
 IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< "$EXPERIENCE_SOURCES"
 for experience_source in "${EXPERIENCE_SOURCE_ITEMS[@]}"; do
-  if [[ "$experience_source" != self:* && "$experience_source" != usi:* ]]; then
-    echo "EXPERIENCE_SOURCES entries must be self:GAMES or usi:GAMES: $experience_source" >&2
+  if [[ "$experience_source" != checkpoint-self:* && "$experience_source" != checkpoint-black-vs-usi:* && "$experience_source" != usi-black-vs-checkpoint:* && "$experience_source" != checkpoint-vs-usi-balanced:* ]]; then
+    echo "EXPERIENCE_SOURCES entries must be checkpoint-self:GAMES, checkpoint-black-vs-usi:GAMES, usi-black-vs-checkpoint:GAMES, or checkpoint-vs-usi-balanced:GAMES: $experience_source" >&2
     exit 1
   fi
 done
@@ -126,7 +126,7 @@ USI_COMMAND_REMOTE=\"$USI_COMMAND\"
 NEEDS_USI=0
 IFS=',' read -ra EXPERIENCE_SOURCE_ITEMS <<< \"$EXPERIENCE_SOURCES\"
 for experience_source in \"\${EXPERIENCE_SOURCE_ITEMS[@]}\"; do
-  if [[ \"\$experience_source\" == usi:* ]]; then
+  if [[ \"\$experience_source\" == checkpoint-black-vs-usi:* || \"\$experience_source\" == usi-black-vs-checkpoint:* || \"\$experience_source\" == checkpoint-vs-usi-balanced:* ]]; then
     NEEDS_USI=1
   fi
 done
