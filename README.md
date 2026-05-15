@@ -40,9 +40,6 @@ tests/
 
 docs/
   Project concepts, evaluation principles, and current results
-
-legacy/
-  Historical archive outside the active implementation path
 ```
 
 ## Canonical Docs

@@ -222,5 +222,5 @@ could reduce loss on rendered streams, but did not show robust
 action-conditioned future prediction. Those runs are diagnostic history, not
 the current implementation direction.
 
-Detailed legacy experiment notes remain archived under `legacy/docs/`, but they
-are not part of the active implementation direction.
+Detailed retired experiment notes are not part of the active implementation
+direction.
