@@ -33,9 +33,10 @@ def run_shogi_generated_games(
     if opponent == "yaneuraou" and not yaneuraou:
         raise SystemExit("--yaneuraou is required when --opponent yaneuraou")
 
+    arena_repo = arena_repo.resolve()
     command = [
         *_shogi_arena_python_command(),
-        "scripts/generate_shogi_games.py",
+        str(arena_repo / "scripts/generate_shogi_games.py"),
         "--black-kind",
         "checkpoint",
         "--black-checkpoint",
@@ -109,7 +110,14 @@ def run_shogi_generated_games(
         )
         if mcts_move_time_limit_sec is not None:
             command.extend(["--white-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
-    completed = subprocess.run(command, cwd=arena_repo.resolve(), check=True, stdout=subprocess.PIPE, text=True)
+    completed = subprocess.run(
+        command,
+        cwd=arena_repo,
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+        env=_shogi_arena_env(arena_repo),
+    )
     stdout = completed.stdout if completed is not None else ""
     if stdout:
         print(stdout, end="")
@@ -130,7 +138,15 @@ def _shogi_arena_python_command() -> list[str]:
     python = os.environ.get("SHOGI_ARENA_PYTHON")
     if python:
         return [python]
-    return ["uv", "run", "python"]
+    return [sys.executable]
+
+
+def _shogi_arena_env(arena_repo: Path) -> dict[str, str]:
+    pythonpath_parts = [str(arena_repo / "src")]
+    existing_pythonpath = os.environ.get("PYTHONPATH")
+    if existing_pythonpath:
+        pythonpath_parts.append(existing_pythonpath)
+    return os.environ | {"PYTHONPATH": os.pathsep.join(pythonpath_parts)}
 
 
 def _checkpoint_actor_id(checkpoint: Path) -> str:
