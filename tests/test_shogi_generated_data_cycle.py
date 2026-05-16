@@ -798,6 +798,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         max_steps=4,
                         loss=1.25,
                         elapsed_seconds=3.5,
+                        data_wait_seconds=0.1,
+                        forward_backward_seconds=0.2,
+                        optimizer_seconds=0.03,
                         model=result.model,
                         config=config,
                     )

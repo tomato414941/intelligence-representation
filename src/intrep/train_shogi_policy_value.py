@@ -200,6 +200,9 @@ class _ProgressArtifactWriter:
             "max_steps": progress.max_steps,
             "loss": progress.loss,
             "elapsed_seconds": progress.elapsed_seconds,
+            "data_wait_seconds": progress.data_wait_seconds,
+            "forward_backward_seconds": progress.forward_backward_seconds,
+            "optimizer_seconds": progress.optimizer_seconds,
             "config": asdict(progress.config),
         }
         if progress.eval_metrics is not None:

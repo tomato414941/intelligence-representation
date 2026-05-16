@@ -106,6 +106,9 @@ class ShogiPolicyValueTrainingProgress:
     max_steps: int
     loss: float
     elapsed_seconds: float
+    data_wait_seconds: float
+    forward_backward_seconds: float
+    optimizer_seconds: float
     model: nn.Module
     config: ShogiPolicyValueTrainingConfig
     eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
@@ -190,8 +193,14 @@ def train_shogi_policy_value_model(
     no_improvement_eval_count = 0
     stopped_early = False
     started = time.monotonic()
+    last_batch_finished = time.monotonic()
+    interval_data_wait_seconds = 0.0
+    interval_forward_backward_seconds = 0.0
+    interval_optimizer_seconds = 0.0
     while step < training_config.max_steps:
         for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
+            batch_ready = time.monotonic()
+            interval_data_wait_seconds += batch_ready - last_batch_finished
             position_token_ids = position_token_ids.to(device)
             candidate_move_features = candidate_move_features.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -200,6 +209,7 @@ def train_shogi_policy_value_model(
             value_targets = value_targets.to(device)
             optimizer.zero_grad(set_to_none=True)
             value_mask = torch.isfinite(value_targets)
+            forward_backward_started = time.monotonic()
             if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
                 value_predictions = model.predict_value(position_token_ids)
                 loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
@@ -221,10 +231,23 @@ def train_shogi_policy_value_model(
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 loss = loss + training_config.value_loss_weight * value_loss
             loss.backward()
+            forward_backward_finished = time.monotonic()
+            interval_forward_backward_seconds += forward_backward_finished - forward_backward_started
             optimizer.step()
+            optimizer_finished = time.monotonic()
+            interval_optimizer_seconds += optimizer_finished - forward_backward_finished
             step += 1
             if training_config.log_every is not None and step % training_config.log_every == 0:
-                _log_training_progress(step, training_config.max_steps, started, loss, device)
+                _log_training_progress(
+                    step,
+                    training_config.max_steps,
+                    started,
+                    loss,
+                    device,
+                    data_wait_seconds=interval_data_wait_seconds,
+                    forward_backward_seconds=interval_forward_backward_seconds,
+                    optimizer_seconds=interval_optimizer_seconds,
+                )
             eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
             if training_config.eval_every is not None and step % training_config.eval_every == 0:
                 eval_step_metrics = evaluate_shogi_policy_value_metrics(
@@ -250,11 +273,18 @@ def train_shogi_policy_value_model(
                         max_steps=training_config.max_steps,
                         loss=float(loss.detach().cpu().item()),
                         elapsed_seconds=time.monotonic() - started,
+                        data_wait_seconds=interval_data_wait_seconds,
+                        forward_backward_seconds=interval_forward_backward_seconds,
+                        optimizer_seconds=interval_optimizer_seconds,
                         model=model,
                         config=training_config,
                         eval_metrics=eval_step_metrics,
                     )
                 )
+                interval_data_wait_seconds = 0.0
+                interval_forward_backward_seconds = 0.0
+                interval_optimizer_seconds = 0.0
+            last_batch_finished = time.monotonic()
             if (
                 training_config.early_stopping_patience is not None
                 and no_improvement_eval_count >= training_config.early_stopping_patience
@@ -471,6 +501,10 @@ def _log_training_progress(
     started: float,
     loss: torch.Tensor,
     device: torch.device,
+    *,
+    data_wait_seconds: float,
+    forward_backward_seconds: float,
+    optimizer_seconds: float,
 ) -> None:
     elapsed = time.monotonic() - started
     steps_per_second = step / elapsed if elapsed > 0.0 else 0.0
@@ -479,6 +513,9 @@ def _log_training_progress(
         f"elapsed_seconds={elapsed:.1f}",
         f"steps_per_second={steps_per_second:.3f}",
         f"loss={float(loss.detach().item()):.4f}",
+        f"data_wait_seconds={data_wait_seconds:.3f}",
+        f"forward_backward_seconds={forward_backward_seconds:.3f}",
+        f"optimizer_seconds={optimizer_seconds:.3f}",
         f"device={device}",
     ]
     if device.type == "cuda" and torch.cuda.is_available():
