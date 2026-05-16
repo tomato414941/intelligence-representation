@@ -166,12 +166,22 @@ def train_shogi_policy_value_model(
         learning_rate=training_config.learning_rate,
         weight_decay=training_config.weight_decay,
     )
-    initial_metrics = evaluate_shogi_policy_value_metrics(model, train_eval_loader)
+    initial_metrics = evaluate_shogi_policy_value_metrics(
+        model,
+        train_eval_loader,
+        log_label="initial_train_eval" if training_config.log_every is not None else None,
+        log_every_batches=training_config.log_every,
+    )
     initial_eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     best_eval_tracker = BestMetricTracker(mode="min")
     best_model_state_dict: dict[str, torch.Tensor] | None = None
     if eval_loader is not None:
-        initial_eval_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
+        initial_eval_metrics = evaluate_shogi_policy_value_metrics(
+            model,
+            eval_loader,
+            log_label="initial_eval" if training_config.log_every is not None else None,
+            log_every_batches=training_config.log_every,
+        )
         best_eval_tracker.update(step=0, value=initial_eval_metrics.loss)
         best_model_state_dict = copy.deepcopy(model.state_dict())
 
@@ -217,7 +227,12 @@ def train_shogi_policy_value_model(
                 _log_training_progress(step, training_config.max_steps, started, loss, device)
             eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
             if training_config.eval_every is not None and step % training_config.eval_every == 0:
-                eval_step_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
+                eval_step_metrics = evaluate_shogi_policy_value_metrics(
+                    model,
+                    eval_loader,
+                    log_label=f"step_{step}_eval" if training_config.log_every is not None else None,
+                    log_every_batches=training_config.log_every,
+                )
                 if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
                     best_model_state_dict = copy.deepcopy(model.state_dict())
                     no_improvement_eval_count = 0
@@ -251,10 +266,20 @@ def train_shogi_policy_value_model(
         if stopped_early:
             break
 
-    final_metrics = evaluate_shogi_policy_value_metrics(model, train_eval_loader)
+    final_metrics = evaluate_shogi_policy_value_metrics(
+        model,
+        train_eval_loader,
+        log_label="final_train_eval" if training_config.log_every is not None else None,
+        log_every_batches=training_config.log_every,
+    )
     eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     if eval_loader is not None:
-        eval_metrics = evaluate_shogi_policy_value_metrics(model, eval_loader)
+        eval_metrics = evaluate_shogi_policy_value_metrics(
+            model,
+            eval_loader,
+            log_label="final_eval" if training_config.log_every is not None else None,
+            log_every_batches=training_config.log_every,
+        )
         if best_eval_tracker.update(step=step, value=eval_metrics.loss):
             best_model_state_dict = copy.deepcopy(model.state_dict())
     return ShogiPolicyValueTrainingResult(
@@ -305,6 +330,9 @@ def evaluate_shogi_policy_value_model(
 def evaluate_shogi_policy_value_metrics(
     model: nn.Module,
     loader: DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
+    *,
+    log_label: str | None = None,
+    log_every_batches: int | None = None,
 ) -> ShogiPolicyValueEvaluationMetrics:
     model.eval()
     losses: list[float] = []
@@ -316,8 +344,19 @@ def evaluate_shogi_policy_value_metrics(
     rank_sum = 0.0
     total = 0
     device = next(model.parameters()).device
+    started = time.monotonic()
+    batch_count = len(loader)
+    if log_label is not None:
+        print(f"{log_label} start batches={batch_count} device={device}", flush=True)
     with torch.no_grad():
-        for position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets in loader:
+        for batch_index, (
+            position_token_ids,
+            candidate_move_features,
+            candidate_mask,
+            labels,
+            policy_targets,
+            value_targets,
+        ) in enumerate(loader, start=1):
             position_token_ids = position_token_ids.to(device)
             candidate_move_features = candidate_move_features.to(device)
             candidate_mask = candidate_mask.to(device)
@@ -350,6 +389,26 @@ def evaluate_shogi_policy_value_metrics(
             if value_predictions is not None:
                 value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
                 value_losses.append(float(value_loss.item()))
+            if log_label is not None and log_every_batches is not None and batch_index % log_every_batches == 0:
+                elapsed = time.monotonic() - started
+                batches_per_second = batch_index / elapsed if elapsed > 0.0 else 0.0
+                print(
+                    f"{log_label} batch={batch_index}/{batch_count}"
+                    f" examples={total}"
+                    f" elapsed_seconds={elapsed:.1f}"
+                    f" batches_per_second={batches_per_second:.3f}",
+                    flush=True,
+                )
+    if log_label is not None:
+        elapsed = time.monotonic() - started
+        batches_per_second = batch_count / elapsed if elapsed > 0.0 else 0.0
+        print(
+            f"{log_label} done batches={batch_count}"
+            f" examples={total}"
+            f" elapsed_seconds={elapsed:.1f}"
+            f" batches_per_second={batches_per_second:.3f}",
+            flush=True,
+        )
     return ShogiPolicyValueEvaluationMetrics(
         loss=sum(losses) / len(losses),
         accuracy=correct / total,
