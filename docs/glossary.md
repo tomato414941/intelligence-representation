@@ -363,7 +363,7 @@ An Experience Store is durable source storage for generated or collected
 experience.
 
 It is not a PyTorch Dataset. Training should use explicit Data Selection or a
-fixed Training Data Bundle derived from the store.
+fixed Training Data Bundle built from a declared Data Selection.
 
 Experience Store records should remain close to the source experience and
 should not be reshaped around one objective, run, or model.
@@ -420,9 +420,10 @@ on run-local generated files as the source of truth.
 
 ### Data Selection
 
-Data Selection decides which source records, training examples, or stored
-targets are included for a declared use. It is about inclusion, not example
-construction, target generation, sampling, or optimization.
+Data Selection decides which existing records or stored source-side material are
+included for a declared use, and how that material is assigned to splits. It is
+about inclusion and split assignment, not target construction, example
+construction, sampling, or optimization.
 
 ### Training Example
 

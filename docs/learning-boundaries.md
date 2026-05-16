@@ -18,8 +18,8 @@ need the same raw fields.
 
 ## Data Selection and Runs
 
-Data Selection states which source records and target material are included for
-a declared use.
+Data Selection states which existing records or stored source-side material are
+included for a declared use, and how that material is assigned to splits.
 
 Experience Stores are source storage for generated or collected experience.
 They are not PyTorch Datasets and should not be the direct learning boundary.
