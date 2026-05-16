@@ -72,6 +72,7 @@ and raw game-record JSONL output.
 Shogi player-vs-player match entrypoints belong in `shogi-arena-agent`.
 `intelligence-representation` should pass checkpoints and read game-record
 artifacts, not mirror match runner CLIs.
+RunPod wrappers for player-vs-player matches follow the same rule.
 
 The artifact contract is:
 
