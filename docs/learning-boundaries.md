@@ -40,9 +40,9 @@ a training configuration, not only by a convenient artifact path.
 
 ## Model Inputs
 
-Training and inference construct model inputs from source records or training
-examples. The shared model boundary is still the input embedding sequence
-described in [Model Boundaries](model-boundaries.md).
+Training and inference should not treat raw source records as direct model
+inputs. Problem-specific code adapts selected records or training examples into
+model-ready inputs.
 
 ## Outputs and Objectives
 
