@@ -10,8 +10,9 @@ cd "$(dirname "$0")/.."
 
 RUNPOD_RUNNER_ROOT=${RUNPOD_RUNNER_ROOT:-"$PWD/../runpod-job-runner"}
 RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
-DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/current/data-selection.json}
-TENSOR_CACHE=${TENSOR_CACHE:-}
+DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
+TENSOR_CACHE=${TENSOR_CACHE:-data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors}
+INIT_CHECKPOINT_PATH=${INIT_CHECKPOINT_PATH:-}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
@@ -19,14 +20,13 @@ MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
 GPU_TYPE=${GPU_TYPE:-NVIDIA RTX A5000}
 CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-80}
 VOLUME_SIZE=${VOLUME_SIZE:-0}
-# Keep worker count at zero for the current JSONL/Python-object cache. See
-# docs/runpod.md before increasing this for full-cache runs.
-NUM_WORKERS=${NUM_WORKERS:-0}
+NUM_WORKERS=${NUM_WORKERS:-8}
 LEARNING_RATE=${LEARNING_RATE:-0.0005}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
-VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-0.0}
-MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-4096}
-MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-4096}
+VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-1.0}
+MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-65536}
+MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-}
+LOG_EVERY=${LOG_EVERY:-100}
 # Save progress before final sync so interrupted disposable pods do not lose the
 # whole training run.
 CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-1000}
@@ -52,6 +52,9 @@ SYNC_ARGS=()
 for input_file in "${TRAINING_INPUT_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$input_file")
 done
+if [[ -n "$INIT_CHECKPOINT_PATH" ]]; then
+  SYNC_ARGS+=(--sync "$INIT_CHECKPOINT_PATH")
+fi
 
 python3 "$RUNPOD_JOB" \
   --repo-root "$PWD" \
@@ -78,13 +81,22 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE tensor_cache=$TENSOR_CACHE\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE tensor_cache=$TENSOR_CACHE init_checkpoint_path=$INIT_CHECKPOINT_PATH\"
 TRAIN_ARGS=()
 if [[ -n \"$TENSOR_CACHE\" ]]; then
   TRAIN_ARGS+=(--tensor-cache \"$TENSOR_CACHE\")
 fi
+if [[ -n \"$INIT_CHECKPOINT_PATH\" ]]; then
+  TRAIN_ARGS+=(--init-checkpoint-path \"$INIT_CHECKPOINT_PATH\")
+fi
 if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
   TRAIN_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
+fi
+if [[ -n \"$MAX_TRAIN_EVAL_EXAMPLES\" ]]; then
+  TRAIN_ARGS+=(--max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\")
+fi
+if [[ -n \"$MAX_EVAL_EXAMPLES\" ]]; then
+  TRAIN_ARGS+=(--max-eval-examples \"$MAX_EVAL_EXAMPLES\")
 fi
 .venv/bin/python -u -m intrep.train_shogi_policy_value \
   --data-selection \"$DATA_SELECTION\" \
@@ -102,12 +114,10 @@ fi
   --policy-loss-weight \"$POLICY_LOSS_WEIGHT\" \
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
   --device cuda \
-  --log-every 50 \
+  --log-every \"$LOG_EVERY\" \
   --eval-every \"$EVAL_EVERY\" \
   --num-workers \"$NUM_WORKERS\" \
   --pin-memory \
-  --max-train-eval-examples \"$MAX_TRAIN_EVAL_EXAMPLES\" \
-  --max-eval-examples \"$MAX_EVAL_EXAMPLES\" \
   --checkpoint-every \"$CHECKPOINT_EVERY\" \
   --metrics-every \"$METRICS_EVERY\" \
   --keep-last-n-checkpoints \"$KEEP_LAST_N_CHECKPOINTS\" \
