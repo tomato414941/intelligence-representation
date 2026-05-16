@@ -217,7 +217,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors.pt"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
@@ -244,7 +244,11 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             build_shogi_policy_value_tensor_cache(
                 data_selection_path=data_selection_path,
                 output_path=tensor_cache_path,
+                shard_games=1,
             )
+            self.assertTrue((tensor_cache_path / "manifest.json").exists())
+            self.assertTrue((tensor_cache_path / "train").exists())
+            self.assertTrue((tensor_cache_path / "eval").exists())
 
             with patch(
                 "sys.argv",
@@ -279,6 +283,53 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)
+
+    def test_tensor_cache_build_can_resume_existing_shards(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            first = build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                shard_games=1,
+            )
+            shard_paths = sorted((tensor_cache_path / "train").glob("*.pt")) + sorted((tensor_cache_path / "eval").glob("*.pt"))
+            mtimes = {path: path.stat().st_mtime_ns for path in shard_paths}
+            second = build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                shard_games=1,
+                resume=True,
+            )
+
+            self.assertEqual(second["train_count"], first["train_count"])
+            self.assertEqual(second["eval_count"], first["eval_count"])
+            self.assertEqual({path: path.stat().st_mtime_ns for path in shard_paths}, mtimes)
 
     def test_initializes_from_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

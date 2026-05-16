@@ -139,18 +139,21 @@ Repeated training can use a rebuildable tensor cache derived from the same
 
 ```sh
 uv run python scripts/build_shogi_policy_value_tensor_cache.py \
-  --data-selection data/shogi/training-data-bundles/current/data-selection.json
+  --data-selection data/shogi/training-data-bundles/current/data-selection.json \
+  --shard-games 100 \
+  --resume
 ```
 
 ```sh
 uv run python -m intrep.train_shogi_policy_value \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
-  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi-policy-value-tensors.pt \
+  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi-policy-value-tensors \
   --checkpoint-path runs/shogi/checkpoint.pt \
   --metrics-path runs/shogi/metrics.json
 ```
 
-The cache is an acceleration artifact, not a source of truth. The command
+The cache is a sharded directory with a manifest and split-specific shard files.
+It is an acceleration artifact, not a source of truth. The training command
 rejects a cache whose embedded data selection does not match the requested
 `data-selection.json`.
 
