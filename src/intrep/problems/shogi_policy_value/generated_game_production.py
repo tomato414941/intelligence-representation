@@ -73,7 +73,7 @@ def run_shogi_generated_games(
         concurrent_games_per_process=concurrent_games_per_process,
     )
     command = [
-        *_shogi_arena_python_command(),
+        sys.executable,
         str(arena_repo / "scripts/generate_shogi_games.py"),
         *_player_command_args(
             "black",
@@ -134,13 +134,6 @@ def warn_short_max_plies(max_plies: int) -> None:
             f"of {STANDARD_SHOGI_MAX_PLIES}; this can create artificial max_plies draws.",
             file=sys.stderr,
         )
-
-
-def _shogi_arena_python_command() -> list[str]:
-    python = os.environ.get("SHOGI_ARENA_PYTHON")
-    if python:
-        return [python]
-    return [sys.executable]
 
 
 def _validate_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:

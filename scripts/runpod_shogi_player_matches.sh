@@ -66,7 +66,6 @@ python3 "$RUNPOD_JOB" \
   --ssh-wait-seconds 180 \
   --allow-existing-pods \
   --sync "$PROJECT_REL/src" \
-  --sync "$PROJECT_REL/scripts/run_shogi_player_match.py" \
   --sync "$PROJECT_REL/scripts/setup_runpod.sh" \
   --sync "$PROJECT_REL/pyproject.toml" \
   --sync "$PROJECT_REL/uv.lock" \
@@ -82,24 +81,29 @@ python3 "$RUNPOD_JOB" \
   --timings-output "$PROJECT_REL/$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail
 cd \"\$REMOTE_DIR/$PROJECT_REL\"
-export SHOGI_ARENA_PYTHON=\"\$REMOTE_DIR/$PROJECT_REL/.venv/bin/python\"
 mkdir -p \"$OUTPUT_DIR/sampled-vs-checkpoint\" \"$OUTPUT_DIR/sampled-vs-yaneuraou\"
 
 if [[ -n \"$PLAYER_B_CHECKPOINT\" ]]; then
-.venv/bin/python -u scripts/run_shogi_player_match.py \
-  --arena-repo \"\$REMOTE_DIR/$ARENA_REL\" \
+.venv/bin/python -u \"\$REMOTE_DIR/$ARENA_REL/scripts/evaluate_shogi_players.py\" \
   --player-a-kind checkpoint \
   --player-a-checkpoint \"$PLAYER_A_CHECKPOINT\" \
+  --player-a-move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
+  --player-a-move-selector mcts \
+  --player-a-mcts-simulations \"$SIMULATIONS\" \
+  --player-a-mcts-evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
+  --player-a-device cuda \
+  --player-a-board-backend cshogi \
   --player-b-kind checkpoint \
   --player-b-checkpoint \"$PLAYER_B_CHECKPOINT\" \
+  --player-b-move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
+  --player-b-move-selector mcts \
+  --player-b-mcts-simulations \"$SIMULATIONS\" \
+  --player-b-mcts-evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
+  --player-b-device cuda \
+  --player-b-board-backend cshogi \
   --out \"$OUTPUT_DIR/sampled-vs-checkpoint/games.jsonl\" \
   --games \"$GAMES\" \
-  --max-plies \"$MAX_PLIES\" \
-  --simulations \"$SIMULATIONS\" \
-  --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
-  --move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
-  --device cuda \
-  --board-backend cshogi | tee \"$OUTPUT_DIR/sampled-vs-checkpoint/summary.json\"
+  --max-plies \"$MAX_PLIES\" | tee \"$OUTPUT_DIR/sampled-vs-checkpoint/summary.json\"
 fi
 
 apt-get update >/dev/null
@@ -108,19 +112,19 @@ rm -rf /root/YaneuraOu
 GIT_TERMINAL_PROMPT=0 git clone --depth 1 \"$YANEURAOU_REPOSITORY_URL\" /root/YaneuraOu
 make -s -C /root/YaneuraOu/source -f Makefile -j\"\$(nproc)\" normal TARGET_CPU=AVX2 YANEURAOU_EDITION=YANEURAOU_ENGINE_MATERIAL COMPILER=g++ TARGET=YaneuraOu-runpod
 
-.venv/bin/python -u scripts/run_shogi_player_match.py \
-  --arena-repo \"\$REMOTE_DIR/$ARENA_REL\" \
+.venv/bin/python -u \"\$REMOTE_DIR/$ARENA_REL/scripts/evaluate_shogi_players.py\" \
   --player-a-kind checkpoint \
   --player-a-checkpoint \"$PLAYER_A_CHECKPOINT\" \
+  --player-a-move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
+  --player-a-move-selector mcts \
+  --player-a-mcts-simulations \"$SIMULATIONS\" \
+  --player-a-mcts-evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
+  --player-a-device cuda \
+  --player-a-board-backend cshogi \
   --player-b-kind usi \
   --player-b-usi-command /root/YaneuraOu/source/YaneuraOu-runpod \
   --player-b-usi-go-command \"$USI_GO_COMMAND\" \
   --out \"$OUTPUT_DIR/sampled-vs-yaneuraou/games.jsonl\" \
   --games \"$GAMES\" \
-  --max-plies \"$MAX_PLIES\" \
-  --simulations \"$SIMULATIONS\" \
-  --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
-  --move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
-  --device cuda \
-  --board-backend cshogi | tee \"$OUTPUT_DIR/sampled-vs-yaneuraou/summary.json\"" \
+  --max-plies \"$MAX_PLIES\" | tee \"$OUTPUT_DIR/sampled-vs-yaneuraou/summary.json\"" \
   "$@"

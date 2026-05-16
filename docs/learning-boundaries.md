@@ -69,6 +69,10 @@ updates, metrics, and checkpoint promotion.
 USI engine processes, runtime move selection, search settings, game execution,
 and raw game-record JSONL output.
 
+Shogi player-vs-player match entrypoints belong in `shogi-arena-agent`.
+`intelligence-representation` should pass checkpoints and read game-record
+artifacts, not mirror match runner CLIs.
+
 The artifact contract is:
 
 - checkpoint files flow from `intelligence-representation` to

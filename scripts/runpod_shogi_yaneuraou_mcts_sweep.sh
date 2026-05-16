@@ -57,7 +57,6 @@ python3 "$RUNPOD_JOB" \
   --ssh-wait-seconds 180 \
   --allow-existing-pods \
   --sync "$PROJECT_REL/src" \
-  --sync "$PROJECT_REL/scripts/run_shogi_player_match.py" \
   --sync "$PROJECT_REL/scripts/setup_runpod.sh" \
   --sync "$PROJECT_REL/scripts/summarize_shogi_match_sweep.py" \
   --sync "$PROJECT_REL/pyproject.toml" \
@@ -74,7 +73,6 @@ python3 "$RUNPOD_JOB" \
   --timings-output "$PROJECT_REL/$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail
 cd \"\$REMOTE_DIR/$PROJECT_REL\"
-export SHOGI_ARENA_PYTHON=\"\$REMOTE_DIR/$PROJECT_REL/.venv/bin/python\"
 mkdir -p \"$OUTPUT_DIR\"
 
 apt-get update >/dev/null
@@ -87,21 +85,21 @@ for simulations in $SIMULATION_COUNTS; do
   case_dir=\"$OUTPUT_DIR/mcts-\$simulations\"
   mkdir -p \"\$case_dir\"
   echo \"running_yaneuraou_mcts_case simulations=\$simulations games=$GAMES_PER_CASE batch=$NN_LEAF_EVAL_BATCH_LIMIT profile=$MOVE_SELECTION_PROFILE\"
-  .venv/bin/python -u scripts/run_shogi_player_match.py \
-    --arena-repo \"\$REMOTE_DIR/$ARENA_REL\" \
+  .venv/bin/python -u \"\$REMOTE_DIR/$ARENA_REL/scripts/evaluate_shogi_players.py\" \
     --player-a-kind checkpoint \
     --player-a-checkpoint \"$CHECKPOINT\" \
+    --player-a-move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
+    --player-a-move-selector mcts \
+    --player-a-mcts-simulations \"\$simulations\" \
+    --player-a-mcts-evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
+    --player-a-device cuda \
+    --player-a-board-backend cshogi \
     --player-b-kind usi \
     --player-b-usi-command /root/YaneuraOu/source/YaneuraOu-runpod \
     --player-b-usi-go-command \"$USI_GO_COMMAND\" \
     --out \"\$case_dir/games.jsonl\" \
     --games \"$GAMES_PER_CASE\" \
-    --max-plies \"$MAX_PLIES\" \
-    --simulations \"\$simulations\" \
-    --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
-    --move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
-    --device cuda \
-    --board-backend cshogi | tee \"\$case_dir/summary.json\"
+    --max-plies \"$MAX_PLIES\" | tee \"\$case_dir/summary.json\"
 done
 
 .venv/bin/python scripts/summarize_shogi_match_sweep.py \
