@@ -26,7 +26,7 @@ def main() -> None:
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
-    result = create_shogi_game_records_from_move_lists(
+    result = create_shogi_records_from_move_lists(
         input_path=args.input,
         output_dir=args.output_dir,
         source_name=args.source_name,
@@ -41,7 +41,7 @@ def main() -> None:
     print(json.dumps(result, indent=2))
 
 
-def create_shogi_game_records_from_move_lists(
+def create_shogi_records_from_move_lists(
     *,
     input_path: Path,
     output_dir: Path,
