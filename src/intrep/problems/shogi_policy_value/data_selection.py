@@ -75,14 +75,14 @@ def load_shogi_policy_value_data_selection_examples(
     return train_examples, eval_examples
 
 
-def shogi_policy_value_data_selection_to_json(selection: ShogiPolicyValueDataSelection) -> dict[str, Any]:
+def shogi_policy_value_data_selection_to_json(selection: ShogiPolicyValueDataSelection, *, root: Path | None = None) -> dict[str, Any]:
     return {
         "name": selection.name,
         "objective": selection.objective,
         "target_construction": _target_construction_to_json(selection.target_construction),
-        "analysis_sources": [_source_to_json(source) for source in selection.analysis_sources],
-        "train_sources": [_source_to_json(source) for source in selection.train_sources],
-        "eval_sources": [_source_to_json(source) for source in selection.eval_sources],
+        "analysis_sources": [_source_to_json(source, root=root) for source in selection.analysis_sources],
+        "train_sources": [_source_to_json(source, root=root) for source in selection.train_sources],
+        "eval_sources": [_source_to_json(source, root=root) for source in selection.eval_sources],
     }
 
 
@@ -200,10 +200,16 @@ def _load_sources(
     return examples
 
 
-def _source_to_json(source: ShogiPolicyValueDataSelectionSource) -> dict[str, str | int]:
+def _source_to_json(source: ShogiPolicyValueDataSelectionSource, *, root: Path | None = None) -> dict[str, str | int]:
+    path = source.path
+    if root is not None:
+        try:
+            path = path.relative_to(root)
+        except ValueError:
+            path = source.path
     payload: dict[str, str | int] = {
         "kind": source.kind,
-        "path": str(source.path),
+        "path": str(path),
     }
     if source.max_games is not None:
         payload["max_games"] = source.max_games

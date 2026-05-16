@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import json
+import shutil
 from dataclasses import replace
 from io import StringIO
 from pathlib import Path
@@ -17,6 +18,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
+    load_shogi_policy_value_tensor_cache,
     write_shogi_policy_value_tensor_cache_manifest,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
@@ -288,6 +290,66 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)
+
+    def test_tensor_cache_identity_survives_bundle_relocation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root = root / "source"
+            moved_root = root / "moved"
+            source_root.mkdir()
+            moved_root.mkdir()
+            train_games_path = source_root / "train-games.jsonl"
+            eval_games_path = source_root / "eval-games.jsonl"
+            data_selection_path = source_root / "data-selection.json"
+            tensor_cache_path = source_root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": "train-games.jsonl"}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                shard_games=1,
+            )
+            manifest_path = tensor_cache_path / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["data_selection"] = shogi_policy_value_data_selection_to_json(
+                load_shogi_policy_value_data_selection(data_selection_path)
+            )
+            manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            shutil.copytree(tensor_cache_path, moved_root / "cache" / "shogi-policy-value-tensors")
+            shutil.copy2(train_games_path, moved_root / "train-games.jsonl")
+            shutil.copy2(eval_games_path, moved_root / "eval-games.jsonl")
+            shutil.copy2(data_selection_path, moved_root / "data-selection.json")
+            moved_selection_path = moved_root / "data-selection.json"
+            moved_selection = load_shogi_policy_value_data_selection(moved_selection_path)
+
+            cache = load_shogi_policy_value_tensor_cache(
+                moved_root / "cache" / "shogi-policy-value-tensors",
+                expected_data_selection=moved_selection,
+                expected_data_selection_root=moved_selection_path.parent,
+            )
+
+            self.assertEqual(len(cache.train_samples), 2)
+            self.assertEqual(len(cache.eval_samples), 2)
 
     def test_tensor_cache_build_can_resume_existing_shards(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

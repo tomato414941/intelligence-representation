@@ -73,6 +73,7 @@ def main() -> None:
         tensor_cache = load_shogi_policy_value_tensor_cache(
             args.tensor_cache,
             expected_data_selection=data_selection,
+            expected_data_selection_root=args.data_selection.parent,
         )
         train_examples = tensor_cache.train_samples
         eval_examples = tensor_cache.eval_samples

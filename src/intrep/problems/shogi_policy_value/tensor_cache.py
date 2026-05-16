@@ -85,7 +85,7 @@ def build_shogi_policy_value_tensor_cache(
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "data_selection_path": str(data_selection_path),
-        "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
+        "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
         "shard_games": shard_games,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
@@ -183,7 +183,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "data_selection_path": str(data_selection_path),
-        "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
+        "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
         "shard_games": shard_games,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
@@ -201,14 +201,19 @@ def load_shogi_policy_value_tensor_cache(
     path: Path,
     *,
     expected_data_selection: ShogiPolicyValueDataSelection | None = None,
+    expected_data_selection_root: Path | None = None,
 ) -> ShogiPolicyValueTensorCache:
     manifest_path = path / "manifest.json"
     manifest = _object_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
     if expected_data_selection is not None:
-        expected = shogi_policy_value_data_selection_to_json(expected_data_selection)
-        if manifest.get("data_selection") != expected:
+        expected = shogi_policy_value_data_selection_to_json(
+            expected_data_selection,
+            root=expected_data_selection_root,
+        )
+        manifest_data_selection = _portable_manifest_data_selection(manifest)
+        if manifest_data_selection != expected:
             raise ValueError("tensor cache data selection does not match requested data selection")
     train_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "train"]
     eval_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "eval"]
@@ -219,6 +224,32 @@ def load_shogi_policy_value_tensor_cache(
         train_policy_target_summary=_object_dict(manifest["train_policy_target_summary"]),
         eval_policy_target_summary=_object_dict(manifest["eval_policy_target_summary"]),
     )
+
+
+def _portable_manifest_data_selection(manifest: dict[str, object]) -> dict[str, object]:
+    data_selection = _object_dict(manifest["data_selection"])
+    data_selection_path = manifest.get("data_selection_path")
+    if not isinstance(data_selection_path, str) or not data_selection_path:
+        return data_selection
+    return _data_selection_json_with_paths_relative_to(data_selection, root=Path(data_selection_path).parent)
+
+
+def _data_selection_json_with_paths_relative_to(payload: dict[str, object], *, root: Path) -> dict[str, object]:
+    result = dict(payload)
+    for key in ("analysis_sources", "train_sources", "eval_sources"):
+        sources = []
+        for source in _object_list(result.get(key, [])):
+            source_payload = dict(_object_dict(source))
+            source_path = Path(str(source_payload["path"]))
+            if source_path.is_absolute():
+                try:
+                    source_path = source_path.relative_to(root)
+                except ValueError:
+                    pass
+            source_payload["path"] = str(source_path)
+            sources.append(source_payload)
+        result[key] = sources
+    return result
 
 
 def _split_sources(
