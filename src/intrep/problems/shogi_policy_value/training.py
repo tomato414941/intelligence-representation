@@ -37,7 +37,7 @@ class ShogiPolicyValueTrainingConfig:
     num_layers: int = 6
     use_shared_core: bool = True
     policy_loss_weight: float = 1.0
-    value_loss_weight: float = 0.0
+    value_loss_weight: float = 1.0
     device: str = "cpu"
     max_train_eval_examples: int | None = None
     max_eval_examples: int | None = None

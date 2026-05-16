@@ -45,7 +45,7 @@ def main() -> None:
     parser.add_argument("--num-heads", type=int, default=8)
     parser.add_argument("--num-layers", type=int, default=6)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
-    parser.add_argument("--value-loss-weight", type=float, default=0.0)
+    parser.add_argument("--value-loss-weight", type=float, default=1.0)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
