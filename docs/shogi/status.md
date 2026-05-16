@@ -48,15 +48,6 @@ With sampled checkpoint move selection, alternating sides, MCTS128, and batch64:
 Current interpretation: the trained checkpoint is clearly above the starting
 checkpoint under these settings, but still below YaneuraOu MaterialLv1 nodes1.
 
-## Current Compute Shape
-
-RunPod official PyTorch 2.8 template is the working GPU environment. The most
-recent successful match run used RTX A5000, 9 vCPU, 50 GB RAM, no network
-volume.
-
-For full Qhapaq tensor-cache training, `num_workers=8` was the fastest measured
-worker count among 0/2/4/8 on the measured A40 pod.
-
 ## Known Constraints
 
 - `runs/` is disposable and must not be the canonical home for promoted models.
