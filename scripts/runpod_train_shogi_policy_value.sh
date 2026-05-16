@@ -20,6 +20,7 @@ MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
 GPU_TYPE=${GPU_TYPE:-NVIDIA RTX A5000}
 CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-80}
 VOLUME_SIZE=${VOLUME_SIZE:-0}
+SECURE_CLOUD=${SECURE_CLOUD:-1}
 NUM_WORKERS=${NUM_WORKERS:-8}
 LEARNING_RATE=${LEARNING_RATE:-0.0005}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
@@ -55,6 +56,10 @@ done
 if [[ -n "$INIT_CHECKPOINT_PATH" ]]; then
   SYNC_ARGS+=(--sync "$INIT_CHECKPOINT_PATH")
 fi
+CLOUD_ARGS=()
+if [[ "$SECURE_CLOUD" == "1" ]]; then
+  CLOUD_ARGS+=(--secure-cloud)
+fi
 
 python3 "$RUNPOD_JOB" \
   --repo-root "$PWD" \
@@ -63,7 +68,7 @@ python3 "$RUNPOD_JOB" \
   --gpu-type "$GPU_TYPE" \
   --container-disk-size "$CONTAINER_DISK_SIZE" \
   --volume-size "$VOLUME_SIZE" \
-  --secure-cloud \
+  "${CLOUD_ARGS[@]}" \
   ${DATA_CENTER_IDS:+--data-center-ids "$DATA_CENTER_IDS"} \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds 600 \
