@@ -16,6 +16,9 @@ OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-420}
+GPU_TYPE=${GPU_TYPE:-NVIDIA RTX A5000}
+CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-80}
+VOLUME_SIZE=${VOLUME_SIZE:-0}
 # Keep worker count at zero for the current JSONL/Python-object cache. See
 # docs/runpod.md before increasing this for full-cache runs.
 NUM_WORKERS=${NUM_WORKERS:-0}
@@ -53,6 +56,10 @@ done
 python3 "$RUNPOD_JOB" \
   --repo-root "$PWD" \
   --name intrep-shogi-policy-value \
+  --template-id runpod-torch-v280 \
+  --gpu-type "$GPU_TYPE" \
+  --container-disk-size "$CONTAINER_DISK_SIZE" \
+  --volume-size "$VOLUME_SIZE" \
   --secure-cloud \
   ${DATA_CENTER_IDS:+--data-center-ids "$DATA_CENTER_IDS"} \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
