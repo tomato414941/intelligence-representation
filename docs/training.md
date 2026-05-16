@@ -157,6 +157,21 @@ It is an acceleration artifact, not a source of truth. The training command
 rejects a cache whose embedded data selection does not match the requested
 `data-selection.json`.
 
+For large shogi bundles, build the same cache with Modal workers instead of a
+single local Python process:
+
+```sh
+uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py \
+  --local-bundle data/shogi/training-data-bundles/qhapaq-full \
+  --remote-bundle qhapaq-full \
+  --shard-games 100
+```
+
+The Modal job uploads the Training Data Bundle to the `intrep-shogi-tensor-cache`
+Volume, builds one tensor shard per worker task, and writes the final
+`manifest.json` from shard manifests. The output remains a rebuildable cache
+derived from `data-selection.json`, not a source of truth.
+
 `scripts/create_shogi_training_data_bundle.py` still accepts repeated
 `--train-games` inputs for temporary experiments and explicit source mixes. When
 multiple train inputs are used, the bundle manifest records every source path

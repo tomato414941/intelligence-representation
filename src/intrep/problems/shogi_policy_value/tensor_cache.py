@@ -89,6 +89,7 @@ def build_shogi_policy_value_tensor_cache(
         "shard_games": shard_games,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
+        "skipped_game_count": sum(int(shard.get("skipped_game_count", 0)) for shard in shards),
         "max_choice_count": max_choice_count,
         "train_policy_target_summary": _finalize_policy_target_summary(train_summary),
         "eval_policy_target_summary": _finalize_policy_target_summary(eval_summary),
@@ -101,8 +102,99 @@ def build_shogi_policy_value_tensor_cache(
         "data_selection_path": str(data_selection_path),
         "train_count": manifest["train_count"],
         "eval_count": manifest["eval_count"],
+        "skipped_game_count": manifest["skipped_game_count"],
         "shard_count": len(shards),
     }
+
+
+def build_shogi_policy_value_tensor_cache_shard(
+    *,
+    data_selection_path: Path,
+    cache_dir: Path,
+    split: str,
+    source_index: int,
+    source_game_start_index: int,
+    source_game_end_index: int,
+    shard_index: int,
+    resume: bool = False,
+) -> dict[str, object]:
+    if source_game_start_index < 0:
+        raise ValueError("source_game_start_index must be non-negative")
+    if source_game_end_index <= source_game_start_index:
+        raise ValueError("source_game_end_index must be greater than source_game_start_index")
+    data_selection = load_shogi_policy_value_data_selection(data_selection_path)
+    sources = _split_sources(data_selection, split)
+    if source_index < 0 or source_index >= len(sources):
+        raise ValueError("source_index is out of range")
+    source = sources[source_index]
+    analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
+        tuple(analysis_source.path for analysis_source in data_selection.analysis_sources)
+    )
+    records = [
+        (source_game_index, record)
+        for source_game_index, record in enumerate(iter_shogi_game_records_jsonl(source.path))
+        if source_game_start_index <= source_game_index < source_game_end_index
+    ]
+    if not records:
+        raise ValueError("shard range must contain at least one game")
+    split_dir = cache_dir / split
+    split_dir.mkdir(parents=True, exist_ok=True)
+    return _build_shard(
+        split=split,
+        source=source,
+        source_index=source_index,
+        split_dir=split_dir,
+        shard_index=shard_index,
+        records=records,
+        data_selection=data_selection,
+        data_selection_path=data_selection_path,
+        analyses_by_position=analyses_by_position,
+        resume=resume,
+    )
+
+
+def write_shogi_policy_value_tensor_cache_manifest(
+    *,
+    data_selection_path: Path,
+    cache_dir: Path,
+    shard_games: int,
+) -> dict[str, object]:
+    data_selection = load_shogi_policy_value_data_selection(data_selection_path)
+    shards = sorted(
+        (_load_shard_manifest_file(path) for path in cache_dir.glob("*/*.json")),
+        key=lambda shard: (
+            str(shard["split"]),
+            int(shard["source_index"]),
+            int(shard["source_game_start_index"]),
+        ),
+    )
+    if not shards:
+        raise ValueError("tensor cache must contain at least one shard manifest")
+    train_summary = _empty_policy_target_summary()
+    eval_summary = _empty_policy_target_summary()
+    max_choice_count = 0
+    for shard in shards:
+        if shard.get("data_selection_path") != str(data_selection_path):
+            raise ValueError(f"tensor cache shard data_selection_path does not match: {shard['path']}")
+        max_choice_count = max(max_choice_count, int(shard["max_choice_count"]))
+        summary = train_summary if shard["split"] == "train" else eval_summary
+        _merge_policy_target_summary(summary, _object_dict(shard["policy_target_summary"]))
+
+    manifest = {
+        "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
+        "data_selection_path": str(data_selection_path),
+        "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
+        "shard_games": shard_games,
+        "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
+        "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
+        "skipped_game_count": sum(int(shard.get("skipped_game_count", 0)) for shard in shards),
+        "max_choice_count": max_choice_count,
+        "train_policy_target_summary": _finalize_policy_target_summary(train_summary),
+        "eval_policy_target_summary": _finalize_policy_target_summary(eval_summary),
+        "shards": shards,
+    }
+    (cache_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return manifest
 
 
 def load_shogi_policy_value_tensor_cache(
@@ -127,6 +219,17 @@ def load_shogi_policy_value_tensor_cache(
         train_policy_target_summary=_object_dict(manifest["train_policy_target_summary"]),
         eval_policy_target_summary=_object_dict(manifest["eval_policy_target_summary"]),
     )
+
+
+def _split_sources(
+    data_selection: ShogiPolicyValueDataSelection,
+    split: str,
+) -> tuple[ShogiPolicyValueDataSelectionSource, ...]:
+    if split == "train":
+        return data_selection.train_sources
+    if split == "eval":
+        return data_selection.eval_sources
+    raise ValueError("split must be train or eval")
 
 
 class ShardedShogiPolicyValueTensorSamples(Sequence[TensorizedShogiPolicyValueSample]):
@@ -278,18 +381,28 @@ def _build_shard(
             return loaded
 
     examples: list[ShogiPolicyValueExample] = []
-    for _source_game_index, record in records:
-        examples.extend(
-            shogi_policy_value_examples_from_game_record(
-                record,
-                policy_target_construction=data_selection.target_construction.policy,
-                value_target_construction=data_selection.target_construction.value,
-                analyses_by_position=analyses_by_position,
-                policy_temperature_cp=data_selection.target_construction.policy_temperature_cp,
-                policy_mate_cp=data_selection.target_construction.policy_mate_cp,
-                score_cp_scale=data_selection.target_construction.score_cp_scale,
+    failures: list[dict[str, object]] = []
+    for source_game_index, record in records:
+        try:
+            examples.extend(
+                shogi_policy_value_examples_from_game_record(
+                    record,
+                    policy_target_construction=data_selection.target_construction.policy,
+                    value_target_construction=data_selection.target_construction.value,
+                    analyses_by_position=analyses_by_position,
+                    policy_temperature_cp=data_selection.target_construction.policy_temperature_cp,
+                    policy_mate_cp=data_selection.target_construction.policy_mate_cp,
+                    score_cp_scale=data_selection.target_construction.score_cp_scale,
+                )
             )
-        )
+        except ValueError as exc:
+            failures.append(
+                {
+                    "source_game_index": source_game_index,
+                    "error": str(exc),
+                    "source_metadata": record.metadata,
+                }
+            )
     samples = tensorize_shogi_policy_value_examples(examples)
     summary = _policy_target_summary(examples)
     max_choice_count = max((int(sample.candidate_move_features.shape[0]) for sample in samples), default=0)
@@ -298,9 +411,12 @@ def _build_shard(
         "sample_count": len(samples),
         "max_choice_count": max_choice_count,
         "policy_target_summary": summary,
+        "skipped_game_count": len(failures),
+        "failures": failures,
         "samples": [_sample_to_payload(sample) for sample in samples],
     }
     torch.save(payload, shard_path)
+    _write_shard_manifest_file(_shard_manifest_path(shard_path), _shard_manifest(payload))
     return _shard_manifest(payload)
 
 
@@ -333,6 +449,19 @@ def _shard_identity(
 
 
 def _try_load_matching_shard(shard_path: Path, expected: dict[str, object]) -> dict[str, object] | None:
+    manifest_path = _shard_manifest_path(shard_path)
+    if manifest_path.exists() and shard_path.exists():
+        try:
+            manifest = _load_shard_manifest_file(manifest_path)
+        except Exception:  # noqa: BLE001
+            return None
+        for key, value in expected.items():
+            if manifest.get(key) != value:
+                return None
+        if int(manifest.get("sample_count", 0)) < 0:
+            return None
+        return manifest
+
     try:
         payload = _load_shard(shard_path)
     except Exception:  # noqa: BLE001
@@ -340,9 +469,26 @@ def _try_load_matching_shard(shard_path: Path, expected: dict[str, object]) -> d
     for key, value in expected.items():
         if payload.get(key) != value:
             return None
-    if int(payload.get("sample_count", 0)) <= 0:
+    if int(payload.get("sample_count", 0)) < 0:
         return None
-    return _shard_manifest(payload)
+    manifest = _shard_manifest(payload)
+    _write_shard_manifest_file(manifest_path, manifest)
+    return manifest
+
+
+def _shard_manifest_path(shard_path: Path) -> Path:
+    return shard_path.with_suffix(".json")
+
+
+def _load_shard_manifest_file(path: Path) -> dict[str, object]:
+    payload = _object_dict(json.loads(path.read_text(encoding="utf-8")))
+    if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
+        raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
+    return payload
+
+
+def _write_shard_manifest_file(path: Path, manifest: dict[str, object]) -> None:
+    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 def _load_shard(path: Path) -> dict[str, object]:
@@ -365,9 +511,13 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
             "source_max_games",
             "source_game_start_index",
             "source_game_end_index",
+            "data_selection_path",
+            "target_construction",
             "sample_count",
             "max_choice_count",
             "policy_target_summary",
+            "skipped_game_count",
+            "failures",
             "path",
         )
     }

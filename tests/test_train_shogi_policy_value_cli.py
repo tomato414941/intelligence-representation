@@ -15,6 +15,10 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
+from intrep.problems.shogi_policy_value.tensor_cache import (
+    build_shogi_policy_value_tensor_cache_shard,
+    write_shogi_policy_value_tensor_cache_manifest,
+)
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -249,6 +253,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue((tensor_cache_path / "manifest.json").exists())
             self.assertTrue((tensor_cache_path / "train").exists())
             self.assertTrue((tensor_cache_path / "eval").exists())
+            self.assertTrue(list((tensor_cache_path / "train").glob("*.json")))
 
             with patch(
                 "sys.argv",
@@ -330,6 +335,106 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(second["train_count"], first["train_count"])
             self.assertEqual(second["eval_count"], first["eval_count"])
             self.assertEqual({path: path.stat().st_mtime_ns for path in shard_paths}, mtimes)
+
+    def test_tensor_cache_manifest_can_be_written_from_independent_shards(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            build_shogi_policy_value_tensor_cache_shard(
+                data_selection_path=data_selection_path,
+                cache_dir=tensor_cache_path,
+                split="train",
+                source_index=0,
+                source_game_start_index=0,
+                source_game_end_index=1,
+                shard_index=0,
+            )
+            build_shogi_policy_value_tensor_cache_shard(
+                data_selection_path=data_selection_path,
+                cache_dir=tensor_cache_path,
+                split="eval",
+                source_index=0,
+                source_game_start_index=0,
+                source_game_end_index=1,
+                shard_index=0,
+            )
+            manifest = write_shogi_policy_value_tensor_cache_manifest(
+                data_selection_path=data_selection_path,
+                cache_dir=tensor_cache_path,
+                shard_games=1,
+            )
+
+            self.assertEqual(manifest["train_count"], 2)
+            self.assertEqual(manifest["eval_count"], 2)
+            self.assertTrue((tensor_cache_path / "manifest.json").exists())
+
+    def test_tensor_cache_records_untraceable_games_as_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "8d8e"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            summary = build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                shard_games=1,
+            )
+            manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(summary["skipped_game_count"], 1)
+            self.assertEqual(manifest["skipped_game_count"], 1)
+            self.assertEqual(manifest["train_count"], 0)
+            skipped_shards = [shard for shard in manifest["shards"] if shard["skipped_game_count"]]
+            self.assertEqual(len(skipped_shards), 1)
+            self.assertIn("illegal move", skipped_shards[0]["failures"][0]["error"])
 
     def test_initializes_from_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
