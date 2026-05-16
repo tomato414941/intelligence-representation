@@ -99,8 +99,10 @@ class ShogiPolicyValueDataset(TorchDataset):
     def __init__(self, examples: Sequence[ShogiPolicyValueDatasetItem]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
-        self.examples = tuple(examples)
-        self.max_choice_count = max(_choice_count(example) for example in self.examples)
+        self.examples = examples
+        self.max_choice_count = int(
+            getattr(examples, "max_choice_count", None) or max(_choice_count(example) for example in self.examples)
+        )
 
     def __len__(self) -> int:
         return len(self.examples)

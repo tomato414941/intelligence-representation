@@ -367,10 +367,11 @@ def _build_shogi_policy_value_loader(
     *,
     shuffle: bool,
 ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
+    effective_shuffle = shuffle and not bool(getattr(dataset.examples, "sequential_access_preferred", False))
     return DataLoader(
         dataset,
         batch_size=config.batch_size,
-        shuffle=shuffle,
+        shuffle=effective_shuffle,
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
     )

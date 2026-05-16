@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, overload
 
 import torch
 
@@ -32,8 +32,8 @@ DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors"
 
 @dataclass(frozen=True)
 class ShogiPolicyValueTensorCache:
-    train_samples: list[TensorizedShogiPolicyValueSample]
-    eval_samples: list[TensorizedShogiPolicyValueSample]
+    train_samples: Sequence[TensorizedShogiPolicyValueSample]
+    eval_samples: Sequence[TensorizedShogiPolicyValueSample]
     train_policy_target_summary: dict[str, float | int]
     eval_policy_target_summary: dict[str, float | int]
 
@@ -60,6 +60,7 @@ def build_shogi_policy_value_tensor_cache(
     shards: list[dict[str, object]] = []
     train_summary = _empty_policy_target_summary()
     eval_summary = _empty_policy_target_summary()
+    max_choice_count = 0
 
     for split, sources in (("train", data_selection.train_sources), ("eval", data_selection.eval_sources)):
         split_dir = cache_dir / split
@@ -77,6 +78,7 @@ def build_shogi_policy_value_tensor_cache(
                 resume=resume,
             ):
                 shards.append(shard)
+                max_choice_count = max(max_choice_count, int(shard["max_choice_count"]))
                 summary = train_summary if split == "train" else eval_summary
                 _merge_policy_target_summary(summary, _object_dict(shard["policy_target_summary"]))
 
@@ -87,6 +89,7 @@ def build_shogi_policy_value_tensor_cache(
         "shard_games": shard_games,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
+        "max_choice_count": max_choice_count,
         "train_policy_target_summary": _finalize_policy_target_summary(train_summary),
         "eval_policy_target_summary": _finalize_policy_target_summary(eval_summary),
         "shards": shards,
@@ -115,24 +118,77 @@ def load_shogi_policy_value_tensor_cache(
         expected = shogi_policy_value_data_selection_to_json(expected_data_selection)
         if manifest.get("data_selection") != expected:
             raise ValueError("tensor cache data selection does not match requested data selection")
-    train_samples: list[TensorizedShogiPolicyValueSample] = []
-    eval_samples: list[TensorizedShogiPolicyValueSample] = []
-    for shard in _object_list(manifest["shards"]):
-        shard_payload = _load_shard(path / str(_object_dict(shard)["path"]))
-        samples = [_sample_from_payload(item) for item in shard_payload["samples"]]
-        split = str(shard_payload["split"])
-        if split == "train":
-            train_samples.extend(samples)
-        elif split == "eval":
-            eval_samples.extend(samples)
-        else:
-            raise ValueError(f"unsupported tensor cache split: {split}")
+    train_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "train"]
+    eval_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "eval"]
+    max_choice_count = int(manifest["max_choice_count"])
     return ShogiPolicyValueTensorCache(
-        train_samples=train_samples,
-        eval_samples=eval_samples,
+        train_samples=ShardedShogiPolicyValueTensorSamples(path, train_shards, max_choice_count=max_choice_count),
+        eval_samples=ShardedShogiPolicyValueTensorSamples(path, eval_shards, max_choice_count=max_choice_count),
         train_policy_target_summary=_object_dict(manifest["train_policy_target_summary"]),
         eval_policy_target_summary=_object_dict(manifest["eval_policy_target_summary"]),
     )
+
+
+class ShardedShogiPolicyValueTensorSamples(Sequence[TensorizedShogiPolicyValueSample]):
+    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, max_choice_count: int) -> None:
+        self.cache_dir = cache_dir
+        self.shards = tuple(shards)
+        self.max_choice_count = max_choice_count
+        self.offsets: list[int] = []
+        self.sequential_access_preferred = True
+        offset = 0
+        for shard in self.shards:
+            self.offsets.append(offset)
+            offset += int(shard["sample_count"])
+        self.sample_count = offset
+        self._loaded_shard_index: int | None = None
+        self._loaded_samples: list[TensorizedShogiPolicyValueSample] = []
+
+    def __len__(self) -> int:
+        return self.sample_count
+
+    @overload
+    def __getitem__(self, index: int) -> TensorizedShogiPolicyValueSample:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[TensorizedShogiPolicyValueSample]:
+        ...
+
+    def __getitem__(self, index: int | slice) -> TensorizedShogiPolicyValueSample | list[TensorizedShogiPolicyValueSample]:
+        if isinstance(index, slice):
+            return [self[item] for item in range(*index.indices(len(self)))]
+        if index < 0:
+            index += len(self)
+        if index < 0 or index >= len(self):
+            raise IndexError(index)
+        shard_index = self._shard_index_for_sample(index)
+        shard_offset = self.offsets[shard_index]
+        return self._load_shard_samples(shard_index)[index - shard_offset]
+
+    def _shard_index_for_sample(self, index: int) -> int:
+        low = 0
+        high = len(self.shards) - 1
+        while low <= high:
+            mid = (low + high) // 2
+            start = self.offsets[mid]
+            end = start + int(self.shards[mid]["sample_count"])
+            if index < start:
+                high = mid - 1
+            elif index >= end:
+                low = mid + 1
+            else:
+                return mid
+        raise IndexError(index)
+
+    def _load_shard_samples(self, shard_index: int) -> list[TensorizedShogiPolicyValueSample]:
+        if self._loaded_shard_index == shard_index:
+            return self._loaded_samples
+        shard = self.shards[shard_index]
+        payload = _load_shard(self.cache_dir / str(shard["path"]))
+        self._loaded_samples = [_sample_from_payload(item) for item in payload["samples"]]
+        self._loaded_shard_index = shard_index
+        return self._loaded_samples
 
 
 def _build_source_shards(
@@ -236,9 +292,11 @@ def _build_shard(
         )
     samples = tensorize_shogi_policy_value_examples(examples)
     summary = _policy_target_summary(examples)
+    max_choice_count = max((int(sample.candidate_move_features.shape[0]) for sample in samples), default=0)
     payload = {
         **expected,
         "sample_count": len(samples),
+        "max_choice_count": max_choice_count,
         "policy_target_summary": summary,
         "samples": [_sample_to_payload(sample) for sample in samples],
     }
@@ -308,6 +366,7 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
             "source_game_start_index",
             "source_game_end_index",
             "sample_count",
+            "max_choice_count",
             "policy_target_summary",
             "path",
         )
