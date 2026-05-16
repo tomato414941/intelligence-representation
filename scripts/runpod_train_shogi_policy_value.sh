@@ -11,6 +11,7 @@ cd "$(dirname "$0")/.."
 RUNPOD_RUNNER_ROOT=${RUNPOD_RUNNER_ROOT:-"$PWD/../runpod-job-runner"}
 RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
 DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/current/data-selection.json}
+TENSOR_CACHE=${TENSOR_CACHE:-}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}
 BATCH_SIZE=${BATCH_SIZE:-512}
@@ -37,37 +38,16 @@ NUM_LAYERS=${NUM_LAYERS:-6}
 # Optional RunPod data-center pin. See docs/runpod.md before long baselines.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
-if [[ ! -f "$DATA_SELECTION" ]]; then
-  echo "data selection not found: $DATA_SELECTION" >&2
-  exit 1
+TRAINING_INPUT_ARGS=(--data-selection "$DATA_SELECTION")
+if [[ -n "$TENSOR_CACHE" ]]; then
+  TRAINING_INPUT_ARGS+=(--tensor-cache "$TENSOR_CACHE")
 fi
-
-mapfile -t DATA_SELECTION_FILES < <(
-  .venv/bin/python - "$DATA_SELECTION" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-selection_path = Path(sys.argv[1])
-payload = json.loads(selection_path.read_text(encoding="utf-8"))
-paths = {selection_path}
-for key in ("train_sources", "eval_sources", "analysis_sources"):
-    for source in payload.get(key, []):
-        if source.get("kind") not in {"game_records_jsonl", "shogi_engine_analysis_jsonl"}:
-            continue
-        source_path = Path(source["path"])
-        if not source_path.is_absolute():
-            source_path = selection_path.parent / source_path
-        paths.add(source_path)
-for path in sorted(paths):
-    if not path.exists():
-        raise SystemExit(f"data selection source not found: {path}")
-    print(path)
-PY
+mapfile -t TRAINING_INPUT_FILES < <(
+  .venv/bin/python -m intrep.problems.shogi_policy_value.training_inputs "${TRAINING_INPUT_ARGS[@]}"
 )
 SYNC_ARGS=()
-for selection_file in "${DATA_SELECTION_FILES[@]}"; do
-  SYNC_ARGS+=(--sync "$selection_file")
+for input_file in "${TRAINING_INPUT_FILES[@]}"; do
+  SYNC_ARGS+=(--sync "$input_file")
 done
 
 python3 "$RUNPOD_JOB" \
@@ -91,8 +71,11 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE tensor_cache=$TENSOR_CACHE\"
 TRAIN_ARGS=()
+if [[ -n \"$TENSOR_CACHE\" ]]; then
+  TRAIN_ARGS+=(--tensor-cache \"$TENSOR_CACHE\")
+fi
 if [[ -n \"$EARLY_STOPPING_PATIENCE\" ]]; then
   TRAIN_ARGS+=(--early-stopping-patience \"$EARLY_STOPPING_PATIENCE\")
 fi
