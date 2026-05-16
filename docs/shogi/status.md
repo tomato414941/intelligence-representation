@@ -8,13 +8,13 @@ inference-performance docs.
 
 ## Current Model
 
-The strongest measured project checkpoint is the one-epoch Qhapaq full-cache
-policy checkpoint from `shogi-learning-20260516-003`.
+The strongest project checkpoint observed so far is the one-epoch Qhapaq
+full-cache policy checkpoint from `shogi-learning-20260516-003`.
 
-It is still a run artifact path, not an immutable promoted model identity:
+It is promoted here:
 
 ```text
-runs/shogi/runpod-qhapaq-full-one-epoch-rtx4090-20260516/checkpoint.pt
+models/d256-h1024-heads8-l6-shogi/checkpoint.pt
 ```
 
 ## Training Data
@@ -60,14 +60,15 @@ worker count among 0/2/4/8 on the measured A40 pod.
 ## Known Constraints
 
 - `runs/` is disposable and must not be the canonical home for promoted models.
-- Checkpoint identity and promotion are not yet settled.
+- The current strongest checkpoint is promoted, but immutable checkpoint identity
+  metadata is not yet settled.
 - Self-play and MCTS-heavy generation remain CPU-sensitive.
 - Playing-strength evidence should come from game-record JSONL; docs only keep
   compact summaries.
 
 ## Next Useful Work
 
-1. Decide how to promote the trained checkpoint into a durable model identity.
-2. Run a stronger external comparison after promotion, not against a run path.
-3. Continue training from the current strongest checkpoint with more data or
+1. Run a stronger external comparison against the promoted checkpoint.
+2. Continue training from the current strongest checkpoint with more data or
    additional epochs.
+3. Settle immutable checkpoint identity metadata.

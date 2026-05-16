@@ -1,23 +1,51 @@
 # d256-h1024-heads8-l6-shogi
 
-これは現在採用している将棋 policy/value checkpoint です。
+This is the current promoted shogi policy checkpoint.
 
-`runs/shogi/policy-value-engine-analysis-1000games-runpod/best_checkpoint.pt`
-から昇格しました。前回の smoke best checkpoint に対して MCTS8 20局で
-20勝0敗0分だったため、今後の対局生成、評価、継続学習の基準として残します。
+Promoted from:
 
-## メモ
+```text
+shogi-learning-20260516-003
+```
 
-- 構成: d256-h1024-heads8-l6
-- 学習データ: `policy-value-engine-analysis-1000games`
-- 学習は step 1750 で early stop
-- best eval step: 750
-- best eval loss: 3.0005
-- eval accuracy: 0.2528
-- eval value loss: 0.1115
-- MCTS8 評価: 20勝0敗0分
-- illegal move: 0
-- SHA256: `904e2281f62aa0b2b3a212219d8ebfd75a6912d4c8c9968c49c3d398f83fd472`
+Artifact:
 
-この README は実験レジストリではなく、人間向けのメモです。後で継続学習や
-差し替えをした場合は、自然言語で分かる範囲を更新します。
+```text
+models/d256-h1024-heads8-l6-shogi/checkpoint.pt
+```
+
+## Model
+
+- architecture: d256-h1024-heads8-l6
+- problem: shogi policy/value
+- trained objective in this run: policy-only
+
+## Training Data
+
+- source: Qhapaq full tensor cache
+- train examples: 4,951,012
+- eval examples: 262,133
+- eval cap during training: 65,536
+
+## Training Result
+
+- train loss: 4.2407 -> 2.0753
+- eval loss: 4.2447 -> 2.1020
+- eval accuracy: 0.0259 -> 0.4039
+- eval top-3 accuracy: 0.6540
+- eval top-5 accuracy: 0.7522
+
+## Playing-Strength Checks
+
+Sampled checkpoint move selection, alternating sides, MCTS128, batch64:
+
+- vs previous checkpoint: 16-0
+- vs YaneuraOu MaterialLv1 `go nodes 1`: 0-16
+
+## Integrity
+
+SHA256:
+
+```text
+5ef88aee8edf8d79bc569ea939a853f121c16618296402f97447ff65a18c470c
+```

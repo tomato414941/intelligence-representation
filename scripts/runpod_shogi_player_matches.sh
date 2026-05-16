@@ -9,8 +9,8 @@ REPO_PARENT=${REPO_PARENT:-"$(cd "$PWD/../.." && pwd)"}
 PROJECT_REL=${PROJECT_REL:-projects/intelligence-representation}
 ARENA_REL=${ARENA_REL:-projects/shogi-arena-agent}
 
-PLAYER_A_CHECKPOINT=${PLAYER_A_CHECKPOINT:-runs/shogi/runpod-qhapaq-full-one-epoch-rtx4090-20260516/checkpoint.pt}
-PLAYER_B_CHECKPOINT=${PLAYER_B_CHECKPOINT:-models/d256-h1024-heads8-l6-shogi/checkpoint.pt}
+PLAYER_A_CHECKPOINT=${PLAYER_A_CHECKPOINT:-models/d256-h1024-heads8-l6-shogi/checkpoint.pt}
+PLAYER_B_CHECKPOINT=${PLAYER_B_CHECKPOINT:-}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/player-matches-runpod-$(date -u +%Y%m%d-%H%M%S)}
 
 GAMES=${GAMES:-16}
@@ -32,7 +32,7 @@ if [[ ! -f "$PLAYER_A_CHECKPOINT" ]]; then
   echo "player A checkpoint not found: $PLAYER_A_CHECKPOINT" >&2
   exit 1
 fi
-if [[ ! -f "$PLAYER_B_CHECKPOINT" ]]; then
+if [[ -n "$PLAYER_B_CHECKPOINT" && ! -f "$PLAYER_B_CHECKPOINT" ]]; then
   echo "player B checkpoint not found: $PLAYER_B_CHECKPOINT" >&2
   exit 1
 fi
@@ -47,6 +47,10 @@ if [[ "$SECURE_CLOUD" == "1" ]]; then
 fi
 if [[ -n "$DATA_CENTER_IDS" ]]; then
   RUNNER_ARGS+=(--data-center-ids "$DATA_CENTER_IDS")
+fi
+SYNC_ARGS=(--sync "$PROJECT_REL/$PLAYER_A_CHECKPOINT")
+if [[ -n "$PLAYER_B_CHECKPOINT" ]]; then
+  SYNC_ARGS+=(--sync "$PROJECT_REL/$PLAYER_B_CHECKPOINT")
 fi
 
 python3 "$RUNPOD_JOB" \
@@ -67,8 +71,7 @@ python3 "$RUNPOD_JOB" \
   --sync "$PROJECT_REL/pyproject.toml" \
   --sync "$PROJECT_REL/uv.lock" \
   --sync "$PROJECT_REL/AGENTS.md" \
-  --sync "$PROJECT_REL/$PLAYER_A_CHECKPOINT" \
-  --sync "$PROJECT_REL/$PLAYER_B_CHECKPOINT" \
+  "${SYNC_ARGS[@]}" \
   --sync "$ARENA_REL/src" \
   --sync "$ARENA_REL/scripts/evaluate_shogi_players.py" \
   --sync "$ARENA_REL/pyproject.toml" \
@@ -82,6 +85,7 @@ cd \"\$REMOTE_DIR/$PROJECT_REL\"
 export SHOGI_ARENA_PYTHON=\"\$REMOTE_DIR/$PROJECT_REL/.venv/bin/python\"
 mkdir -p \"$OUTPUT_DIR/sampled-vs-checkpoint\" \"$OUTPUT_DIR/sampled-vs-yaneuraou\"
 
+if [[ -n \"$PLAYER_B_CHECKPOINT\" ]]; then
 .venv/bin/python -u scripts/run_shogi_player_match.py \
   --arena-repo \"\$REMOTE_DIR/$ARENA_REL\" \
   --player-a-kind checkpoint \
@@ -96,6 +100,7 @@ mkdir -p \"$OUTPUT_DIR/sampled-vs-checkpoint\" \"$OUTPUT_DIR/sampled-vs-yaneurao
   --move-selection-profile \"$MOVE_SELECTION_PROFILE\" \
   --device cuda \
   --board-backend cshogi | tee \"$OUTPUT_DIR/sampled-vs-checkpoint/summary.json\"
+fi
 
 apt-get update >/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential >/dev/null
