@@ -26,8 +26,9 @@ source records, data selection, runs, datasets, objectives, and recursive
 execution.
 
 Move or summarize the shogi-specific artifact-boundary material under
-`docs/shogi/learning-boundaries.md`, with only a short pointer from the
-project-level document if needed.
+`docs/shogi/`, with only a short pointer from the project-level document if
+needed. Use a separate shogi document if `docs/shogi/learning-boundaries.md` is
+not ready to absorb the material.
 
 ## Close When
 
