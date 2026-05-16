@@ -38,13 +38,6 @@ One full Qhapaq epoch trained cleanly:
 
 ## Latest Playing-Strength Check
 
-Against the starting checkpoint, with sampled checkpoint move selection,
-alternating sides, MCTS128, and batch64:
-
-- result: 16-0
-- no draws or illegal moves
-- every game had a unique move sequence
-
 Against YaneuraOu MaterialLv1 `go nodes 1`, with evaluation move selection,
 alternating sides, and batch64:
 
@@ -54,17 +47,7 @@ alternating sides, and batch64:
 - MCTS1024: 0-4
 - MCTS2048: 0-4
 - 4 games per MCTS case
-- all recorded requests stayed below 10 seconds on RTX 4000 Ada Generation
 
-Current interpretation: the trained checkpoint is clearly above the starting
-checkpoint. Against YaneuraOu MaterialLv1 nodes1, it can take games around
-MCTS128-256 in a small sample, but the result is not yet robust.
-
-## Known Constraints
-
-- `runs/` is disposable and must not be the canonical home for promoted models.
-- The current strongest checkpoint is promoted, but immutable checkpoint identity
-  metadata is not yet settled.
-- Self-play and MCTS-heavy generation remain CPU-sensitive.
-- Playing-strength evidence should come from game-record JSONL; docs only keep
-  compact summaries.
+Current interpretation: against YaneuraOu MaterialLv1 nodes1, the checkpoint can
+take games around MCTS128-256 in a small sample, but the result is not yet
+robust.
