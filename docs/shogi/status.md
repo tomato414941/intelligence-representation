@@ -56,10 +56,3 @@ checkpoint under these settings, but still below YaneuraOu MaterialLv1 nodes1.
 - Self-play and MCTS-heavy generation remain CPU-sensitive.
 - Playing-strength evidence should come from game-record JSONL; docs only keep
   compact summaries.
-
-## Next Useful Work
-
-1. Run a stronger external comparison against the promoted checkpoint.
-2. Continue training from the current strongest checkpoint with more data or
-   additional epochs.
-3. Settle immutable checkpoint identity metadata.
