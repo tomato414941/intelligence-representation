@@ -4,6 +4,7 @@ import copy
 from dataclasses import dataclass
 import time
 from typing import Callable, Sequence
+import warnings
 
 import torch
 from torch import nn
@@ -38,6 +39,7 @@ class ShogiPolicyValueTrainingConfig:
     use_shared_core: bool = True
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
+    allow_nonstandard_loss_weights: bool = False
     device: str = "cpu"
     max_train_eval_examples: int | None = None
     max_eval_examples: int | None = None
@@ -137,12 +139,7 @@ def train_shogi_policy_value_model(
         raise ValueError("eval_every is required when early_stopping_patience is set")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
-    if training_config.policy_loss_weight < 0.0:
-        raise ValueError("policy_loss_weight must be non-negative")
-    if training_config.value_loss_weight < 0.0:
-        raise ValueError("value_loss_weight must be non-negative")
-    if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight == 0.0:
-        raise ValueError("at least one loss weight must be positive")
+    validate_shogi_policy_value_loss_weights(training_config)
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
     dataset = ShogiPolicyValueDataset(examples)
@@ -355,6 +352,29 @@ def evaluate_shogi_policy_value_model(
 ) -> tuple[float, float]:
     metrics = evaluate_shogi_policy_value_metrics(model, loader)
     return metrics.loss, metrics.accuracy
+
+
+def validate_shogi_policy_value_loss_weights(config: ShogiPolicyValueTrainingConfig) -> None:
+    if config.policy_loss_weight < 0.0:
+        raise ValueError("policy_loss_weight must be non-negative")
+    if config.value_loss_weight < 0.0:
+        raise ValueError("value_loss_weight must be non-negative")
+    if config.policy_loss_weight == 0.0 and config.value_loss_weight == 0.0:
+        raise ValueError("at least one loss weight must be positive")
+    if config.allow_nonstandard_loss_weights:
+        warnings.warn(
+            "NONSTANDARD shogi policy/value loss weights are enabled. "
+            "This can create checkpoints that are not suitable for normal MCTS use. "
+            "Use policy_loss_weight=1.0 and value_loss_weight=1.0 unless explicitly approved.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return
+    if config.policy_loss_weight != 1.0 or config.value_loss_weight != 1.0:
+        raise ValueError(
+            "policy_loss_weight and value_loss_weight default to 1.0; "
+            "set allow_nonstandard_loss_weights=True to use other values"
+        )
 
 
 def evaluate_shogi_policy_value_metrics(

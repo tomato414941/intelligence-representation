@@ -84,6 +84,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "0.7",
                     "--value-loss-weight",
                     "0.3",
+                    "--allow-nonstandard-loss-weights",
                     "--device",
                     "cuda",
                     "--num-workers",
@@ -115,6 +116,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.learning_rate, 0.001)
         self.assertEqual(config.policy_loss_weight, 0.7)
         self.assertEqual(config.value_loss_weight, 0.3)
+        self.assertTrue(config.allow_nonstandard_loss_weights)
         self.assertEqual(config.device, "cuda")
         self.assertEqual(config.num_workers, 2)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())

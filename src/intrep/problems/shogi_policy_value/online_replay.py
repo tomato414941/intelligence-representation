@@ -38,6 +38,7 @@ from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingProgress,
     ShogiPolicyValueTrainingResult,
     train_shogi_policy_value_model,
+    validate_shogi_policy_value_loss_weights,
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 
@@ -534,12 +535,7 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("learning_rate must be positive")
     if training_config.weight_decay < 0.0:
         raise ValueError("weight_decay must be non-negative")
-    if training_config.policy_loss_weight < 0.0:
-        raise ValueError("policy_loss_weight must be non-negative")
-    if training_config.value_loss_weight < 0.0:
-        raise ValueError("value_loss_weight must be non-negative")
-    if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight == 0.0:
-        raise ValueError("at least one loss weight must be positive")
+    validate_shogi_policy_value_loss_weights(training_config)
     if training_config.max_train_eval_examples is not None and training_config.max_train_eval_examples <= 0:
         raise ValueError("max_train_eval_examples must be positive")
     if training_config.max_eval_examples is not None and training_config.max_eval_examples <= 0:
@@ -705,6 +701,7 @@ def _training_config_from_checkpoint(
         use_shared_core=checkpoint_config.use_shared_core,
         policy_loss_weight=training_config.policy_loss_weight,
         value_loss_weight=training_config.value_loss_weight,
+        allow_nonstandard_loss_weights=training_config.allow_nonstandard_loss_weights,
         device=training_config.device,
         max_train_eval_examples=training_config.max_train_eval_examples,
         max_eval_examples=training_config.max_eval_examples,

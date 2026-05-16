@@ -87,6 +87,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     learning_rate: float = 0.0005
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
+    allow_nonstandard_loss_weights: bool = False
     device: str = "cpu"
     num_workers: int = 0
 
@@ -118,6 +119,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     learning_rate: float = 0.0005
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
+    allow_nonstandard_loss_weights: bool = False
     device: str = "cpu"
     num_workers: int = 0
 
@@ -174,6 +176,7 @@ def run_shogi_generated_data_training_cycle(
         learning_rate=config.learning_rate,
         policy_loss_weight=config.policy_loss_weight,
         value_loss_weight=config.value_loss_weight,
+        allow_nonstandard_loss_weights=config.allow_nonstandard_loss_weights,
         device=config.device,
         num_workers=config.num_workers,
     )
@@ -237,6 +240,7 @@ def run_shogi_generated_data_training_loop(
                 learning_rate=config.learning_rate,
                 policy_loss_weight=config.policy_loss_weight,
                 value_loss_weight=config.value_loss_weight,
+                allow_nonstandard_loss_weights=config.allow_nonstandard_loss_weights,
                 device=config.device,
                 num_workers=config.num_workers,
             )
@@ -286,6 +290,13 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("value_loss_weight must be non-negative")
     if config.policy_loss_weight == 0.0 and config.value_loss_weight == 0.0:
         raise ValueError("at least one loss weight must be positive")
+    if not config.allow_nonstandard_loss_weights and (
+        config.policy_loss_weight != 1.0 or config.value_loss_weight != 1.0
+    ):
+        raise ValueError(
+            "policy_loss_weight and value_loss_weight default to 1.0; "
+            "set allow_nonstandard_loss_weights=True to use other values"
+        )
     if config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
 
@@ -381,6 +392,7 @@ def _run_training(
     learning_rate: float,
     policy_loss_weight: float,
     value_loss_weight: float,
+    allow_nonstandard_loss_weights: bool,
     device: str,
     num_workers: int,
 ) -> None:
@@ -413,4 +425,6 @@ def _run_training(
         "--num-workers",
         str(num_workers),
     ]
+    if allow_nonstandard_loss_weights:
+        command.append("--allow-nonstandard-loss-weights")
     subprocess.run(command, check=True)

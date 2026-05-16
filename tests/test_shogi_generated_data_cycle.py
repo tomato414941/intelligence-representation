@@ -741,6 +741,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             weight_decay=0.02,
                             policy_loss_weight=0.7,
                             value_loss_weight=0.3,
+                            allow_nonstandard_loss_weights=True,
                             device="cpu",
                             max_train_eval_examples=5,
                             max_eval_examples=6,
@@ -765,6 +766,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(captured_config.seed, 13)
             self.assertEqual(captured_config.policy_loss_weight, 0.7)
             self.assertEqual(captured_config.value_loss_weight, 0.3)
+            self.assertTrue(captured_config.allow_nonstandard_loss_weights)
             self.assertEqual(captured_config.max_train_eval_examples, 5)
             self.assertEqual(captured_config.max_eval_examples, 6)
             self.assertEqual(captured_config.log_every, 7)

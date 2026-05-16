@@ -108,6 +108,8 @@ if modal is not None:
             argv.extend(["--max-eval-examples", str(config["max_eval_examples"])])
         if int(config["eval_every"]) > 0:
             argv.extend(["--eval-every", str(config["eval_every"])])
+        if bool(config["allow_nonstandard_loss_weights"]):
+            argv.append("--allow-nonstandard-loss-weights")
 
         started = time.monotonic()
         import sys
@@ -164,7 +166,8 @@ if modal is not None:
         num_heads: int = 8,
         num_layers: int = 6,
         policy_loss_weight: float = 1.0,
-        value_loss_weight: float = 0.0,
+        value_loss_weight: float = 1.0,
+        allow_nonstandard_loss_weights: bool = False,
         num_workers: int = 2,
         log_every: int = 100,
         checkpoint_every: int = 1000,
@@ -195,6 +198,7 @@ if modal is not None:
                 "num_layers": num_layers,
                 "policy_loss_weight": policy_loss_weight,
                 "value_loss_weight": value_loss_weight,
+                "allow_nonstandard_loss_weights": allow_nonstandard_loss_weights,
                 "num_workers": num_workers,
                 "log_every": log_every,
                 "checkpoint_every": checkpoint_every,

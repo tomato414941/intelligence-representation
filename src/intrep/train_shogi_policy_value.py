@@ -46,6 +46,7 @@ def main() -> None:
     parser.add_argument("--num-layers", type=int, default=6)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)
+    parser.add_argument("--allow-nonstandard-loss-weights", action="store_true")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
@@ -95,6 +96,7 @@ def main() -> None:
         use_shared_core=True,
         policy_loss_weight=args.policy_loss_weight,
         value_loss_weight=args.value_loss_weight,
+        allow_nonstandard_loss_weights=args.allow_nonstandard_loss_weights,
         device=args.device,
         max_train_eval_examples=args.max_train_eval_examples,
         max_eval_examples=args.max_eval_examples,

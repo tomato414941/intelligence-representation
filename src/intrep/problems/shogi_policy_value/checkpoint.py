@@ -31,6 +31,7 @@ def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: objec
                 "use_shared_core": config.use_shared_core,
                 "policy_loss_weight": config.policy_loss_weight,
                 "value_loss_weight": config.value_loss_weight,
+                "allow_nonstandard_loss_weights": config.allow_nonstandard_loss_weights,
             },
             "model_state_dict": state_dict,
         },
@@ -60,6 +61,7 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
         use_shared_core=bool(config_payload.get("use_shared_core", False)),
         policy_loss_weight=float(config_payload.get("policy_loss_weight", 1.0)),
         value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
+        allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
     )
 
 
@@ -78,6 +80,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
             num_layers=int(config_payload.get("num_layers", 1)),
             use_shared_core=bool(config_payload.get("use_shared_core", False)),
             value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
+            allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
         )
     )
     model.load_state_dict(payload["model_state_dict"], strict=True)

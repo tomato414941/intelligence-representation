@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--learning-rate", type=float, default=0.0005)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)
+    parser.add_argument("--allow-nonstandard-loss-weights", action="store_true")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--num-workers", type=int, default=0)
     args = parser.parse_args(argv)
@@ -72,6 +73,7 @@ def main(argv: list[str] | None = None) -> None:
             learning_rate=args.learning_rate,
             policy_loss_weight=args.policy_loss_weight,
             value_loss_weight=args.value_loss_weight,
+            allow_nonstandard_loss_weights=args.allow_nonstandard_loss_weights,
             device=args.device,
             num_workers=args.num_workers,
         )

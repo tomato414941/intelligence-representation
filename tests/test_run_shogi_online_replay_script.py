@@ -76,6 +76,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "0.7",
                     "--value-loss-weight",
                     "0.3",
+                    "--allow-nonstandard-loss-weights",
                     "--device",
                     "cuda",
                     "--max-train-eval-examples",
@@ -129,6 +130,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_config.weight_decay, 0.02)
         self.assertEqual(config.training_config.policy_loss_weight, 0.7)
         self.assertEqual(config.training_config.value_loss_weight, 0.3)
+        self.assertTrue(config.training_config.allow_nonstandard_loss_weights)
         self.assertEqual(config.training_config.device, "cuda")
         self.assertEqual(config.training_config.max_train_eval_examples, 100)
         self.assertEqual(config.training_config.max_eval_examples, 50)

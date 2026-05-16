@@ -114,6 +114,18 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 ),
             )
 
+    def test_rejects_nonstandard_loss_weights_without_explicit_allowance(self) -> None:
+        examples = shogi_policy_value_examples_from_test_moves(("7g7f",))
+
+        with self.assertRaisesRegex(ValueError, "allow_nonstandard_loss_weights"):
+            train_shogi_policy_value_model(
+                examples,
+                config=ShogiPolicyValueTrainingConfig(
+                    max_steps=1,
+                    value_loss_weight=0.5,
+                ),
+            )
+
     def test_progress_callback_runs_only_on_progress_interval(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         reported_steps: list[int] = []
@@ -208,6 +220,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 value_loss_weight=0.1,
+                allow_nonstandard_loss_weights=True,
             ),
         )
 
@@ -241,6 +254,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 num_heads=2,
                 use_shared_core=False,
                 value_loss_weight=0.2,
+                allow_nonstandard_loss_weights=True,
             ),
         )
 
@@ -282,6 +296,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 use_shared_core=False,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
+                allow_nonstandard_loss_weights=True,
             ),
         )
 
@@ -318,6 +333,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                     use_shared_core=False,
                     policy_loss_weight=0.0,
                     value_loss_weight=1.0,
+                    allow_nonstandard_loss_weights=True,
                     max_train_eval_examples=1,
                 ),
             )
