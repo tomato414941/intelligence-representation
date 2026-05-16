@@ -18,13 +18,13 @@ need the same raw fields.
 
 ## Data Selection and Runs
 
-Data Selection states which source records, training examples, or stored targets
-are included for a declared use.
+Data Selection states which source records and target material are included for
+a declared use.
 
 Experience Stores are source storage for generated or collected experience.
 They are not PyTorch Datasets and should not be the direct learning boundary.
-Training should use explicit Data Selection or a fixed Training Data Bundle derived
-from them.
+Training should use explicit Data Selection or a fixed Training Data Bundle
+built from a declared Data Selection.
 
 PyTorch `Dataset` objects should stay thinner than Data Selection. They adapt
 an already-selected training or evaluation set into indexed samples; they should
