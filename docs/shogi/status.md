@@ -38,15 +38,27 @@ One full Qhapaq epoch trained cleanly:
 
 ## Latest Playing-Strength Check
 
-With sampled checkpoint move selection, alternating sides, MCTS128, and batch64:
+Against the starting checkpoint, with sampled checkpoint move selection,
+alternating sides, MCTS128, and batch64:
 
-- vs starting checkpoint: 16-0
-- vs YaneuraOu MaterialLv1 `go nodes 1`: 0-16
-- no draws or illegal moves in either 16-game match
-- every game in each match had a unique move sequence
+- result: 16-0
+- no draws or illegal moves
+- every game had a unique move sequence
+
+Against YaneuraOu MaterialLv1 `go nodes 1`, with evaluation move selection,
+alternating sides, and batch64:
+
+- MCTS128: 2-2
+- MCTS256: 3-1
+- MCTS512: 1-3
+- MCTS1024: 0-4
+- MCTS2048: 0-4
+- 4 games per MCTS case
+- all recorded requests stayed below 10 seconds on RTX 4000 Ada Generation
 
 Current interpretation: the trained checkpoint is clearly above the starting
-checkpoint under these settings, but still below YaneuraOu MaterialLv1 nodes1.
+checkpoint. Against YaneuraOu MaterialLv1 nodes1, it can take games around
+MCTS128-256 in a small sample, but the result is not yet robust.
 
 ## Known Constraints
 

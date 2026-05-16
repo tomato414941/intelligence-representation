@@ -13,6 +13,22 @@ It does not treat `runs/` as a durable source of truth.
 | `shogi-learning-20260516-002` | 2026-05-16 | Which DataLoader worker count is fastest for full Qhapaq tensor-cache training? | RunPod A40; PyTorch 2.8.0+cu128; 500 steps per case; batch 512; policy-only | Qhapaq full tensor cache; 4,951,012 train examples; 262,133 eval examples; eval capped at 16,384 examples | See DataLoader profile below | `num_workers=8` was fastest among 0/2/4/8 on this A40 pod; data wait fell sharply as workers increased |
 | `shogi-learning-20260516-003` | 2026-05-16 | What does one epoch of full Qhapaq tensor-cache training achieve? | RunPod RTX 4090; PyTorch 2.8.0+cu128; 9,670 steps; batch 512; num_workers 8; policy-only; eval every 1,000 steps; keep last 3 step checkpoints | Qhapaq full tensor cache; 4,951,012 train examples; 262,133 eval examples; eval capped at 65,536 examples | train loss 4.2407 -> 2.0753; eval loss 4.2447 -> 2.1020; eval accuracy 0.0259 -> 0.4039; eval top-3 accuracy 0.6540; eval top-5 accuracy 0.7522; actual steps 9,670; job wall time 1,915.9s including 81.6s repo/cache sync and 1,793.0s remote training; post-training player match beat the starting checkpoint 8-0 with alternating sides, MCTS128, batch64, A40, no draws, no illegal moves, average 85.5 plies | One full Qhapaq epoch trains cleanly, substantially improves held-out move-choice accuracy, and beat the starting checkpoint in a deterministic small match |
 | `shogi-learning-20260516-004` | 2026-05-16 | Does sampled move selection change the post-training match picture? | RunPod RTX A5000; PyTorch 2.8.0+cu128; player A = `shogi-learning-20260516-003` final checkpoint; player B = starting checkpoint or YaneuraOu MaterialLv1 `go nodes 1`; 16 games per match; alternating sides; MCTS128; batch64; `self-play` move selection profile for checkpoint players | Same checkpoints as `shogi-learning-20260516-003`; no new training data | Against the starting checkpoint, player A won 16-0 with no draws or illegal moves; all 16 games had unique move sequences; average 90.0 plies. Against YaneuraOu MaterialLv1 nodes1, player A lost 0-16 with no draws or illegal moves; all 16 games had unique move sequences; average 66.125 plies | Sampling removed the repeated-game artifact from the small match. The trained checkpoint beat the starting checkpoint and lost to YaneuraOu MaterialLv1 nodes1 under these settings |
+| `shogi-learning-20260516-005` | 2026-05-16 | How much MCTS is needed for the promoted checkpoint to take games from YaneuraOu MaterialLv1 nodes1? | RunPod RTX 4000 Ada Generation; PyTorch 2.8.0+cu128; promoted checkpoint as player A; YaneuraOu MaterialLv1 `go nodes 1` as player B; 4 games per MCTS case; alternating sides; evaluation move selection profile; NN leaf eval batch limit 64; max plies 320 | Same promoted checkpoint as `shogi-learning-20260516-003`; no new training data | See YaneuraOu MCTS sweep below | In this small sweep, MCTS128 already took games and MCTS256 won 3-1. Larger MCTS counts did not improve monotonically in the 4-game sample. Every recorded request stayed below 10 seconds on RTX 4000 Ada Generation |
+
+## YaneuraOu MCTS Sweep
+
+### `shogi-learning-20260516-005`
+
+Player A is the promoted project checkpoint. Player B is YaneuraOu MaterialLv1
+with `go nodes 1`. Each case used 4 games with alternating sides.
+
+| MCTS simulations per move | Player A result | Avg plies | Request avg sec | Request p95 sec | Request max sec | NN leaf eval batch fill |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 128 | 2-2 | 134.5 | 0.202 | 0.343 | 0.399 | 0.669 |
+| 256 | 3-1 | 90.25 | 0.423 | 0.703 | 0.817 | 0.723 |
+| 512 | 1-3 | 73.25 | 0.672 | 1.064 | 1.488 | 0.814 |
+| 1024 | 0-4 | 80.0 | 1.479 | 2.584 | 4.479 | 0.757 |
+| 2048 | 0-4 | 92.5 | 3.023 | 6.396 | 8.621 | 0.787 |
 
 ## DataLoader Profiles
 
