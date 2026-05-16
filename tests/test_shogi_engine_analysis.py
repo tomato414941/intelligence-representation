@@ -12,7 +12,8 @@ from intrep.worlds.shogi.engine_analysis import (
     shogi_analysis_positions_from_game_records,
     write_shogi_engine_analysis_jsonl,
 )
-from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_transitions_from_usi_moves
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 class ShogiEngineAnalysisTest(unittest.TestCase):
@@ -54,16 +55,16 @@ class ShogiEngineAnalysisTest(unittest.TestCase):
             positions,
             [
                 ShogiAnalysisPosition(
-                    position_sfen=first_record.transitions[0].position_sfen,
-                    legal_moves=first_record.transitions[0].legal_moves,
+                    position_sfen=trace_shogi_game_record(first_record).transitions[0].position_sfen,
+                    legal_moves=trace_shogi_game_record(first_record).transitions[0].legal_moves,
                 ),
                 ShogiAnalysisPosition(
-                    position_sfen=first_record.transitions[1].position_sfen,
-                    legal_moves=first_record.transitions[1].legal_moves,
+                    position_sfen=trace_shogi_game_record(first_record).transitions[1].position_sfen,
+                    legal_moves=trace_shogi_game_record(first_record).transitions[1].legal_moves,
                 ),
                 ShogiAnalysisPosition(
-                    position_sfen=second_record.transitions[1].position_sfen,
-                    legal_moves=second_record.transitions[1].legal_moves,
+                    position_sfen=trace_shogi_game_record(second_record).transitions[1].position_sfen,
+                    legal_moves=trace_shogi_game_record(second_record).transitions[1].legal_moves,
                 ),
             ],
         )
@@ -99,11 +100,10 @@ class ShogiEngineAnalysisTest(unittest.TestCase):
 
 def _record(moves: tuple[str, ...]) -> ShogiGameRecord:
     actor = ShogiActorSpec(kind="test", name="actor", settings={})
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=actor,
         white_actor=actor,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves),
     )
 
 

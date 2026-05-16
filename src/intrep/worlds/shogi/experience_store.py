@@ -79,7 +79,7 @@ def append_shogi_experience_store(*, input_path: Path, store_dir: Path) -> dict[
 
 
 def _transition_count(records: list[ShogiGameRecord]) -> int:
-    return sum(len(record.transitions) for record in records)
+    return sum(len(record.moves) for record in records)
 
 
 def _checkpoint_actor_counts(records: list[ShogiGameRecord]) -> dict[str, int]:

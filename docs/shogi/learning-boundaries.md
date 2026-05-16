@@ -7,7 +7,10 @@ generic world/problem framework for every future domain.
 
 `intrep.worlds.shogi` owns source-side shogi data and formats:
 
-- `ShogiGameRecord`
+- `ShogiGameRecord`: lightweight recorded game facts such as actors, initial
+  position, moves, result, end reason, and source metadata
+- `ShogiGameTrace`: derived replay expansion such as positions, legal moves,
+  side-to-move, next positions, rewards, and done flags
 - KIF / USI parsing and writing
 - legal shogi game records and source-derived game-record JSONL
 - Experience Store
@@ -15,8 +18,9 @@ generic world/problem framework for every future domain.
 - train/eval game-record splitting
 - engine-analysis source records
 
-Code belongs in `worlds/shogi` when it preserves, organizes, validates, or
-selects shogi experience before a specific learning target is chosen.
+Code belongs in `worlds/shogi` when it preserves, organizes, validates,
+selects, or replays shogi experience before a specific learning target is
+chosen.
 
 ## Policy/Value Problem Data
 
@@ -24,7 +28,7 @@ selects shogi experience before a specific learning target is chosen.
 problem:
 
 - Data Selection loading for policy/value training
-- conversion from selected game records to `ShogiPolicyValueExample`
+- conversion from selected game traces to `ShogiPolicyValueExample`
 - tensorized policy/value samples and tensor caches
 - policy/value model training and evaluation
 - generated-data training cycles
@@ -41,6 +45,11 @@ The boundary is source-side versus problem-side.
 Training Data Bundles are world-side fixed source snapshots. Tensor caches are
 problem-side acceleration artifacts derived from a Data Selection or Training
 Data Bundle.
+
+`ShogiGameRecord` is not a cache. It should not store replay-derived legal
+moves, next positions, rewards, or problem-derived targets. Those belong in
+`ShogiGameTrace` when computed in memory, or in a rebuildable cache when a run
+needs to avoid recomputing them.
 
 Experience Store and Online Replay Buffer are independent. Experience Store is
 durable source storage for generated or collected shogi experience. Replay

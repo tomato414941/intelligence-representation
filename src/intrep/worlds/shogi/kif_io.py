@@ -8,7 +8,7 @@ import shogi.KIF
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     shogi_side_code_to_winner,
     write_shogi_game_records_jsonl,
 )
@@ -33,11 +33,11 @@ def load_kif_game_record(path: str | Path, *, encoding: str = "cp932") -> tuple[
 def load_shogi_game_record_from_kif_file(path: str | Path) -> ShogiGameRecord:
     moves, winner = load_kif_game_record(path)
     normalized_winner = shogi_side_code_to_winner(winner)
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=ShogiActorSpec(kind="kif", name="black", settings={}),
         white_actor=ShogiActorSpec(kind="kif", name="white", settings={}),
         initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=normalized_winner),
         winner=normalized_winner,
     )
 

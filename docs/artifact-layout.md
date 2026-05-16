@@ -8,6 +8,9 @@ in [datasets.md](datasets.md).
 - `data/<source>/raw/` holds externally acquired source files.
 - `data/<source>/processed/` holds reusable source-derived records and failure
   logs.
+- `data/shogi/records/<name>/` may hold durable normalized shogi game-record
+  JSONL when the records are reused across more than one training bundle or
+  evaluation workflow.
 - `data/shogi/training-data-bundles/<name>/` holds durable shogi Training Data Bundles / Dataset
   Snapshots.
 - `data/shogi/training-data-bundles/<name>/cache/` may hold rebuildable tensor
@@ -44,6 +47,10 @@ enough to rebuild, or needed to explain skipped source records.
 
 `cache/` is not a source of truth. It should be rebuildable from `raw/`,
 `processed/`, or a documented data selection / training data bundle.
+
+Shogi game records store recorded game facts. Replay-derived traces,
+position/legal-move expansions, and tensorized policy/value samples are caches
+or problem artifacts, not source game records.
 
 ## Saved File Formats
 

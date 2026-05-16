@@ -17,11 +17,11 @@ from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
-    ShogiTransitionRecord,
     load_shogi_game_records_jsonl,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 from intrep.worlds.shogi.training_data_bundle import create_shogi_training_data_bundle
 
 
@@ -41,33 +41,23 @@ def _record(
     black_actor: ShogiActorSpec = BLACK_ACTOR,
     white_actor: ShogiActorSpec = WHITE_ACTOR,
 ) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=black_actor,
         white_actor=white_actor,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
         end_reason="game_over",
     )
 
 
-def _synthetic_record(position_sfen: str) -> ShogiGameRecord:
-    return ShogiGameRecord(
+def _heldout_position_record() -> ShogiGameRecord:
+    board = shogi.Board()
+    board.push_usi("7g7f")
+    return shogi_game_record_from_usi_moves(
+        ("3c3d",),
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=position_sfen,
-        transitions=(
-            ShogiTransitionRecord(
-                ply=0,
-                side="black",
-                position_sfen=position_sfen,
-                legal_moves=("7g7f",),
-                action_usi="7g7f",
-                next_position_sfen=f"{position_sfen} after 7g7f",
-                reward=1.0,
-                done=True,
-            ),
-        ),
+        initial_position_sfen=board.sfen(),
         winner="black",
         end_reason="game_over",
     )
@@ -268,7 +258,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             output_root = root / "datasets"
             train_record = _record(("7g7f",), "black")
             overlapping_eval_record = _record(("2g2f",), "white")
-            heldout_eval_record = _synthetic_record(position_sfen="heldout-position")
+            heldout_eval_record = _heldout_position_record()
             write_shogi_game_records_jsonl(train_path, [train_record])
             write_shogi_game_records_jsonl(eval_path, [overlapping_eval_record, heldout_eval_record])
 
@@ -298,7 +288,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             output_root = root / "datasets"
             train_record = _record(("7g7f",), "black")
             eval_record = _record(("2g2f",), "black")
-            train_transition = train_record.transitions[0]
+            train_transition = trace_shogi_game_record(train_record).transitions[0]
             write_shogi_game_records_jsonl(train_path, [train_record])
             write_shogi_game_records_jsonl(eval_path, [eval_record])
             write_shogi_engine_analysis_jsonl(

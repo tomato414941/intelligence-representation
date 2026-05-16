@@ -1,8 +1,6 @@
 import unittest
 
-import shogi
-
-from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_transitions_from_usi_moves
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
 from intrep.worlds.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
 
 
@@ -11,11 +9,10 @@ WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"
 
 
 def _record(moves: tuple[str, ...], winner: str | None = None, end_reason: str | None = None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
         end_reason=end_reason,
     )
@@ -33,29 +30,10 @@ class ShogiGameReplayTest(unittest.TestCase):
         self.assertEqual(plies[0].source_actor, BLACK_ACTOR)
         self.assertEqual(plies[1].source_actor, WHITE_ACTOR)
 
-    def test_rejects_corrupt_next_position(self) -> None:
-        record = _record(("7g7f",))
-        transition = record.transitions[0]
-        corrupt = ShogiGameRecord(
-            black_actor=record.black_actor,
-            white_actor=record.white_actor,
-            initial_position_sfen=record.initial_position_sfen,
-            transitions=(
-                type(transition)(
-                    ply=transition.ply,
-                    side=transition.side,
-                    position_sfen=transition.position_sfen,
-                    legal_moves=transition.legal_moves,
-                    action_usi=transition.action_usi,
-                    next_position_sfen=shogi.Board().sfen(),
-                    reward=transition.reward,
-                    done=transition.done,
-                    decision_usi_info_lines=transition.decision_usi_info_lines,
-                ),
-            ),
-        )
+    def test_rejects_illegal_move(self) -> None:
+        corrupt = _record(("7g7f", "7g7f"))
 
-        with self.assertRaisesRegex(ValueError, "next position"):
+        with self.assertRaisesRegex(ValueError, "illegal move"):
             replay_shogi_game_record(corrupt)
 
     def test_rejects_max_plies_with_winner(self) -> None:

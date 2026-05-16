@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 import shogi
@@ -18,10 +19,12 @@ from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
+    ShogiMoveRecord,
+    shogi_game_record_from_usi_moves,
     shogi_game_record_to_json,
-    shogi_game_transitions_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
@@ -29,11 +32,10 @@ WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 
@@ -67,26 +69,12 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
     def test_loads_move_choice_examples_from_game_record_jsonl_text(self) -> None:
         record = _record(("7g7f", "3c3d"), "black")
-        first = record.transitions[0]
-        record = ShogiGameRecord(
-            black_actor=record.black_actor,
-            white_actor=record.white_actor,
-            initial_position_sfen=record.initial_position_sfen,
-            transitions=(
-                type(first)(
-                    ply=first.ply,
-                    side=first.side,
-                    position_sfen=first.position_sfen,
-                    legal_moves=first.legal_moves,
-                    action_usi=first.action_usi,
-                    next_position_sfen=first.next_position_sfen,
-                    reward=first.reward,
-                    done=first.done,
-                    decision_usi_info_lines=("info depth 4 score cp 100 multipv 1 pv 7g7f",),
-                ),
-                record.transitions[1],
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(action_usi="7g7f", decision_usi_info_lines=("info depth 4 score cp 100 multipv 1 pv 7g7f",)),
+                record.moves[1],
             ),
-            winner=record.winner,
         )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
@@ -109,37 +97,12 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
     def test_builds_score_targets_from_best_usi_score(self) -> None:
         record = _record(("7g7f", "3c3d"), "black")
-        first = record.transitions[0]
-        second = record.transitions[1]
-        record = ShogiGameRecord(
-            black_actor=record.black_actor,
-            white_actor=record.white_actor,
-            initial_position_sfen=record.initial_position_sfen,
-            transitions=(
-                type(first)(
-                    ply=first.ply,
-                    side=first.side,
-                    position_sfen=first.position_sfen,
-                    legal_moves=first.legal_moves,
-                    action_usi=first.action_usi,
-                    next_position_sfen=first.next_position_sfen,
-                    reward=first.reward,
-                    done=first.done,
-                    decision_usi_info_lines=("info depth 4 score cp 300 multipv 1 pv 7g7f",),
-                ),
-                type(second)(
-                    ply=second.ply,
-                    side=second.side,
-                    position_sfen=second.position_sfen,
-                    legal_moves=second.legal_moves,
-                    action_usi=second.action_usi,
-                    next_position_sfen=second.next_position_sfen,
-                    reward=second.reward,
-                    done=second.done,
-                    decision_usi_info_lines=("info depth 4 score mate -3 multipv 1 pv 3c3d",),
-                ),
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(action_usi="7g7f", decision_usi_info_lines=("info depth 4 score cp 300 multipv 1 pv 7g7f",)),
+                ShogiMoveRecord(action_usi="3c3d", decision_usi_info_lines=("info depth 4 score mate -3 multipv 1 pv 3c3d",)),
             ),
-            winner=record.winner,
         )
 
         targets = shogi_score_targets_from_game_record(record, score_cp_scale=300.0)
@@ -149,28 +112,17 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
     def test_builds_policy_targets_from_multipv_usi_scores(self) -> None:
         record = _record(("7g7f",), "black")
-        first = record.transitions[0]
-        record = ShogiGameRecord(
-            black_actor=record.black_actor,
-            white_actor=record.white_actor,
-            initial_position_sfen=record.initial_position_sfen,
-            transitions=(
-                type(first)(
-                    ply=first.ply,
-                    side=first.side,
-                    position_sfen=first.position_sfen,
-                    legal_moves=first.legal_moves,
-                    action_usi=first.action_usi,
-                    next_position_sfen=first.next_position_sfen,
-                    reward=first.reward,
-                    done=first.done,
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(
+                    action_usi="7g7f",
                     decision_usi_info_lines=(
                         "info multipv 1 score cp 100 pv 7g7f",
                         "info multipv 2 score cp 0 pv 2g2f",
                     ),
                 ),
             ),
-            winner=record.winner,
         )
 
         targets = shogi_policy_targets_from_game_record(record, source="decision_usi_multipv")[0]
@@ -181,7 +133,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
     def test_builds_policy_and_score_targets_from_engine_analysis(self) -> None:
         record = _record(("7g7f",), "black")
-        transition = record.transitions[0]
+        transition = trace_shogi_game_record(record).transitions[0]
         analysis = ShogiEngineAnalysis(
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,
@@ -193,8 +145,9 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         )
 
         analyses = shogi_engine_analysis_by_position([analysis])
-        policy_targets = shogi_policy_targets_from_engine_analysis(analyses, record)[0]
-        score_targets = shogi_score_targets_from_engine_analysis(analyses, record, score_cp_scale=300.0)
+        trace = trace_shogi_game_record(record)
+        policy_targets = shogi_policy_targets_from_engine_analysis(analyses, trace)[0]
+        score_targets = shogi_score_targets_from_engine_analysis(analyses, trace, score_cp_scale=300.0)
 
         self.assertIsNotNone(policy_targets)
         self.assertGreater(policy_targets["7g7f"], policy_targets["2g2f"])
@@ -204,12 +157,13 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
     def test_missing_engine_analysis_yields_unknown_targets(self) -> None:
         record = _record(("7g7f",), "black")
 
-        self.assertEqual(shogi_policy_targets_from_engine_analysis({}, record), (None,))
-        self.assertEqual(shogi_score_targets_from_engine_analysis({}, record), (None,))
+        trace = trace_shogi_game_record(record)
+        self.assertEqual(shogi_policy_targets_from_engine_analysis({}, trace), (None,))
+        self.assertEqual(shogi_score_targets_from_engine_analysis({}, trace), (None,))
 
     def test_rejects_duplicate_engine_analysis_positions(self) -> None:
         record = _record(("7g7f",), "black")
-        transition = record.transitions[0]
+        transition = trace_shogi_game_record(record).transitions[0]
         analysis = ShogiEngineAnalysis(
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,

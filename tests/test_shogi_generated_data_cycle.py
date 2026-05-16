@@ -9,8 +9,6 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-import shogi
-
 from intrep.problems.shogi_policy_value.generated_data_cycle import (
     ShogiGeneratedDataTrainingCycleConfig,
     ShogiGeneratedDataTrainingLoopConfig,
@@ -37,7 +35,7 @@ from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
 
@@ -47,11 +45,10 @@ WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 

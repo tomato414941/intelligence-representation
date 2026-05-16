@@ -17,6 +17,7 @@ from intrep.worlds.shogi.experience_stats import (
     shogi_train_eval_position_stats,
 )
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 ShogiEvalPositionPolicy = Literal["allow_overlap", "exclude_train_position_games"]
 
@@ -129,7 +130,7 @@ def create_shogi_training_data_bundle(
         "selected_eval_games_before_position_policy": len(selected_eval_records),
         "skipped_eval_games_for_train_position_overlap": skipped_eval_games,
         "game_count": len(records),
-        "transition_count": sum(len(record.transitions) for record in records),
+        "transition_count": sum(len(record.moves) for record in records),
         "position_stats": shogi_position_stats(records).to_dict(),
         **train_eval_position_stats,
         "analysis_coverage": analysis_coverage,
@@ -291,7 +292,7 @@ def _limit_records(records: list[ShogiGameRecord], max_games: int | None) -> lis
 
 
 def _position_set(records: list[ShogiGameRecord]) -> set[str]:
-    return {transition.position_sfen for record in records for transition in record.transitions}
+    return {transition.position_sfen for record in records for transition in trace_shogi_game_record(record).transitions}
 
 
 def _validate_eval_position_policy(eval_position_policy: str) -> None:
@@ -328,7 +329,7 @@ def _position_coverage(records: list[ShogiGameRecord], analyzed_positions: set[s
     positions = {
         transition.position_sfen
         for record in records
-        for transition in record.transitions
+        for transition in trace_shogi_game_record(record).transitions
     }
     covered = len(positions & analyzed_positions)
     total = len(positions)

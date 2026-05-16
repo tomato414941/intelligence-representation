@@ -13,6 +13,7 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import ShogiGameTrace, trace_shogi_game_record
 from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
 from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
 
@@ -84,15 +85,16 @@ def shogi_policy_value_examples_from_game_record(
     score_cp_scale: float = 600.0,
 ) -> list[ShogiPolicyValueExample]:
     analyses = analyses_by_position or {}
-    policy_targets = shogi_policy_targets_from_game_record(
-        record,
+    trace = trace_shogi_game_record(record)
+    policy_targets = shogi_policy_targets_from_game_trace(
+        trace,
         source=policy_target_construction,
         analyses_by_position=analyses,
         policy_temperature_cp=policy_temperature_cp,
         policy_mate_cp=policy_mate_cp,
     )
-    value_targets = shogi_value_targets_from_game_record(
-        record,
+    value_targets = shogi_value_targets_from_game_trace(
+        trace,
         source=value_target_construction,
         analyses_by_position=analyses,
         score_cp_scale=score_cp_scale,
@@ -105,7 +107,7 @@ def shogi_policy_value_examples_from_game_record(
             policy_targets=policy_targets[index],
             value_target=value_targets[index],
         )
-        for index, transition in enumerate(record.transitions)
+        for index, transition in enumerate(trace.transitions)
     ]
 
 
@@ -116,8 +118,9 @@ def shogi_move_choice_examples_from_game_record(
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
 ) -> list[ShogiMoveChoiceExample]:
-    policy_targets = shogi_policy_targets_from_game_record(
-        record,
+    trace = trace_shogi_game_record(record)
+    policy_targets = shogi_policy_targets_from_game_trace(
+        trace,
         source=policy_target_construction,
         policy_temperature_cp=policy_temperature_cp,
         policy_mate_cp=policy_mate_cp,
@@ -129,7 +132,7 @@ def shogi_move_choice_examples_from_game_record(
             chosen_move=transition.action_usi,
             policy_targets=policy_targets[index],
         )
-        for index, transition in enumerate(record.transitions)
+        for index, transition in enumerate(trace.transitions)
     ]
 
 
@@ -139,8 +142,9 @@ def shogi_position_value_examples_from_game_record(
     value_target_construction: str = "winner",
     score_cp_scale: float = 600.0,
 ) -> list[ShogiPositionValueExample]:
-    value_targets = shogi_value_targets_from_game_record(
-        record,
+    trace = trace_shogi_game_record(record)
+    value_targets = shogi_value_targets_from_game_trace(
+        trace,
         source=value_target_construction,
         score_cp_scale=score_cp_scale,
     )
@@ -149,8 +153,54 @@ def shogi_position_value_examples_from_game_record(
             position_sfen=transition.position_sfen,
             value_target=value_targets[index],
         )
-        for index, transition in enumerate(record.transitions)
+        for index, transition in enumerate(trace.transitions)
     ]
+
+
+def shogi_policy_targets_from_game_trace(
+    trace: ShogiGameTrace,
+    *,
+    source: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
+    policy_temperature_cp: float = 100.0,
+    policy_mate_cp: float = 100000.0,
+) -> tuple[dict[str, float] | None, ...]:
+    if source == "chosen_move":
+        return tuple(None for _transition in trace.transitions)
+    if source == "decision_usi_multipv":
+        return tuple(
+            _policy_target_from_info_lines(
+                transition.decision_usi_info_lines,
+                legal_moves=transition.legal_moves,
+                policy_temperature_cp=policy_temperature_cp,
+                policy_mate_cp=policy_mate_cp,
+            )
+            for transition in trace.transitions
+        )
+    if source == "engine_analysis_multipv":
+        return shogi_policy_targets_from_engine_analysis(
+            analyses_by_position or {},
+            trace,
+            policy_temperature_cp=policy_temperature_cp,
+            policy_mate_cp=policy_mate_cp,
+        )
+    raise ValueError(f"unsupported shogi policy target source: {source}")
+
+
+def shogi_value_targets_from_game_trace(
+    trace: ShogiGameTrace,
+    *,
+    source: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
+    score_cp_scale: float = 600.0,
+) -> tuple[float | None, ...]:
+    if source == "winner":
+        return shogi_return_targets_from_game_trace(trace)
+    if source == "decision_usi_score":
+        return shogi_score_targets_from_game_trace(trace, score_cp_scale=score_cp_scale)
+    if source == "engine_analysis_score":
+        return shogi_score_targets_from_engine_analysis(analyses_by_position or {}, trace, score_cp_scale=score_cp_scale)
+    raise ValueError(f"unsupported shogi value target source: {source}")
 
 
 def shogi_policy_targets_from_game_record(
@@ -161,26 +211,13 @@ def shogi_policy_targets_from_game_record(
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
 ) -> tuple[dict[str, float] | None, ...]:
-    if source == "chosen_move":
-        return tuple(None for _transition in record.transitions)
-    if source == "decision_usi_multipv":
-        return tuple(
-            _policy_target_from_info_lines(
-                transition.decision_usi_info_lines,
-                legal_moves=transition.legal_moves,
-                policy_temperature_cp=policy_temperature_cp,
-                policy_mate_cp=policy_mate_cp,
-            )
-            for transition in record.transitions
-        )
-    if source == "engine_analysis_multipv":
-        return shogi_policy_targets_from_engine_analysis(
-            analyses_by_position or {},
-            record,
-            policy_temperature_cp=policy_temperature_cp,
-            policy_mate_cp=policy_mate_cp,
-        )
-    raise ValueError(f"unsupported shogi policy target source: {source}")
+    return shogi_policy_targets_from_game_trace(
+        trace_shogi_game_record(record),
+        source=source,
+        analyses_by_position=analyses_by_position,
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+    )
 
 
 def shogi_value_targets_from_game_record(
@@ -190,25 +227,32 @@ def shogi_value_targets_from_game_record(
     analyses_by_position: dict[str, ShogiEngineAnalysis] | None = None,
     score_cp_scale: float = 600.0,
 ) -> tuple[float | None, ...]:
-    if source == "winner":
-        return shogi_return_targets_from_game_record(record)
-    if source == "decision_usi_score":
-        return shogi_score_targets_from_game_record(record, score_cp_scale=score_cp_scale)
-    if source == "engine_analysis_score":
-        return shogi_score_targets_from_engine_analysis(analyses_by_position or {}, record, score_cp_scale=score_cp_scale)
-    raise ValueError(f"unsupported shogi value target source: {source}")
+    return shogi_value_targets_from_game_trace(
+        trace_shogi_game_record(record),
+        source=source,
+        analyses_by_position=analyses_by_position,
+        score_cp_scale=score_cp_scale,
+    )
+
+
+def shogi_return_targets_from_game_trace(trace: ShogiGameTrace) -> tuple[float | None, ...]:
+    if trace.winner is None:
+        return tuple(None for _transition in trace.transitions)
+    return tuple(1.0 if transition.side == trace.winner else -1.0 for transition in trace.transitions)
 
 
 def shogi_return_targets_from_game_record(record: ShogiGameRecord) -> tuple[float | None, ...]:
-    if record.winner is None:
-        return tuple(None for _transition in record.transitions)
-    return tuple(1.0 if transition.side == record.winner else -1.0 for transition in record.transitions)
+    return shogi_return_targets_from_game_trace(trace_shogi_game_record(record))
+
+
+def shogi_score_targets_from_game_trace(trace: ShogiGameTrace, *, score_cp_scale: float = 600.0) -> tuple[float | None, ...]:
+    if score_cp_scale <= 0:
+        raise ValueError("score_cp_scale must be positive")
+    return tuple(_score_target_from_info_lines(transition.decision_usi_info_lines, score_cp_scale=score_cp_scale) for transition in trace.transitions)
 
 
 def shogi_score_targets_from_game_record(record: ShogiGameRecord, *, score_cp_scale: float = 600.0) -> tuple[float | None, ...]:
-    if score_cp_scale <= 0:
-        raise ValueError("score_cp_scale must be positive")
-    return tuple(_score_target_from_info_lines(transition.decision_usi_info_lines, score_cp_scale=score_cp_scale) for transition in record.transitions)
+    return shogi_score_targets_from_game_trace(trace_shogi_game_record(record), score_cp_scale=score_cp_scale)
 
 
 def shogi_engine_analysis_by_position(analyses: Sequence[ShogiEngineAnalysis]) -> dict[str, ShogiEngineAnalysis]:
@@ -229,7 +273,7 @@ def load_shogi_engine_analysis_by_position_jsonl(paths: Sequence[str | Path]) ->
 
 def shogi_policy_targets_from_engine_analysis(
     analyses_by_position: dict[str, ShogiEngineAnalysis],
-    record: ShogiGameRecord,
+    trace: ShogiGameTrace,
     *,
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
@@ -241,13 +285,13 @@ def shogi_policy_targets_from_engine_analysis(
             policy_temperature_cp=policy_temperature_cp,
             policy_mate_cp=policy_mate_cp,
         )
-        for transition in record.transitions
+        for transition in trace.transitions
     )
 
 
 def shogi_score_targets_from_engine_analysis(
     analyses_by_position: dict[str, ShogiEngineAnalysis],
-    record: ShogiGameRecord,
+    trace: ShogiGameTrace,
     *,
     score_cp_scale: float = 600.0,
 ) -> tuple[float | None, ...]:
@@ -255,7 +299,7 @@ def shogi_score_targets_from_engine_analysis(
         raise ValueError("score_cp_scale must be positive")
     return tuple(
         _score_target_from_analysis(analyses_by_position.get(transition.position_sfen), score_cp_scale=score_cp_scale)
-        for transition in record.transitions
+        for transition in trace.transitions
     )
 
 

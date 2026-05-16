@@ -8,7 +8,7 @@ from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
 )
 from intrep.worlds.shogi.kif_io import (
     convert_kif_files_to_game_records_jsonl,
@@ -43,11 +43,11 @@ class ShogiKifIoTest(unittest.TestCase):
             self.assertEqual(
                 load_shogi_game_records_jsonl(output_path),
                 [
-                    ShogiGameRecord(
+                    shogi_game_record_from_usi_moves(
+                        ("7g7f", "3c3d"),
                         black_actor=ShogiActorSpec(kind="kif", name="black", settings={}),
                         white_actor=ShogiActorSpec(kind="kif", name="white", settings={}),
                         initial_position_sfen=shogi.Board().sfen(),
-                        transitions=shogi_game_transitions_from_usi_moves(("7g7f", "3c3d"), winner="white"),
                         winner="white",
                     )
                 ],

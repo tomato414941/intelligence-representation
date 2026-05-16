@@ -7,13 +7,7 @@ from io import StringIO
 
 import shogi
 
-from intrep.worlds.shogi.game_record import (
-    ShogiActorSpec,
-    ShogiGameRecord,
-    ShogiTransitionRecord,
-    shogi_game_transitions_from_usi_moves,
-    write_shogi_game_records_jsonl,
-)
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, ShogiMoveRecord, write_shogi_game_records_jsonl
 from intrep.worlds.shogi.info_stats import inspect_shogi_usi_info_jsonl
 from intrep.worlds.shogi.inspect_usi_info import main
 
@@ -81,23 +75,14 @@ class ShogiUsiInfoStatsTest(unittest.TestCase):
 
 
 def _record() -> ShogiGameRecord:
-    transitions = shogi_game_transitions_from_usi_moves(("7g7f", "3c3d"))
-    second = transitions[1]
     return ShogiGameRecord(
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
         initial_position_sfen=shogi.Board().sfen(),
-        transitions=(
-            transitions[0],
-            ShogiTransitionRecord(
-                ply=second.ply,
-                side=second.side,
-                position_sfen=second.position_sfen,
-                legal_moves=second.legal_moves,
-                action_usi=second.action_usi,
-                next_position_sfen=second.next_position_sfen,
-                reward=second.reward,
-                done=second.done,
+        moves=(
+            ShogiMoveRecord(action_usi="7g7f"),
+            ShogiMoveRecord(
+                action_usi="3c3d",
                 decision_usi_info_lines=(
                     "info depth 4 nodes 100 score cp 23 pv 3c3d 2g2f",
                     "info multipv 2 depth 3 nodes 80 score mate -5 pv 8c8d",

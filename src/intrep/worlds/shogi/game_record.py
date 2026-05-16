@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Sequence
 
@@ -22,17 +22,8 @@ class ShogiDecisionTelemetry:
 
 
 @dataclass(frozen=True)
-class ShogiTransitionRecord:
-    ply: int
-    side: str
-    position_sfen: str
-    legal_moves: tuple[str, ...]
+class ShogiMoveRecord:
     action_usi: str
-    next_position_sfen: str
-    reward: float
-    done: bool
-    # Engine info emitted during this transition. Post-game analysis of the
-    # same position belongs in ShogiEngineAnalysis, not back on this record.
     decision_usi_info_lines: tuple[str, ...] = ()
     decision_telemetry: ShogiDecisionTelemetry | None = None
 
@@ -42,15 +33,14 @@ class ShogiGameRecord:
     black_actor: ShogiActorSpec
     white_actor: ShogiActorSpec
     initial_position_sfen: str
-    transitions: tuple[ShogiTransitionRecord, ...]
+    moves: tuple[ShogiMoveRecord, ...]
     winner: str | None = None
     end_reason: str | None = None
+    metadata: dict[str, str | int | float | bool | None] = field(default_factory=dict)
 
 
 def load_shogi_game_records_jsonl(path: str | Path) -> list[ShogiGameRecord]:
-    records: list[ShogiGameRecord] = []
-    for record in iter_shogi_game_records_jsonl(path):
-        records.append(record)
+    records = list(iter_shogi_game_records_jsonl(path))
     if not records:
         raise ValueError("shogi game records jsonl must contain at least one game")
     return records
@@ -63,7 +53,7 @@ def iter_shogi_game_records_jsonl(path: str | Path) -> Iterator[ShogiGameRecord]
             if not stripped:
                 continue
             record = shogi_game_record_from_json(json.loads(stripped))
-            if record.transitions:
+            if record.moves:
                 yield record
 
 
@@ -71,7 +61,7 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     for record in records:
-        if not record.transitions:
+        if not record.moves:
             continue
         lines.append(json.dumps(shogi_game_record_to_json(record), separators=(",", ":"), sort_keys=True))
     if not lines:
@@ -80,61 +70,75 @@ def write_shogi_game_records_jsonl(path: str | Path, records: Sequence[ShogiGame
 
 
 def shogi_game_record_to_json(record: ShogiGameRecord) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
+        "schema_version": "intrep.shogi_game_record.v2",
         "black_actor": shogi_actor_spec_to_json(record.black_actor),
         "white_actor": shogi_actor_spec_to_json(record.white_actor),
         "initial_position_sfen": record.initial_position_sfen,
-        "transitions": [shogi_transition_record_to_json(transition) for transition in record.transitions],
+        "moves": [shogi_move_record_to_json(move) for move in record.moves],
         "winner": record.winner,
         "end_reason": record.end_reason,
     }
+    if record.metadata:
+        payload["metadata"] = record.metadata
+    return payload
 
 
 def shogi_game_record_from_json(payload: dict[str, object]) -> ShogiGameRecord:
     return ShogiGameRecord(
         black_actor=shogi_actor_spec_from_json(_object_dict(payload.get("black_actor"))),
         white_actor=shogi_actor_spec_from_json(_object_dict(payload.get("white_actor"))),
-        initial_position_sfen=str(payload["initial_position_sfen"]),
-        transitions=tuple(
-            shogi_transition_record_from_json(_object_dict(transition))
-            for transition in _object_list(payload.get("transitions"))
-        ),
+        initial_position_sfen=str(payload.get("initial_position_sfen", shogi.Board().sfen())),
+        moves=_move_records_from_payload(payload),
         winner=_normalize_winner(payload.get("winner")),
         end_reason=None if payload.get("end_reason") is None else str(payload["end_reason"]),
+        metadata=_metadata_from_json(payload.get("metadata", {})),
     )
 
 
-def shogi_transition_record_to_json(record: ShogiTransitionRecord) -> dict[str, object]:
+def shogi_move_records_from_usi_moves(moves: Sequence[str]) -> tuple[ShogiMoveRecord, ...]:
+    return tuple(ShogiMoveRecord(action_usi=str(move)) for move in moves)
+
+
+def shogi_game_record_from_usi_moves(
+    moves: Sequence[str],
+    *,
+    black_actor: ShogiActorSpec,
+    white_actor: ShogiActorSpec,
+    winner: str | None = None,
+    initial_position_sfen: str | None = None,
+    end_reason: str | None = "game_over",
+    metadata: dict[str, str | int | float | bool | None] | None = None,
+) -> ShogiGameRecord:
+    return ShogiGameRecord(
+        black_actor=black_actor,
+        white_actor=white_actor,
+        initial_position_sfen=initial_position_sfen or shogi.Board().sfen(),
+        moves=shogi_move_records_from_usi_moves(moves),
+        winner=_normalize_winner(winner),
+        end_reason=end_reason,
+        metadata=metadata or {},
+    )
+
+
+def shogi_move_record_to_json(record: ShogiMoveRecord) -> dict[str, object]:
     payload: dict[str, object] = {
-        "ply": record.ply,
-        "side": record.side,
-        "position_sfen": record.position_sfen,
-        "legal_moves": list(record.legal_moves),
         "action_usi": record.action_usi,
-        "next_position_sfen": record.next_position_sfen,
-        "reward": record.reward,
-        "done": record.done,
-        "decision_usi_info_lines": list(record.decision_usi_info_lines),
     }
+    if record.decision_usi_info_lines:
+        payload["decision_usi_info_lines"] = list(record.decision_usi_info_lines)
     if record.decision_telemetry is not None:
         payload["decision_telemetry"] = shogi_decision_telemetry_to_json(record.decision_telemetry)
     return payload
 
 
-def shogi_transition_record_from_json(payload: dict[str, object]) -> ShogiTransitionRecord:
+def shogi_move_record_from_json(payload: dict[str, object]) -> ShogiMoveRecord:
     info_lines = tuple(str(line) for line in _object_list(payload.get("decision_usi_info_lines", [])))
     telemetry = shogi_decision_telemetry_from_json(payload.get("decision_telemetry"))
     if telemetry is None:
         info_lines, telemetry = _migrate_legacy_performance_info_lines(info_lines)
-    return ShogiTransitionRecord(
-        ply=int(payload["ply"]),
-        side=_normalize_side(payload["side"]),
-        position_sfen=str(payload["position_sfen"]),
-        legal_moves=tuple(str(move) for move in _object_list(payload.get("legal_moves"))),
+    return ShogiMoveRecord(
         action_usi=str(payload["action_usi"]),
-        next_position_sfen=str(payload["next_position_sfen"]),
-        reward=float(payload["reward"]),
-        done=bool(payload["done"]),
         decision_usi_info_lines=info_lines,
         decision_telemetry=telemetry,
     )
@@ -157,6 +161,68 @@ def shogi_decision_telemetry_from_json(value: object) -> ShogiDecisionTelemetry 
         move_performance=_optional_object_dict(payload.get("move_performance")),
         batch_performance=_optional_object_dict(payload.get("batch_performance")),
     )
+
+
+def shogi_actor_spec_to_json(spec: ShogiActorSpec) -> dict[str, object]:
+    return {
+        "kind": spec.kind,
+        "name": spec.name,
+        "settings": spec.settings,
+    }
+
+
+def shogi_actor_spec_from_json(payload: dict[str, object]) -> ShogiActorSpec:
+    settings = payload.get("settings", {})
+    if not isinstance(settings, dict):
+        raise ValueError("actor settings must be an object")
+    return ShogiActorSpec(
+        kind=str(payload["kind"]),
+        name=str(payload["name"]),
+        settings={str(key): _json_scalar(value) for key, value in settings.items()},
+    )
+
+
+def shogi_winner_to_side_code(winner: str | None) -> str | None:
+    if winner == "black":
+        return "b"
+    if winner == "white":
+        return "w"
+    return None
+
+
+def shogi_side_code_to_winner(winner: str | None) -> str | None:
+    if winner == "b":
+        return "black"
+    if winner == "w":
+        return "white"
+    if winner in {"black", "white"}:
+        return winner
+    return None
+
+
+def _move_records_from_payload(payload: dict[str, object]) -> tuple[ShogiMoveRecord, ...]:
+    if "moves" in payload:
+        moves = _object_list(payload["moves"])
+        if all(isinstance(move, str) for move in moves):
+            return shogi_move_records_from_usi_moves(tuple(str(move) for move in moves))
+        return tuple(shogi_move_record_from_json(_object_dict(move)) for move in moves)
+    if "transitions" in payload:
+        return tuple(
+            shogi_move_record_from_json(_legacy_transition_to_move_json(_object_dict(transition)))
+            for transition in _object_list(payload["transitions"])
+        )
+    raise ValueError("shogi game record must contain moves")
+
+
+def _legacy_transition_to_move_json(payload: dict[str, object]) -> dict[str, object]:
+    move_payload: dict[str, object] = {
+        "action_usi": str(payload["action_usi"]),
+    }
+    if "decision_usi_info_lines" in payload:
+        move_payload["decision_usi_info_lines"] = payload["decision_usi_info_lines"]
+    if "decision_telemetry" in payload:
+        move_payload["decision_telemetry"] = payload["decision_telemetry"]
+    return move_payload
 
 
 def _migrate_legacy_performance_info_lines(
@@ -185,93 +251,20 @@ def _parse_legacy_performance_payload(line: str, *, prefix: str) -> dict[str, ob
     return _object_dict(json.loads(line[len(prefix) :]))
 
 
-def shogi_actor_spec_to_json(spec: ShogiActorSpec) -> dict[str, object]:
-    return {
-        "kind": spec.kind,
-        "name": spec.name,
-        "settings": spec.settings,
-    }
-
-
-def shogi_actor_spec_from_json(payload: dict[str, object]) -> ShogiActorSpec:
-    settings = payload.get("settings", {})
-    if not isinstance(settings, dict):
-        raise ValueError("actor settings must be an object")
-    return ShogiActorSpec(
-        kind=str(payload["kind"]),
-        name=str(payload["name"]),
-        settings={
-            str(key): _json_scalar(value)
-            for key, value in settings.items()
-        },
-    )
-
-
-def shogi_winner_to_side_code(winner: str | None) -> str | None:
-    if winner == "black":
-        return "b"
-    if winner == "white":
-        return "w"
-    return None
-
-
-def shogi_side_code_to_winner(winner: str | None) -> str | None:
-    if winner == "b":
-        return "black"
-    if winner == "w":
-        return "white"
-    return None
-
-
-def shogi_game_transitions_from_usi_moves(
-    moves: Sequence[str],
-    *,
-    winner: str | None = None,
-) -> tuple[ShogiTransitionRecord, ...]:
-    board = shogi.Board()
-    records: list[ShogiTransitionRecord] = []
-    normalized_winner = _normalize_winner(winner)
-    for ply, move in enumerate(moves):
-        side = "black" if board.turn == shogi.BLACK else "white"
-        position_sfen = board.sfen()
-        legal_moves = tuple(sorted(legal_move.usi() for legal_move in board.legal_moves))
-        if move not in legal_moves:
-            raise ValueError(f"illegal move at ply {ply}: {move}")
-        board.push_usi(move)
-        done = ply == len(moves) - 1
-        records.append(
-            ShogiTransitionRecord(
-                ply=ply,
-                side=side,
-                position_sfen=position_sfen,
-                legal_moves=legal_moves,
-                action_usi=move,
-                next_position_sfen=board.sfen(),
-                reward=_transition_reward(side=side, winner=normalized_winner, done=done),
-                done=done,
-            )
-        )
-    return tuple(records)
-
-
-def _transition_reward(*, side: str, winner: str | None, done: bool) -> float:
-    if not done or winner is None:
-        return 0.0
-    return 1.0 if side == winner else -1.0
-
-
-def _normalize_side(value: object) -> str:
-    if value in {"black", "white"}:
-        return str(value)
-    raise ValueError("side must be black or white")
-
-
 def _normalize_winner(value: object) -> str | None:
-    if value in {"black", "white"}:
-        return str(value)
     if value is None:
         return None
-    raise ValueError("winner must be black, white, or null")
+    text = str(value)
+    if text in {"black", "white"}:
+        return text
+    if text in {"b", "w"}:
+        return shogi_side_code_to_winner(text)
+    raise ValueError("winner must be black, white, b, w, or null")
+
+
+def _metadata_from_json(value: object) -> dict[str, str | int | float | bool | None]:
+    payload = _object_dict(value)
+    return {str(key): _json_scalar(item) for key, item in payload.items()}
 
 
 def _object_dict(value: object) -> dict[str, object]:
@@ -293,6 +286,6 @@ def _object_list(value: object) -> list[object]:
 
 
 def _json_scalar(value: object) -> str | int | float | bool | None:
-    if value is None or isinstance(value, str | int | float | bool):
+    if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    raise ValueError("actor setting values must be JSON scalars")
+    raise ValueError("expected JSON scalar")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ class ShogiTrainEvalPositionStats:
 def shogi_position_stats(records: list[ShogiGameRecord]) -> ShogiPositionStats:
     position_counts: dict[str, int] = {}
     for record in records:
-        for transition in record.transitions:
+        for transition in trace_shogi_game_record(record).transitions:
             position_counts[transition.position_sfen] = position_counts.get(transition.position_sfen, 0) + 1
     transition_count = sum(position_counts.values())
     unique_position_count = len(position_counts)
@@ -104,7 +105,7 @@ def shogi_checkpoint_actor_summaries(records: list[ShogiGameRecord]) -> list[dic
 
 
 def _position_set(records: list[ShogiGameRecord]) -> set[str]:
-    return {transition.position_sfen for record in records for transition in record.transitions}
+    return {transition.position_sfen for record in records for transition in trace_shogi_game_record(record).transitions}
 
 
 def _checkpoint_actor_summary(actor: ShogiActorSpec) -> dict[str, object]:

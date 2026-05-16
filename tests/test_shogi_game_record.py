@@ -9,11 +9,12 @@ from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiDecisionTelemetry,
     ShogiGameRecord,
-    ShogiTransitionRecord,
+    ShogiMoveRecord,
     load_shogi_game_records_jsonl,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})
@@ -21,11 +22,10 @@ WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"
 
 
 def _record(moves: tuple[str, ...], winner: str | None, end_reason: str | None = None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
         end_reason=end_reason,
     )
@@ -97,19 +97,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                     black_actor=ShogiActorSpec(kind="checkpoint", name="direct", settings={"checkpoint": "model.pt"}),
                     white_actor=ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={"go_command": "go nodes 1"}),
                     initial_position_sfen=shogi.Board().sfen(),
-                    transitions=(
-                        ShogiTransitionRecord(
-                            ply=0,
-                            side="black",
-                            position_sfen=shogi.Board().sfen(),
-                            legal_moves=legal_moves,
-                            action_usi="2g2f",
-                            next_position_sfen=board.sfen(),
-                            reward=0.0,
-                            done=True,
-                            decision_usi_info_lines=("info depth 1 nodes 1 pv 2g2f",),
-                        ),
-                    ),
+                    moves=(ShogiMoveRecord(action_usi="2g2f", decision_usi_info_lines=("info depth 1 nodes 1 pv 2g2f",)),),
                     winner=None,
                     end_reason="max_plies",
                 )
@@ -151,7 +139,7 @@ class ShogiGameRecordTest(unittest.TestCase):
 
             records = load_shogi_game_records_jsonl(path)
 
-        self.assertEqual(records[0].transitions[0].action_usi, "2g2f")
+        self.assertEqual(records[0].moves[0].action_usi, "2g2f")
 
     def test_round_trips_decision_telemetry(self) -> None:
         board = shogi.Board()
@@ -161,16 +149,9 @@ class ShogiGameRecordTest(unittest.TestCase):
             black_actor=ShogiActorSpec(kind="checkpoint", name="direct", settings={}),
             white_actor=ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={}),
             initial_position_sfen=shogi.Board().sfen(),
-            transitions=(
-                ShogiTransitionRecord(
-                    ply=0,
-                    side="black",
-                    position_sfen=shogi.Board().sfen(),
-                    legal_moves=legal_moves,
+            moves=(
+                ShogiMoveRecord(
                     action_usi="2g2f",
-                    next_position_sfen=board.sfen(),
-                    reward=0.0,
-                    done=True,
                     decision_telemetry=ShogiDecisionTelemetry(
                         move_performance={"request_wall_time_sec": 0.4},
                         batch_performance={"position_count": 4},
@@ -226,7 +207,7 @@ class ShogiGameRecordTest(unittest.TestCase):
             )
             records = load_shogi_game_records_jsonl(path)
 
-        transition = records[0].transitions[0]
+        transition = trace_shogi_game_record(records[0]).transitions[0]
         self.assertEqual(transition.decision_usi_info_lines, ("info depth 1 nodes 1 pv 2g2f",))
         self.assertIsNotNone(transition.decision_telemetry)
         assert transition.decision_telemetry is not None

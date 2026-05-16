@@ -7,15 +7,13 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-import shogi
-
 from intrep.problems.shogi_policy_value.evaluate import main
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
 
@@ -25,11 +23,10 @@ WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 

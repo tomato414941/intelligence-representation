@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,7 @@ def inspect_shogi_usi_info(records: Iterable[ShogiGameRecord]) -> ShogiUsiInfoSt
 
     for record in records:
         game_count += 1
-        for ply in record.transitions:
+        for ply in trace_shogi_game_record(record).transitions:
             ply_count += 1
             ply_has_best_score = False
             if ply.decision_usi_info_lines:

@@ -2,13 +2,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import shogi
-
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,
-    shogi_game_transitions_from_usi_moves,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
@@ -26,11 +24,10 @@ def _record(
     black_actor: ShogiActorSpec = BLACK_ACTOR,
     white_actor: ShogiActorSpec = WHITE_ACTOR,
 ) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=black_actor,
         white_actor=white_actor,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 

@@ -11,6 +11,7 @@ from intrep.worlds.shogi.game_record import (
     shogi_actor_spec_from_json,
     shogi_actor_spec_to_json,
 )
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ def shogi_analysis_positions_from_game_records(records: Sequence[ShogiGameRecord
     positions: list[ShogiAnalysisPosition] = []
     seen_position_sfen: set[str] = set()
     for record in records:
-        for transition in record.transitions:
+        for transition in trace_shogi_game_record(record).transitions:
             if transition.position_sfen in seen_position_sfen:
                 continue
             seen_position_sfen.add(transition.position_sfen)

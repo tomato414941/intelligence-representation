@@ -1,11 +1,11 @@
 import tempfile
 import unittest
 import json
+from dataclasses import replace
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-import shogi
 import torch
 
 from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
@@ -19,9 +19,11 @@ from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
-    shogi_game_transitions_from_usi_moves,
+    ShogiMoveRecord,
+    shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 from intrep.train_shogi_policy_value import main
 
 
@@ -30,38 +32,25 @@ WHITE_ACTOR = ShogiActorSpec(kind="checkpoint", name="white-model", settings={})
 
 
 def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
-    return ShogiGameRecord(
+    return shogi_game_record_from_usi_moves(
+        moves,
         black_actor=BLACK_ACTOR,
         white_actor=WHITE_ACTOR,
-        initial_position_sfen=shogi.Board().sfen(),
-        transitions=shogi_game_transitions_from_usi_moves(moves, winner=winner),
         winner=winner,
     )
 
 
 def _record_with_multipv_info(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     record = _record(moves, winner)
-    transitions = tuple(
-        type(transition)(
-            ply=transition.ply,
-            side=transition.side,
-            position_sfen=transition.position_sfen,
-            legal_moves=transition.legal_moves,
-            action_usi=transition.action_usi,
-            next_position_sfen=transition.next_position_sfen,
-            reward=transition.reward,
-            done=transition.done,
-            decision_usi_info_lines=(f"info multipv 1 score cp 100 pv {transition.action_usi}",),
-        )
-        for transition in record.transitions
-    )
-    return ShogiGameRecord(
-        black_actor=record.black_actor,
-        white_actor=record.white_actor,
-        initial_position_sfen=record.initial_position_sfen,
-        transitions=transitions,
-        winner=record.winner,
-        end_reason=record.end_reason,
+    return replace(
+        record,
+        moves=tuple(
+            ShogiMoveRecord(
+                action_usi=move.action_usi,
+                decision_usi_info_lines=(f"info multipv 1 score cp 100 pv {move.action_usi}",),
+            )
+            for move in record.moves
+        ),
     )
 
 
@@ -595,8 +584,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             data_selection_path = root / "data-selection.json"
             train_record = _record(("7g7f",), "black")
             eval_record = _record(("2g2f", "8c8d"), "white")
-            train_transition = train_record.transitions[0]
-            eval_transition = eval_record.transitions[1]
+            train_transition = trace_shogi_game_record(train_record).transitions[0]
+            eval_transition = trace_shogi_game_record(eval_record).transitions[1]
             write_shogi_game_records_jsonl(train_games_path, [train_record])
             write_shogi_game_records_jsonl(eval_games_path, [eval_record])
             write_shogi_engine_analysis_jsonl(

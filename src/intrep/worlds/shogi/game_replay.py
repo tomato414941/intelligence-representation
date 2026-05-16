@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import shogi
 
 from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)
@@ -18,8 +19,9 @@ class ShogiGamePly:
 
 def replay_shogi_game_record(record: ShogiGameRecord) -> tuple[ShogiGamePly, ...]:
     board = shogi.Board(record.initial_position_sfen)
+    trace = trace_shogi_game_record(record)
     plies: list[ShogiGamePly] = []
-    for ply_index, transition in enumerate(record.transitions):
+    for ply_index, transition in enumerate(trace.transitions):
         side_to_move = "black" if board.turn == shogi.BLACK else "white"
         legal_moves = {legal_move.usi() for legal_move in board.legal_moves}
         move = transition.action_usi
@@ -45,7 +47,7 @@ def replay_shogi_game_record(record: ShogiGameRecord) -> tuple[ShogiGamePly, ...
         board.push_usi(move)
         if transition.next_position_sfen != board.sfen():
             raise ValueError(f"wrong next position at ply {ply_index}")
-        expected_done = ply_index == len(record.transitions) - 1
+        expected_done = ply_index == len(trace.transitions) - 1
         if transition.done != expected_done:
             raise ValueError(f"wrong done flag at ply {ply_index}")
     return tuple(plies)
