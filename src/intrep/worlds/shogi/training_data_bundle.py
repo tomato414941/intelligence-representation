@@ -39,6 +39,7 @@ def create_shogi_training_data_bundle(
     score_cp_scale: float = 600.0,
     analysis_sources: tuple[Path, ...] = (),
     eval_position_policy: ShogiEvalPositionPolicy = "allow_overlap",
+    include_position_stats: bool = True,
 ) -> dict[str, object]:
     output_dir = output_root / name
     games_jsonl = output_dir / "games.jsonl"
@@ -83,14 +84,18 @@ def create_shogi_training_data_bundle(
     if not eval_records:
         raise ValueError("training data bundle selection must produce at least one eval game")
     records = train_records + eval_records
-    train_eval_position_stats = shogi_train_eval_position_stats(train_records, eval_records).to_dict()
+    train_eval_position_stats = (
+        shogi_train_eval_position_stats(train_records, eval_records).to_dict()
+        if include_position_stats
+        else _empty_position_stats()
+    )
 
     output_dir.mkdir(parents=True)
     write_shogi_game_records_jsonl(games_jsonl, records)
     write_shogi_game_records_jsonl(train_jsonl, train_records)
     write_shogi_game_records_jsonl(eval_jsonl, eval_records)
     analysis_jsonls = _copy_analysis_sources(analysis_sources, output_dir=output_dir)
-    analysis_coverage = shogi_analysis_coverage(train_records, eval_records, analysis_jsonls)
+    analysis_coverage = shogi_analysis_coverage(train_records, eval_records, analysis_jsonls) if analysis_jsonls else {}
 
     data_selection = {
         "name": name,
@@ -131,7 +136,8 @@ def create_shogi_training_data_bundle(
         "skipped_eval_games_for_train_position_overlap": skipped_eval_games,
         "game_count": len(records),
         "transition_count": sum(len(record.moves) for record in records),
-        "position_stats": shogi_position_stats(records).to_dict(),
+        "position_stats_included": include_position_stats,
+        "position_stats": shogi_position_stats(records).to_dict() if include_position_stats else None,
         **train_eval_position_stats,
         "analysis_coverage": analysis_coverage,
         "actor_pair_counts": shogi_actor_pair_counts(records),
@@ -337,6 +343,15 @@ def _position_coverage(records: list[ShogiGameRecord], analyzed_positions: set[s
         "positions": total,
         "covered": covered,
         "ratio": covered / total if total else 0.0,
+    }
+
+
+def _empty_position_stats() -> dict[str, object]:
+    return {
+        "train_position_stats": None,
+        "eval_position_stats": None,
+        "train_eval_position_overlap_count": None,
+        "train_eval_position_overlap_ratio": None,
     }
 
 

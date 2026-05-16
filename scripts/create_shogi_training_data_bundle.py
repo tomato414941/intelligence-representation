@@ -37,6 +37,11 @@ def main(argv: list[str] | None = None) -> None:
         default="winner",
     )
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
+    parser.add_argument(
+        "--skip-position-stats",
+        action="store_true",
+        help="Skip replay-derived position statistics for large bundles.",
+    )
     args = parser.parse_args(argv)
 
     if len(args.train_games) > 1:
@@ -63,6 +68,7 @@ def main(argv: list[str] | None = None) -> None:
         policy_mate_cp=args.policy_mate_cp,
         value_target_construction=args.value_target_construction,
         score_cp_scale=args.score_cp_scale,
+        include_position_stats=not args.skip_position_stats,
     )
     print(json.dumps(result, indent=2))
 
