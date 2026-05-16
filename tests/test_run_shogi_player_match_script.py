@@ -28,6 +28,7 @@ class RunShogiPlayerMatchScriptTest(unittest.TestCase):
             simulations=128,
             evaluation_batch_size=64,
             move_time_limit_sec=10.0,
+            move_selection_profile="self-play",
             device="cuda",
             board_backend="cshogi",
         )
@@ -36,7 +37,7 @@ class RunShogiPlayerMatchScriptTest(unittest.TestCase):
 
         self.assertIn("scripts/evaluate_shogi_players.py", command)
         self.assertEqual(command[command.index("--player-a-kind") + 1], "checkpoint")
-        self.assertEqual(command[command.index("--player-a-move-selection-profile") + 1], "evaluation")
+        self.assertEqual(command[command.index("--player-a-move-selection-profile") + 1], "self-play")
         self.assertEqual(command[command.index("--player-a-mcts-simulations") + 1], "128")
         self.assertEqual(command[command.index("--player-a-mcts-evaluation-batch-size") + 1], "64")
         self.assertEqual(command[command.index("--player-a-device") + 1], "cuda")
@@ -69,6 +70,7 @@ class RunShogiPlayerMatchScriptTest(unittest.TestCase):
             simulations=16,
             evaluation_batch_size=8,
             move_time_limit_sec=None,
+            move_selection_profile="evaluation",
             device="cpu",
             board_backend="cshogi",
         )

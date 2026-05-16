@@ -19,6 +19,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--simulations", type=int, default=128)
     parser.add_argument("--evaluation-batch-size", type=int, default=64)
     parser.add_argument("--move-time-limit-sec", type=float)
+    parser.add_argument("--move-selection-profile", choices=("evaluation", "self-play"), default="evaluation")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
     args = parser.parse_args(argv)
@@ -70,7 +71,7 @@ def _arena_player_args(args: argparse.Namespace, *, source_prefix: str, arena_pr
                 f"--{arena_prefix}-checkpoint",
                 str(getattr(args, f"{source_prefix}_checkpoint").resolve()),
                 f"--{arena_prefix}-move-selection-profile",
-                "evaluation",
+                args.move_selection_profile,
                 f"--{arena_prefix}-move-selector",
                 "mcts",
                 f"--{arena_prefix}-mcts-simulations",
