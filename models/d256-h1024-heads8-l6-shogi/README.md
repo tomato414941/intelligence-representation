@@ -49,6 +49,7 @@ Evaluation move selection, alternating sides, MCTS128, batch64:
 - vs YaneuraOu MaterialLv1 `go nodes 1`: 10-6
 - vs YaneuraOu MaterialLv1 `go nodes 10`: 9-7
 - vs YaneuraOu MaterialLv1 `go nodes 100`: 11-5
+- vs YaneuraOu MaterialLv1 `go nodes 1000`: 6-10
 
 Same-checkpoint self-play with sampled checkpoint move selection, alternating
 sides, MCTS128, batch64:
