@@ -19,14 +19,17 @@ from intrep.problems.shogi_policy_value.online_replay import (
     ShogiGeneratedExperienceSource,
     ShogiOnlineReplayConfig,
     ShogiOnlineReplayTrainingBudget,
-    _sample_replay_seed_examples,
+    _sample_replay_seed_examples_from_selection,
+    _sample_replay_seed_samples,
+    _load_replay_seed_selection,
     run_shogi_online_replay,
 )
+from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.generated_game_production import (
     checkpoint_generated_player,
     usi_engine_generated_player,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, TensorizedShogiPolicyValueSample
+from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyValueSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
@@ -123,23 +126,35 @@ def _write_training_eval_bundle(bundle_dir: Path) -> Path:
 
 
 class ShogiGeneratedDataCycleTest(unittest.TestCase):
-    def test_replay_seed_examples_are_sampled_when_larger_than_capacity(self) -> None:
-        examples = [
-            ShogiPolicyValueExample(
-                position_sfen="lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
-                legal_moves=("7g7f", "2g2f"),
-                chosen_move="7g7f",
-                game_index=index,
-                ply_index=0,
+    def test_replay_seed_examples_are_sampled_from_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selection_path = _write_training_eval_bundle(root / "bundle")
+
+            sampled = _sample_replay_seed_examples_from_selection(
+                _load_replay_seed_selection(selection_path),
+                sample_count=1,
+                seed=7,
             )
-            for index in range(10)
-        ]
 
-        sampled = _sample_replay_seed_examples(examples, capacity=4, seed=7)
+        self.assertEqual(len(sampled), 1)
+        self.assertEqual(sampled[0].game_index, 0)
+        self.assertIn(sampled[0].ply_index, {0, 1})
 
-        self.assertEqual(len(sampled), 4)
-        self.assertEqual(len({example.game_index for example in sampled}), 4)
-        self.assertNotEqual([example.game_index for example in sampled], [6, 7, 8, 9])
+    def test_replay_seed_samples_use_tensor_cache_when_available(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selection_path = _write_training_eval_bundle(root / "bundle")
+            build_shogi_policy_value_tensor_cache(data_selection_path=selection_path, shard_games=1)
+
+            sampled = _sample_replay_seed_samples(
+                _load_replay_seed_selection(selection_path),
+                sample_count=1,
+                seed=7,
+            )
+
+        self.assertEqual(len(sampled), 1)
+        self.assertIsInstance(sampled[0], TensorizedShogiPolicyValueSample)
 
     def test_rejects_invalid_loop_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "cycles"):
@@ -710,7 +725,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(result.preloaded_examples, 2)
+            self.assertEqual(result.preloaded_examples, 0)
             self.assertEqual(result.training_eval_examples, 2)
             self.assertEqual(result.experience_store_dir, store_dir)
             self.assertEqual(result.replay_seed_data_selection, bundle_dir / "data-selection.json")
@@ -722,7 +737,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(result.iterations[0].experience_store_append["added_games"], 2)
             self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), generated_records)
             metrics = json.loads((run_dir / "iteration-0001" / "metrics.json").read_text(encoding="utf-8"))
-            self.assertEqual(metrics["preloaded_examples"], 2)
+            self.assertEqual(metrics["preloaded_examples"], 0)
+            self.assertEqual(metrics["replay_seed_eligible_examples"], 2)
+            self.assertEqual(metrics["seed_sampled_examples"], 2)
+            self.assertEqual(metrics["generated_sampled_examples"], 4)
+            self.assertEqual(metrics["generated_replay_size"], 4)
             self.assertEqual(metrics["training_eval_examples"], 2)
             self.assertEqual(metrics["generated_holdout_examples"], 0)
             self.assertEqual(metrics["training_eval_source"], "fixed_data_selection")

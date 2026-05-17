@@ -6,6 +6,8 @@ from math import exp
 from pathlib import Path
 from typing import Sequence
 
+import shogi
+
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMoveChoiceExample,
     ShogiPolicyValueExample,
@@ -109,6 +111,46 @@ def shogi_policy_value_examples_from_game_record(
         )
         for index, transition in enumerate(trace.transitions)
     ]
+
+
+def shogi_policy_value_examples_from_game_record_plies(
+    record: ShogiGameRecord,
+    *,
+    ply_indices: set[int],
+    policy_target_construction: str = "chosen_move",
+    value_target_construction: str = "winner",
+    game_index: int | None = None,
+) -> list[ShogiPolicyValueExample]:
+    if policy_target_construction != "chosen_move":
+        raise ValueError("selected-ply construction supports only chosen_move policy targets")
+    if value_target_construction != "winner":
+        raise ValueError("selected-ply construction supports only winner value targets")
+    if not ply_indices:
+        return []
+    max_ply = max(ply_indices)
+    board = shogi.Board(record.initial_position_sfen)
+    examples: list[ShogiPolicyValueExample] = []
+    for ply_index, move_record in enumerate(record.moves):
+        if ply_index > max_ply:
+            break
+        side = "black" if board.turn == shogi.BLACK else "white"
+        if ply_index in ply_indices:
+            legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
+            if move_record.action_usi not in legal_moves:
+                raise ValueError(f"illegal move at ply {ply_index}: {move_record.action_usi}")
+            examples.append(
+                ShogiPolicyValueExample(
+                    position_sfen=board.sfen(),
+                    legal_moves=legal_moves,
+                    chosen_move=move_record.action_usi,
+                    policy_targets=None,
+                    value_target=_winner_value_target(side=side, winner=record.winner),
+                    game_index=game_index,
+                    ply_index=ply_index,
+                )
+            )
+        board.push_usi(move_record.action_usi)
+    return examples
 
 
 def shogi_move_choice_examples_from_game_record(
@@ -239,6 +281,12 @@ def shogi_return_targets_from_game_trace(trace: ShogiGameTrace) -> tuple[float |
     if trace.winner is None:
         return tuple(None for _transition in trace.transitions)
     return tuple(1.0 if transition.side == trace.winner else -1.0 for transition in trace.transitions)
+
+
+def _winner_value_target(*, side: str, winner: str | None) -> float | None:
+    if winner is None:
+        return None
+    return 1.0 if side == winner else -1.0
 
 
 def shogi_return_targets_from_game_record(record: ShogiGameRecord) -> tuple[float | None, ...]:

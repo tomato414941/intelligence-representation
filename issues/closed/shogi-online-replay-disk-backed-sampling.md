@@ -1,6 +1,6 @@
 # Shogi Online Replay Disk-Backed Sampling
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -30,11 +30,16 @@ the sampled examples to the normal training path.
 
 ## Current Mitigation
 
-The current implementation samples replay seed examples uniformly before
-preloading them, so it no longer keeps only the tail of the seed dataset.
+Shogi Online Replay no longer preloads fixed seed examples into the in-memory
+`ReplayBuffer`. The buffer is for generated experience.
 
-That reduces distribution skew, but it does not solve the in-memory replay
-population problem.
+Fixed seed data is sampled at iteration time. If a policy/value tensor cache is
+available beside the Data Selection, sampling reads only selected cache shards.
+If no tensor cache is available, sampling falls back to selected-ply construction
+from game records instead of constructing the full seed split.
+
+Closed by: fixed seed data is no longer retained as a full Python-object replay
+population.
 
 ## Non-Goals
 

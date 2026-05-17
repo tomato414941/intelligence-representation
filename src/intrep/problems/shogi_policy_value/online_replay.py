@@ -20,8 +20,13 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     save_shogi_policy_value_checkpoint,
     save_shogi_policy_value_state_checkpoint,
 )
-from intrep.problems.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
+from intrep.problems.shogi_policy_value.data import (
+    load_shogi_policy_value_examples_from_game_records_jsonl,
+    shogi_policy_value_examples_from_game_record_plies,
+)
 from intrep.problems.shogi_policy_value.data_selection import (
+    ShogiPolicyValueDataSelection,
+    ShogiPolicyValueDataSelectionSource,
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
 )
@@ -37,6 +42,10 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
     run_shogi_generated_games,
     warn_short_max_plies,
 )
+from intrep.problems.shogi_policy_value.tensor_cache import (
+    default_shogi_policy_value_tensor_cache_path,
+    load_shogi_policy_value_tensor_cache,
+)
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
@@ -45,6 +54,7 @@ from intrep.problems.shogi_policy_value.training import (
     validate_shogi_policy_value_loss_weights,
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
+from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 2_097_152
 DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288
@@ -197,16 +207,11 @@ def run_shogi_online_replay(
     run_dir = config.run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = config.checkpoint
-    replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
-    replay_seed_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
-    preloaded_examples = _sample_replay_seed_examples(
-        replay_seed_examples,
-        capacity=config.replay_capacity,
-        seed=config.seed,
-    )
+    generated_replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
+    replay_seed_selection = _load_replay_seed_selection(config.replay_seed_data_selection)
+    replay_seed_eligible_examples = _count_replay_seed_examples(replay_seed_selection)
     training_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
     training_eval_samples = tensorize_shogi_policy_value_examples(training_eval_examples)
-    replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
     generator = torch.Generator().manual_seed(config.seed)
     iteration_results: list[ShogiOnlineReplayIterationResult] = []
     last_generator_checkpoint = checkpoint
@@ -232,19 +237,31 @@ def run_shogi_online_replay(
             games_jsonl=artifacts.games_jsonl,
         )
         new_examples = _load_online_replay_iteration_examples(artifacts=artifacts)
-        replay.extend(tensorize_shogi_policy_value_examples(new_examples))
-        if len(replay) < config.min_replay_size:
+        generated_replay.extend(tensorize_shogi_policy_value_examples(new_examples))
+        replay_size = replay_seed_eligible_examples + len(generated_replay)
+        if replay_size < config.min_replay_size:
             sampled_examples: list[TensorizedShogiPolicyValueSample] = []
+            seed_sampled_examples = 0
+            generated_sampled_examples = 0
             training_skipped = True
             effective_checkpoint = checkpoint
             effective_best_checkpoint = checkpoint
             training_result = None
             skip_reason = "min_replay_size"
         else:
-            sampled_examples = replay.sample(
-                min(config.training_budget.sampled_examples_per_iteration, len(replay)),
+            sample_count = min(config.training_budget.sampled_examples_per_iteration, replay_size)
+            generated_sampled_examples = min(len(generated_replay), sample_count)
+            generated_samples = generated_replay.sample(
+                generated_sampled_examples,
                 generator=generator,
             )
+            seed_sampled_examples = sample_count - generated_sampled_examples
+            seed_samples = _sample_replay_seed_samples(
+                replay_seed_selection,
+                sample_count=seed_sampled_examples,
+                seed=config.seed + iteration_index,
+            )
+            sampled_examples = generated_samples + seed_samples
             training_result = _train_online_replay_iteration(
                 config=config,
                 iteration_index=iteration_index,
@@ -252,7 +269,7 @@ def run_shogi_online_replay(
                 artifacts=artifacts,
                 sampled_examples=sampled_examples,
                 eval_examples=training_eval_samples,
-                replay_size=len(replay),
+                replay_size=replay_size,
                 training_eval_examples=len(training_eval_samples),
             )
             training_skipped = False
@@ -266,9 +283,11 @@ def run_shogi_online_replay(
             training_skipped=training_skipped,
             skip_reason=skip_reason,
             appended_examples=len(new_examples),
-            replay_size=len(replay),
-            replay_seed_loaded_examples=len(replay_seed_examples),
-            preloaded_examples=len(preloaded_examples),
+            replay_size=replay_size,
+            generated_replay_size=len(generated_replay),
+            replay_seed_eligible_examples=replay_seed_eligible_examples,
+            seed_sampled_examples=seed_sampled_examples,
+            generated_sampled_examples=generated_sampled_examples,
             training_eval_examples=len(training_eval_examples),
             experience_store_append=experience_store_append,
             sampled_examples=len(sampled_examples),
@@ -285,7 +304,7 @@ def run_shogi_online_replay(
             run_dir=artifacts.iteration_dir,
             generated_games_jsonl=artifacts.games_jsonl,
             appended_examples=len(new_examples),
-            replay_size=len(replay),
+            replay_size=replay_size,
             sampled_examples=len(sampled_examples),
             training_skipped=training_skipped,
             experience_store_append=experience_store_append,
@@ -304,7 +323,7 @@ def run_shogi_online_replay(
         experience_store_dir=config.experience_store_dir,
         replay_seed_data_selection=config.replay_seed_data_selection,
         training_eval_data_selection=config.training_eval_data_selection,
-        preloaded_examples=len(preloaded_examples),
+        preloaded_examples=0,
         training_eval_examples=len(training_eval_examples),
         stop_reason=stop_reason,
         stopped_iteration_index=stopped_iteration_index,
@@ -576,8 +595,10 @@ def _online_replay_iteration_metrics(
     skip_reason: str | None,
     appended_examples: int,
     replay_size: int,
-    replay_seed_loaded_examples: int,
-    preloaded_examples: int,
+    generated_replay_size: int,
+    replay_seed_eligible_examples: int,
+    seed_sampled_examples: int,
+    generated_sampled_examples: int,
     training_eval_examples: int,
     experience_store_append: dict[str, object] | None,
     sampled_examples: int,
@@ -596,8 +617,12 @@ def _online_replay_iteration_metrics(
         "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
         "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
         "training_eval_data_selection": str(config.training_eval_data_selection),
-        "replay_seed_loaded_examples": replay_seed_loaded_examples,
-        "preloaded_examples": preloaded_examples,
+        "generated_replay_size": generated_replay_size,
+        "replay_seed_eligible_examples": replay_seed_eligible_examples,
+        "seed_sampled_examples": seed_sampled_examples,
+        "generated_sampled_examples": generated_sampled_examples,
+        "replay_seed_loaded_examples": replay_seed_eligible_examples,
+        "preloaded_examples": 0,
         "training_eval_examples": training_eval_examples,
         "training_eval_source": "fixed_data_selection",
         "generated_holdout_examples": 0,
@@ -819,25 +844,203 @@ def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> d
     }
 
 
-def _load_replay_seed_examples(data_selection_path: Path | None) -> list[ShogiPolicyValueExample]:
+@dataclass(frozen=True)
+class _ReplaySeedGame:
+    source: ShogiPolicyValueDataSelectionSource
+    game_index: int
+    move_count: int
+    start_offset: int
+
+
+@dataclass(frozen=True)
+class _ReplaySeedSelection:
+    path: Path
+    data_selection: ShogiPolicyValueDataSelection
+
+
+def _load_replay_seed_selection(data_selection_path: Path | None) -> _ReplaySeedSelection | None:
     if data_selection_path is None:
-        return []
-    selection = load_shogi_policy_value_data_selection(data_selection_path)
-    train_examples, _eval_examples = load_shogi_policy_value_data_selection_examples(selection)
-    return train_examples
+        return None
+    path = Path(data_selection_path)
+    return _ReplaySeedSelection(path=path, data_selection=load_shogi_policy_value_data_selection(path))
 
 
-def _sample_replay_seed_examples(
-    examples: list[ShogiPolicyValueExample],
+def _count_replay_seed_examples(selection: _ReplaySeedSelection | None) -> int:
+    if selection is None:
+        return 0
+    cache_path = default_shogi_policy_value_tensor_cache_path(selection.path)
+    if cache_path.exists():
+        return len(
+            load_shogi_policy_value_tensor_cache(
+                cache_path,
+                expected_data_selection=selection.data_selection,
+                expected_data_selection_root=selection.path.parent,
+            ).train_samples
+        )
+    return sum(game.move_count for game in _replay_seed_games(selection.data_selection))
+
+
+def _sample_replay_seed_samples(
+    selection: _ReplaySeedSelection | None,
     *,
-    capacity: int,
+    sample_count: int,
+    seed: int,
+) -> list[TensorizedShogiPolicyValueSample]:
+    if sample_count <= 0 or selection is None:
+        return []
+    cache_path = default_shogi_policy_value_tensor_cache_path(selection.path)
+    if cache_path.exists():
+        cache = load_shogi_policy_value_tensor_cache(
+            cache_path,
+            expected_data_selection=selection.data_selection,
+            expected_data_selection_root=selection.path.parent,
+        )
+        return _sample_sequence(cache.train_samples, sample_count=sample_count, seed=seed)
+    return tensorize_shogi_policy_value_examples(
+        _sample_replay_seed_examples_from_selection(selection.data_selection, sample_count=sample_count, seed=seed)
+    )
+
+
+def _sample_sequence(
+    samples,
+    *,
+    sample_count: int,
+    seed: int,
+) -> list[TensorizedShogiPolicyValueSample]:
+    if hasattr(samples, "shards") and hasattr(samples, "offsets"):
+        return _sample_sharded_sequence(samples, sample_count=sample_count, seed=seed)
+    sample_count = min(sample_count, len(samples))
+    generator = torch.Generator().manual_seed(seed)
+    indices = sorted(torch.randperm(len(samples), generator=generator)[:sample_count].tolist())
+    return [samples[index] for index in indices]
+
+
+def _sample_sharded_sequence(
+    samples,
+    *,
+    sample_count: int,
+    seed: int,
+) -> list[TensorizedShogiPolicyValueSample]:
+    sample_count = min(sample_count, len(samples))
+    if sample_count <= 0:
+        return []
+    shard_counts = [int(shard["sample_count"]) for shard in samples.shards]
+    if not shard_counts:
+        return []
+    average_shard_count = max(1.0, sum(shard_counts) / len(shard_counts))
+    selected_shard_count = min(len(shard_counts), max(1, math.ceil(sample_count / average_shard_count) + 1))
+    generator = torch.Generator().manual_seed(seed)
+    weights = torch.tensor(shard_counts, dtype=torch.float64)
+    selected_shards = sorted(torch.multinomial(weights, selected_shard_count, replacement=False, generator=generator).tolist())
+    selected_ranges = [
+        (int(samples.offsets[shard_index]), int(samples.offsets[shard_index]) + shard_counts[shard_index])
+        for shard_index in selected_shards
+    ]
+    selected_pool_size = sum(end - start for start, end in selected_ranges)
+    sample_count = min(sample_count, selected_pool_size)
+    local_indices = sorted(torch.randperm(selected_pool_size, generator=generator)[:sample_count].tolist())
+    global_indices: list[int] = []
+    range_index = 0
+    range_start = 0
+    for local_index in local_indices:
+        while range_index + 1 < len(selected_ranges) and local_index >= range_start + (
+            selected_ranges[range_index][1] - selected_ranges[range_index][0]
+        ):
+            range_start += selected_ranges[range_index][1] - selected_ranges[range_index][0]
+            range_index += 1
+        start, _end = selected_ranges[range_index]
+        global_indices.append(start + local_index - range_start)
+    return [samples[index] for index in global_indices]
+
+
+def _sample_replay_seed_examples_from_selection(
+    selection: ShogiPolicyValueDataSelection | _ReplaySeedSelection | None,
+    *,
+    sample_count: int,
     seed: int,
 ) -> list[ShogiPolicyValueExample]:
-    if len(examples) <= capacity:
-        return examples
+    if isinstance(selection, _ReplaySeedSelection):
+        selection = selection.data_selection
+    if sample_count <= 0 or selection is None:
+        return []
+    games = _replay_seed_games(selection)
+    total_examples = sum(game.move_count for game in games)
+    if total_examples == 0:
+        return []
+    if selection.analysis_sources:
+        raise ValueError("online replay seed sampling does not support analysis_sources")
+    sample_count = min(sample_count, total_examples)
     generator = torch.Generator().manual_seed(seed)
-    indices = torch.randperm(len(examples), generator=generator)[:capacity].tolist()
-    return [examples[index] for index in indices]
+    selected_positions = sorted(torch.randperm(total_examples, generator=generator)[:sample_count].tolist())
+    positions_by_source: dict[Path, dict[int, set[int]]] = {}
+    game_index = 0
+    for position in selected_positions:
+        while game_index + 1 < len(games) and position >= games[game_index].start_offset + games[game_index].move_count:
+            game_index += 1
+        game = games[game_index]
+        positions_by_source.setdefault(game.source.path, {}).setdefault(game.game_index, set()).add(
+            position - game.start_offset
+        )
+
+    examples: list[ShogiPolicyValueExample] = []
+    sources_by_path = {source.path: source for source in selection.train_sources}
+    for source_path in sorted(positions_by_source, key=str):
+        source = sources_by_path[source_path]
+        selected_by_game = positions_by_source[source_path]
+        for game_index_in_source, record in enumerate(iter_shogi_game_records_jsonl(source_path)):
+            if source.max_games is not None and game_index_in_source >= source.max_games:
+                break
+            selected_plies = selected_by_game.get(game_index_in_source)
+            if selected_plies is None:
+                continue
+            try:
+                examples.extend(
+                    shogi_policy_value_examples_from_game_record_plies(
+                        record,
+                        ply_indices=selected_plies,
+                        policy_target_construction=selection.target_construction.policy,
+                        value_target_construction=selection.target_construction.value,
+                        game_index=game_index_in_source,
+                    )
+                )
+            except ValueError:
+                continue
+    return examples
+
+
+def _replay_seed_games(selection: ShogiPolicyValueDataSelection) -> list[_ReplaySeedGame]:
+    games: list[_ReplaySeedGame] = []
+    start_offset = 0
+    for source in selection.train_sources:
+        if source.kind != "game_records_jsonl":
+            raise ValueError(f"unsupported online replay seed source kind: {source.kind}")
+        for game_index, move_count in enumerate(_game_record_move_counts(source)):
+            games.append(
+                _ReplaySeedGame(
+                    source=source,
+                    game_index=game_index,
+                    move_count=move_count,
+                    start_offset=start_offset,
+                )
+            )
+            start_offset += move_count
+    return games
+
+
+def _game_record_move_counts(source: ShogiPolicyValueDataSelectionSource) -> list[int]:
+    move_counts: list[int] = []
+    with source.path.open(encoding="utf-8") as file:
+        for line in file:
+            if source.max_games is not None and len(move_counts) >= source.max_games:
+                break
+            stripped = line.strip()
+            if not stripped:
+                continue
+            payload = json.loads(stripped)
+            moves = payload.get("moves", [])
+            if isinstance(moves, list) and moves:
+                move_counts.append(len(moves))
+    return move_counts
 
 
 def _load_training_eval_examples(data_selection_path: Path) -> list[ShogiPolicyValueExample]:
