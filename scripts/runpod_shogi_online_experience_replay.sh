@@ -60,10 +60,12 @@ SEED=${SEED:-7}
 
 GPU_TYPE=${GPU_TYPE:-NVIDIA RTX A5000}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-180}
+CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-80}
 VOLUME_SIZE=${VOLUME_SIZE:-0}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 MIN_VCPU_PER_GPU=${MIN_VCPU_PER_GPU:-}
 SECURE_CLOUD=${SECURE_CLOUD:-1}
+SYNC_TENSOR_CACHE=${SYNC_TENSOR_CACHE:-1}
 
 if [[ ! -f "$CHECKPOINT" ]]; then
   echo "checkpoint not found: $CHECKPOINT" >&2
@@ -99,11 +101,15 @@ fi
 if [[ -n "$MIN_VCPU_PER_GPU" ]]; then
   RUNNER_ARGS+=(--min-vcpu-per-gpu "$MIN_VCPU_PER_GPU")
 fi
+if [[ "$SYNC_TENSOR_CACHE" == "1" ]]; then
+  RUNNER_ARGS+=(--sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors")
+fi
 
 python3 "$RUNPOD_JOB" \
   --repo-root "$REPO_PARENT" \
   --name intrep-shogi-online-experience-replay \
   --gpu-type "$GPU_TYPE" \
+  --container-disk-size "$CONTAINER_DISK_SIZE" \
   --volume-size "$VOLUME_SIZE" \
   "${RUNNER_ARGS[@]}" \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
