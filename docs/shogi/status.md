@@ -52,3 +52,10 @@ alternating sides, MCTS128, and batch64:
 - result: 10-6
 - illegal moves: 0
 - average plies: 111.25
+
+In same-checkpoint self-play, with sampled checkpoint move selection,
+alternating sides, MCTS128, and batch64:
+
+- result: 4-11-1 from player A's perspective
+- illegal moves: 0
+- average plies: 169.56

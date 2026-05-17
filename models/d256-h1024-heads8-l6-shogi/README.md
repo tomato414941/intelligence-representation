@@ -48,6 +48,12 @@ Evaluation move selection, alternating sides, MCTS128, batch64:
 
 - vs YaneuraOu MaterialLv1 `go nodes 1`: 10-6
 
+Same-checkpoint self-play with sampled checkpoint move selection, alternating
+sides, MCTS128, batch64:
+
+- player A perspective: 4-11-1
+- illegal moves: 0
+
 ## Integrity
 
 SHA256:
