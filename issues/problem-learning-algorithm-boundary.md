@@ -37,8 +37,8 @@ The shogi generated-data and online-replay cycle is currently kept under
 value needs multiple clearly distinct update algorithms.
 
 This remains the current state after the shogi RL artifact boundary cleanup.
-`docs/learning-boundaries.md` documents the repository/artifact boundary for
-shogi RL, but that does not imply a generic learning algorithm boundary yet.
+`docs/learning-data-boundaries.md` documents general learning-data boundaries,
+but that does not imply a generic learning algorithm boundary yet.
 The only reusable code under `intrep.learning` is still a small uniform
 `ReplayBuffer`.
 

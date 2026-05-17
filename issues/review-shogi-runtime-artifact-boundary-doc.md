@@ -6,7 +6,7 @@
 owner.
 
 It was created to keep shogi runtime and artifact-boundary details out of the
-project-level `docs/learning-boundaries.md` without mixing them into the
+project-level `docs/learning-data-boundaries.md` without mixing them into the
 unreviewed `docs/shogi/learning-boundaries.md`.
 
 Do not treat it as final accepted guidance until it has been reviewed.

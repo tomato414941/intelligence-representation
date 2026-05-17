@@ -19,7 +19,7 @@ intrep.train_shogi_policy_value
 
 Problem models compose task-specific input layers, the shared Transformer core
 where useful, and task-specific output heads. See [model-boundaries.md](model-boundaries.md)
-and [learning-boundaries.md](learning-boundaries.md) for the current design.
+and [learning-data-boundaries.md](learning-data-boundaries.md) for the current design.
 
 ## Tokenizer Reuse
 

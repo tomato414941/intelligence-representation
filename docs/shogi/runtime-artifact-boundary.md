@@ -2,7 +2,7 @@
 
 This document records the artifact boundary between `intelligence-representation`
 and `shogi-arena-agent` for shogi runtime execution. It is separate from
-`learning-boundaries.md` so the project-level learning document can stay
+`learning-data-boundaries.md` so the project-level learning data document can stay
 domain-neutral.
 
 ## Ownership
