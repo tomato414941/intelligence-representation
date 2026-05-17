@@ -23,7 +23,6 @@ Current successful full training uses the Qhapaq full tensor cache:
 
 - train examples: 4,951,012
 - eval examples: 262,133
-- skipped games: 2
 - cache size: about 27 GB
 
 ## Latest Learning Result
