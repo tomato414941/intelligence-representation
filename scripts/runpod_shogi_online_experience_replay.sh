@@ -14,8 +14,8 @@ PROJECT_REL=${PROJECT_REL:-projects/intelligence-representation}
 ARENA_REL=${ARENA_REL:-projects/shogi-arena-agent}
 
 CHECKPOINT=${CHECKPOINT:-models/d256-h1024-heads8-l6-shogi/checkpoint.pt}
-REPLAY_SEED_DATA_SELECTION=${REPLAY_SEED_DATA_SELECTION:-data/shogi/training-data-bundles/online-replay-seed-20260512/data-selection.json}
-TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training-data-bundles/online-replay-seed-20260512/data-selection.json}
+REPLAY_SEED_DATA_SELECTION=${REPLAY_SEED_DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
+TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/online-experience-replay-runpod-$(date -u +%Y%m%d-%H%M%S)}
 
 ITERATIONS=${ITERATIONS:-4}
@@ -118,7 +118,7 @@ python3 "$RUNPOD_JOB" \
   --sync "$PROJECT_REL/README.md" \
   --sync "$PROJECT_REL/AGENTS.md" \
   --sync "$PROJECT_REL/$CHECKPOINT" \
-  --sync "$PROJECT_REL/data/shogi/training-data-bundles/online-replay-seed-20260512" \
+  --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full" \
   --sync "$ARENA_REL/src" \
   --sync "$ARENA_REL/scripts/generate_shogi_games.py" \
   --sync "$ARENA_REL/scripts/evaluate_shogi_players.py" \
