@@ -1,6 +1,6 @@
 # Shogi Status
 
-Last updated: 2026-05-16.
+Last updated: 2026-05-17.
 
 This is the compact current-state document. Detailed experiment rows live in
 `learning-experiments.md`; runtime measurements live in the throughput and
@@ -9,7 +9,7 @@ inference-performance docs.
 ## Current Model
 
 The strongest project checkpoint observed so far is the one-epoch Qhapaq
-full-cache policy checkpoint from `shogi-learning-20260516-003`.
+full-cache policy/value checkpoint from `shogi-learning-20260517-001`.
 
 It is promoted here:
 
@@ -28,26 +28,21 @@ Current successful full training uses the Qhapaq full tensor cache:
 
 ## Latest Learning Result
 
-One full Qhapaq epoch trained cleanly:
+One full Qhapaq policy/value epoch trained cleanly:
 
-- train loss: 4.2407 -> 2.0753
-- eval loss: 4.2447 -> 2.1020
-- eval accuracy: 0.0259 -> 0.4039
-- eval top-3 accuracy: 0.6540
-- eval top-5 accuracy: 0.7522
+- train loss: 2.0753 -> 1.9431
+- train value loss: 1.0151 -> 0.9064
+- eval loss: 2.0960 -> 1.9751
+- eval value loss: 1.0150 -> 0.9084
+- eval accuracy: 0.4059 -> 0.4257
+- eval top-3 accuracy: 0.6818
+- eval top-5 accuracy: 0.7795
 
 ## Latest Playing-Strength Check
 
-Against YaneuraOu MaterialLv1 `go nodes 1`, with evaluation move selection,
-alternating sides, and batch64:
+Against the previous promoted checkpoint, with sampled checkpoint move
+selection, alternating sides, MCTS128, and batch64:
 
-- MCTS128: 2-2
-- MCTS256: 3-1
-- MCTS512: 1-3
-- MCTS1024: 0-4
-- MCTS2048: 0-4
-- 4 games per MCTS case
-
-Current interpretation: against YaneuraOu MaterialLv1 nodes1, the checkpoint can
-take games around MCTS128-256 in a small sample, but the result is not yet
-robust.
+- result: 14-1-1
+- illegal moves: 0
+- average plies: 136.56
