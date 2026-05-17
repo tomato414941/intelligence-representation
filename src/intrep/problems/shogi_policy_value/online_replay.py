@@ -46,7 +46,7 @@ from intrep.problems.shogi_policy_value.training import (
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 
 DEFAULT_REPLAY_CAPACITY = 32768
-DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 4096
+DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 32768
 DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128

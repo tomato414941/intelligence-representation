@@ -48,6 +48,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             )
 
         config = run_replay.call_args.args[0]
+        self.assertEqual(config.training_budget.sampled_examples_per_iteration, 32768)
         self.assertEqual(config.generator_gate_worker_processes, 32)
         self.assertEqual(config.generation_worker_processes, 32)
 
