@@ -46,8 +46,8 @@ from intrep.problems.shogi_policy_value.training import (
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 
-DEFAULT_REPLAY_CAPACITY = 32768
-DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 32768
+DEFAULT_REPLAY_CAPACITY = 2_097_152
+DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288
 DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
@@ -198,7 +198,12 @@ def run_shogi_online_replay(
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = config.checkpoint
     replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
-    preloaded_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
+    replay_seed_examples = _load_replay_seed_examples(config.replay_seed_data_selection)
+    preloaded_examples = _sample_replay_seed_examples(
+        replay_seed_examples,
+        capacity=config.replay_capacity,
+        seed=config.seed,
+    )
     training_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
     training_eval_samples = tensorize_shogi_policy_value_examples(training_eval_examples)
     replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
@@ -262,6 +267,7 @@ def run_shogi_online_replay(
             skip_reason=skip_reason,
             appended_examples=len(new_examples),
             replay_size=len(replay),
+            replay_seed_loaded_examples=len(replay_seed_examples),
             preloaded_examples=len(preloaded_examples),
             training_eval_examples=len(training_eval_examples),
             experience_store_append=experience_store_append,
@@ -570,6 +576,7 @@ def _online_replay_iteration_metrics(
     skip_reason: str | None,
     appended_examples: int,
     replay_size: int,
+    replay_seed_loaded_examples: int,
     preloaded_examples: int,
     training_eval_examples: int,
     experience_store_append: dict[str, object] | None,
@@ -589,6 +596,7 @@ def _online_replay_iteration_metrics(
         "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
         "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
         "training_eval_data_selection": str(config.training_eval_data_selection),
+        "replay_seed_loaded_examples": replay_seed_loaded_examples,
         "preloaded_examples": preloaded_examples,
         "training_eval_examples": training_eval_examples,
         "training_eval_source": "fixed_data_selection",
@@ -817,6 +825,19 @@ def _load_replay_seed_examples(data_selection_path: Path | None) -> list[ShogiPo
     selection = load_shogi_policy_value_data_selection(data_selection_path)
     train_examples, _eval_examples = load_shogi_policy_value_data_selection_examples(selection)
     return train_examples
+
+
+def _sample_replay_seed_examples(
+    examples: list[ShogiPolicyValueExample],
+    *,
+    capacity: int,
+    seed: int,
+) -> list[ShogiPolicyValueExample]:
+    if len(examples) <= capacity:
+        return examples
+    generator = torch.Generator().manual_seed(seed)
+    indices = torch.randperm(len(examples), generator=generator)[:capacity].tolist()
+    return [examples[index] for index in indices]
 
 
 def _load_training_eval_examples(data_selection_path: Path) -> list[ShogiPolicyValueExample]:

@@ -19,13 +19,14 @@ from intrep.problems.shogi_policy_value.online_replay import (
     ShogiGeneratedExperienceSource,
     ShogiOnlineReplayConfig,
     ShogiOnlineReplayTrainingBudget,
+    _sample_replay_seed_examples,
     run_shogi_online_replay,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     checkpoint_generated_player,
     usi_engine_generated_player,
 )
-from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyValueSample
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, TensorizedShogiPolicyValueSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
@@ -122,6 +123,24 @@ def _write_training_eval_bundle(bundle_dir: Path) -> Path:
 
 
 class ShogiGeneratedDataCycleTest(unittest.TestCase):
+    def test_replay_seed_examples_are_sampled_when_larger_than_capacity(self) -> None:
+        examples = [
+            ShogiPolicyValueExample(
+                position_sfen="lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+                legal_moves=("7g7f", "2g2f"),
+                chosen_move="7g7f",
+                game_index=index,
+                ply_index=0,
+            )
+            for index in range(10)
+        ]
+
+        sampled = _sample_replay_seed_examples(examples, capacity=4, seed=7)
+
+        self.assertEqual(len(sampled), 4)
+        self.assertEqual(len({example.game_index for example in sampled}), 4)
+        self.assertNotEqual([example.game_index for example in sampled], [6, 7, 8, 9])
+
     def test_rejects_invalid_loop_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "cycles"):
             run_shogi_generated_data_training_loop(
