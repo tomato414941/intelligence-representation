@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import gc
 import math
 import os
 import subprocess
@@ -51,7 +52,7 @@ DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
 DEFAULT_GENERATOR_GATE_GAMES = 32
-DEFAULT_GENERATOR_GATE_WORKER_PROCESSES = 8
+DEFAULT_GENERATOR_GATE_WORKER_PROCESSES = 4
 DEFAULT_GENERATION_WORKER_PROCESSES = 8
 
 
@@ -271,6 +272,8 @@ def run_shogi_online_replay(
             training_result=training_result,
         )
         artifacts.metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+        training_result = None
+        _clear_cuda_cache_if_needed(config.training_config.device)
         iteration_result = ShogiOnlineReplayIterationResult(
             iteration_index=iteration_index,
             run_dir=artifacts.iteration_dir,
@@ -301,6 +304,14 @@ def run_shogi_online_replay(
         stopped_iteration_index=stopped_iteration_index,
         iterations=tuple(iteration_results),
     )
+
+
+def _clear_cuda_cache_if_needed(device: str) -> None:
+    if not device.startswith("cuda"):
+        return
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:

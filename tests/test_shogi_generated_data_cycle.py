@@ -525,7 +525,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertIsNone(result.iterations[0].experience_store_append)
             self.assertEqual(result.stop_reason, None)
             self.assertEqual(len(gate_commands), 1)
-            self.assertEqual(gate_commands[0][gate_commands[0].index("--match-worker-processes") + 1], "8")
+            self.assertEqual(gate_commands[0][gate_commands[0].index("--match-worker-processes") + 1], "4")
             gate_summary = json.loads((run_dir / "iteration-0002" / "generator-gate-summary.json").read_text(encoding="utf-8"))
             self.assertEqual(gate_summary["player_a_wins"], 2)
             self.assertEqual(gate_summary["player_a_losses"], 0)
