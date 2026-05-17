@@ -183,7 +183,7 @@ def _player_command_args(
         return command
     command = [
         f"--{prefix}-kind",
-        "usi",
+        "usi_engine",
         f"--{prefix}-usi-command",
         player.usi_command or "",
         f"--{prefix}-usi-go-command",

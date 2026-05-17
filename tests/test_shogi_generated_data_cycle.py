@@ -295,7 +295,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             generate_command = run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "usi")
+            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "usi_engine")
             self.assertEqual(generate_command[generate_command.index("--white-usi-command") + 1], "engine-command")
             self.assertEqual(generate_command[generate_command.index("--white-usi-option") + 1], "Threads=2")
             self.assertEqual(generate_command[generate_command.index("--white-usi-go-command") + 1], "go nodes 2")
@@ -595,9 +595,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
-                    if command[command.index("--white-kind") + 1] == "usi":
+                    if command[command.index("--white-kind") + 1] == "usi_engine":
                         records = [_record(("2g2f", "8c8d"), "white")]
-                    elif command[command.index("--black-kind") + 1] == "usi":
+                    elif command[command.index("--black-kind") + 1] == "usi_engine":
                         records = [_record(("7g7f", "3c3d"), "black")]
                     else:
                         records = [_record(("7g7f", "3c3d"), "black")]
@@ -665,12 +665,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 usi_command[usi_command.index("--concurrent-games-per-process") + 1],
                 "1",
             )
-            self.assertEqual(usi_command[usi_command.index("--white-kind") + 1], "usi")
+            self.assertEqual(usi_command[usi_command.index("--white-kind") + 1], "usi_engine")
             self.assertEqual(usi_command[usi_command.index("--white-usi-command") + 1], "engine")
             self.assertEqual(usi_command[usi_command.index("--white-usi-option") + 1], "Threads=2")
             self.assertEqual(usi_command[usi_command.index("--white-usi-read-timeout-seconds") + 1], "31")
             reversed_usi_command = run.call_args_list[2].args[0]
-            self.assertEqual(reversed_usi_command[reversed_usi_command.index("--black-kind") + 1], "usi")
+            self.assertEqual(reversed_usi_command[reversed_usi_command.index("--black-kind") + 1], "usi_engine")
             self.assertEqual(reversed_usi_command[reversed_usi_command.index("--black-usi-command") + 1], "engine")
             self.assertEqual(reversed_usi_command[reversed_usi_command.index("--white-kind") + 1], "checkpoint")
             records = load_shogi_game_records_jsonl(run_dir / "cycle-0001" / "generated-games.jsonl")
