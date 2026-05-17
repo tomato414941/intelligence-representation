@@ -1,8 +1,7 @@
 # Learning Boundaries
 
-This document explains how the data and learning terms from
-[Glossary](glossary.md) relate to each other. The glossary is the source of
-truth for term definitions.
+This document records design rules for learning data boundaries. The glossary
+is the source of truth for term definitions.
 
 ## Source Records
 
