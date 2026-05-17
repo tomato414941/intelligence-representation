@@ -51,6 +51,12 @@ alternating sides, MCTS128, and batch64:
 - result: 10-6
 - average plies: 111.25
 
+Against YaneuraOu MaterialLv1 `go nodes 10`, with evaluation move selection,
+alternating sides, MCTS128, and batch64:
+
+- result: 9-7
+- average plies: 95.06
+
 In same-checkpoint self-play, with sampled checkpoint move selection,
 alternating sides, MCTS128, and batch64:
 
