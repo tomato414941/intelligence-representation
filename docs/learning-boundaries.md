@@ -8,9 +8,7 @@ is the source of truth for term definitions.
 This document is about the boundary between source-side material and training
 consumption.
 
-It covers where learning data is selected, fixed, adapted, and consumed. It does
-not define model architecture, domain runtime, or a generic reinforcement
-learning framework.
+It covers where learning data is selected, fixed, adapted, and consumed.
 
 ## Source-Side Material
 
@@ -101,11 +99,6 @@ Selection decides what material is included. Target Construction decides how
 included material becomes targets, feedback, or objective-specific training
 examples.
 
-## Domain-Specific Boundaries
-
-Domain-specific learning and runtime artifact boundaries belong under the
-domain documentation, such as `docs/shogi/`.
-
 ## Non-Goals
 
 This document does not introduce:
@@ -114,9 +107,7 @@ This document does not introduce:
 a universal raw-data envelope
 a generic dataset schema
 a generic target-construction framework
-a generic reinforcement-learning runtime
 a model-architecture boundary
-a required agent loop
 ```
 
 Add those only when experiments require them.
