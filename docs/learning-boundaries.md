@@ -98,16 +98,3 @@ selected material
 Selection decides what material is included. Target Construction decides how
 included material becomes targets, feedback, or objective-specific training
 examples.
-
-## Non-Goals
-
-This document does not introduce:
-
-```text
-a universal raw-data envelope
-a generic dataset schema
-a generic target-construction framework
-a model-architecture boundary
-```
-
-Add those only when experiments require them.
