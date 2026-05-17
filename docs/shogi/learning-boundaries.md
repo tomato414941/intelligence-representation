@@ -66,7 +66,7 @@ separate post-training concern.
 
 ## Online Replay Generation Lifecycle
 
-Online Replay can run multiple cycles. The checkpoint used to generate
+Online Replay can run multiple iterations. The checkpoint used to generate
 experience should be treated as an experience generator, not merely as a base
 checkpoint.
 
@@ -100,22 +100,22 @@ learning experiment summaries are separate roles:
 ## Online Replay Progress
 
 Policy/value training reports generic training progress events. Online Replay
-owns the cycle context for those events and prints lightweight progress lines
-that include the cycle, step, loss, elapsed time, replay size, sampled examples,
+owns the iteration context for those events and prints lightweight progress lines
+that include the iteration, step, loss, elapsed time, replay size, sampled examples,
 and fixed training-eval example count.
 
 RunPod Online Replay jobs set `PROGRESS_EVERY=100` unless overridden.
 
 ## Online Replay Step Budget
 
-Online Replay owns the per-cycle training budget. A run specifies
-`sampled_examples_per_cycle`, `training_batch_size`, `target_sample_passes`,
-and an optional `max_optimizer_steps_per_cycle`.
+Online Replay owns the per-iteration training budget. A run specifies
+`sampled_examples_per_iteration`, `training_batch_size`, `target_sample_passes`,
+and an optional `max_optimizer_steps_per_iteration`.
 
 The policy/value training loop still runs on optimizer steps, but Online Replay
 derives those steps from the budget before calling the training loop.
 
-Cycle metrics record `effective_sample_passes` as:
+Iteration metrics record `effective_sample_passes` as:
 
 ```text
 actual_steps * training_batch_size / sampled_examples

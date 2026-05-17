@@ -4,23 +4,23 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.problems.shogi_policy_value.generated_data_cycle import (
+from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
+    DEFAULT_USI_READ_TIMEOUT_SECONDS,
+    checkpoint_generated_player,
+    usi_engine_generated_player,
+)
+from intrep.problems.shogi_policy_value.online_replay import (
     DEFAULT_GENERATOR_GATE_GAMES,
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
-    DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE,
+    DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION,
     DEFAULT_TARGET_SAMPLE_PASSES,
     DEFAULT_TRAINING_BATCH_SIZE,
     ShogiOnlineReplayConfig,
     ShogiGeneratedExperienceSource,
     ShogiOnlineReplayTrainingBudget,
     run_shogi_online_replay,
-)
-from intrep.problems.shogi_policy_value.generated_game_production import (
-    DEFAULT_USI_READ_TIMEOUT_SECONDS,
-    checkpoint_generated_player,
-    usi_engine_generated_player,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
@@ -29,13 +29,13 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run shogi Online Experience Replay.")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--cycles", type=int, default=1)
+    parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
-    parser.add_argument("--sampled-examples-per-cycle", type=int, default=DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE)
+    parser.add_argument("--sampled-examples-per-iteration", type=int, default=DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION)
     parser.add_argument("--training-batch-size", type=int, default=DEFAULT_TRAINING_BATCH_SIZE)
     parser.add_argument("--target-sample-passes", type=float, default=DEFAULT_TARGET_SAMPLE_PASSES)
-    parser.add_argument("--max-optimizer-steps-per-cycle", type=int)
+    parser.add_argument("--max-optimizer-steps-per-iteration", type=int)
     parser.add_argument("--generator-gate-games", type=int, default=DEFAULT_GENERATOR_GATE_GAMES)
     parser.add_argument("--experience-store-dir", type=Path)
     parser.add_argument("--replay-seed-data-selection", type=Path)
@@ -88,14 +88,14 @@ def main(argv: list[str] | None = None) -> None:
         ShogiOnlineReplayConfig(
             checkpoint=args.checkpoint,
             run_dir=args.run_dir,
-            cycles=args.cycles,
+            iterations=args.iterations,
             replay_capacity=args.replay_capacity,
             min_replay_size=args.min_replay_size,
             training_budget=ShogiOnlineReplayTrainingBudget(
-                sampled_examples_per_cycle=args.sampled_examples_per_cycle,
+                sampled_examples_per_iteration=args.sampled_examples_per_iteration,
                 batch_size=args.training_batch_size,
                 target_sample_passes=args.target_sample_passes,
-                max_optimizer_steps=args.max_optimizer_steps_per_cycle,
+                max_optimizer_steps=args.max_optimizer_steps_per_iteration,
             ),
             generator_gate_games=args.generator_gate_games,
             experience_store_dir=args.experience_store_dir,

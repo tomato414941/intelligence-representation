@@ -46,7 +46,7 @@ from intrep.problems.shogi_policy_value.training import (
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 
 DEFAULT_REPLAY_CAPACITY = 32768
-DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE = 4096
+DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 4096
 DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
@@ -63,7 +63,7 @@ class ShogiGeneratedExperienceSource:
 
 @dataclass(frozen=True)
 class ShogiOnlineReplayTrainingBudget:
-    sampled_examples_per_cycle: int = DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE
+    sampled_examples_per_iteration: int = DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION
     batch_size: int = DEFAULT_TRAINING_BATCH_SIZE
     target_sample_passes: float = DEFAULT_TARGET_SAMPLE_PASSES
     max_optimizer_steps: int | None = None
@@ -80,7 +80,7 @@ class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
     training_eval_data_selection: Path
-    cycles: int = 1
+    iterations: int = 1
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     training_budget: ShogiOnlineReplayTrainingBudget = ShogiOnlineReplayTrainingBudget()
@@ -110,8 +110,8 @@ class ShogiOnlineReplayConfig:
 
 
 @dataclass(frozen=True)
-class ShogiOnlineReplayCycleResult:
-    cycle_index: int
+class ShogiOnlineReplayIterationResult:
+    iteration_index: int
     run_dir: Path
     generated_games_jsonl: Path
     appended_examples: int
@@ -125,7 +125,7 @@ class ShogiOnlineReplayCycleResult:
 
     def to_json(self) -> dict[str, object]:
         return {
-            "cycle_index": self.cycle_index,
+            "iteration_index": self.iteration_index,
             "run_dir": str(self.run_dir),
             "generated_games_jsonl": str(self.generated_games_jsonl),
             "appended_examples": self.appended_examples,
@@ -152,8 +152,8 @@ class ShogiOnlineReplayResult:
     preloaded_examples: int
     training_eval_examples: int
     stop_reason: str | None
-    stopped_cycle_index: int | None
-    cycles: tuple[ShogiOnlineReplayCycleResult, ...]
+    stopped_iteration_index: int | None
+    iterations: tuple[ShogiOnlineReplayIterationResult, ...]
 
     def to_json(self) -> dict[str, object]:
         return {
@@ -168,14 +168,14 @@ class ShogiOnlineReplayResult:
             "preloaded_examples": self.preloaded_examples,
             "training_eval_examples": self.training_eval_examples,
             "stop_reason": self.stop_reason,
-            "stopped_cycle_index": self.stopped_cycle_index,
-            "cycles": [cycle.to_json() for cycle in self.cycles],
+            "stopped_iteration_index": self.stopped_iteration_index,
+            "iterations": [iteration.to_json() for iteration in self.iterations],
         }
 
 
 @dataclass(frozen=True)
-class ShogiOnlineReplayCycleArtifacts:
-    cycle_dir: Path
+class ShogiOnlineReplayIterationArtifacts:
+    iteration_dir: Path
     games_jsonl: Path
     generated_train_jsonl: Path
     generation_summary_path: Path
@@ -199,13 +199,13 @@ def run_shogi_online_replay(
     training_eval_samples = tensorize_shogi_policy_value_examples(training_eval_examples)
     replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
     generator = torch.Generator().manual_seed(config.seed)
-    cycle_results: list[ShogiOnlineReplayCycleResult] = []
+    iteration_results: list[ShogiOnlineReplayIterationResult] = []
     last_generator_checkpoint = checkpoint
     stop_reason: str | None = None
-    stopped_cycle_index: int | None = None
-    for cycle_index in range(1, config.cycles + 1):
-        artifacts = _online_replay_cycle_artifacts(run_dir, cycle_index)
-        if cycle_index > 1:
+    stopped_iteration_index: int | None = None
+    for iteration_index in range(1, config.iterations + 1):
+        artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
+        if iteration_index > 1:
             gate_summary = _evaluate_generator_candidate(
                 config=config,
                 artifacts=artifacts,
@@ -214,15 +214,15 @@ def run_shogi_online_replay(
             )
             if _generator_candidate_lost(gate_summary):
                 stop_reason = "generator_candidate_lost"
-                stopped_cycle_index = cycle_index
+                stopped_iteration_index = iteration_index
                 break
-        _generate_online_replay_cycle_experience(config=config, checkpoint=checkpoint, artifacts=artifacts)
+        _generate_online_replay_iteration_experience(config=config, checkpoint=checkpoint, artifacts=artifacts)
         last_generator_checkpoint = checkpoint
         experience_store_append = _append_to_experience_store(
             store_dir=config.experience_store_dir,
             games_jsonl=artifacts.games_jsonl,
         )
-        new_examples = _load_online_replay_cycle_examples(artifacts=artifacts)
+        new_examples = _load_online_replay_iteration_examples(artifacts=artifacts)
         replay.extend(tensorize_shogi_policy_value_examples(new_examples))
         if len(replay) < config.min_replay_size:
             sampled_examples: list[TensorizedShogiPolicyValueSample] = []
@@ -233,12 +233,12 @@ def run_shogi_online_replay(
             skip_reason = "min_replay_size"
         else:
             sampled_examples = replay.sample(
-                min(config.training_budget.sampled_examples_per_cycle, len(replay)),
+                min(config.training_budget.sampled_examples_per_iteration, len(replay)),
                 generator=generator,
             )
-            training_result = _train_online_replay_cycle(
+            training_result = _train_online_replay_iteration(
                 config=config,
-                cycle_index=cycle_index,
+                iteration_index=iteration_index,
                 checkpoint=checkpoint,
                 artifacts=artifacts,
                 sampled_examples=sampled_examples,
@@ -250,10 +250,10 @@ def run_shogi_online_replay(
             effective_checkpoint = artifacts.checkpoint_path
             effective_best_checkpoint = artifacts.best_checkpoint_path
             skip_reason = None
-        metrics = _online_replay_cycle_metrics(
+        metrics = _online_replay_iteration_metrics(
             config=config,
             artifacts=artifacts,
-            cycle_index=cycle_index,
+            iteration_index=iteration_index,
             training_skipped=training_skipped,
             skip_reason=skip_reason,
             appended_examples=len(new_examples),
@@ -268,9 +268,9 @@ def run_shogi_online_replay(
             training_result=training_result,
         )
         artifacts.metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
-        cycle_result = ShogiOnlineReplayCycleResult(
-            cycle_index=cycle_index,
-            run_dir=artifacts.cycle_dir,
+        iteration_result = ShogiOnlineReplayIterationResult(
+            iteration_index=iteration_index,
+            run_dir=artifacts.iteration_dir,
             generated_games_jsonl=artifacts.games_jsonl,
             appended_examples=len(new_examples),
             replay_size=len(replay),
@@ -281,8 +281,8 @@ def run_shogi_online_replay(
             best_checkpoint=effective_best_checkpoint,
             metrics=artifacts.metrics_path,
         )
-        cycle_results.append(cycle_result)
-        checkpoint = promoted_online_replay_checkpoint(cycle_result, policy=config.next_checkpoint)
+        iteration_results.append(iteration_result)
+        checkpoint = promoted_online_replay_checkpoint(iteration_result, policy=config.next_checkpoint)
     return ShogiOnlineReplayResult(
         run_dir=run_dir,
         initial_checkpoint=config.checkpoint,
@@ -295,8 +295,8 @@ def run_shogi_online_replay(
         preloaded_examples=len(preloaded_examples),
         training_eval_examples=len(training_eval_examples),
         stop_reason=stop_reason,
-        stopped_cycle_index=stopped_cycle_index,
-        cycles=tuple(cycle_results),
+        stopped_iteration_index=stopped_iteration_index,
+        iterations=tuple(iteration_results),
     )
 
 
@@ -304,7 +304,7 @@ def validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
     _validate_online_replay_config(config)
 
 
-def promoted_online_replay_checkpoint(result: ShogiOnlineReplayCycleResult, *, policy: str) -> Path:
+def promoted_online_replay_checkpoint(result: ShogiOnlineReplayIterationResult, *, policy: str) -> Path:
     if policy == "best":
         return result.best_checkpoint
     if policy == "final":
@@ -312,32 +312,32 @@ def promoted_online_replay_checkpoint(result: ShogiOnlineReplayCycleResult, *, p
     raise ValueError("next_checkpoint must be best or final")
 
 
-def _online_replay_cycle_artifacts(run_dir: Path, cycle_index: int) -> ShogiOnlineReplayCycleArtifacts:
-    cycle_dir = run_dir / f"cycle-{cycle_index:04d}"
-    cycle_dir.mkdir(parents=True, exist_ok=True)
-    return ShogiOnlineReplayCycleArtifacts(
-        cycle_dir=cycle_dir,
-        games_jsonl=cycle_dir / "generated-games.jsonl",
-        generated_train_jsonl=cycle_dir / "generated-train-games.jsonl",
-        generation_summary_path=cycle_dir / "generation-summary.json",
-        generator_gate_games_jsonl=cycle_dir / "generator-gate-games.jsonl",
-        generator_gate_summary_path=cycle_dir / "generator-gate-summary.json",
-        checkpoint_path=cycle_dir / "checkpoint.pt",
-        best_checkpoint_path=cycle_dir / "best-checkpoint.pt",
-        metrics_path=cycle_dir / "metrics.json",
+def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> ShogiOnlineReplayIterationArtifacts:
+    iteration_dir = run_dir / f"iteration-{iteration_index:04d}"
+    iteration_dir.mkdir(parents=True, exist_ok=True)
+    return ShogiOnlineReplayIterationArtifacts(
+        iteration_dir=iteration_dir,
+        games_jsonl=iteration_dir / "generated-games.jsonl",
+        generated_train_jsonl=iteration_dir / "generated-train-games.jsonl",
+        generation_summary_path=iteration_dir / "generation-summary.json",
+        generator_gate_games_jsonl=iteration_dir / "generator-gate-games.jsonl",
+        generator_gate_summary_path=iteration_dir / "generator-gate-summary.json",
+        checkpoint_path=iteration_dir / "checkpoint.pt",
+        best_checkpoint_path=iteration_dir / "best-checkpoint.pt",
+        metrics_path=iteration_dir / "metrics.json",
     )
 
 
-def _generate_online_replay_cycle_experience(
+def _generate_online_replay_iteration_experience(
     *,
     config: ShogiOnlineReplayConfig,
     checkpoint: Path,
-    artifacts: ShogiOnlineReplayCycleArtifacts,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
 ) -> None:
     source_summaries: list[dict[str, object]] = []
     source_game_paths: list[Path] = []
     for source_index, source in enumerate(config.experience_sources):
-        source_dir = artifacts.cycle_dir / f"source-{source_index:03d}-{source.name}"
+        source_dir = artifacts.iteration_dir / f"source-{source_index:03d}-{source.name}"
         source_dir.mkdir(parents=True, exist_ok=True)
         games_jsonl = source_dir / "generated-games.jsonl"
         summary_path = source_dir / "generation-summary.json"
@@ -356,7 +356,7 @@ def _generate_online_replay_cycle_experience(
             simulations=config.simulations,
             evaluation_batch_size=config.evaluation_batch_size,
             generation_worker_processes=config.generation_worker_processes,
-            seed=_source_seed(config.seed, artifacts.cycle_dir.name, source_index),
+            seed=_source_seed(config.seed, artifacts.iteration_dir.name, source_index),
             checkpoint_device=config.training_config.device,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
         )
@@ -382,7 +382,7 @@ def _generate_online_replay_cycle_experience(
 def _evaluate_generator_candidate(
     *,
     config: ShogiOnlineReplayConfig,
-    artifacts: ShogiOnlineReplayCycleArtifacts,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
     candidate_checkpoint: Path,
     last_generator_checkpoint: Path,
 ) -> dict[str, object]:
@@ -467,20 +467,20 @@ def _generator_candidate_lost(summary: dict[str, object]) -> bool:
     return int(summary.get("player_a_losses", 0)) > int(summary.get("player_a_wins", 0))
 
 
-def _load_online_replay_cycle_examples(
+def _load_online_replay_iteration_examples(
     *,
-    artifacts: ShogiOnlineReplayCycleArtifacts,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
 ) -> list[ShogiPolicyValueExample]:
     artifacts.generated_train_jsonl.write_text(artifacts.games_jsonl.read_text(encoding="utf-8"), encoding="utf-8")
     return _load_generated_policy_value_examples(artifacts.generated_train_jsonl)
 
 
-def _train_online_replay_cycle(
+def _train_online_replay_iteration(
     *,
     config: ShogiOnlineReplayConfig,
-    cycle_index: int,
+    iteration_index: int,
     checkpoint: Path,
-    artifacts: ShogiOnlineReplayCycleArtifacts,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
     sampled_examples: list[TensorizedShogiPolicyValueSample],
     eval_examples: list[TensorizedShogiPolicyValueSample],
     replay_size: int,
@@ -498,7 +498,7 @@ def _train_online_replay_cycle(
         config=training_config,
         initial_state_dict=load_shogi_policy_value_checkpoint_state_dict(checkpoint, device=training_config.device),
         progress_callback=_online_replay_training_progress_callback(
-            cycle_index=cycle_index,
+            iteration_index=iteration_index,
             replay_size=replay_size,
             sampled_examples=len(sampled_examples),
             training_eval_examples=training_eval_examples,
@@ -518,7 +518,7 @@ def _train_online_replay_cycle(
 
 def _online_replay_training_progress_callback(
     *,
-    cycle_index: int,
+    iteration_index: int,
     replay_size: int,
     sampled_examples: int,
     training_eval_examples: int,
@@ -526,7 +526,7 @@ def _online_replay_training_progress_callback(
     def report(progress: ShogiPolicyValueTrainingProgress) -> None:
         parts = [
             "online_replay_training_progress",
-            f"cycle={cycle_index}",
+            f"iteration={iteration_index}",
             f"step={progress.step}/{progress.max_steps}",
             f"loss={progress.loss:.6f}",
             f"elapsed_sec={progress.elapsed_seconds:.1f}",
@@ -544,11 +544,11 @@ def _online_replay_training_progress_callback(
     return report
 
 
-def _online_replay_cycle_metrics(
+def _online_replay_iteration_metrics(
     *,
     config: ShogiOnlineReplayConfig,
-    artifacts: ShogiOnlineReplayCycleArtifacts,
-    cycle_index: int,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
+    iteration_index: int,
     training_skipped: bool,
     skip_reason: str | None,
     appended_examples: int,
@@ -564,7 +564,7 @@ def _online_replay_cycle_metrics(
 ) -> dict[str, object]:
     metrics: dict[str, object] = {
         "schema_version": "intrep.shogi_online_replay_metrics.v1",
-        "cycle_index": cycle_index,
+        "iteration_index": iteration_index,
         "training_skipped": training_skipped,
         "appended_examples": appended_examples,
         "replay_size": replay_size,
@@ -582,11 +582,11 @@ def _online_replay_cycle_metrics(
         "generation_summary_path": str(artifacts.generation_summary_path),
         "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
         "sampled_examples": sampled_examples,
-        "sampled_examples_per_cycle": config.training_budget.sampled_examples_per_cycle,
+        "sampled_examples_per_iteration": config.training_budget.sampled_examples_per_iteration,
         "training_batch_size": config.training_budget.batch_size,
         "target_sample_passes": config.training_budget.target_sample_passes,
-        "max_optimizer_steps_per_cycle": config.training_budget.max_optimizer_steps,
-        "optimizer_steps_per_cycle": (
+        "max_optimizer_steps_per_iteration": config.training_budget.max_optimizer_steps,
+        "optimizer_steps_per_iteration": (
             training_result.metrics.actual_steps if training_result is not None else None
         ),
         "effective_sample_passes": _effective_sample_passes(training_result, config, sampled_examples),
@@ -624,8 +624,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("min_replay_size must be positive")
     if config.min_replay_size > config.replay_capacity:
         raise ValueError("min_replay_size must be less than or equal to replay_capacity")
-    if config.cycles <= 0:
-        raise ValueError("cycles must be positive")
+    if config.iterations <= 0:
+        raise ValueError("iterations must be positive")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
     if config.generator_gate_games <= 0:
@@ -677,8 +677,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
 
 
 def _validate_training_budget(training_budget: ShogiOnlineReplayTrainingBudget) -> None:
-    if training_budget.sampled_examples_per_cycle <= 0:
-        raise ValueError("sampled_examples_per_cycle must be positive")
+    if training_budget.sampled_examples_per_iteration <= 0:
+        raise ValueError("sampled_examples_per_iteration must be positive")
     if training_budget.batch_size <= 0:
         raise ValueError("training budget batch_size must be positive")
     if training_budget.target_sample_passes <= 0.0:
@@ -732,9 +732,9 @@ def _player_summary(player: ShogiGeneratedPlayerSpec) -> dict[str, object]:
     return summary
 
 
-def _source_seed(base_seed: int, cycle_dir_name: str, source_index: int) -> int:
-    cycle_index = int(cycle_dir_name.removeprefix("cycle-"))
-    return base_seed + (cycle_index - 1) * 10000 + source_index
+def _source_seed(base_seed: int, iteration_dir_name: str, source_index: int) -> int:
+    iteration_index = int(iteration_dir_name.removeprefix("iteration-"))
+    return base_seed + (iteration_index - 1) * 10000 + source_index
 
 
 def _merge_jsonl(inputs: list[Path], output: Path) -> None:

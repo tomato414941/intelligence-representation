@@ -7,7 +7,7 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import Mock, patch
 
-from intrep.problems.shogi_policy_value.generated_data_cycle import ShogiOnlineReplayResult
+from intrep.problems.shogi_policy_value.online_replay import ShogiOnlineReplayResult
 
 
 class RunShogiOnlineReplayScriptTest(unittest.TestCase):
@@ -16,7 +16,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         result = ShogiOnlineReplayResult(
             run_dir=Path("/tmp/online"),
             initial_checkpoint=Path("source.pt"),
-            final_checkpoint=Path("/tmp/online/cycle-0002/best-checkpoint.pt"),
+            final_checkpoint=Path("/tmp/online/iteration-0002/best-checkpoint.pt"),
             next_checkpoint="best",
             replay_capacity=8,
             experience_store_dir=None,
@@ -25,8 +25,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             preloaded_examples=0,
             training_eval_examples=0,
             stop_reason=None,
-            stopped_cycle_index=None,
-            cycles=(),
+            stopped_iteration_index=None,
+            iterations=(),
         )
         run_replay = Mock(return_value=result)
 
@@ -40,11 +40,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "source.pt",
                     "--run-dir",
                     "online",
-                    "--cycles",
+                    "--iterations",
                     "2",
                     "--replay-capacity",
                     "8",
-                    "--sampled-examples-per-cycle",
+                    "--sampled-examples-per-iteration",
                     "3",
                     "--min-replay-size",
                     "2",
@@ -52,7 +52,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "64",
                     "--target-sample-passes",
                     "2.5",
-                    "--max-optimizer-steps-per-cycle",
+                    "--max-optimizer-steps-per-iteration",
                     "5",
                     "--generator-gate-games",
                     "6",
@@ -112,10 +112,10 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         config = run_replay.call_args.args[0]
         self.assertEqual(config.checkpoint, Path("source.pt"))
         self.assertEqual(config.run_dir, Path("online"))
-        self.assertEqual(config.cycles, 2)
+        self.assertEqual(config.iterations, 2)
         self.assertEqual(config.replay_capacity, 8)
         self.assertEqual(config.min_replay_size, 2)
-        self.assertEqual(config.training_budget.sampled_examples_per_cycle, 3)
+        self.assertEqual(config.training_budget.sampled_examples_per_iteration, 3)
         self.assertEqual(config.training_budget.batch_size, 64)
         self.assertEqual(config.training_budget.target_sample_passes, 2.5)
         self.assertEqual(config.training_budget.max_optimizer_steps, 5)
@@ -162,7 +162,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         result = ShogiOnlineReplayResult(
             run_dir=Path("/tmp/online"),
             initial_checkpoint=Path("source.pt"),
-            final_checkpoint=Path("/tmp/online/cycle-0001/checkpoint.pt"),
+            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
             next_checkpoint="final",
             replay_capacity=8,
             experience_store_dir=None,
@@ -171,8 +171,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             preloaded_examples=0,
             training_eval_examples=0,
             stop_reason=None,
-            stopped_cycle_index=None,
-            cycles=(),
+            stopped_iteration_index=None,
+            iterations=(),
         )
         run_replay = Mock(return_value=result)
 
