@@ -9,7 +9,7 @@ import sys
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 import torch
 
@@ -210,8 +210,7 @@ def run_shogi_online_replay(
     generated_replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
     replay_seed_selection = _load_replay_seed_selection(config.replay_seed_data_selection)
     replay_seed_eligible_examples = _count_replay_seed_examples(replay_seed_selection)
-    training_eval_examples = _load_training_eval_examples(config.training_eval_data_selection)
-    training_eval_samples = tensorize_shogi_policy_value_examples(training_eval_examples)
+    training_eval_samples = _load_training_eval_samples(config.training_eval_data_selection)
     generator = torch.Generator().manual_seed(config.seed)
     iteration_results: list[ShogiOnlineReplayIterationResult] = []
     last_generator_checkpoint = checkpoint
@@ -270,7 +269,7 @@ def run_shogi_online_replay(
                 sampled_examples=sampled_examples,
                 eval_examples=training_eval_samples,
                 replay_size=replay_size,
-                training_eval_examples=len(training_eval_samples),
+            training_eval_examples=len(training_eval_samples),
             )
             training_skipped = False
             effective_checkpoint = artifacts.checkpoint_path
@@ -288,7 +287,7 @@ def run_shogi_online_replay(
             replay_seed_eligible_examples=replay_seed_eligible_examples,
             seed_sampled_examples=seed_sampled_examples,
             generated_sampled_examples=generated_sampled_examples,
-            training_eval_examples=len(training_eval_examples),
+            training_eval_examples=len(training_eval_samples),
             experience_store_append=experience_store_append,
             sampled_examples=len(sampled_examples),
             init_checkpoint=checkpoint,
@@ -324,7 +323,7 @@ def run_shogi_online_replay(
         replay_seed_data_selection=config.replay_seed_data_selection,
         training_eval_data_selection=config.training_eval_data_selection,
         preloaded_examples=0,
-        training_eval_examples=len(training_eval_examples),
+        training_eval_examples=len(training_eval_samples),
         stop_reason=stop_reason,
         stopped_iteration_index=stopped_iteration_index,
         iterations=tuple(iteration_results),
@@ -524,7 +523,7 @@ def _train_online_replay_iteration(
     checkpoint: Path,
     artifacts: ShogiOnlineReplayIterationArtifacts,
     sampled_examples: list[TensorizedShogiPolicyValueSample],
-    eval_examples: list[TensorizedShogiPolicyValueSample],
+    eval_examples: Sequence[TensorizedShogiPolicyValueSample],
     replay_size: int,
     training_eval_examples: int,
 ) -> ShogiPolicyValueTrainingResult:
@@ -1043,10 +1042,18 @@ def _game_record_move_counts(source: ShogiPolicyValueDataSelectionSource) -> lis
     return move_counts
 
 
-def _load_training_eval_examples(data_selection_path: Path) -> list[ShogiPolicyValueExample]:
-    selection = load_shogi_policy_value_data_selection(data_selection_path)
+def _load_training_eval_samples(data_selection_path: Path) -> Sequence[TensorizedShogiPolicyValueSample]:
+    selection_path = Path(data_selection_path)
+    selection = load_shogi_policy_value_data_selection(selection_path)
+    cache_path = default_shogi_policy_value_tensor_cache_path(selection_path)
+    if cache_path.exists():
+        return load_shogi_policy_value_tensor_cache(
+            cache_path,
+            expected_data_selection=selection,
+            expected_data_selection_root=selection_path.parent,
+        ).eval_samples
     _train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(selection)
-    return eval_examples
+    return tensorize_shogi_policy_value_examples(eval_examples)
 
 
 def _append_to_experience_store(*, store_dir: Path | None, games_jsonl: Path) -> dict[str, object] | None:
