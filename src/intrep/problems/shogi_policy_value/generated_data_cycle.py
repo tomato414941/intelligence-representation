@@ -25,6 +25,7 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
     warn_short_max_plies,
 )
 from intrep.problems.shogi_policy_value.online_replay import (
+    DEFAULT_GENERATOR_GATE_GAMES,
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
     DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE,
@@ -45,6 +46,7 @@ __all__ = [
     "DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE",
     "DEFAULT_TARGET_SAMPLE_PASSES",
     "DEFAULT_TRAINING_BATCH_SIZE",
+    "DEFAULT_GENERATOR_GATE_GAMES",
     "DEFAULT_SHOGI_MAX_PLIES",
     "ShogiGeneratedDataTrainingCycleConfig",
     "ShogiGeneratedDataTrainingCycleResult",

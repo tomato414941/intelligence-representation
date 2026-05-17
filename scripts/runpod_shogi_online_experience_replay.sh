@@ -18,7 +18,7 @@ REPLAY_SEED_DATA_SELECTION=${REPLAY_SEED_DATA_SELECTION:-data/shogi/training-dat
 TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training-data-bundles/online-replay-seed-20260512/data-selection.json}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/online-experience-replay-runpod-$(date -u +%Y%m%d-%H%M%S)}
 
-CYCLES=${CYCLES:-1}
+CYCLES=${CYCLES:-4}
 EXPERIENCE_SOURCES=${EXPERIENCE_SOURCES:-checkpoint-self:64}
 CONCURRENT_GAMES_PER_PROCESS=${CONCURRENT_GAMES_PER_PROCESS:-8}
 GENERATION_WORKER_PROCESSES=${GENERATION_WORKER_PROCESSES:-8}
@@ -41,6 +41,7 @@ SAMPLED_EXAMPLES_PER_CYCLE=${SAMPLED_EXAMPLES_PER_CYCLE:-8192}
 TRAINING_BATCH_SIZE=${TRAINING_BATCH_SIZE:-512}
 TARGET_SAMPLE_PASSES=${TARGET_SAMPLE_PASSES:-4}
 MAX_OPTIMIZER_STEPS_PER_CYCLE=${MAX_OPTIMIZER_STEPS_PER_CYCLE:-}
+GENERATOR_GATE_GAMES=${GENERATOR_GATE_GAMES:-16}
 LEARNING_RATE=${LEARNING_RATE:-0.0001}
 WEIGHT_DECAY=${WEIGHT_DECAY:-0.0}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
@@ -119,6 +120,7 @@ python3 "$RUNPOD_JOB" \
   --sync "$PROJECT_REL/data/shogi/training-data-bundles/online-replay-seed-20260512" \
   --sync "$ARENA_REL/src" \
   --sync "$ARENA_REL/scripts/generate_shogi_games.py" \
+  --sync "$ARENA_REL/scripts/evaluate_shogi_players.py" \
   --sync "$ARENA_REL/pyproject.toml" \
   --sync "$ARENA_REL/AGENTS.md" \
   --setup-command "cd \"\$REMOTE_DIR/$PROJECT_REL\"; bash scripts/setup_runpod.sh; .venv/bin/python -m pip install -e \"\$REMOTE_DIR/$ARENA_REL\"" \
@@ -192,7 +194,7 @@ fi
 if [[ -n \"$MAX_OPTIMIZER_STEPS_PER_CYCLE\" ]]; then
   TRAINING_ARGS+=(--max-optimizer-steps-per-cycle \"$MAX_OPTIMIZER_STEPS_PER_CYCLE\")
 fi
-echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES checkpoint_move_selection_profile=$CHECKPOINT_MOVE_SELECTION_PROFILE checkpoint_move_selection_temperature=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE checkpoint_move_selection_temperature_plies=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY sampled_examples_per_cycle=$SAMPLED_EXAMPLES_PER_CYCLE min_replay_size=$MIN_REPLAY_SIZE training_batch_size=$TRAINING_BATCH_SIZE target_sample_passes=$TARGET_SAMPLE_PASSES max_optimizer_steps_per_cycle=$MAX_OPTIMIZER_STEPS_PER_CYCLE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERIENCE_SOURCES checkpoint_move_selection_profile=$CHECKPOINT_MOVE_SELECTION_PROFILE checkpoint_move_selection_temperature=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE checkpoint_move_selection_temperature_plies=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES generator_gate_games=$GENERATOR_GATE_GAMES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY sampled_examples_per_cycle=$SAMPLED_EXAMPLES_PER_CYCLE min_replay_size=$MIN_REPLAY_SIZE training_batch_size=$TRAINING_BATCH_SIZE target_sample_passes=$TARGET_SAMPLE_PASSES max_optimizer_steps_per_cycle=$MAX_OPTIMIZER_STEPS_PER_CYCLE learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
@@ -202,6 +204,7 @@ echo \"online_experience_replay_config cycles=$CYCLES experience_sources=$EXPERI
   --sampled-examples-per-cycle \"$SAMPLED_EXAMPLES_PER_CYCLE\" \
   --training-batch-size \"$TRAINING_BATCH_SIZE\" \
   --target-sample-passes \"$TARGET_SAMPLE_PASSES\" \
+  --generator-gate-games \"$GENERATOR_GATE_GAMES\" \
   --experience-store-dir \"$OUTPUT_DIR/experience-store\" \
   --replay-seed-data-selection \"$REPLAY_SEED_DATA_SELECTION\" \
   --training-eval-data-selection \"$TRAINING_EVAL_DATA_SELECTION\" \

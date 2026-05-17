@@ -141,13 +141,13 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
     def test_rejects_invalid_config_before_running_commands(self) -> None:
         with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run") as run:
-            with self.assertRaisesRegex(ValueError, "cycles=1"):
+            with self.assertRaisesRegex(ValueError, "generator_gate_games"):
                 run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
                         checkpoint=Path("source.pt"),
                         run_dir=Path("online"),
                         training_eval_data_selection=Path("eval/data-selection.json"),
-                        cycles=2,
+                        generator_gate_games=0,
                     )
                 )
 
@@ -293,7 +293,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             arena_repo = root / "arena"
             arena_repo.mkdir()
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(
@@ -303,6 +303,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                return None
 
             with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
                 run_shogi_generated_data_training_cycle(
@@ -343,7 +344,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             arena_repo = root / "arena"
             arena_repo.mkdir()
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(
@@ -353,6 +354,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                return None
 
             with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
                 result = run_shogi_generated_data_training_loop(
@@ -389,7 +391,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             arena_repo = root / "arena"
             arena_repo.mkdir()
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(
@@ -399,6 +401,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                return None
 
             with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
                 result = run_shogi_generated_data_training_loop(
@@ -432,7 +435,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
             train_batches: list[int] = []
 
-            def fake_run(command: list[str], **_kwargs: object) -> None:
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     write_shogi_game_records_jsonl(
@@ -442,6 +445,24 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                    return None
+                if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "game_count": 2,
+                                "player_a_wins": 2,
+                                "player_a_losses": 0,
+                                "draws": 0,
+                                "average_plies": 2,
+                                "illegal_move_count": 0,
+                            }
+                        )
+                        + "\n",
+                    )
+                return None
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
@@ -451,6 +472,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             with (
                 patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_run),
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
@@ -464,6 +486,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     ShogiOnlineReplayConfig(
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
+                        cycles=2,
                         replay_capacity=4,
                         min_replay_size=1,
                         training_budget=ShogiOnlineReplayTrainingBudget(
@@ -478,12 +501,16 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(len(result.cycles), 1)
-            self.assertEqual(train_batches, [3])
+            self.assertEqual(len(result.cycles), 2)
+            self.assertEqual(train_batches, [3, 3])
             self.assertEqual(result.cycles[0].appended_examples, 4)
             self.assertEqual(result.cycles[0].replay_size, 4)
             self.assertEqual(result.cycles[0].sampled_examples, 3)
             self.assertIsNone(result.cycles[0].experience_store_append)
+            self.assertEqual(result.stop_reason, None)
+            gate_summary = json.loads((run_dir / "cycle-0002" / "generator-gate-summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(gate_summary["player_a_wins"], 2)
+            self.assertEqual(gate_summary["player_a_losses"], 0)
             metrics = json.loads(result.cycles[0].metrics.read_text(encoding="utf-8"))
             self.assertEqual(metrics["sampled_examples"], 3)
             self.assertEqual(metrics["sampled_examples_per_cycle"], 3)
@@ -492,6 +519,70 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["optimizer_steps_per_cycle"], 1)
             self.assertEqual(metrics["max_optimizer_steps_per_cycle"], 5)
             self.assertEqual(metrics["effective_sample_passes"], 2.0)
+
+    def test_online_replay_stops_when_generator_candidate_loses(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            checkpoint_path.write_bytes(b"checkpoint")
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
+
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(out_path, [_record(("7g7f", "3c3d"), "black")])
+                    return None
+                if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "game_count": 2,
+                                "player_a_wins": 0,
+                                "player_a_losses": 2,
+                                "draws": 0,
+                                "average_plies": 2,
+                                "illegal_move_count": 0,
+                            }
+                        )
+                        + "\n",
+                    )
+                return None
+
+            with (
+                patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
+                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        cycles=3,
+                        replay_capacity=8,
+                        min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=2),
+                        training_eval_data_selection=training_eval_data_selection,
+                        arena_repo=arena_repo,
+                        experience_sources=(_self_play_source(games=1),),
+                    )
+                )
+
+            self.assertEqual(len(result.cycles), 1)
+            self.assertEqual(result.stop_reason, "generator_candidate_lost")
+            self.assertEqual(result.stopped_cycle_index, 2)
+            self.assertEqual(run.call_count, 2)
+            self.assertFalse((run_dir / "cycle-0002" / "generated-games.jsonl").exists())
 
     def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -910,6 +1001,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     ShogiOnlineReplayConfig(
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
+                        cycles=2,
                         replay_capacity=8,
                         min_replay_size=5,
                         training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=3),
@@ -919,10 +1011,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(train_batches, [])
+            self.assertEqual(train_batches, [3])
             self.assertTrue(result.cycles[0].training_skipped)
             self.assertEqual(result.cycles[0].sampled_examples, 0)
             self.assertEqual(result.cycles[0].best_checkpoint, checkpoint_path)
+            self.assertFalse(result.cycles[1].training_skipped)
             first_metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertTrue(first_metrics["training_skipped"])
             self.assertEqual(first_metrics["skip_reason"], "min_replay_size")

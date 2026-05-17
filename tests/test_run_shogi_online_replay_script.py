@@ -24,6 +24,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
             training_eval_examples=0,
+            stop_reason=None,
+            stopped_cycle_index=None,
             cycles=(),
         )
         run_replay = Mock(return_value=result)
@@ -52,6 +54,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "2.5",
                     "--max-optimizer-steps-per-cycle",
                     "5",
+                    "--generator-gate-games",
+                    "6",
                     "--experience-store-dir",
                     "data/shogi/experiences/online",
                     "--replay-seed-data-selection",
@@ -115,6 +119,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_budget.batch_size, 64)
         self.assertEqual(config.training_budget.target_sample_passes, 2.5)
         self.assertEqual(config.training_budget.max_optimizer_steps, 5)
+        self.assertEqual(config.generator_gate_games, 6)
         self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
         self.assertEqual(
             config.replay_seed_data_selection,
@@ -165,6 +170,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
             training_eval_examples=0,
+            stop_reason=None,
+            stopped_cycle_index=None,
             cycles=(),
         )
         run_replay = Mock(return_value=result)

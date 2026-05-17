@@ -66,13 +66,14 @@ separate post-training concern.
 
 ## Online Replay Generation Lifecycle
 
-An Online Replay run is a single candidate-producing cycle. The checkpoint used
-to generate experience is the last accepted experience generator for that run.
+Online Replay can run multiple cycles. The checkpoint used to generate
+experience should be treated as an experience generator, not merely as a base
+checkpoint.
 
 A newly trained candidate checkpoint must be evaluated before it is used to
 generate more replay experience. If the candidate loses that evaluation, the
-learning workflow stops at that candidate; it does not generate more experience
-from the losing checkpoint.
+learning workflow should stop at that candidate instead of generating more
+experience from the losing checkpoint.
 
 ## Playing Strength Evaluation
 

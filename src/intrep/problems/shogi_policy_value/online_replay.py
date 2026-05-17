@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import subprocess
+import sys
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,6 +50,7 @@ DEFAULT_SAMPLED_EXAMPLES_PER_CYCLE = 4096
 DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
+DEFAULT_GENERATOR_GATE_GAMES = 16
 
 
 @dataclass(frozen=True)
@@ -80,6 +84,7 @@ class ShogiOnlineReplayConfig:
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     training_budget: ShogiOnlineReplayTrainingBudget = ShogiOnlineReplayTrainingBudget()
+    generator_gate_games: int = DEFAULT_GENERATOR_GATE_GAMES
     experience_store_dir: Path | None = None
     replay_seed_data_selection: Path | None = None
     next_checkpoint: str = "best"
@@ -146,6 +151,8 @@ class ShogiOnlineReplayResult:
     training_eval_data_selection: Path
     preloaded_examples: int
     training_eval_examples: int
+    stop_reason: str | None
+    stopped_cycle_index: int | None
     cycles: tuple[ShogiOnlineReplayCycleResult, ...]
 
     def to_json(self) -> dict[str, object]:
@@ -160,6 +167,8 @@ class ShogiOnlineReplayResult:
             "training_eval_data_selection": str(self.training_eval_data_selection),
             "preloaded_examples": self.preloaded_examples,
             "training_eval_examples": self.training_eval_examples,
+            "stop_reason": self.stop_reason,
+            "stopped_cycle_index": self.stopped_cycle_index,
             "cycles": [cycle.to_json() for cycle in self.cycles],
         }
 
@@ -170,6 +179,8 @@ class ShogiOnlineReplayCycleArtifacts:
     games_jsonl: Path
     generated_train_jsonl: Path
     generation_summary_path: Path
+    generator_gate_games_jsonl: Path
+    generator_gate_summary_path: Path
     checkpoint_path: Path
     best_checkpoint_path: Path
     metrics_path: Path
@@ -189,9 +200,24 @@ def run_shogi_online_replay(
     replay.extend(tensorize_shogi_policy_value_examples(preloaded_examples))
     generator = torch.Generator().manual_seed(config.seed)
     cycle_results: list[ShogiOnlineReplayCycleResult] = []
+    last_generator_checkpoint = checkpoint
+    stop_reason: str | None = None
+    stopped_cycle_index: int | None = None
     for cycle_index in range(1, config.cycles + 1):
         artifacts = _online_replay_cycle_artifacts(run_dir, cycle_index)
+        if cycle_index > 1:
+            gate_summary = _evaluate_generator_candidate(
+                config=config,
+                artifacts=artifacts,
+                candidate_checkpoint=checkpoint,
+                last_generator_checkpoint=last_generator_checkpoint,
+            )
+            if _generator_candidate_lost(gate_summary):
+                stop_reason = "generator_candidate_lost"
+                stopped_cycle_index = cycle_index
+                break
         _generate_online_replay_cycle_experience(config=config, checkpoint=checkpoint, artifacts=artifacts)
+        last_generator_checkpoint = checkpoint
         experience_store_append = _append_to_experience_store(
             store_dir=config.experience_store_dir,
             games_jsonl=artifacts.games_jsonl,
@@ -268,6 +294,8 @@ def run_shogi_online_replay(
         training_eval_data_selection=config.training_eval_data_selection,
         preloaded_examples=len(preloaded_examples),
         training_eval_examples=len(training_eval_examples),
+        stop_reason=stop_reason,
+        stopped_cycle_index=stopped_cycle_index,
         cycles=tuple(cycle_results),
     )
 
@@ -292,6 +320,8 @@ def _online_replay_cycle_artifacts(run_dir: Path, cycle_index: int) -> ShogiOnli
         games_jsonl=cycle_dir / "generated-games.jsonl",
         generated_train_jsonl=cycle_dir / "generated-train-games.jsonl",
         generation_summary_path=cycle_dir / "generation-summary.json",
+        generator_gate_games_jsonl=cycle_dir / "generator-gate-games.jsonl",
+        generator_gate_summary_path=cycle_dir / "generator-gate-summary.json",
         checkpoint_path=cycle_dir / "checkpoint.pt",
         best_checkpoint_path=cycle_dir / "best-checkpoint.pt",
         metrics_path=cycle_dir / "metrics.json",
@@ -347,6 +377,94 @@ def _generate_online_replay_cycle_experience(
         json.dumps(_combined_generation_summary(source_summaries), indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def _evaluate_generator_candidate(
+    *,
+    config: ShogiOnlineReplayConfig,
+    artifacts: ShogiOnlineReplayCycleArtifacts,
+    candidate_checkpoint: Path,
+    last_generator_checkpoint: Path,
+) -> dict[str, object]:
+    if candidate_checkpoint.resolve() == last_generator_checkpoint.resolve():
+        summary = {
+            "skipped": True,
+            "reason": "same_checkpoint",
+            "candidate_checkpoint": str(candidate_checkpoint),
+            "last_generator_checkpoint": str(last_generator_checkpoint),
+            "player_a_wins": 0,
+            "player_a_losses": 0,
+            "draws": 0,
+        }
+        artifacts.generator_gate_summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        return summary
+    command = [
+        sys.executable,
+        str(config.arena_repo.resolve() / "scripts/evaluate_shogi_players.py"),
+        "--player-a-kind",
+        "checkpoint",
+        "--player-a-checkpoint",
+        str(candidate_checkpoint.resolve()),
+        "--player-a-checkpoint-id",
+        _checkpoint_actor_id(candidate_checkpoint),
+        "--player-a-move-selection-profile",
+        "evaluation",
+        "--player-a-move-selector",
+        "mcts",
+        "--player-a-mcts-simulations",
+        str(config.simulations),
+        "--player-a-mcts-evaluation-batch-size",
+        str(config.evaluation_batch_size),
+        "--player-a-device",
+        config.training_config.device,
+        "--player-a-board-backend",
+        config.board_backend,
+        "--player-b-kind",
+        "checkpoint",
+        "--player-b-checkpoint",
+        str(last_generator_checkpoint.resolve()),
+        "--player-b-checkpoint-id",
+        _checkpoint_actor_id(last_generator_checkpoint),
+        "--player-b-move-selection-profile",
+        "evaluation",
+        "--player-b-move-selector",
+        "mcts",
+        "--player-b-mcts-simulations",
+        str(config.simulations),
+        "--player-b-mcts-evaluation-batch-size",
+        str(config.evaluation_batch_size),
+        "--player-b-device",
+        config.training_config.device,
+        "--player-b-board-backend",
+        config.board_backend,
+        "--out",
+        str(artifacts.generator_gate_games_jsonl),
+        "--games",
+        str(config.generator_gate_games),
+        "--max-plies",
+        str(config.max_plies),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=config.arena_repo,
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+        env=_shogi_arena_env(config.arena_repo),
+    )
+    summary = json.loads(completed.stdout)
+    summary.update(
+        {
+            "candidate_checkpoint": str(candidate_checkpoint),
+            "last_generator_checkpoint": str(last_generator_checkpoint),
+        }
+    )
+    artifacts.generator_gate_summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    return summary
+
+
+def _generator_candidate_lost(summary: dict[str, object]) -> bool:
+    return int(summary.get("player_a_losses", 0)) > int(summary.get("player_a_wins", 0))
 
 
 def _load_online_replay_cycle_examples(
@@ -459,6 +577,8 @@ def _online_replay_cycle_metrics(
         "training_eval_source": "fixed_data_selection",
         "generated_holdout_examples": 0,
         "experience_store_append": experience_store_append,
+        "generator_gate_summary_path": str(artifacts.generator_gate_summary_path),
+        "generator_gate_summary": _load_json_if_exists(artifacts.generator_gate_summary_path),
         "generation_summary_path": str(artifacts.generation_summary_path),
         "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
         "sampled_examples": sampled_examples,
@@ -504,10 +624,12 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("min_replay_size must be positive")
     if config.min_replay_size > config.replay_capacity:
         raise ValueError("min_replay_size must be less than or equal to replay_capacity")
-    if config.cycles != 1:
-        raise ValueError("online replay runs must use cycles=1; evaluate and promote the candidate before generating more experience")
+    if config.cycles <= 0:
+        raise ValueError("cycles must be positive")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
+    if config.generator_gate_games <= 0:
+        raise ValueError("generator_gate_games must be positive")
     if config.training_eval_data_selection is None:
         raise ValueError("training_eval_data_selection is required")
     if not config.experience_sources:
@@ -620,6 +742,20 @@ def _merge_jsonl(inputs: list[Path], output: Path) -> None:
     with output.open("w", encoding="utf-8") as merged:
         for path in inputs:
             merged.write(path.read_text(encoding="utf-8"))
+
+
+def _checkpoint_actor_id(checkpoint: Path) -> str:
+    if checkpoint.name in {"checkpoint.pt", "best-checkpoint.pt"}:
+        return checkpoint.parent.name
+    return checkpoint.stem
+
+
+def _shogi_arena_env(arena_repo: Path) -> dict[str, str]:
+    pythonpath_parts = [str(arena_repo.resolve() / "src")]
+    existing_pythonpath = os.environ.get("PYTHONPATH")
+    if existing_pythonpath:
+        pythonpath_parts.append(existing_pythonpath)
+    return os.environ | {"PYTHONPATH": os.pathsep.join(pythonpath_parts)}
 
 
 def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> dict[str, object]:
