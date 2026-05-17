@@ -38,6 +38,7 @@ CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES=${CHECKPOINT_MOVE_SELECTION_TEMPERAT
 REPLAY_CAPACITY=${REPLAY_CAPACITY:-2097152}
 MIN_REPLAY_SIZE=${MIN_REPLAY_SIZE:-8192}
 SAMPLED_EXAMPLES_PER_ITERATION=${SAMPLED_EXAMPLES_PER_ITERATION:-524288}
+MAX_SEED_EXAMPLES_PER_ITERATION=${MAX_SEED_EXAMPLES_PER_ITERATION:-50000}
 TRAINING_BATCH_SIZE=${TRAINING_BATCH_SIZE:-512}
 TARGET_SAMPLE_PASSES=${TARGET_SAMPLE_PASSES:-1}
 MAX_OPTIMIZER_STEPS_PER_ITERATION=${MAX_OPTIMIZER_STEPS_PER_ITERATION:-}
@@ -107,7 +108,7 @@ if [[ "$SYNC_TENSOR_CACHE" == "1" ]]; then
   while IFS= read -r cache_path; do
     RUNNER_ARGS+=(--sync "$PROJECT_REL/$CACHE_ROOT/$cache_path")
   done < <(
-    CACHE_ROOT="$CACHE_ROOT" ITERATIONS="$ITERATIONS" SAMPLED_EXAMPLES_PER_ITERATION="$SAMPLED_EXAMPLES_PER_ITERATION" SEED="$SEED" \
+    CACHE_ROOT="$CACHE_ROOT" ITERATIONS="$ITERATIONS" MAX_SEED_EXAMPLES_PER_ITERATION="$MAX_SEED_EXAMPLES_PER_ITERATION" SEED="$SEED" \
       uv run --extra torch python - <<'PY'
 import json
 import math
@@ -119,7 +120,7 @@ import torch
 cache_root = Path(os.environ["CACHE_ROOT"])
 manifest = json.loads((cache_root / "manifest.json").read_text(encoding="utf-8"))
 iterations = int(os.environ["ITERATIONS"])
-sample_count = int(os.environ["SAMPLED_EXAMPLES_PER_ITERATION"])
+sample_count = int(os.environ["MAX_SEED_EXAMPLES_PER_ITERATION"])
 seed = int(os.environ["SEED"])
 paths: set[str] = set()
 
@@ -243,7 +244,7 @@ fi
 if [[ -n \"$MAX_OPTIMIZER_STEPS_PER_ITERATION\" ]]; then
   TRAINING_ARGS+=(--max-optimizer-steps-per-iteration \"$MAX_OPTIMIZER_STEPS_PER_ITERATION\")
 fi
-echo \"online_experience_replay_config iterations=$ITERATIONS experience_sources=$EXPERIENCE_SOURCES checkpoint_move_selection_profile=$CHECKPOINT_MOVE_SELECTION_PROFILE checkpoint_move_selection_temperature=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE checkpoint_move_selection_temperature_plies=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES generator_gate_games=$GENERATOR_GATE_GAMES generator_gate_worker_processes=$GENERATOR_GATE_WORKER_PROCESSES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY sampled_examples_per_iteration=$SAMPLED_EXAMPLES_PER_ITERATION min_replay_size=$MIN_REPLAY_SIZE training_batch_size=$TRAINING_BATCH_SIZE target_sample_passes=$TARGET_SAMPLE_PASSES max_optimizer_steps_per_iteration=$MAX_OPTIMIZER_STEPS_PER_ITERATION learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
+echo \"online_experience_replay_config iterations=$ITERATIONS experience_sources=$EXPERIENCE_SOURCES checkpoint_move_selection_profile=$CHECKPOINT_MOVE_SELECTION_PROFILE checkpoint_move_selection_temperature=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE checkpoint_move_selection_temperature_plies=$CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES concurrent_games_per_process=$CONCURRENT_GAMES_PER_PROCESS generation_worker_processes=$GENERATION_WORKER_PROCESSES simulations=$SIMULATIONS nn_leaf_eval_batch_limit=$NN_LEAF_EVAL_BATCH_LIMIT max_plies=$MAX_PLIES generator_gate_games=$GENERATOR_GATE_GAMES generator_gate_worker_processes=$GENERATOR_GATE_WORKER_PROCESSES usi_go_command=$USI_GO_COMMAND usi_read_timeout_seconds=$USI_READ_TIMEOUT_SECONDS replay_capacity=$REPLAY_CAPACITY sampled_examples_per_iteration=$SAMPLED_EXAMPLES_PER_ITERATION max_seed_examples_per_iteration=$MAX_SEED_EXAMPLES_PER_ITERATION min_replay_size=$MIN_REPLAY_SIZE training_batch_size=$TRAINING_BATCH_SIZE target_sample_passes=$TARGET_SAMPLE_PASSES max_optimizer_steps_per_iteration=$MAX_OPTIMIZER_STEPS_PER_ITERATION learning_rate=$LEARNING_RATE weight_decay=$WEIGHT_DECAY policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES log_every=$LOG_EVERY num_workers=$NUM_WORKERS pin_memory=$PIN_MEMORY progress_every=$PROGRESS_EVERY eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE next_checkpoint=$NEXT_CHECKPOINT seed=$SEED\"
 .venv/bin/python -u scripts/run_shogi_online_replay.py \
   --checkpoint \"$CHECKPOINT\" \
   --run-dir \"$OUTPUT_DIR\" \
@@ -251,6 +252,7 @@ echo \"online_experience_replay_config iterations=$ITERATIONS experience_sources
   --replay-capacity \"$REPLAY_CAPACITY\" \
   --min-replay-size \"$MIN_REPLAY_SIZE\" \
   --sampled-examples-per-iteration \"$SAMPLED_EXAMPLES_PER_ITERATION\" \
+  --max-seed-examples-per-iteration \"$MAX_SEED_EXAMPLES_PER_ITERATION\" \
   --training-batch-size \"$TRAINING_BATCH_SIZE\" \
   --target-sample-passes \"$TARGET_SAMPLE_PASSES\" \
   --generator-gate-games \"$GENERATOR_GATE_GAMES\" \

@@ -49,6 +49,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
 
         config = run_replay.call_args.args[0]
         self.assertEqual(config.training_budget.sampled_examples_per_iteration, 524288)
+        self.assertEqual(config.training_budget.max_seed_examples_per_iteration, 50000)
         self.assertEqual(config.generator_gate_worker_processes, 4)
         self.assertEqual(config.generation_worker_processes, 8)
 
@@ -87,6 +88,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "8",
                     "--sampled-examples-per-iteration",
                     "3",
+                    "--max-seed-examples-per-iteration",
+                    "2",
                     "--min-replay-size",
                     "2",
                     "--training-batch-size",
@@ -159,6 +162,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.replay_capacity, 8)
         self.assertEqual(config.min_replay_size, 2)
         self.assertEqual(config.training_budget.sampled_examples_per_iteration, 3)
+        self.assertEqual(config.training_budget.max_seed_examples_per_iteration, 2)
         self.assertEqual(config.training_budget.batch_size, 64)
         self.assertEqual(config.training_budget.target_sample_passes, 2.5)
         self.assertEqual(config.training_budget.max_optimizer_steps, 5)

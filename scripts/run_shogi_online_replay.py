@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.online_replay import (
     DEFAULT_GENERATOR_GATE_GAMES,
     DEFAULT_GENERATOR_GATE_WORKER_PROCESSES,
     DEFAULT_GENERATION_WORKER_PROCESSES,
+    DEFAULT_MAX_SEED_EXAMPLES_PER_ITERATION,
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
     DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION,
@@ -35,6 +36,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
     parser.add_argument("--sampled-examples-per-iteration", type=int, default=DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION)
+    parser.add_argument("--max-seed-examples-per-iteration", type=int, default=DEFAULT_MAX_SEED_EXAMPLES_PER_ITERATION)
     parser.add_argument("--training-batch-size", type=int, default=DEFAULT_TRAINING_BATCH_SIZE)
     parser.add_argument("--target-sample-passes", type=float, default=DEFAULT_TARGET_SAMPLE_PASSES)
     parser.add_argument("--max-optimizer-steps-per-iteration", type=int)
@@ -96,6 +98,7 @@ def main(argv: list[str] | None = None) -> None:
             min_replay_size=args.min_replay_size,
             training_budget=ShogiOnlineReplayTrainingBudget(
                 sampled_examples_per_iteration=args.sampled_examples_per_iteration,
+                max_seed_examples_per_iteration=args.max_seed_examples_per_iteration,
                 batch_size=args.training_batch_size,
                 target_sample_passes=args.target_sample_passes,
                 max_optimizer_steps=args.max_optimizer_steps_per_iteration,

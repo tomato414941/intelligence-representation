@@ -556,10 +556,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(len(result.iterations), 2)
-            self.assertEqual(train_batches, [3, 3])
+            self.assertEqual(train_batches, [4, 4])
             self.assertEqual(result.iterations[0].appended_examples, 4)
             self.assertEqual(result.iterations[0].replay_size, 4)
-            self.assertEqual(result.iterations[0].sampled_examples, 3)
+            self.assertEqual(result.iterations[0].sampled_examples, 4)
             self.assertIsNone(result.iterations[0].experience_store_append)
             self.assertEqual(result.stop_reason, None)
             self.assertEqual(len(gate_commands), 1)
@@ -568,13 +568,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(gate_summary["player_a_wins"], 2)
             self.assertEqual(gate_summary["player_a_losses"], 0)
             metrics = json.loads(result.iterations[0].metrics.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["sampled_examples"], 3)
+            self.assertEqual(metrics["sampled_examples"], 4)
             self.assertEqual(metrics["sampled_examples_per_iteration"], 3)
+            self.assertEqual(metrics["max_seed_examples_per_iteration"], 50000)
             self.assertEqual(metrics["training_batch_size"], 6)
             self.assertEqual(metrics["target_sample_passes"], 2.0)
             self.assertEqual(metrics["optimizer_steps_per_iteration"], 1)
             self.assertEqual(metrics["max_optimizer_steps_per_iteration"], 5)
-            self.assertEqual(metrics["effective_sample_passes"], 2.0)
+            self.assertEqual(metrics["effective_sample_passes"], 1.5)
 
     def test_online_replay_stops_when_generator_candidate_loses(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1071,7 +1072,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(train_batches, [3])
+            self.assertEqual(train_batches, [8])
             self.assertTrue(result.iterations[0].training_skipped)
             self.assertEqual(result.iterations[0].sampled_examples, 0)
             self.assertEqual(result.iterations[0].best_checkpoint, checkpoint_path)

@@ -58,6 +58,7 @@ from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 2_097_152
 DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288
+DEFAULT_MAX_SEED_EXAMPLES_PER_ITERATION = 50_000
 DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
@@ -77,6 +78,7 @@ class ShogiGeneratedExperienceSource:
 @dataclass(frozen=True)
 class ShogiOnlineReplayTrainingBudget:
     sampled_examples_per_iteration: int = DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION
+    max_seed_examples_per_iteration: int = DEFAULT_MAX_SEED_EXAMPLES_PER_ITERATION
     batch_size: int = DEFAULT_TRAINING_BATCH_SIZE
     target_sample_passes: float = DEFAULT_TARGET_SAMPLE_PASSES
     max_optimizer_steps: int | None = None
@@ -248,13 +250,16 @@ def run_shogi_online_replay(
             training_result = None
             skip_reason = "min_replay_size"
         else:
-            sample_count = min(config.training_budget.sampled_examples_per_iteration, replay_size)
-            generated_sampled_examples = min(len(generated_replay), sample_count)
+            generated_sampled_examples = len(generated_replay)
             generated_samples = generated_replay.sample(
                 generated_sampled_examples,
                 generator=generator,
             )
-            seed_sampled_examples = sample_count - generated_sampled_examples
+            seed_sampled_examples = min(
+                replay_seed_eligible_examples,
+                config.training_budget.max_seed_examples_per_iteration,
+                max(0, config.training_budget.sampled_examples_per_iteration - generated_sampled_examples),
+            )
             seed_samples = _sample_replay_seed_samples(
                 replay_seed_selection,
                 sample_count=seed_sampled_examples,
@@ -632,6 +637,7 @@ def _online_replay_iteration_metrics(
         "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
         "sampled_examples": sampled_examples,
         "sampled_examples_per_iteration": config.training_budget.sampled_examples_per_iteration,
+        "max_seed_examples_per_iteration": config.training_budget.max_seed_examples_per_iteration,
         "training_batch_size": config.training_budget.batch_size,
         "target_sample_passes": config.training_budget.target_sample_passes,
         "max_optimizer_steps_per_iteration": config.training_budget.max_optimizer_steps,
@@ -730,6 +736,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
 def _validate_training_budget(training_budget: ShogiOnlineReplayTrainingBudget) -> None:
     if training_budget.sampled_examples_per_iteration <= 0:
         raise ValueError("sampled_examples_per_iteration must be positive")
+    if training_budget.max_seed_examples_per_iteration < 0:
+        raise ValueError("max_seed_examples_per_iteration must be non-negative")
     if training_budget.batch_size <= 0:
         raise ValueError("training budget batch_size must be positive")
     if training_budget.target_sample_passes <= 0.0:
