@@ -6,6 +6,7 @@ import math
 import os
 import subprocess
 import sys
+import time
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -219,26 +220,49 @@ def run_shogi_online_replay(
     stop_reason: str | None = None
     stopped_iteration_index: int | None = None
     for iteration_index in range(1, config.iterations + 1):
+        iteration_start = time.perf_counter()
+        phase_timings: dict[str, float | None] = {
+            "gate_wall_time_sec": None,
+            "generation_wall_time_sec": None,
+            "experience_store_append_wall_time_sec": None,
+            "generated_train_extraction_wall_time_sec": None,
+            "generated_tensorize_wall_time_sec": None,
+            "replay_sampling_wall_time_sec": None,
+            "training_wall_time_sec": None,
+            "checkpoint_save_wall_time_sec": None,
+        }
         artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
         if iteration_index > 1:
+            gate_start = time.perf_counter()
             gate_summary = _evaluate_generator_candidate(
                 config=config,
                 artifacts=artifacts,
                 candidate_checkpoint=checkpoint,
                 last_generator_checkpoint=last_generator_checkpoint,
             )
+            phase_timings["gate_wall_time_sec"] = time.perf_counter() - gate_start
             if _generator_candidate_lost(gate_summary):
                 stop_reason = "generator_candidate_lost"
                 stopped_iteration_index = iteration_index
                 break
+        generation_start = time.perf_counter()
         _generate_online_replay_iteration_experience(config=config, checkpoint=checkpoint, artifacts=artifacts)
+        phase_timings["generation_wall_time_sec"] = time.perf_counter() - generation_start
         last_generator_checkpoint = checkpoint
+        experience_store_start = time.perf_counter()
         experience_store_append = _append_to_experience_store(
             store_dir=config.experience_store_dir,
             games_jsonl=artifacts.games_jsonl,
         )
+        phase_timings["experience_store_append_wall_time_sec"] = time.perf_counter() - experience_store_start
+        generated_train_extraction_start = time.perf_counter()
         new_examples = _load_online_replay_iteration_examples(artifacts=artifacts)
+        phase_timings["generated_train_extraction_wall_time_sec"] = (
+            time.perf_counter() - generated_train_extraction_start
+        )
+        generated_tensorize_start = time.perf_counter()
         generated_replay.extend(tensorize_shogi_policy_value_examples(new_examples))
+        phase_timings["generated_tensorize_wall_time_sec"] = time.perf_counter() - generated_tensorize_start
         replay_size = replay_seed_eligible_examples + len(generated_replay)
         if replay_size < config.min_replay_size:
             sampled_examples: list[TensorizedShogiPolicyValueSample] = []
@@ -250,6 +274,7 @@ def run_shogi_online_replay(
             training_result = None
             skip_reason = "min_replay_size"
         else:
+            replay_sampling_start = time.perf_counter()
             generated_sampled_examples = len(generated_replay)
             generated_samples = generated_replay.sample(
                 generated_sampled_examples,
@@ -266,20 +291,26 @@ def run_shogi_online_replay(
                 seed=config.seed + iteration_index,
             )
             sampled_examples = generated_samples + seed_samples
+            phase_timings["replay_sampling_wall_time_sec"] = time.perf_counter() - replay_sampling_start
+            training_start = time.perf_counter()
             training_result = _train_online_replay_iteration(
                 config=config,
                 iteration_index=iteration_index,
                 checkpoint=checkpoint,
-                artifacts=artifacts,
                 sampled_examples=sampled_examples,
                 eval_examples=training_eval_samples,
                 replay_size=replay_size,
-            training_eval_examples=len(training_eval_samples),
+                training_eval_examples=len(training_eval_samples),
             )
+            phase_timings["training_wall_time_sec"] = time.perf_counter() - training_start
+            checkpoint_save_start = time.perf_counter()
+            _save_online_replay_iteration_checkpoints(artifacts=artifacts, training_result=training_result)
+            phase_timings["checkpoint_save_wall_time_sec"] = time.perf_counter() - checkpoint_save_start
             training_skipped = False
             effective_checkpoint = artifacts.checkpoint_path
             effective_best_checkpoint = artifacts.best_checkpoint_path
             skip_reason = None
+        phase_timings["iteration_wall_time_sec"] = time.perf_counter() - iteration_start
         metrics = _online_replay_iteration_metrics(
             config=config,
             artifacts=artifacts,
@@ -299,6 +330,7 @@ def run_shogi_online_replay(
             checkpoint=effective_checkpoint,
             best_checkpoint=effective_best_checkpoint,
             training_result=training_result,
+            phase_timings=phase_timings,
         )
         artifacts.metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
         training_result = None
@@ -526,7 +558,6 @@ def _train_online_replay_iteration(
     config: ShogiOnlineReplayConfig,
     iteration_index: int,
     checkpoint: Path,
-    artifacts: ShogiOnlineReplayIterationArtifacts,
     sampled_examples: list[TensorizedShogiPolicyValueSample],
     eval_examples: Sequence[TensorizedShogiPolicyValueSample],
     replay_size: int,
@@ -550,6 +581,14 @@ def _train_online_replay_iteration(
             training_eval_examples=training_eval_examples,
         ),
     )
+    return training_result
+
+
+def _save_online_replay_iteration_checkpoints(
+    *,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
+    training_result: ShogiPolicyValueTrainingResult,
+) -> None:
     save_shogi_policy_value_checkpoint(artifacts.checkpoint_path, training_result)
     if training_result.best_model_state_dict is not None:
         save_shogi_policy_value_state_checkpoint(
@@ -559,7 +598,6 @@ def _train_online_replay_iteration(
         )
     else:
         save_shogi_policy_value_checkpoint(artifacts.best_checkpoint_path, training_result)
-    return training_result
 
 
 def _online_replay_training_progress_callback(
@@ -610,14 +648,19 @@ def _online_replay_iteration_metrics(
     checkpoint: Path,
     best_checkpoint: Path,
     training_result: ShogiPolicyValueTrainingResult | None,
+    phase_timings: dict[str, float | None],
 ) -> dict[str, object]:
     metrics: dict[str, object] = {
         "schema_version": "intrep.shogi_online_replay_metrics.v1",
         "iteration_index": iteration_index,
+        "iteration": {
+            "wall_time_sec": phase_timings.get("iteration_wall_time_sec"),
+        },
         "checkpoint": {
             "init_path": str(init_checkpoint),
             "path": str(checkpoint),
             "best_path": str(best_checkpoint),
+            "save_wall_time_sec": phase_timings.get("checkpoint_save_wall_time_sec"),
         },
         "replay": {
             "size": replay_size,
@@ -635,14 +678,19 @@ def _online_replay_iteration_metrics(
             "generated_replay_size": generated_replay_size,
             "generated_sampled_examples": generated_sampled_examples,
             "preloaded_examples": 0,
+            "sampling_wall_time_sec": phase_timings.get("replay_sampling_wall_time_sec"),
+            "generated_tensorize_wall_time_sec": phase_timings.get("generated_tensorize_wall_time_sec"),
         },
         "generation": {
             "appended_examples": appended_examples,
             "generated_holdout_examples": 0,
+            "wall_time_sec": phase_timings.get("generation_wall_time_sec"),
+            "train_extraction_wall_time_sec": phase_timings.get("generated_train_extraction_wall_time_sec"),
             "summary_path": str(artifacts.generation_summary_path),
             "summary": _load_json_if_exists(artifacts.generation_summary_path),
         },
         "gate": {
+            "wall_time_sec": phase_timings.get("gate_wall_time_sec"),
             "summary_path": str(artifacts.generator_gate_summary_path),
             "summary": _load_json_if_exists(artifacts.generator_gate_summary_path),
         },
@@ -658,11 +706,13 @@ def _online_replay_iteration_metrics(
                 training_result.metrics.actual_steps if training_result is not None else None
             ),
             "effective_sample_passes": _effective_sample_passes(training_result, config, sampled_examples),
+            "wall_time_sec": phase_timings.get("training_wall_time_sec"),
             "config": asdict(training_result.config) if training_result is not None else None,
             "metrics": asdict(training_result.metrics) if training_result is not None else None,
         },
         "experience_store": {
             "dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
+            "append_wall_time_sec": phase_timings.get("experience_store_append_wall_time_sec"),
             "append": experience_store_append,
         },
     }

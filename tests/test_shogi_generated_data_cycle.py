@@ -576,6 +576,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["training"]["optimizer_steps_per_iteration"], 1)
             self.assertEqual(metrics["training"]["max_optimizer_steps_per_iteration"], 5)
             self.assertEqual(metrics["training"]["effective_sample_passes"], 1.5)
+            self.assertIsNotNone(metrics["iteration"]["wall_time_sec"])
+            self.assertIsNone(metrics["gate"]["wall_time_sec"])
+            self.assertIsNotNone(metrics["generation"]["wall_time_sec"])
+            self.assertIsNotNone(metrics["generation"]["train_extraction_wall_time_sec"])
+            self.assertIsNotNone(metrics["replay"]["generated_tensorize_wall_time_sec"])
+            self.assertIsNotNone(metrics["replay"]["sampling_wall_time_sec"])
+            self.assertIsNotNone(metrics["training"]["wall_time_sec"])
+            self.assertIsNotNone(metrics["checkpoint"]["save_wall_time_sec"])
 
     def test_online_replay_stops_when_generator_candidate_loses(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -751,6 +759,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["training"]["eval_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["experience_store"]["append"]["total_games"], 2)
             self.assertEqual(metrics["generation"]["summary"]["game_count"], 2)
+            self.assertIsNotNone(metrics["experience_store"]["append_wall_time_sec"])
             self.assertTrue((run_dir / "iteration-0001" / "generation-summary.json").exists())
 
     def test_online_replay_generates_multiple_experience_sources_per_iteration(self) -> None:
@@ -1081,6 +1090,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertTrue(first_metrics["training"]["skipped"])
             self.assertEqual(first_metrics["training"]["skip_reason"], "min_replay_size")
             self.assertIsNone(first_metrics["training"]["effective_sample_passes"])
+            self.assertIsNone(first_metrics["replay"]["sampling_wall_time_sec"])
+            self.assertIsNone(first_metrics["training"]["wall_time_sec"])
+            self.assertIsNone(first_metrics["checkpoint"]["save_wall_time_sec"])
 
 
 def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:

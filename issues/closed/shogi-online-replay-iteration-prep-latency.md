@@ -1,6 +1,6 @@
 # Shogi Online Replay Iteration Prep Latency
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
