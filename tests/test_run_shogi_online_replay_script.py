@@ -56,6 +56,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "5",
                     "--generator-gate-games",
                     "6",
+                    "--generator-gate-worker-processes",
+                    "4",
                     "--experience-store-dir",
                     "data/shogi/experiences/online",
                     "--replay-seed-data-selection",
@@ -120,6 +122,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_budget.target_sample_passes, 2.5)
         self.assertEqual(config.training_budget.max_optimizer_steps, 5)
         self.assertEqual(config.generator_gate_games, 6)
+        self.assertEqual(config.generator_gate_worker_processes, 4)
         self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
         self.assertEqual(
             config.replay_seed_data_selection,

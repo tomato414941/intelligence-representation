@@ -75,6 +75,11 @@ generate more replay experience. If the candidate loses that evaluation, the
 learning workflow should stop at that candidate instead of generating more
 experience from the losing checkpoint.
 
+Generation uses game-level worker processes for produced experience, and the
+generator gate uses match-level worker processes for checkpoint-vs-checkpoint
+evaluation. `NN leaf eval batch limit` remains the MCTS-internal batching
+setting for model evaluation inside a move.
+
 ## Playing Strength Evaluation
 
 Playing-strength evaluation is a player-vs-player match. The project-facing

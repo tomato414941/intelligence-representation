@@ -155,6 +155,18 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             run.assert_not_called()
 
+            with self.assertRaisesRegex(ValueError, "generator_gate_worker_processes"):
+                run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=Path("source.pt"),
+                        run_dir=Path("online"),
+                        training_eval_data_selection=Path("eval/data-selection.json"),
+                        generator_gate_worker_processes=0,
+                    )
+                )
+
+            run.assert_not_called()
+
             with self.assertRaisesRegex(ValueError, "games"):
                 run_shogi_generated_data_training_cycle(
                     ShogiGeneratedDataTrainingCycleConfig(
@@ -436,6 +448,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             arena_repo.mkdir()
             training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
             train_batches: list[int] = []
+            gate_commands: list[list[str]] = []
 
             def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
@@ -449,6 +462,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                     return None
                 if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    gate_commands.append(command)
                     return subprocess.CompletedProcess(
                         command,
                         0,
@@ -510,6 +524,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(result.iterations[0].sampled_examples, 3)
             self.assertIsNone(result.iterations[0].experience_store_append)
             self.assertEqual(result.stop_reason, None)
+            self.assertEqual(len(gate_commands), 1)
+            self.assertEqual(gate_commands[0][gate_commands[0].index("--match-worker-processes") + 1], "4")
             gate_summary = json.loads((run_dir / "iteration-0002" / "generator-gate-summary.json").read_text(encoding="utf-8"))
             self.assertEqual(gate_summary["player_a_wins"], 2)
             self.assertEqual(gate_summary["player_a_losses"], 0)

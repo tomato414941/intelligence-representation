@@ -51,6 +51,7 @@ DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
 DEFAULT_GENERATOR_GATE_GAMES = 32
+DEFAULT_GENERATOR_GATE_WORKER_PROCESSES = 4
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,7 @@ class ShogiOnlineReplayConfig:
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     training_budget: ShogiOnlineReplayTrainingBudget = ShogiOnlineReplayTrainingBudget()
     generator_gate_games: int = DEFAULT_GENERATOR_GATE_GAMES
+    generator_gate_worker_processes: int = DEFAULT_GENERATOR_GATE_WORKER_PROCESSES
     experience_store_dir: Path | None = None
     replay_seed_data_selection: Path | None = None
     next_checkpoint: str = "best"
@@ -395,6 +397,7 @@ def _evaluate_generator_candidate(
             "player_a_wins": 0,
             "player_a_losses": 0,
             "draws": 0,
+            "match_worker_processes": config.generator_gate_worker_processes,
         }
         artifacts.generator_gate_summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         return summary
@@ -441,6 +444,8 @@ def _evaluate_generator_candidate(
         str(artifacts.generator_gate_games_jsonl),
         "--games",
         str(config.generator_gate_games),
+        "--match-worker-processes",
+        str(config.generator_gate_worker_processes),
         "--max-plies",
         str(config.max_plies),
     ]
@@ -630,6 +635,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("next_checkpoint must be best or final")
     if config.generator_gate_games <= 0:
         raise ValueError("generator_gate_games must be positive")
+    if config.generator_gate_worker_processes <= 0:
+        raise ValueError("generator_gate_worker_processes must be positive")
     if config.training_eval_data_selection is None:
         raise ValueError("training_eval_data_selection is required")
     if not config.experience_sources:
