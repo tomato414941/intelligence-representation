@@ -83,11 +83,13 @@ schema. They share game execution, not downstream meaning.
 
 ## Resolution
 
-`shogi-arena-agent` now supports `--match-worker-processes` in
-`scripts/evaluate_shogi_players.py`. Player-match evaluation shards games into
-subprocesses, preserves global alternating-side assignment, merges game-record
-JSONL files, and emits one final match summary. The RunPod player-match wrapper
-passes `MATCH_WORKER_PROCESSES` through to the same local evaluation entrypoint.
+`shogi-arena-agent` now has
+`src/shogi_arena_agent/player_match_runner.py` for player-match many-game
+execution. It supports subprocess sharding, preserves global alternating-side
+assignment, merges game-record JSONL files, and returns one final match
+summary. `scripts/evaluate_shogi_players.py` exposes this as
+`--match-worker-processes`, and the RunPod player-match wrapper passes
+`MATCH_WORKER_PROCESSES` through to the same local evaluation entrypoint.
 
 Generation remains owned by `generate_shogi_games.py` and `shogi_generation.py`.
 Its checkpoint-vs-checkpoint batched MCTS path remains specialized rather than

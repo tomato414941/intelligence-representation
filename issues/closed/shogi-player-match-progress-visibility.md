@@ -38,7 +38,9 @@ At minimum:
 
 ## Resolution
 
-`shogi-arena-agent` now supports `--progress-every-games` in
-`scripts/evaluate_shogi_players.py`. The RunPod player-match wrapper sets
-`PROGRESS_EVERY_GAMES=10` unless overridden, so long RunPod matches emit sparse
-completed-game progress before the final JSON summary.
+`shogi-arena-agent` now supports player-match progress through
+`src/shogi_arena_agent/player_match_runner.py`, exposed by
+`scripts/evaluate_shogi_players.py` as `--progress-every-games`. The RunPod
+player-match wrapper sets `PROGRESS_EVERY_GAMES=10` unless overridden, so long
+RunPod matches emit sparse completed-game progress before the final JSON
+summary.
