@@ -44,6 +44,10 @@ Sampled checkpoint move selection, alternating sides, MCTS128, batch64:
 
 - vs previous promoted checkpoint: 14-1-1
 
+Evaluation move selection, alternating sides, MCTS128, batch64:
+
+- vs YaneuraOu MaterialLv1 `go nodes 1`: 10-6
+
 ## Integrity
 
 SHA256:

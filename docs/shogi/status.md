@@ -46,3 +46,10 @@ selection, alternating sides, MCTS128, and batch64:
 - result: 14-1-1
 - illegal moves: 0
 - average plies: 136.56
+
+Against YaneuraOu MaterialLv1 `go nodes 1`, with evaluation move selection,
+alternating sides, MCTS128, and batch64:
+
+- result: 10-6
+- illegal moves: 0
+- average plies: 111.25
