@@ -614,45 +614,62 @@ def _online_replay_iteration_metrics(
     metrics: dict[str, object] = {
         "schema_version": "intrep.shogi_online_replay_metrics.v1",
         "iteration_index": iteration_index,
-        "training_skipped": training_skipped,
-        "appended_examples": appended_examples,
-        "replay_size": replay_size,
-        "min_replay_size": config.min_replay_size,
-        "experience_store_dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
-        "replay_seed_data_selection": str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None,
-        "training_eval_data_selection": str(config.training_eval_data_selection),
-        "generated_replay_size": generated_replay_size,
-        "replay_seed_eligible_examples": replay_seed_eligible_examples,
-        "seed_sampled_examples": seed_sampled_examples,
-        "generated_sampled_examples": generated_sampled_examples,
-        "replay_seed_loaded_examples": replay_seed_eligible_examples,
-        "preloaded_examples": 0,
-        "training_eval_examples": training_eval_examples,
-        "training_eval_source": "fixed_data_selection",
-        "generated_holdout_examples": 0,
-        "experience_store_append": experience_store_append,
-        "generator_gate_summary_path": str(artifacts.generator_gate_summary_path),
-        "generator_gate_summary": _load_json_if_exists(artifacts.generator_gate_summary_path),
-        "generation_summary_path": str(artifacts.generation_summary_path),
-        "generation_summary": _load_json_if_exists(artifacts.generation_summary_path),
-        "sampled_examples": sampled_examples,
-        "sampled_examples_per_iteration": config.training_budget.sampled_examples_per_iteration,
-        "max_seed_examples_per_iteration": config.training_budget.max_seed_examples_per_iteration,
-        "training_batch_size": config.training_budget.batch_size,
-        "target_sample_passes": config.training_budget.target_sample_passes,
-        "max_optimizer_steps_per_iteration": config.training_budget.max_optimizer_steps,
-        "optimizer_steps_per_iteration": (
-            training_result.metrics.actual_steps if training_result is not None else None
-        ),
-        "effective_sample_passes": _effective_sample_passes(training_result, config, sampled_examples),
-        "init_checkpoint_path": str(init_checkpoint),
-        "checkpoint_path": str(checkpoint),
-        "best_checkpoint_path": str(best_checkpoint),
-        "config": asdict(training_result.config) if training_result is not None else None,
-        "metrics": asdict(training_result.metrics) if training_result is not None else None,
+        "checkpoint": {
+            "init_path": str(init_checkpoint),
+            "path": str(checkpoint),
+            "best_path": str(best_checkpoint),
+        },
+        "replay": {
+            "size": replay_size,
+            "capacity": config.replay_capacity,
+            "min_size": config.min_replay_size,
+            "sampled_examples": sampled_examples,
+            "sampled_examples_per_iteration": config.training_budget.sampled_examples_per_iteration,
+            "max_seed_examples_per_iteration": config.training_budget.max_seed_examples_per_iteration,
+            "seed_data_selection": (
+                str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None
+            ),
+            "seed_eligible_examples": replay_seed_eligible_examples,
+            "seed_loaded_examples": replay_seed_eligible_examples,
+            "seed_sampled_examples": seed_sampled_examples,
+            "generated_replay_size": generated_replay_size,
+            "generated_sampled_examples": generated_sampled_examples,
+            "preloaded_examples": 0,
+        },
+        "generation": {
+            "appended_examples": appended_examples,
+            "generated_holdout_examples": 0,
+            "summary_path": str(artifacts.generation_summary_path),
+            "summary": _load_json_if_exists(artifacts.generation_summary_path),
+        },
+        "gate": {
+            "summary_path": str(artifacts.generator_gate_summary_path),
+            "summary": _load_json_if_exists(artifacts.generator_gate_summary_path),
+        },
+        "training": {
+            "skipped": training_skipped,
+            "eval_data_selection": str(config.training_eval_data_selection),
+            "eval_examples": training_eval_examples,
+            "eval_source": "fixed_data_selection",
+            "batch_size": config.training_budget.batch_size,
+            "target_sample_passes": config.training_budget.target_sample_passes,
+            "max_optimizer_steps_per_iteration": config.training_budget.max_optimizer_steps,
+            "optimizer_steps_per_iteration": (
+                training_result.metrics.actual_steps if training_result is not None else None
+            ),
+            "effective_sample_passes": _effective_sample_passes(training_result, config, sampled_examples),
+            "config": asdict(training_result.config) if training_result is not None else None,
+            "metrics": asdict(training_result.metrics) if training_result is not None else None,
+        },
+        "experience_store": {
+            "dir": str(config.experience_store_dir) if config.experience_store_dir is not None else None,
+            "append": experience_store_append,
+        },
     }
     if skip_reason is not None:
-        metrics["skip_reason"] = skip_reason
+        training = metrics["training"]
+        assert isinstance(training, dict)
+        training["skip_reason"] = skip_reason
     return metrics
 
 
