@@ -930,7 +930,8 @@ def _sample_sharded_sequence(
     selected_shard_count = min(len(shard_counts), max(1, math.ceil(sample_count / average_shard_count) + 1))
     generator = torch.Generator().manual_seed(seed)
     weights = torch.tensor(shard_counts, dtype=torch.float64)
-    selected_shards = sorted(torch.multinomial(weights, selected_shard_count, replacement=False, generator=generator).tolist())
+    shard_order = torch.multinomial(weights, len(shard_counts), replacement=False, generator=generator).tolist()
+    selected_shards = sorted(shard_order[:selected_shard_count])
     selected_ranges = [
         (int(samples.offsets[shard_index]), int(samples.offsets[shard_index]) + shard_counts[shard_index])
         for shard_index in selected_shards

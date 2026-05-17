@@ -102,7 +102,46 @@ if [[ -n "$MIN_VCPU_PER_GPU" ]]; then
   RUNNER_ARGS+=(--min-vcpu-per-gpu "$MIN_VCPU_PER_GPU")
 fi
 if [[ "$SYNC_TENSOR_CACHE" == "1" ]]; then
-  RUNNER_ARGS+=(--sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors")
+  CACHE_ROOT="data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors"
+  RUNNER_ARGS+=(--sync "$PROJECT_REL/$CACHE_ROOT/manifest.json")
+  while IFS= read -r cache_path; do
+    RUNNER_ARGS+=(--sync "$PROJECT_REL/$CACHE_ROOT/$cache_path")
+  done < <(
+    CACHE_ROOT="$CACHE_ROOT" ITERATIONS="$ITERATIONS" SAMPLED_EXAMPLES_PER_ITERATION="$SAMPLED_EXAMPLES_PER_ITERATION" SEED="$SEED" \
+      uv run --extra torch python - <<'PY'
+import json
+import math
+import os
+from pathlib import Path
+
+import torch
+
+cache_root = Path(os.environ["CACHE_ROOT"])
+manifest = json.loads((cache_root / "manifest.json").read_text(encoding="utf-8"))
+iterations = int(os.environ["ITERATIONS"])
+sample_count = int(os.environ["SAMPLED_EXAMPLES_PER_ITERATION"])
+seed = int(os.environ["SEED"])
+paths: set[str] = set()
+
+for shard in manifest["shards"]:
+    if shard["split"] == "eval":
+        paths.add(str(shard["path"]))
+
+train_shards = [shard for shard in manifest["shards"] if shard["split"] == "train"]
+shard_counts = [int(shard["sample_count"]) for shard in train_shards]
+average_shard_count = max(1.0, sum(shard_counts) / len(shard_counts))
+selected_shard_count = min(len(shard_counts), max(1, math.ceil(sample_count / average_shard_count) + 1))
+weights = torch.tensor(shard_counts, dtype=torch.float64)
+for iteration_index in range(1, iterations + 1):
+    generator = torch.Generator().manual_seed(seed + iteration_index)
+    shard_order = torch.multinomial(weights, len(shard_counts), replacement=False, generator=generator).tolist()
+    for shard_index in shard_order[:selected_shard_count]:
+        paths.add(str(train_shards[shard_index]["path"]))
+
+for path in sorted(paths):
+    print(path)
+PY
+  )
 fi
 
 python3 "$RUNPOD_JOB" \
