@@ -96,8 +96,8 @@ class ShogiOnlineReplayConfig:
     generation_progress_every_plies: int = 0
     board_backend: str = "cshogi"
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
-    simulations: int = 16
-    evaluation_batch_size: int = 1
+    simulations: int = 128
+    evaluation_batch_size: int = 64
     generation_worker_processes: int = 1
     mcts_move_time_limit_sec: float | None = None
     training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
@@ -504,8 +504,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
         raise ValueError("min_replay_size must be positive")
     if config.min_replay_size > config.replay_capacity:
         raise ValueError("min_replay_size must be less than or equal to replay_capacity")
-    if config.cycles <= 0:
-        raise ValueError("cycles must be positive")
+    if config.cycles != 1:
+        raise ValueError("online replay runs must use cycles=1; evaluate and promote the candidate before generating more experience")
     if config.next_checkpoint not in {"best", "final"}:
         raise ValueError("next_checkpoint must be best or final")
     if config.training_eval_data_selection is None:

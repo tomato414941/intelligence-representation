@@ -141,6 +141,18 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
     def test_rejects_invalid_config_before_running_commands(self) -> None:
         with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run") as run:
+            with self.assertRaisesRegex(ValueError, "cycles=1"):
+                run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=Path("source.pt"),
+                        run_dir=Path("online"),
+                        training_eval_data_selection=Path("eval/data-selection.json"),
+                        cycles=2,
+                    )
+                )
+
+            run.assert_not_called()
+
             with self.assertRaisesRegex(ValueError, "games"):
                 run_shogi_generated_data_training_cycle(
                     ShogiGeneratedDataTrainingCycleConfig(
@@ -452,7 +464,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     ShogiOnlineReplayConfig(
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
-                        cycles=2,
                         replay_capacity=4,
                         min_replay_size=1,
                         training_budget=ShogiOnlineReplayTrainingBudget(
@@ -467,20 +478,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(len(result.cycles), 2)
-            self.assertEqual(train_batches, [3, 3])
+            self.assertEqual(len(result.cycles), 1)
+            self.assertEqual(train_batches, [3])
             self.assertEqual(result.cycles[0].appended_examples, 4)
             self.assertEqual(result.cycles[0].replay_size, 4)
             self.assertEqual(result.cycles[0].sampled_examples, 3)
             self.assertIsNone(result.cycles[0].experience_store_append)
-            self.assertEqual(result.cycles[1].appended_examples, 4)
-            self.assertEqual(result.cycles[1].replay_size, 4)
-            self.assertEqual(result.cycles[1].sampled_examples, 3)
-            second_generate_command = run.call_args_list[1].args[0]
-            self.assertEqual(
-                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
-                str(result.cycles[0].best_checkpoint.resolve()),
-            )
             metrics = json.loads(result.cycles[0].metrics.read_text(encoding="utf-8"))
             self.assertEqual(metrics["sampled_examples"], 3)
             self.assertEqual(metrics["sampled_examples_per_cycle"], 3)
@@ -907,7 +910,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     ShogiOnlineReplayConfig(
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
-                        cycles=2,
                         replay_capacity=8,
                         min_replay_size=5,
                         training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_cycle=3),
@@ -917,20 +919,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            self.assertEqual(train_batches, [3])
+            self.assertEqual(train_batches, [])
             self.assertTrue(result.cycles[0].training_skipped)
             self.assertEqual(result.cycles[0].sampled_examples, 0)
             self.assertEqual(result.cycles[0].best_checkpoint, checkpoint_path)
-            self.assertFalse(result.cycles[1].training_skipped)
             first_metrics = json.loads((run_dir / "cycle-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertTrue(first_metrics["training_skipped"])
             self.assertEqual(first_metrics["skip_reason"], "min_replay_size")
             self.assertIsNone(first_metrics["effective_sample_passes"])
-            second_generate_command = run.call_args_list[1].args[0]
-            self.assertEqual(
-                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
-                str(checkpoint_path.resolve()),
-            )
 
 
 def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:
