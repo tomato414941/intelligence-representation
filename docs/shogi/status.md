@@ -8,8 +8,8 @@ inference-performance docs.
 
 ## Current Model
 
-The strongest project checkpoint observed so far is the one-epoch Qhapaq
-full-cache policy/value checkpoint from `shogi-learning-20260517-001`.
+The current promoted checkpoint is the online replay checkpoint from
+`online-experience-replay-runpod-20260517-171912`, iteration 4.
 
 It is promoted here:
 
@@ -27,26 +27,17 @@ Current successful full training uses the Qhapaq full tensor cache:
 
 ## Latest Learning Result
 
-One full Qhapaq policy/value epoch trained cleanly:
+The latest online replay run trained for 4 iterations from the Qhapaq full-cache
+checkpoint. The final iteration improved fixed-eval policy/value metrics
+slightly:
 
-- train loss: 2.0753 -> 1.9431
-- train value loss: 1.0151 -> 0.9064
-- eval loss: 2.0960 -> 1.9751
-- eval value loss: 1.0150 -> 0.9084
-- eval accuracy: 0.4059 -> 0.4257
-- eval top-3 accuracy: 0.6818
-- eval top-5 accuracy: 0.7795
+- eval loss: 1.8461 -> 1.8436
+- eval accuracy: 0.4495 -> 0.4512
 
 ## Latest Playing-Strength Check
 
-Against YaneuraOu MaterialLv1 `go nodes 1000`, with the previous deterministic move selection,
+Against the previous promoted checkpoint, with sampled checkpoint move selection,
 100 games, alternating sides, MCTS128, and batch64:
 
-- result: 37-61-2
-- average plies: 96.47
-
-In same-checkpoint self-play, with sampled checkpoint move selection,
-alternating sides, MCTS128, and batch64:
-
-- result: 4-11-1 from player A's perspective
-- average plies: 169.56
+- result: 53-39-8
+- average plies: 174.95
