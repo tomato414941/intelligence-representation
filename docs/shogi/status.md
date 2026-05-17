@@ -39,30 +39,6 @@ One full Qhapaq policy/value epoch trained cleanly:
 
 ## Latest Playing-Strength Check
 
-Against the previous promoted checkpoint, with sampled checkpoint move
-selection, alternating sides, MCTS128, and batch64:
-
-- result: 14-1-1
-- average plies: 136.56
-
-Against YaneuraOu MaterialLv1 `go nodes 1`, with evaluation move selection,
-alternating sides, MCTS128, and batch64:
-
-- result: 10-6
-- average plies: 111.25
-
-Against YaneuraOu MaterialLv1 `go nodes 10`, with evaluation move selection,
-alternating sides, MCTS128, and batch64:
-
-- result: 9-7
-- average plies: 95.06
-
-Against YaneuraOu MaterialLv1 `go nodes 100`, with evaluation move selection,
-alternating sides, MCTS128, and batch64:
-
-- result: 11-5
-- average plies: 94.31
-
 Against YaneuraOu MaterialLv1 `go nodes 1000`, with evaluation move selection,
 100 games, alternating sides, MCTS128, and batch64:
 
