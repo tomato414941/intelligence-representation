@@ -15,14 +15,29 @@ DEFAULT_USI_READ_TIMEOUT_SECONDS = 30.0
 class ShogiGeneratedPlayerSpec:
     kind: str
     name: str
+    move_selection_profile: str = "self-play"
+    move_selection_temperature: float | None = 1.0
+    move_selection_temperature_plies: int | None = 40
     usi_command: str | None = None
     usi_options: tuple[str, ...] = ()
     usi_go_command: str = "go nodes 1"
     usi_read_timeout_seconds: float = DEFAULT_USI_READ_TIMEOUT_SECONDS
 
 
-def checkpoint_generated_player(name: str = "checkpoint") -> ShogiGeneratedPlayerSpec:
-    return ShogiGeneratedPlayerSpec(kind="checkpoint", name=name)
+def checkpoint_generated_player(
+    name: str = "checkpoint",
+    *,
+    move_selection_profile: str = "self-play",
+    move_selection_temperature: float | None = 1.0,
+    move_selection_temperature_plies: int | None = 40,
+) -> ShogiGeneratedPlayerSpec:
+    return ShogiGeneratedPlayerSpec(
+        kind="checkpoint",
+        name=name,
+        move_selection_profile=move_selection_profile,
+        move_selection_temperature=move_selection_temperature,
+        move_selection_temperature_plies=move_selection_temperature_plies,
+    )
 
 
 def usi_engine_generated_player(
@@ -36,6 +51,9 @@ def usi_engine_generated_player(
     return ShogiGeneratedPlayerSpec(
         kind="usi_engine",
         name=name,
+        move_selection_profile="evaluation",
+        move_selection_temperature=None,
+        move_selection_temperature_plies=None,
         usi_command=command,
         usi_options=options,
         usi_go_command=go_command,
@@ -138,6 +156,12 @@ def warn_short_max_plies(max_plies: int) -> None:
 
 def _validate_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:
     if player.kind == "checkpoint":
+        if player.move_selection_profile not in {"evaluation", "self-play"}:
+            raise SystemExit(f"{side} checkpoint player has unsupported move_selection_profile")
+        if player.move_selection_profile != "self-play" and (
+            player.move_selection_temperature is not None or player.move_selection_temperature_plies is not None
+        ):
+            raise SystemExit(f"{side} checkpoint player move-selection temperature requires self-play profile")
         return
     if player.kind == "usi_engine":
         if not player.usi_command:
@@ -166,7 +190,7 @@ def _player_command_args(
             f"--{prefix}-checkpoint-id",
             _checkpoint_actor_id(checkpoint),
             f"--{prefix}-move-selection-profile",
-            "self-play",
+            player.move_selection_profile,
             f"--{prefix}-move-selector",
             "mcts",
             f"--{prefix}-mcts-simulations",
@@ -178,6 +202,10 @@ def _player_command_args(
             f"--{prefix}-board-backend",
             board_backend,
         ]
+        if player.move_selection_temperature is not None:
+            command.extend([f"--{prefix}-move-selection-temperature", str(player.move_selection_temperature)])
+        if player.move_selection_temperature_plies is not None:
+            command.extend([f"--{prefix}-move-selection-temperature-plies", str(player.move_selection_temperature_plies)])
         if mcts_move_time_limit_sec is not None:
             command.extend([f"--{prefix}-mcts-move-time-limit-sec", str(mcts_move_time_limit_sec)])
         return command

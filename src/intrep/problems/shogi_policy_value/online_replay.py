@@ -591,6 +591,14 @@ def _player_summary(player: ShogiGeneratedPlayerSpec) -> dict[str, object]:
         "kind": player.kind,
         "name": player.name,
     }
+    if player.kind == "checkpoint":
+        summary.update(
+            {
+                "move_selection_profile": player.move_selection_profile,
+                "move_selection_temperature": player.move_selection_temperature,
+                "move_selection_temperature_plies": player.move_selection_temperature_plies,
+            }
+        )
     if player.kind == "usi_engine":
         summary.update(
             {

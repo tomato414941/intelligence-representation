@@ -60,6 +60,12 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "data/shogi/training-data-bundles/online/data-selection.json",
                     "--experience-source",
                     "checkpoint-self:4",
+                    "--checkpoint-move-selection-profile",
+                    "self-play",
+                    "--checkpoint-move-selection-temperature",
+                    "0.75",
+                    "--checkpoint-move-selection-temperature-plies",
+                    "12",
                     "--concurrent-games-per-process",
                     "2",
                     "--generation-worker-processes",
@@ -122,6 +128,9 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.experience_sources[0].games, 4)
         self.assertEqual(config.experience_sources[0].black_player.kind, "checkpoint")
         self.assertEqual(config.experience_sources[0].white_player.kind, "checkpoint")
+        self.assertEqual(config.experience_sources[0].black_player.move_selection_profile, "self-play")
+        self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature, 0.75)
+        self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature_plies, 12)
         self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.generation_progress_every_plies, 16)

@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
     parser.add_argument("--usi-go-command", default="go nodes 1")
     parser.add_argument("--usi-read-timeout-seconds", type=float, default=DEFAULT_USI_READ_TIMEOUT_SECONDS)
+    parser.add_argument("--checkpoint-move-selection-profile", choices=("evaluation", "self-play"), default="self-play")
+    parser.add_argument("--checkpoint-move-selection-temperature", type=float)
+    parser.add_argument("--checkpoint-move-selection-temperature-plies", type=int)
     parser.add_argument("--concurrent-games-per-process", type=int, default=1)
     parser.add_argument("--generation-progress-every-plies", type=int, default=0)
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
@@ -141,8 +144,8 @@ def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGenera
                 ShogiGeneratedExperienceSource(
                     name=f"checkpoint-self-{index}",
                     games=game_count,
-                    black_player=checkpoint_generated_player("black"),
-                    white_player=checkpoint_generated_player("white"),
+                    black_player=_checkpoint_player(args, name="black"),
+                    white_player=_checkpoint_player(args, name="white"),
                 )
             )
             continue
@@ -178,11 +181,25 @@ def _usi_player(args: argparse.Namespace, *, name: str):
     )
 
 
+def _checkpoint_player(args: argparse.Namespace, *, name: str):
+    temperature = args.checkpoint_move_selection_temperature
+    temperature_plies = args.checkpoint_move_selection_temperature_plies
+    if args.checkpoint_move_selection_profile == "self-play":
+        temperature = 1.0 if temperature is None else temperature
+        temperature_plies = 40 if temperature_plies is None else temperature_plies
+    return checkpoint_generated_player(
+        name,
+        move_selection_profile=args.checkpoint_move_selection_profile,
+        move_selection_temperature=temperature,
+        move_selection_temperature_plies=temperature_plies,
+    )
+
+
 def _checkpoint_vs_usi_source(args: argparse.Namespace, *, name: str, games: int) -> ShogiGeneratedExperienceSource:
     return ShogiGeneratedExperienceSource(
         name=name,
         games=games,
-        black_player=checkpoint_generated_player("checkpoint"),
+        black_player=_checkpoint_player(args, name="checkpoint"),
         white_player=_usi_player(args, name="usi_engine"),
     )
 
@@ -192,7 +209,7 @@ def _usi_vs_checkpoint_source(args: argparse.Namespace, *, name: str, games: int
         name=name,
         games=games,
         black_player=_usi_player(args, name="usi_engine"),
-        white_player=checkpoint_generated_player("checkpoint"),
+        white_player=_checkpoint_player(args, name="checkpoint"),
     )
 
 
