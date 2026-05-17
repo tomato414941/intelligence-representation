@@ -15,7 +15,7 @@ DEFAULT_USI_READ_TIMEOUT_SECONDS = 30.0
 class ShogiGeneratedPlayerSpec:
     kind: str
     name: str
-    move_selection_profile: str = "self-play"
+    move_selection_profile: str = "visit-sampling"
     move_selection_temperature: float | None = 1.0
     move_selection_temperature_plies: int | None = 40
     usi_command: str | None = None
@@ -27,7 +27,7 @@ class ShogiGeneratedPlayerSpec:
 def checkpoint_generated_player(
     name: str = "checkpoint",
     *,
-    move_selection_profile: str = "self-play",
+    move_selection_profile: str = "visit-sampling",
     move_selection_temperature: float | None = 1.0,
     move_selection_temperature_plies: int | None = 40,
 ) -> ShogiGeneratedPlayerSpec:
@@ -51,7 +51,7 @@ def usi_engine_generated_player(
     return ShogiGeneratedPlayerSpec(
         kind="usi_engine",
         name=name,
-        move_selection_profile="evaluation",
+        move_selection_profile="visit-sampling",
         move_selection_temperature=None,
         move_selection_temperature_plies=None,
         usi_command=command,
@@ -156,12 +156,8 @@ def warn_short_max_plies(max_plies: int) -> None:
 
 def _validate_player(player: ShogiGeneratedPlayerSpec, *, side: str) -> None:
     if player.kind == "checkpoint":
-        if player.move_selection_profile not in {"evaluation", "self-play"}:
+        if player.move_selection_profile != "visit-sampling":
             raise SystemExit(f"{side} checkpoint player has unsupported move_selection_profile")
-        if player.move_selection_profile != "self-play" and (
-            player.move_selection_temperature is not None or player.move_selection_temperature_plies is not None
-        ):
-            raise SystemExit(f"{side} checkpoint player move-selection temperature requires self-play profile")
         return
     if player.kind == "usi_engine":
         if not player.usi_command:

@@ -108,7 +108,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "--experience-source",
                     "checkpoint-self:4",
                     "--checkpoint-move-selection-profile",
-                    "self-play",
+                    "visit-sampling",
                     "--checkpoint-move-selection-temperature",
                     "0.75",
                     "--checkpoint-move-selection-temperature-plies",
@@ -177,7 +177,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.experience_sources[0].games, 4)
         self.assertEqual(config.experience_sources[0].black_player.kind, "checkpoint")
         self.assertEqual(config.experience_sources[0].white_player.kind, "checkpoint")
-        self.assertEqual(config.experience_sources[0].black_player.move_selection_profile, "self-play")
+        self.assertEqual(config.experience_sources[0].black_player.move_selection_profile, "visit-sampling")
         self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature, 0.75)
         self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature_plies, 12)
         self.assertEqual(config.concurrent_games_per_process, 2)

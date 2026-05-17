@@ -247,8 +247,12 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--progress-every-plies") + 1], "0")
             self.assertEqual(generate_command[generate_command.index("--black-mcts-simulations") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--white-mcts-simulations") + 1], "3")
-            self.assertEqual(generate_command[generate_command.index("--black-move-selection-profile") + 1], "self-play")
-            self.assertEqual(generate_command[generate_command.index("--white-move-selection-profile") + 1], "self-play")
+            self.assertEqual(
+                generate_command[generate_command.index("--black-move-selection-profile") + 1], "visit-sampling"
+            )
+            self.assertEqual(
+                generate_command[generate_command.index("--white-move-selection-profile") + 1], "visit-sampling"
+            )
             self.assertEqual(generate_command[generate_command.index("--black-move-selection-temperature") + 1], "1.0")
             self.assertEqual(generate_command[generate_command.index("--white-move-selection-temperature") + 1], "1.0")
             self.assertEqual(generate_command[generate_command.index("--black-move-selection-temperature-plies") + 1], "40")
@@ -273,14 +277,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "black_player": {
                         "kind": "checkpoint",
                         "name": "black",
-                        "move_selection_profile": "self-play",
+                        "move_selection_profile": "visit-sampling",
                         "move_selection_temperature": 1.0,
                         "move_selection_temperature_plies": 40,
                     },
                     "white_player": {
                         "kind": "checkpoint",
                         "name": "white",
-                        "move_selection_profile": "self-play",
+                        "move_selection_profile": "visit-sampling",
                         "move_selection_temperature": 1.0,
                         "move_selection_temperature_plies": 40,
                     },

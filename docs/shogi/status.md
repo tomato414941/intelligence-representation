@@ -39,7 +39,7 @@ One full Qhapaq policy/value epoch trained cleanly:
 
 ## Latest Playing-Strength Check
 
-Against YaneuraOu MaterialLv1 `go nodes 1000`, with evaluation move selection,
+Against YaneuraOu MaterialLv1 `go nodes 1000`, with the previous deterministic move selection,
 100 games, alternating sides, MCTS128, and batch64:
 
 - result: 37-61-2

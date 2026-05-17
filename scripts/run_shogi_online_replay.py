@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--usi-option", action="append", default=[], help="USI engine option as NAME=VALUE.")
     parser.add_argument("--usi-go-command", default="go nodes 1")
     parser.add_argument("--usi-read-timeout-seconds", type=float, default=DEFAULT_USI_READ_TIMEOUT_SECONDS)
-    parser.add_argument("--checkpoint-move-selection-profile", choices=("evaluation", "self-play"), default="self-play")
+    parser.add_argument("--checkpoint-move-selection-profile", choices=("visit-sampling",), default="visit-sampling")
     parser.add_argument("--checkpoint-move-selection-temperature", type=float)
     parser.add_argument("--checkpoint-move-selection-temperature-plies", type=int)
     parser.add_argument("--concurrent-games-per-process", type=int, default=1)
@@ -191,9 +191,8 @@ def _usi_player(args: argparse.Namespace, *, name: str):
 def _checkpoint_player(args: argparse.Namespace, *, name: str):
     temperature = args.checkpoint_move_selection_temperature
     temperature_plies = args.checkpoint_move_selection_temperature_plies
-    if args.checkpoint_move_selection_profile == "self-play":
-        temperature = 1.0 if temperature is None else temperature
-        temperature_plies = 40 if temperature_plies is None else temperature_plies
+    temperature = 1.0 if temperature is None else temperature
+    temperature_plies = 40 if temperature_plies is None else temperature_plies
     return checkpoint_generated_player(
         name,
         move_selection_profile=args.checkpoint_move_selection_profile,
