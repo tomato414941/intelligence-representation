@@ -1,5 +1,8 @@
 # Shogi Player Match Progress Visibility
 
+Status: closed
+Priority: medium
+
 ## Problem
 
 Long shogi player matches can remain silent until the whole match finishes.
@@ -32,3 +35,10 @@ At minimum:
 - A 100-game player match emits periodic progress before the final summary.
 - Progress can confirm the match is alive without opening a second SSH session.
 - The final summary remains the durable result format.
+
+## Resolution
+
+`shogi-arena-agent` now supports `--progress-every-games` in
+`scripts/evaluate_shogi_players.py`. The RunPod player-match wrapper sets
+`PROGRESS_EVERY_GAMES=10` unless overridden, so long RunPod matches emit sparse
+completed-game progress before the final JSON summary.

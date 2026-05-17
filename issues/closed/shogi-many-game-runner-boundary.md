@@ -1,5 +1,8 @@
 # Shogi Many-Game Runner Boundary
 
+Status: closed
+Priority: medium
+
 ## Problem
 
 Shogi training-data generation and player-match evaluation both run many shogi
@@ -77,3 +80,15 @@ schema. They share game execution, not downstream meaning.
   why that is not supported.
 - Existing generation behavior still has a clear owner.
 - The RunPod player-match path uses the same boundary as local evaluation.
+
+## Resolution
+
+`shogi-arena-agent` now supports `--match-worker-processes` in
+`scripts/evaluate_shogi_players.py`. Player-match evaluation shards games into
+subprocesses, preserves global alternating-side assignment, merges game-record
+JSONL files, and emits one final match summary. The RunPod player-match wrapper
+passes `MATCH_WORKER_PROCESSES` through to the same local evaluation entrypoint.
+
+Generation remains owned by `generate_shogi_games.py` and `shogi_generation.py`.
+Its checkpoint-vs-checkpoint batched MCTS path remains specialized rather than
+being folded into player-match evaluation.
