@@ -197,7 +197,7 @@ class ShogiOnlineReplayIterationArtifacts:
     generated_train_jsonl: Path
     generation_summary_path: Path
     generator_gate_games_jsonl: Path
-    generator_gate_summary_path: Path
+    generator_gate_result_path: Path
     checkpoint_path: Path
     best_checkpoint_path: Path
     metrics_path: Path
@@ -234,14 +234,14 @@ def run_shogi_online_replay(
         artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
         if iteration_index > 1:
             gate_start = time.perf_counter()
-            gate_summary = _evaluate_generator_candidate(
+            gate_result = _evaluate_generator_candidate(
                 config=config,
                 artifacts=artifacts,
                 candidate_checkpoint=checkpoint,
                 last_generator_checkpoint=last_generator_checkpoint,
             )
             phase_timings["gate_wall_time_sec"] = time.perf_counter() - gate_start
-            if _generator_candidate_lost(gate_summary):
+            if _generator_candidate_lost(gate_result):
                 stop_reason = "generator_candidate_lost"
                 stopped_iteration_index = iteration_index
                 break
@@ -396,7 +396,7 @@ def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> S
         generated_train_jsonl=iteration_dir / "generated-train-games.jsonl",
         generation_summary_path=iteration_dir / "generation-summary.json",
         generator_gate_games_jsonl=iteration_dir / "generator-gate-games.jsonl",
-        generator_gate_summary_path=iteration_dir / "generator-gate-summary.json",
+        generator_gate_result_path=iteration_dir / "generator-gate-result.json",
         checkpoint_path=iteration_dir / "checkpoint.pt",
         best_checkpoint_path=iteration_dir / "best-checkpoint.pt",
         metrics_path=iteration_dir / "metrics.json",
@@ -462,7 +462,7 @@ def _evaluate_generator_candidate(
     last_generator_checkpoint: Path,
 ) -> dict[str, object]:
     if candidate_checkpoint.resolve() == last_generator_checkpoint.resolve():
-        summary = {
+        result = {
             "skipped": True,
             "reason": "same_checkpoint",
             "candidate_checkpoint": str(candidate_checkpoint),
@@ -472,8 +472,8 @@ def _evaluate_generator_candidate(
             "draws": 0,
             "match_worker_processes": config.generator_gate_worker_processes,
         }
-        artifacts.generator_gate_summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-        return summary
+        artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        return result
     command = [
         sys.executable,
         str(config.arena_repo.resolve() / "scripts/evaluate_shogi_players.py"),
@@ -530,19 +530,19 @@ def _evaluate_generator_candidate(
         text=True,
         env=_shogi_arena_env(config.arena_repo),
     )
-    summary = json.loads(completed.stdout)
-    summary.update(
+    result = json.loads(completed.stdout)
+    result.update(
         {
             "candidate_checkpoint": str(candidate_checkpoint),
             "last_generator_checkpoint": str(last_generator_checkpoint),
         }
     )
-    artifacts.generator_gate_summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    return summary
+    artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
 
 
-def _generator_candidate_lost(summary: dict[str, object]) -> bool:
-    return int(summary.get("player_a_losses", 0)) > int(summary.get("player_a_wins", 0))
+def _generator_candidate_lost(result: dict[str, object]) -> bool:
+    return int(result.get("player_a_losses", 0)) > int(result.get("player_a_wins", 0))
 
 
 def _load_online_replay_iteration_examples(
@@ -691,8 +691,8 @@ def _online_replay_iteration_metrics(
         },
         "gate": {
             "wall_time_sec": phase_timings.get("gate_wall_time_sec"),
-            "summary_path": str(artifacts.generator_gate_summary_path),
-            "summary": _load_json_if_exists(artifacts.generator_gate_summary_path),
+            "result_path": str(artifacts.generator_gate_result_path),
+            "result": _load_json_if_exists(artifacts.generator_gate_result_path),
         },
         "training": {
             "skipped": training_skipped,
