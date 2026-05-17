@@ -51,7 +51,8 @@ DEFAULT_MIN_REPLAY_SIZE = 8192
 DEFAULT_TARGET_SAMPLE_PASSES = 1.0
 DEFAULT_TRAINING_BATCH_SIZE = 128
 DEFAULT_GENERATOR_GATE_GAMES = 32
-DEFAULT_GENERATOR_GATE_WORKER_PROCESSES = 4
+DEFAULT_GENERATOR_GATE_WORKER_PROCESSES = 32
+DEFAULT_GENERATION_WORKER_PROCESSES = 32
 
 
 @dataclass(frozen=True)
@@ -105,7 +106,7 @@ class ShogiOnlineReplayConfig:
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 128
     evaluation_batch_size: int = 64
-    generation_worker_processes: int = 1
+    generation_worker_processes: int = DEFAULT_GENERATION_WORKER_PROCESSES
     mcts_move_time_limit_sec: float | None = None
     training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
     seed: int = 7

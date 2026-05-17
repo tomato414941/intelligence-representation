@@ -13,6 +13,7 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
 from intrep.problems.shogi_policy_value.online_replay import (
     DEFAULT_GENERATOR_GATE_GAMES,
     DEFAULT_GENERATOR_GATE_WORKER_PROCESSES,
+    DEFAULT_GENERATION_WORKER_PROCESSES,
     DEFAULT_MIN_REPLAY_SIZE,
     DEFAULT_REPLAY_CAPACITY,
     DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION,
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
     parser.add_argument("--simulations", type=int, default=128)
     parser.add_argument("--evaluation-batch-size", type=int, default=64)
-    parser.add_argument("--generation-worker-processes", type=int, default=1)
+    parser.add_argument("--generation-worker-processes", type=int, default=DEFAULT_GENERATION_WORKER_PROCESSES)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
     parser.add_argument("--learning-rate", type=float, default=0.0005)
     parser.add_argument("--weight-decay", type=float, default=0.0)

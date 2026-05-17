@@ -11,6 +11,46 @@ from intrep.problems.shogi_policy_value.online_replay import ShogiOnlineReplayRe
 
 
 class RunShogiOnlineReplayScriptTest(unittest.TestCase):
+    def test_uses_online_replay_parallelism_defaults(self) -> None:
+        module = _load_script_module()
+        result = ShogiOnlineReplayResult(
+            run_dir=Path("/tmp/online"),
+            initial_checkpoint=Path("source.pt"),
+            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
+            next_checkpoint="best",
+            replay_capacity=8,
+            experience_store_dir=None,
+            replay_seed_data_selection=None,
+            training_eval_data_selection=Path("eval/data-selection.json"),
+            preloaded_examples=0,
+            training_eval_examples=0,
+            stop_reason=None,
+            stopped_iteration_index=None,
+            iterations=(),
+        )
+        run_replay = Mock(return_value=result)
+
+        with (
+            patch.object(module, "run_shogi_online_replay", run_replay),
+            patch.object(module, "print"),
+        ):
+            module.main(
+                [
+                    "--checkpoint",
+                    "source.pt",
+                    "--run-dir",
+                    "online",
+                    "--training-eval-data-selection",
+                    "data/shogi/training-data-bundles/online/data-selection.json",
+                    "--experience-source",
+                    "checkpoint-self:4",
+                ]
+            )
+
+        config = run_replay.call_args.args[0]
+        self.assertEqual(config.generator_gate_worker_processes, 32)
+        self.assertEqual(config.generation_worker_processes, 32)
+
     def test_passes_cli_arguments_to_online_replay_config_and_prints_result(self) -> None:
         module = _load_script_module()
         result = ShogiOnlineReplayResult(
