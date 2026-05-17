@@ -6,11 +6,18 @@ truth for term definitions.
 
 ## Source Records
 
-Source records should stay close to their source. They can produce many
-training examples for different objectives.
+A source record sits before objective-specific training examples:
 
-They should preserve source-side meaning instead of being reshaped around one
-objective, model, or run.
+```text
+Source Record
+  +-> Training Example for Objective A
+  +-> Training Example for Objective B
+  +-> Evidence or Target Construction input
+```
+
+Because one source record can feed different objectives, source records should
+preserve source-side meaning instead of being reshaped around one objective,
+model, or run.
 
 Do not force static dataset records and interaction records into one generic
 schema. They are related because both can produce model inputs, not because they
@@ -18,13 +25,18 @@ need the same raw fields.
 
 ## Data Selection and Runs
 
-Data Selection states which existing records or stored source-side material are
-included for a declared use, and how that material is assigned to splits.
+The usual learning data boundary is:
 
-Experience Stores are source storage for generated or collected experience.
-They are not PyTorch Datasets and should not be the direct learning boundary.
-Training should use explicit Data Selection or a fixed Training Data Bundle
-built from a declared Data Selection.
+```text
+Experience Store
+  -> Data Selection
+  -> Training Data Bundle
+  -> PyTorch Dataset
+```
+
+Experience Stores remain source storage for generated or collected experience.
+Training should not consume an Experience Store directly. It should consume a
+declared Data Selection, or a fixed Training Data Bundle built from one.
 
 PyTorch `Dataset` objects should stay thinner than Data Selection. They adapt
 an already-selected training or evaluation set into indexed samples; they should
