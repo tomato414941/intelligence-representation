@@ -5,22 +5,6 @@ This document records throughput measurements for generated shogi games.
 `runs/` is disposable. Measurements that should survive must be summarized here
 instead of relying on run-local paths.
 
-## Current Bottleneck
-
-The observed bottleneck is self-play generation throughput. Full-length shogi
-games can be long under the standard 320-ply cap, so a small number of games can
-still take minutes.
-
-The generator records:
-
-- progress lines every configured number of plies
-- generation wall time
-- plies per second
-- MCTS request, model, non-model, and phase timing summaries
-
-Online Replay can pass `--generation-progress-every-plies` and stores each
-cycle's `generation-summary.json`.
-
 ## Measurement Conditions
 
 Unless noted otherwise:
@@ -83,20 +67,6 @@ worker 8 / batch 32 setting:
 6 vCPU community: 52.10 plies/sec, GPU avg 35.14%, CPU avg 463.94%
 9 vCPU secure:    98.10 plies/sec, GPU avg 54.48%, CPU avg 643.07%
 ```
-
-### MCTS128 Self-Play
-
-On 2026-05-18, an 8-game MCTS128 checkpoint self-play reproduction completed.
-The run did not indicate a basic game-completion deadlock, but it showed that
-full-length MCTS128 self-play is expensive.
-
-The same day, a 1024-game MCTS128 checkpoint self-play run with 8 worker
-processes was stopped after more than 40 minutes because no 128-game shard had
-completed yet. That does not prove a hang: the 8-game repro implies that a
-128-game shard can plausibly take much longer than 40 minutes. It does show
-that shard-level durability was not observable enough for long generation jobs.
-`shogi-arena-agent` now writes generated records and progress artifacts during
-generation rather than waiting for the final summary.
 
 ## Detailed Measurements
 
