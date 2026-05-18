@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 RUNPOD_RUNNER_ROOT=${RUNPOD_RUNNER_ROOT:-"$PWD/../runpod-job-runner"}
 RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
 DATA_SELECTION=${DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
-TENSOR_CACHE=${TENSOR_CACHE:-data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors}
+TENSOR_CACHE=${TENSOR_CACHE:-}
 INIT_CHECKPOINT_PATH=${INIT_CHECKPOINT_PATH:-}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-shogi-policy-value}
 MAX_STEPS=${MAX_STEPS:-5000}

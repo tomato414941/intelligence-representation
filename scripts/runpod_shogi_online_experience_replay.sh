@@ -166,8 +166,8 @@ python3 "$RUNPOD_JOB" \
   --sync "$PROJECT_REL/$CHECKPOINT" \
   --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/data-selection.json" \
   --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/manifest.json" \
-  --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/train-games.jsonl" \
-  --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/eval-games.jsonl" \
+  --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/train-examples.jsonl" \
+  --sync "$PROJECT_REL/data/shogi/training-data-bundles/qhapaq-full/eval-examples.jsonl" \
   --sync "$ARENA_REL/src" \
   --sync "$ARENA_REL/scripts/generate_shogi_games.py" \
   --sync "$ARENA_REL/scripts/evaluate_shogi_players.py" \
