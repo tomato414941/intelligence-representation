@@ -1,6 +1,6 @@
 # Shogi NN Leaf Eval Batch Fill
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -41,3 +41,9 @@ algorithm rewrite before the bottleneck is clear.
 - Throughput docs record actual fill when comparing settings.
 - A follow-up optimization decision can be made from measured fill data rather
   than configured batch size alone.
+
+## Close Note
+
+Closed after the 2026-05-18 generated-game throughput measurements recorded
+actual NN leaf eval batch average, max, and fill ratio in
+`docs/shogi/self-play-generation-throughput.md`.

@@ -102,6 +102,12 @@ CASE_SETS = {
     'worker8-batch64': [
         ('w8_c8_s16_b64', 64, 8, 8, 16, 64),
     ],
+    'leaffill': [
+        ('w6_c8_s16_b32_g48_leaffill', 48, 8, 6, 16, 32),
+        ('w6_c8_s16_b64_g48_leaffill', 48, 8, 6, 16, 64),
+        ('w6_c16_s16_b32_g96_leaffill', 96, 16, 6, 16, 32),
+        ('w6_c16_s16_b64_g96_leaffill', 96, 16, 6, 16, 64),
+    ],
 }
 try:
     CASES = CASE_SETS[CASE_SET]
