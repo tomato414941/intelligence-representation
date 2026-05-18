@@ -5,17 +5,6 @@ This document records throughput measurements for generated shogi games.
 `runs/` is disposable. Measurements that should survive must be summarized here
 instead of relying on run-local paths.
 
-## Current Path
-
-Self-play generation currently runs through `shogi-arena-agent`:
-
-```text
-scripts/generate_shogi_games.py
-```
-
-Online Replay calls that script from this repository and stores generated games
-as shogi game-record JSONL before splitting them into train/eval examples.
-
 ## Current Bottleneck
 
 The observed bottleneck is self-play generation throughput. Full-length shogi
@@ -36,6 +25,7 @@ cycle's `generation-summary.json`.
 
 Unless noted otherwise:
 
+- generation entrypoint: `shogi-arena-agent/scripts/generate_shogi_games.py`
 - GPU: not fixed. Record the actual GPU used by each measurement. Current
   candidates are RTX A5000, RTX 4090, and RTX 4000 Ada Generation when
   available.
