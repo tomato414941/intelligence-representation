@@ -1,10 +1,10 @@
-# Shogi Self-Play Generation Throughput
+# Shogi Generated Game Throughput
 
-This document records facts for planning shogi self-play data generation. It is
+This document records throughput measurements for generated shogi games. It is
 not a model-quality report and it is not a complete run history.
 
-`runs/` is disposable. Measurements that should survive must be summarized in
-this document instead of relying on run-local paths.
+`runs/` is disposable. Measurements that should survive must be summarized here
+instead of relying on run-local paths.
 
 ## Current Path
 
