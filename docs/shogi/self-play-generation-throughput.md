@@ -13,54 +13,22 @@ Unless noted otherwise:
 - board backend: `cshogi`
 - max plies: 320
 
-## Findings
+## Summary
 
-### Generation Worker Processes
-
-Single-process generation left the GPU mostly idle. With 6 vCPU / 31 GiB
-community Pods, generation worker processes increased throughput through 6
-workers:
-
-```text
-worker=1: 12.72 plies/sec, GPU avg  4.37%
-worker=2: 18.99 plies/sec, GPU avg  9.95%
-worker=4: 40.77 plies/sec, GPU avg 24.60%
-worker=6: 50.40 plies/sec, GPU avg 33.64%
-worker=8: 52.10 plies/sec, GPU avg 35.14%
-```
-
-On the observed 6 vCPU Pod, worker 8 did not improve over worker 6.
-
-In the 2026-05-13 current-code worker-scaling profile, the measured non-model
-MCTS phases were still dominated by expansion and selection:
-
-```text
-worker=1: expand 63.81%, selection 23.38%, legal_moves 8.38%, board_copy 3.17%
-worker=2: expand 64.08%, selection 22.75%, legal_moves 8.45%, board_copy 3.53%
-worker=4: expand 62.76%, selection 23.94%, legal_moves 8.31%, board_copy 3.64%
-worker=6: expand 65.81%, selection 21.63%, legal_moves 7.73%, board_copy 3.52%
-```
-
-### NN Batch Limit
-
-Increasing `NN leaf eval batch limit` from 32 to 64 at 6 worker processes did
-not improve throughput in the recorded run:
-
-```text
-worker=6, batch=32: 53.24 plies/sec, GPU avg 35.65%
-worker=6, batch=64: 49.68 plies/sec, GPU avg 34.17%
-```
-
-### Pod CPU Allocation
-
-Requesting more vCPU changed the result materially. The 9 vCPU secure Pod
-recorded much higher throughput than the 6 vCPU community Pod for the same
-worker 8 / batch 32 setting:
-
-```text
-6 vCPU community: 52.10 plies/sec, GPU avg 35.14%, CPU avg 463.94%
-9 vCPU secure:    98.10 plies/sec, GPU avg 54.48%, CPU avg 643.07%
-```
+- Generation worker processes improved throughput materially in recorded
+  light-search self-play measurements.
+- On the observed 6 vCPU Pod, worker 8 did not materially improve over worker 6.
+- Recorded non-model MCTS timing was dominated by expansion and selection.
+- Increasing `NN leaf eval batch limit` from 32 to 64 did not improve
+  throughput in the recorded worker 6 comparison.
+- Requesting more vCPU materially improved throughput in the recorded worker 8
+  comparison.
+- Wall time is sensitive to game length. Use `plies/sec` when comparing
+  throughput across self-play settings.
+- `System RAM used` is not included because it was recorded from
+  container-visible `/proc/meminfo`; in these runs it exposed a larger memory
+  total than the Pod settings. Use `Generator RSS` for process-scoped memory
+  comparison.
 
 ## Detailed Measurements
 
@@ -79,22 +47,3 @@ Case IDs use
 | `w6_c8_s16_b64_g48` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 48 | 8 | 6 | 16 | 64 | 201.1 | 194.30 | 49.68 | 34.17% | 58.00% | 2063 MiB / 20475 MiB | 447.00% | 570.70% | 5678 MiB | 18 of 48 games reached max plies. |
 | `w8_c8_s16_b32_g64_6vcpu` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | `EU-RO-1` requested; assigned US | $0.20/hr | 64 | 8 | 8 | 16 | 32 | 227.4 | 279.35 | 52.10 | 35.14% | 53.00% | 2816 MiB / 20475 MiB | 463.94% | 586.80% | 7555 MiB | 29 of 64 games reached max plies. |
 | `w8_c8_s16_b32_g64_9vcpu` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 9 vCPU, 50 GiB | secure | `EU-RO-1` | $0.26/hr | 64 | 8 | 8 | 16 | 32 | 225.9 | 147.35 | 98.10 | 54.48% | 84.00% | 2777 MiB / 20475 MiB | 643.07% | 830.40% | 7825 MiB | 28 of 64 games reached max plies. |
-
-## Notes
-
-- Wall time is sensitive to game length. Use `plies/sec` when comparing
-  throughput across self-play settings.
-- Most recorded rows so far used RTX 4000 Ada. Treat GPU type as a measurement
-  condition, not as a document-wide default.
-- On 2026-05-12, RTX 4000 Ada secure Pod creation with
-  `minVCPUPerGPU=10` and `minVCPUPerGPU=12` returned no available instances.
-- Process-level game parallelism is exposed as generation worker processes.
-  `concurrent-games-per-process` still batches multiple active games inside one
-  Python process.
-- Current measurements do not use in-tree leaf selection parallelism; batching
-  comes from multiple active games, not multiple pending leaves from one MCTS
-  tree.
-- `System RAM used` was removed from the detailed table because it was recorded
-  from container-visible `/proc/meminfo`; in these runs it exposed a larger
-  memory total than the Pod settings. Use `Generator RSS` for process-scoped
-  memory comparison.
