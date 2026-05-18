@@ -61,6 +61,41 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Missing key"):
                 load_shogi_policy_value_checkpoint(path)
 
+    def test_load_expands_older_position_token_embedding_vocab(self) -> None:
+        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            ),
+        )
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = next(
+            iter(torch.utils.data.DataLoader(ShogiPolicyValueDataset(examples), batch_size=2))
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shogi.pt"
+            save_shogi_policy_value_checkpoint(path, result)
+            payload = torch.load(path, weights_only=False)
+            state_dict = payload["model_state_dict"]
+            for key in ("position_input.token_embedding.weight", "move_model.position_embedding.weight"):
+                old_weight = state_dict[key].clone()
+                old_weight[38:45] = old_weight[50:57]
+                state_dict[key] = old_weight[:45].clone()
+            torch.save(payload, path)
+
+            loaded = load_shogi_policy_value_checkpoint(path)
+
+        with torch.no_grad():
+            expected = result.model(position_token_ids, candidate_move_features, candidate_mask)
+            actual = loaded(position_token_ids, candidate_move_features, candidate_mask)
+
+        self.assertTrue(torch.allclose(actual, expected))
+
 
 if __name__ == "__main__":
     unittest.main()

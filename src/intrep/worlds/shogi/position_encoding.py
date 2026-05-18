@@ -13,9 +13,10 @@ BLACK_PIECE_OFFSET = 1
 WHITE_PIECE_OFFSET = 15
 SIDE_TO_MOVE_BLACK_TOKEN_ID = 29
 SIDE_TO_MOVE_WHITE_TOKEN_ID = 30
+HAND_COUNT_TOKEN_MAX = 18
 HAND_BLACK_OFFSET = 31
-HAND_WHITE_OFFSET = 38
-SHOGI_POSITION_VOCAB_SIZE = 45
+HAND_WHITE_OFFSET = HAND_BLACK_OFFSET + HAND_COUNT_TOKEN_MAX + 1
+SHOGI_POSITION_VOCAB_SIZE = HAND_WHITE_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 
 HAND_PIECE_TYPES = (
     shogi.PAWN,
@@ -60,5 +61,5 @@ def hand_token_ids(board: shogi.Board) -> list[int]:
         pieces_in_hand = board.pieces_in_hand[color]
         for piece_type in HAND_PIECE_TYPES:
             count = pieces_in_hand[piece_type]
-            token_ids.append(offset + min(count, 6))
+            token_ids.append(offset + min(count, HAND_COUNT_TOKEN_MAX))
     return token_ids

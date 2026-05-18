@@ -69,6 +69,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
+    from intrep.problems.shogi_policy_value.model import adapt_shogi_policy_value_state_dict_for_model
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
     config_payload = payload["config"]
@@ -83,7 +84,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
             allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
         )
     )
-    model.load_state_dict(payload["model_state_dict"], strict=True)
+    model.load_state_dict(adapt_shogi_policy_value_state_dict_for_model(payload["model_state_dict"], model), strict=True)
     model.to(torch.device(device))
     model.eval()
     return model

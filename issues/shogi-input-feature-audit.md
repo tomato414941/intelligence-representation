@@ -10,7 +10,7 @@ compact token sequence:
 
 - side to move
 - 81 board-square piece tokens
-- capped hand-piece count tokens
+- hand-piece count tokens
 
 Before increasing model size or drawing conclusions from more training data, the
 project should verify whether this representation preserves the shogi state
@@ -39,3 +39,19 @@ missing or ambiguous features are identified.
 - Tests cover important encoding invariants.
 - Any missing features that should be added are split into concrete follow-up
   issues.
+
+## Progress
+
+2026-05-18:
+
+- Qhapaq full records contained 2,460,781 positions.
+- 66,326 positions, about 2.7%, had at least one hand-piece count greater than
+  six.
+- Over-cap positions were pawn-only in this corpus; the maximum observed pawn
+  hand count was 14.
+- The hand-count token range was expanded from 0..6 to 0..18 so legal pawn hand
+  counts no longer collapse at six.
+
+Remaining audit areas include board orientation, rule/history context, attack
+or check features, and whether the current compact token representation should
+remain the next model input shape.

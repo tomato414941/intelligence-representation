@@ -6,7 +6,11 @@ import torch
 from torch import nn
 
 from intrep.worlds.shogi.move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT, SHOGI_POSITION_VOCAB_SIZE
+from intrep.worlds.shogi.position_encoding import (
+    HAND_WHITE_OFFSET,
+    SHOGI_POSITION_TOKEN_COUNT,
+    SHOGI_POSITION_VOCAB_SIZE,
+)
 from intrep.core.transformer_core import SharedTransformerCore
 
 
@@ -176,6 +180,53 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             dim=-1,
         )
         return self.candidate_scorer(scorer_input)
+
+
+def adapt_shogi_policy_value_state_dict_for_model(
+    state_dict: object,
+    model: nn.Module,
+) -> dict[str, torch.Tensor]:
+    if not isinstance(state_dict, dict):
+        raise TypeError("state_dict must be a dict")
+    target_state_dict = model.state_dict()
+    adapted: dict[str, torch.Tensor] = {}
+    for key, value in state_dict.items():
+        if (
+            key in target_state_dict
+            and isinstance(value, torch.Tensor)
+            and value.ndim == 2
+            and target_state_dict[key].ndim == 2
+            and value.shape[1] == target_state_dict[key].shape[1]
+            and value.shape[0] < target_state_dict[key].shape[0]
+            and _is_shogi_position_token_embedding_key(key)
+        ):
+            expanded = target_state_dict[key].detach().clone()
+            _copy_position_token_embedding_rows(expanded, value)
+            adapted[key] = expanded
+        else:
+            adapted[key] = value
+    return adapted
+
+
+def _is_shogi_position_token_embedding_key(key: str) -> bool:
+    return key in {
+        "position_embedding.weight",
+        "position_input.token_embedding.weight",
+        "move_model.position_embedding.weight",
+    }
+
+
+def _copy_position_token_embedding_rows(target: torch.Tensor, source: torch.Tensor) -> None:
+    old_hand_count_token_max = 6
+    old_hand_white_offset = 38
+    old_vocab_size = old_hand_white_offset + old_hand_count_token_max + 1
+    if source.shape[0] == old_vocab_size and target.shape[0] >= SHOGI_POSITION_VOCAB_SIZE:
+        target[:old_hand_white_offset] = source[:old_hand_white_offset]
+        target[HAND_WHITE_OFFSET : HAND_WHITE_OFFSET + old_hand_count_token_max + 1] = source[
+            old_hand_white_offset : old_hand_white_offset + old_hand_count_token_max + 1
+        ]
+        return
+    target[: source.shape[0]] = source
 
 
 def _candidate_square_hidden(
