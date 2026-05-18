@@ -66,14 +66,14 @@ worker 8 / batch 32 setting:
 
 Rows are grouped by measurement intent rather than strict chronology.
 
-### Long Generation Durability Checks
+### Heavy Self-Play Throughput
 
 | Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
 | `m128_w1_c8_b64_g8` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX A5000 | 9 vCPU, 50 GiB | secure | EU-SE-1 | $0.27/hr | 8 | 8 | 1 | 128 | 64 | 151.9 | 378.39 | 3.21 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Completed. End reasons: 6 game_over, 2 max_plies. Result: black 5, white 1, draws 2. Actual NN leaf eval batch avg 5.09, fill 7.95%, max 8. |
 | `m128_w8_c8_b64_g1024_stopped` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4090 | 8 vCPU, 46 GiB | secure | EU-RO-1 | $0.69/hr | 1024 requested | 8 | 8 | 128 | 64 | not available | stopped after >40m | not available | about 50-70% observed | not recorded | about 4.5-5.0 GiB observed | about 8 workers near one core each | not recorded | not recorded | Stopped before any 128-game shard completed. This is evidence of coarse pre-fix durability, not evidence of a deadlock. |
 
-### Worker Scaling Profile
+### Worker And Resource Scaling
 
 | Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
@@ -82,11 +82,6 @@ Rows are grouped by measurement intent rather than strict chronology.
 | `w2_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
 | `w4_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
 | `w6_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 241.7 | 230.17 | 50.40 | 33.64% | 59.00% | 2089 MiB / 20475 MiB | 485.50% | 567.50% | 5825 MiB | 2026-05-13 current-code profile. Measured phase share: expand 65.81%, selection 21.63%. |
-
-### Worker, Batch, And CPU Allocation Sweep
-
-| Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
 | `w4_c8_s16_b32` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not recorded | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 238.3 | 182.34 | 41.82 | 24.38% | 55.00% | 1415 MiB / 20475 MiB | 366.41% | 469.20% | 3838 MiB | 13 of 32 games reached max plies. |
 | `w1_c16_s16_b32` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 16 | 1 | 16 | 32 | 195.5 | 257.17 | 12.16 | 4.44% | 10.00% | 542 MiB / 20475 MiB | 101.93% | 140.00% | 968 MiB | 5 of 16 games reached max plies. |
 | `w2_c8_s16_b32` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | not pinned; assigned US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 257.4 | 187.10 | 22.01 | 10.60% | 30.00% | 705 MiB / 20475 MiB | 205.55% | 300.80% | 1946 MiB | 9 of 16 games reached max plies. |
