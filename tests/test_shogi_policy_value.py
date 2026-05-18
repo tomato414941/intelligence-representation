@@ -97,8 +97,8 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
         self.assertEqual(int(label_index.item()), 3)
         self.assertEqual(int(candidate_mask.sum().item()), len(legal_moves))
-        self.assertTrue(torch.equal(candidate_move_features[0], shogi_move_feature_ids("B*5e")))
-        self.assertTrue(torch.equal(candidate_move_features[1], shogi_move_feature_ids("8h2b+")))
+        self.assertTrue(torch.equal(candidate_move_features[0], shogi_move_feature_ids("B*5e", turn=board.turn)))
+        self.assertTrue(torch.equal(candidate_move_features[1], shogi_move_feature_ids("8h2b+", turn=board.turn)))
         self.assertEqual(float(policy_targets[0].item()), 0.25)
         self.assertEqual(float(policy_targets[3].item()), 0.75)
 

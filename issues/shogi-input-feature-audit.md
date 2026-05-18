@@ -51,7 +51,16 @@ missing or ambiguous features are identified.
   hand count was 14.
 - The hand-count token range was expanded from 0..6 to 0..18 so legal pawn hand
   counts no longer collapse at six.
+- The model input coordinate system was changed from absolute-board to
+  side-to-move-relative:
+  - board squares are rotated for white to move
+  - pieces are encoded as own/opponent instead of black/white
+  - hands are encoded as own/opponent instead of black/white
+  - candidate move from/to squares use the same relative coordinate system
+- Checkpoints now record `input_encoding`. Older checkpoints without that input
+  identity are rejected instead of being compatibility-loaded into the new
+  representation.
 
-Remaining audit areas include board orientation, rule/history context, attack
-or check features, and whether the current compact token representation should
-remain the next model input shape.
+Remaining audit areas include rule/history context, attack or check features,
+and whether the current compact token representation is strong enough after the
+relative-coordinate change.

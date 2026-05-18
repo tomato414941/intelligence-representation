@@ -22,7 +22,6 @@ from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModelConfig,
     ShogiPolicyValueModel,
     ShogiPolicyValueModelConfig,
-    adapt_shogi_policy_value_state_dict_for_model,
 )
 
 
@@ -161,7 +160,7 @@ def train_shogi_policy_value_model(
         raise ValueError("eval examples are required when eval_every is set")
     model = build_shogi_policy_value_model(training_config).to(device)
     if initial_state_dict is not None:
-        model.load_state_dict(adapt_shogi_policy_value_state_dict_for_model(initial_state_dict, model), strict=True)
+        model.load_state_dict(initial_state_dict, strict=True)
     optimizer = build_adamw(
         model,
         learning_rate=training_config.learning_rate,

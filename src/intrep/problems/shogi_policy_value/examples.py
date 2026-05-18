@@ -239,9 +239,11 @@ def _policy_sample(
     from intrep.worlds.shogi.move_encoding import shogi_candidate_move_features
     from intrep.worlds.shogi.position_encoding import shogi_position_token_ids_from_sfen
 
+    board = shogi.Board(example.position_sfen)
     position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)
     candidate_move_features = shogi_candidate_move_features(
         example.legal_moves,
+        turn=board.turn,
         max_choice_count=max_choice_count,
     )
     move_index = example.legal_moves.index(example.chosen_move)
