@@ -34,3 +34,35 @@ Do not make non-MCTS sources pretend to have visit-count targets.
 - Tests cover generated-game target construction using visit counts.
 - Missing visit-count evidence fails clearly or falls back only when explicitly
   configured.
+
+## Investigation Notes
+
+Current state:
+
+- `shogi-arena-agent` records MCTS root child visit counts under
+  `decision_telemetry.search_evidence.mcts_root_child_visit_counts`.
+- `intelligence-representation` can normalize that evidence through
+  `policy_target_construction="mcts_visit_counts"`.
+- Online Replay generated games already use `mcts_visit_counts`.
+- The fixed generated-data training cycle still converts generated games into
+  `shogi_policy_value_examples_jsonl` with
+  `policy_target_construction="chosen_move"`.
+
+The adoption gap is therefore narrow:
+
+```text
+src/intrep/problems/shogi_policy_value/generated_data_cycle.py
+  _write_examples(...)
+    load_shogi_policy_value_examples_from_game_records_jsonl(
+      policy_target_construction="chosen_move",
+      value_target_construction="winner",
+    )
+```
+
+One subtle issue remains: tensorization intentionally falls back to a one-hot
+chosen-move target when `example.policy_targets is None`. That is useful for
+ordinary chosen-move datasets, but it can hide missing MCTS search evidence if a
+generated checkpoint dataset was expected to use visit counts.
+
+The implementation should make that boundary explicit rather than relying on an
+implicit fallback.
