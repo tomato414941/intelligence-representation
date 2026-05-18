@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.examples import (
     tensorize_shogi_policy_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_policy_value_examples_from_test_moves
-from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT
+from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
@@ -77,6 +77,30 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
         self.assertEqual(float(policy_targets[legal_moves.index("7g7f")].item()), 0.75)
         self.assertEqual(float(policy_targets[legal_moves.index("2g2f")].item()), 0.25)
+
+    def test_policy_targets_and_labels_follow_candidate_order(self) -> None:
+        board = shogi.Board()
+        board.remove_piece_at(shogi.SQUARE_NAMES.index("7g"))
+        board.remove_piece_at(shogi.SQUARE_NAMES.index("3c"))
+        board.add_piece_into_hand(shogi.BISHOP, shogi.BLACK)
+        legal_moves = ("B*5e", "8h2b+", "2g2f", "7i7h")
+        self.assertTrue(set(legal_moves).issubset({move.usi() for move in board.legal_moves}))
+        example = ShogiMoveChoiceExample(
+            position_sfen=board.sfen(),
+            legal_moves=legal_moves,
+            chosen_move="7i7h",
+            policy_targets={"7i7h": 6.0, "B*5e": 2.0},
+        )
+        dataset = ShogiMoveChoiceDataset((example,))
+
+        _, candidate_move_features, candidate_mask, label_index, policy_targets = dataset[0]
+
+        self.assertEqual(int(label_index.item()), 3)
+        self.assertEqual(int(candidate_mask.sum().item()), len(legal_moves))
+        self.assertTrue(torch.equal(candidate_move_features[0], shogi_move_feature_ids("B*5e")))
+        self.assertTrue(torch.equal(candidate_move_features[1], shogi_move_feature_ids("8h2b+")))
+        self.assertEqual(float(policy_targets[0].item()), 0.25)
+        self.assertEqual(float(policy_targets[3].item()), 0.75)
 
     def test_policy_value_dataset_rejects_missing_non_chosen_policy_targets(self) -> None:
         board = shogi.Board()
