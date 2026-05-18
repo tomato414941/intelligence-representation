@@ -15,6 +15,7 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
 )
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -183,6 +184,36 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         self.assertEqual(examples[0].policy_targets, {"7g7f": 0.75, "2g2f": 0.25})
         self.assertEqual(examples[0].policy_target_source, "mcts_visit_counts")
         self.assertEqual(examples[0].value_target_source, "winner")
+
+    def test_mcts_visit_targets_tensorize_against_candidate_order(self) -> None:
+        record = _record(("7g7f",), "black")
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(
+                    action_usi="7g7f",
+                    decision_telemetry=ShogiDecisionTelemetry(
+                        search_evidence={"mcts_root_child_visit_counts": {"7g7f": 6, "2g2f": 2}},
+                    ),
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            write_shogi_game_records_jsonl(path, [record])
+            examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+                path,
+                policy_target_construction="mcts_visit_counts",
+                value_target_construction="winner",
+            )
+
+        _, _, candidate_mask, label_index, policy_targets, _ = ShogiPolicyValueDataset(examples)[0]
+
+        legal_moves = examples[0].legal_moves
+        self.assertEqual(int(label_index.item()), legal_moves.index("7g7f"))
+        self.assertEqual(int(candidate_mask.sum().item()), len(legal_moves))
+        self.assertEqual(float(policy_targets[legal_moves.index("7g7f")].item()), 0.75)
+        self.assertEqual(float(policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 
     def test_builds_policy_and_score_targets_from_engine_analysis(self) -> None:
         record = _record(("7g7f",), "black")
