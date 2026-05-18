@@ -41,6 +41,7 @@ YANEURAOU_REF=${YANEURAOU_REF:-master}
 YANEURAOU_EDITION=${YANEURAOU_EDITION:-YANEURAOU_ENGINE_NNUE}
 YANEURAOU_TARGET_CPU=${YANEURAOU_TARGET_CPU:-AVX2}
 YANEURAOU_COMPILER=${YANEURAOU_COMPILER:-g++}
+YANEURAOU_BUILD_JOBS=${YANEURAOU_BUILD_JOBS:-8}
 SUISHO5_ARCHIVE_URL=${SUISHO5_ARCHIVE_URL:-https://github.com/yaneurao/YaneuraOu/releases/download/suisho5/Suisho5.7z}
 TANUKI_ARCHIVE_URL=${TANUKI_ARCHIVE_URL:-https://github.com/nodchip/tanuki-/releases/download/tanuki-.halfkp_256x2-32-32.2023-05-08/tanuki-.halfkp_256x2-32-32.2023-05-08.7z}
 SUISHO5_FV_SCALE=${SUISHO5_FV_SCALE:-24}
@@ -112,12 +113,15 @@ GAMES_PER_SOURCE=\"$GAMES_PER_SOURCE\"
 TRAIN_RATIO=\"$TRAIN_RATIO\"
 SEED=\"$SEED\"
 export OUT GAMES_PER_SOURCE TRAIN_RATIO SEED
-mkdir -p \"\$OUT\"
+mkdir -p \"\$OUT/setup-logs\"
 apt-get update >/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential curl p7zip-full unzip >/dev/null
 rm -rf /root/YaneuraOu /root/shogi-evals
 GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch \"$YANEURAOU_REF\" \"$YANEURAOU_REPOSITORY_URL\" /root/YaneuraOu
-make -s -C /root/YaneuraOu/source -f Makefile -j\"\$(nproc)\" normal TARGET_CPU=\"$YANEURAOU_TARGET_CPU\" YANEURAOU_EDITION=\"$YANEURAOU_EDITION\" COMPILER=\"$YANEURAOU_COMPILER\" TARGET=YaneuraOu-nnue-runpod
+if ! make -s -C /root/YaneuraOu/source -f Makefile -j\"$YANEURAOU_BUILD_JOBS\" normal TARGET_CPU=\"$YANEURAOU_TARGET_CPU\" YANEURAOU_EDITION=\"$YANEURAOU_EDITION\" COMPILER=\"$YANEURAOU_COMPILER\" TARGET=YaneuraOu-nnue-runpod >\"\$OUT/setup-logs/yaneuraou-build.log\" 2>&1; then
+  tail -200 \"\$OUT/setup-logs/yaneuraou-build.log\" >&2
+  exit 1
+fi
 mkdir -p /root/shogi-evals/suisho5/eval /root/shogi-evals/tanuki-hao/eval
 curl -L --fail --retry 3 \"$SUISHO5_ARCHIVE_URL\" -o /root/suisho5.7z
 7z x -y /root/suisho5.7z -o/root/shogi-evals/suisho5/eval >/dev/null
