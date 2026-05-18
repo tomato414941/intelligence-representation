@@ -17,6 +17,12 @@ FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1
 TO_SQUARE_VOCAB_SIZE = 81
 PROMOTION_VOCAB_SIZE = 2
 DROP_PIECE_VOCAB_SIZE = 8
+SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER = "shared_transformer"
+SHOGI_POLICY_VALUE_MODEL_DIRECT = "direct"
+SHOGI_POLICY_VALUE_MODEL_NAMES = (
+    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
+    SHOGI_POLICY_VALUE_MODEL_DIRECT,
+)
 SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
@@ -40,6 +46,14 @@ SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
     "policy_head": SHOGI_POLICY_HEAD_MODULE_ID,
     "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
 }
+
+
+def shogi_policy_value_model_spec(model: str) -> dict[str, object]:
+    if model == SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER:
+        return dict(SHOGI_POLICY_VALUE_MODEL_SPEC)
+    if model == SHOGI_POLICY_VALUE_MODEL_DIRECT:
+        return dict(SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC)
+    raise ValueError(f"unsupported shogi policy/value model: {model}")
 
 
 @dataclass(frozen=True)

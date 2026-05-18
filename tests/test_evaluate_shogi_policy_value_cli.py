@@ -66,7 +66,6 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 num_layers=1,
-                use_shared_core=True,
             )
             save_shogi_policy_value_model_checkpoint(checkpoint_path, build_shogi_policy_value_model(config), config)
 

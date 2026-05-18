@@ -5,7 +5,11 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.problems.shogi_policy_value.model import DirectShogiPolicyValueModel, DirectShogiPolicyValueModelConfig
+from intrep.problems.shogi_policy_value.model import (
+    DirectShogiPolicyValueModel,
+    DirectShogiPolicyValueModelConfig,
+    SHOGI_POLICY_VALUE_MODEL_DIRECT,
+)
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
@@ -59,7 +63,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 learning_rate=0.02,
                 embedding_dim=8,
                 hidden_dim=16,
-                use_shared_core=False,
+                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
             ),
         )
 
@@ -252,7 +256,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                use_shared_core=False,
+                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
                 value_loss_weight=0.2,
                 allow_nonstandard_loss_weights=True,
             ),
@@ -293,7 +297,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                use_shared_core=False,
+                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,
@@ -330,7 +334,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                     batch_size=2,
                     embedding_dim=8,
                     hidden_dim=16,
-                    use_shared_core=False,
+                    model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
                     policy_loss_weight=0.0,
                     value_loss_weight=1.0,
                     allow_nonstandard_loss_weights=True,

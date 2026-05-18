@@ -20,6 +20,8 @@ from intrep.problems.shogi_policy_value.examples import (
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
     DirectShogiPolicyValueModelConfig,
+    SHOGI_POLICY_VALUE_MODEL_DIRECT,
+    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
 )
@@ -36,7 +38,7 @@ class ShogiPolicyValueTrainingConfig:
     hidden_dim: int = 1024
     num_heads: int = 8
     num_layers: int = 6
-    use_shared_core: bool = True
+    model: str = SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     allow_nonstandard_loss_weights: bool = False
@@ -545,7 +547,7 @@ def _log_training_progress(
 
 
 def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
-    if config.use_shared_core:
+    if config.model == SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER:
         return SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=config.embedding_dim,
@@ -554,9 +556,11 @@ def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn
                 num_layers=config.num_layers,
             )
         )
-    return DirectShogiPolicyValueModel(
-        DirectShogiPolicyValueModelConfig(
-            embedding_dim=config.embedding_dim,
-            hidden_dim=config.hidden_dim,
+    if config.model == SHOGI_POLICY_VALUE_MODEL_DIRECT:
+        return DirectShogiPolicyValueModel(
+            DirectShogiPolicyValueModelConfig(
+                embedding_dim=config.embedding_dim,
+                hidden_dim=config.hidden_dim,
+            )
         )
-    )
+    raise ValueError(f"unsupported shogi policy/value model: {config.model}")

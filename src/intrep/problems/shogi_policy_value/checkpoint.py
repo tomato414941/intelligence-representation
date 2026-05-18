@@ -6,8 +6,8 @@ import torch
 from torch import nn
 
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC,
-    SHOGI_POLICY_VALUE_MODEL_SPEC,
+    SHOGI_POLICY_VALUE_MODEL_NAMES,
+    shogi_policy_value_model_spec,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
@@ -30,12 +30,12 @@ def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: objec
             "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
             "config": {
                 "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
+                "model": config.model,
                 "model_spec": _checkpoint_model_spec(config),
                 "embedding_dim": config.embedding_dim,
                 "hidden_dim": config.hidden_dim,
                 "num_heads": config.num_heads,
                 "num_layers": config.num_layers,
-                "use_shared_core": config.use_shared_core,
                 "policy_loss_weight": config.policy_loss_weight,
                 "value_loss_weight": config.value_loss_weight,
                 "allow_nonstandard_loss_weights": config.allow_nonstandard_loss_weights,
@@ -69,9 +69,9 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
         hidden_dim=int(config_payload["hidden_dim"]),
         num_heads=int(config_payload.get("num_heads", 4)),
         num_layers=int(config_payload.get("num_layers", 1)),
-        use_shared_core=bool(config_payload.get("use_shared_core", False)),
+        model=str(config_payload["model"]),
         policy_loss_weight=float(config_payload.get("policy_loss_weight", 1.0)),
-        value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
+        value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
         allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
     )
 
@@ -91,8 +91,8 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
             hidden_dim=int(config_payload["hidden_dim"]),
             num_heads=int(config_payload.get("num_heads", 4)),
             num_layers=int(config_payload.get("num_layers", 1)),
-            use_shared_core=bool(config_payload.get("use_shared_core", False)),
-            value_loss_weight=float(config_payload.get("value_loss_weight", 0.0)),
+            model=str(config_payload["model"]),
+            value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
             allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
         )
     )
@@ -119,13 +119,15 @@ def _validate_checkpoint_model_spec(payload: dict[str, object]) -> None:
 
 
 def _checkpoint_model_spec(config: object) -> dict[str, object]:
-    use_shared_core = _config_bool(config, "use_shared_core")
-    if use_shared_core:
-        return dict(SHOGI_POLICY_VALUE_MODEL_SPEC)
-    return dict(SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC)
+    model = _config_str(config, "model")
+    if model not in SHOGI_POLICY_VALUE_MODEL_NAMES:
+        raise ValueError(f"unsupported shogi policy/value model: {model}")
+    return shogi_policy_value_model_spec(model)
 
 
-def _config_bool(config: object, name: str) -> bool:
+def _config_str(config: object, name: str) -> str:
     if isinstance(config, dict):
-        return bool(config.get(name, False))
-    return bool(getattr(config, name))
+        if name not in config:
+            raise ValueError(f"shogi checkpoint config missing {name}")
+        return str(config[name])
+    return str(getattr(config, name))

@@ -65,6 +65,8 @@ boundary.
   candidate move input, core, pooling, policy head, and value head identities in
   addition to the input encoding identity, so incompatible full-checkpoint
   restores are rejected deliberately.
+- Shogi training config now selects a model by name (`shared_transformer` or
+  `direct`) instead of using a `use_shared_core` implementation boolean.
 
 ## Non-Goals
 

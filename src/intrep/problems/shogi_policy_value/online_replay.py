@@ -1145,7 +1145,7 @@ def _training_config_from_checkpoint(
         hidden_dim=checkpoint_config.hidden_dim,
         num_heads=checkpoint_config.num_heads,
         num_layers=checkpoint_config.num_layers,
-        use_shared_core=checkpoint_config.use_shared_core,
+        model=checkpoint_config.model,
         policy_loss_weight=training_config.policy_loss_weight,
         value_loss_weight=training_config.value_loss_weight,
         allow_nonstandard_loss_weights=training_config.allow_nonstandard_loss_weights,

@@ -21,6 +21,10 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
+from intrep.problems.shogi_policy_value.model import (
+    SHOGI_POLICY_VALUE_MODEL_NAMES,
+    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
+)
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
@@ -44,6 +48,7 @@ def main() -> None:
     parser.add_argument("--hidden-dim", type=int, default=1024)
     parser.add_argument("--num-heads", type=int, default=8)
     parser.add_argument("--num-layers", type=int, default=6)
+    parser.add_argument("--model", choices=SHOGI_POLICY_VALUE_MODEL_NAMES, default=SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER)
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)
     parser.add_argument("--allow-nonstandard-loss-weights", action="store_true")
@@ -93,7 +98,7 @@ def main() -> None:
         hidden_dim=args.hidden_dim,
         num_heads=args.num_heads,
         num_layers=args.num_layers,
-        use_shared_core=True,
+        model=args.model,
         policy_loss_weight=args.policy_loss_weight,
         value_loss_weight=args.value_loss_weight,
         allow_nonstandard_loss_weights=args.allow_nonstandard_loss_weights,
