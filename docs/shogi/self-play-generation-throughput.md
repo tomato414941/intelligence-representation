@@ -66,7 +66,7 @@ worker 8 / batch 32 setting:
 
 Rows are grouped by measurement intent rather than strict chronology.
 
-### MCTS128 Self-Play Checks
+### Long Generation Durability Checks
 
 | Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
@@ -82,16 +82,6 @@ Rows are grouped by measurement intent rather than strict chronology.
 | `w2_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 16 | 8 | 2 | 16 | 32 | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
 | `w4_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 32 | 8 | 4 | 16 | 32 | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
 | `w6_c8_s16_b32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6 | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | 48 | 8 | 6 | 16 | 32 | 241.7 | 230.17 | 50.40 | 33.64% | 59.00% | 2089 MiB / 20475 MiB | 485.50% | 567.50% | 5825 MiB | 2026-05-13 current-code profile. Measured phase share: expand 65.81%, selection 21.63%. |
-
-### Initial Small Grid
-
-| Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
-| `p1_b16` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 1 | 1 | 16 | 16 | 110.5 | 55.00 | 8.04 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p2_b16` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 2 | 1 | 16 | 16 | 304.5 | 114.64 | 10.62 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_b16` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 16 | 185.2 | 74.26 | 9.98 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_b32` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 16 | 32 | 251.5 | 82.40 | 12.21 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
-| `p4_s32_b32` | not recorded | checkpoint vs checkpoint | d256-h1024-heads8-l6 | not recorded | not recorded | community | not recorded | $0.20/hr | 4 | 4 | 1 | 32 | 32 | 221.2 | 179.84 | 4.92 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Initial small grid. |
 
 ### Concurrent Games Sweep
 
@@ -125,9 +115,6 @@ Rows are grouped by measurement intent rather than strict chronology.
   condition, not as a document-wide default.
 - On 2026-05-12, RTX 4000 Ada secure Pod creation with
   `minVCPUPerGPU=10` and `minVCPUPerGPU=12` returned no available instances.
-- The initial throughput grid did not record GPU utilization over time. It
-  confirms CUDA execution, but not whether the GPU was saturated.
-- Increasing simulations from 16 to 32 reduced throughput in the initial grid.
 - Process-level game parallelism is exposed as generation worker processes.
   `concurrent-games-per-process` still batches multiple active games inside one
   Python process.
