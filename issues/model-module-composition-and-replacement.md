@@ -57,6 +57,14 @@ Shogi input representation changes now affect:
 That is evidence that input modules need a cleaner identity and replacement
 boundary.
 
+## Progress
+
+- Shogi policy/value now exposes separate model parts for position input,
+  candidate move input, shared core, policy head, and value head.
+- Shogi checkpoint metadata now records a model architecture identity in
+  addition to the input encoding identity, so incompatible full-checkpoint
+  restores are rejected deliberately.
+
 ## Non-Goals
 
 - Do not force every modality into one raw input schema.

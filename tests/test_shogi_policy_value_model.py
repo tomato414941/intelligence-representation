@@ -83,7 +83,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(tuple(values.shape), (2,))
         self.assertEqual(model.core.forward.call_count, 1)
 
-    def test_shared_core_candidate_scorer_uses_position_and_square_hidden(self) -> None:
+    def test_shared_core_policy_head_uses_position_move_and_square_hidden(self) -> None:
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -93,7 +93,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(model.candidate_scorer[0].in_features, 8 * 4)
+        self.assertEqual(model.policy_head.scorer[0].in_features, 8 * 4)
 
     def test_candidate_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
         position_hidden = torch.arange(2 * SHOGI_POSITION_TOKEN_COUNT * 3, dtype=torch.float32).reshape(

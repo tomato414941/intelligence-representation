@@ -17,6 +17,7 @@ FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1
 TO_SQUARE_VOCAB_SIZE = 81
 PROMOTION_VOCAB_SIZE = 2
 DROP_PIECE_VOCAB_SIZE = 8
+SHOGI_POLICY_VALUE_MODEL_ARCHITECTURE = "shogi_policy_value_components"
 
 
 @dataclass(frozen=True)
@@ -31,20 +32,14 @@ class ShogiPolicyValueModel(nn.Module):
         self.config = config or ShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_embedding = nn.Embedding(SHOGI_POSITION_VOCAB_SIZE, embedding_dim)
-        self.from_square_embedding = nn.Embedding(FROM_SQUARE_VOCAB_SIZE, embedding_dim)
-        self.to_square_embedding = nn.Embedding(TO_SQUARE_VOCAB_SIZE, embedding_dim)
-        self.promotion_embedding = nn.Embedding(PROMOTION_VOCAB_SIZE, embedding_dim)
-        self.drop_piece_embedding = nn.Embedding(DROP_PIECE_VOCAB_SIZE, embedding_dim)
-        self.scorer = nn.Sequential(
-            nn.Linear(embedding_dim * 2, self.config.hidden_dim),
-            nn.GELU(),
-            nn.Linear(self.config.hidden_dim, 1),
+        self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
+        self.policy_head = ShogiCandidatePolicyHead(
+            input_dim=embedding_dim * 2,
+            hidden_dim=self.config.hidden_dim,
         )
-        self.value_head = nn.Sequential(
-            nn.Linear(embedding_dim, self.config.hidden_dim),
-            nn.GELU(),
-            nn.Linear(self.config.hidden_dim, 1),
-            nn.Tanh(),
+        self.value_head = ShogiValueHead(
+            embedding_dim=embedding_dim,
+            hidden_dim=self.config.hidden_dim,
         )
 
     def forward(
@@ -54,10 +49,9 @@ class ShogiPolicyValueModel(nn.Module):
         candidate_mask: torch.Tensor,
     ) -> torch.Tensor:
         position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
-        move_embedding = self.embed_candidate_moves(candidate_move_features)
+        move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
-        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+        return self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
 
     def forward_policy_value(
         self,
@@ -66,24 +60,59 @@ class ShogiPolicyValueModel(nn.Module):
         candidate_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
-        move_embedding = self.embed_candidate_moves(candidate_move_features)
+        move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.scorer(torch.cat((expanded_position, move_embedding), dim=-1)).squeeze(-1)
-        masked_logits = logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
-        values = self.value_head(position_embedding).squeeze(-1)
-        return masked_logits, values
+        logits = self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
+        return logits, self.value_head(position_embedding)
 
     def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
-        return self.value_head(position_embedding).squeeze(-1)
+        return self.value_head(position_embedding)
 
-    def embed_candidate_moves(self, candidate_move_features: torch.Tensor) -> torch.Tensor:
+
+class ShogiCandidateMoveInputLayer(nn.Module):
+    def __init__(self, *, embedding_dim: int) -> None:
+        super().__init__()
+        self.from_square_embedding = nn.Embedding(FROM_SQUARE_VOCAB_SIZE, embedding_dim)
+        self.to_square_embedding = nn.Embedding(TO_SQUARE_VOCAB_SIZE, embedding_dim)
+        self.promotion_embedding = nn.Embedding(PROMOTION_VOCAB_SIZE, embedding_dim)
+        self.drop_piece_embedding = nn.Embedding(DROP_PIECE_VOCAB_SIZE, embedding_dim)
+
+    def forward(self, candidate_move_features: torch.Tensor) -> torch.Tensor:
         return (
             self.from_square_embedding(candidate_move_features[..., 0])
             + self.to_square_embedding(candidate_move_features[..., 1])
             + self.promotion_embedding(candidate_move_features[..., 2])
             + self.drop_piece_embedding(candidate_move_features[..., 3])
         )
+
+
+class ShogiCandidatePolicyHead(nn.Module):
+    def __init__(self, *, input_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.scorer = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(self, candidate_inputs: torch.Tensor, candidate_mask: torch.Tensor) -> torch.Tensor:
+        logits = self.scorer(candidate_inputs).squeeze(-1)
+        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+
+
+class ShogiValueHead(nn.Module):
+    def __init__(self, *, embedding_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.scorer = nn.Sequential(
+            nn.Linear(embedding_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+            nn.Tanh(),
+        )
+
+    def forward(self, position_embedding: torch.Tensor) -> torch.Tensor:
+        return self.scorer(position_embedding).squeeze(-1)
 
 
 @dataclass(frozen=True)
@@ -119,16 +148,14 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.move_model = ShogiPolicyValueModel(
-            ShogiPolicyValueModelConfig(
-                embedding_dim=embedding_dim,
-                hidden_dim=self.config.hidden_dim,
-            )
+        self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
+        self.policy_head = ShogiCandidatePolicyHead(
+            input_dim=embedding_dim * 4,
+            hidden_dim=self.config.hidden_dim,
         )
-        self.candidate_scorer = nn.Sequential(
-            nn.Linear(embedding_dim * 4, self.config.hidden_dim),
-            nn.GELU(),
-            nn.Linear(self.config.hidden_dim, 1),
+        self.value_head = ShogiValueHead(
+            embedding_dim=embedding_dim,
+            hidden_dim=self.config.hidden_dim,
         )
 
     def forward(
@@ -139,8 +166,8 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
     ) -> torch.Tensor:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
-        logits = self.score_moves(position_hidden, position_embedding, candidate_move_features).squeeze(-1)
-        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+        candidate_inputs = self.candidate_policy_inputs(position_hidden, position_embedding, candidate_move_features)
+        return self.policy_head(candidate_inputs, candidate_mask)
 
     def forward_policy_value(
         self,
@@ -150,23 +177,22 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
-        logits = self.score_moves(position_hidden, position_embedding, candidate_move_features).squeeze(-1)
-        masked_logits = logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
-        values = self.move_model.value_head(position_embedding).squeeze(-1)
-        return masked_logits, values
+        candidate_inputs = self.candidate_policy_inputs(position_hidden, position_embedding, candidate_move_features)
+        logits = self.policy_head(candidate_inputs, candidate_mask)
+        return logits, self.value_head(position_embedding)
 
     def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         position_hidden = self.core(self.position_input(position_token_ids), causal=False)
         position_embedding = position_hidden.mean(dim=1)
-        return self.move_model.value_head(position_embedding).squeeze(-1)
+        return self.value_head(position_embedding)
 
-    def score_moves(
+    def candidate_policy_inputs(
         self,
         position_hidden: torch.Tensor,
         position_embedding: torch.Tensor,
         candidate_move_features: torch.Tensor,
     ) -> torch.Tensor:
-        move_embedding = self.move_model.embed_candidate_moves(candidate_move_features)
+        move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         from_square_hidden = _candidate_square_hidden(
             position_hidden,
@@ -178,7 +204,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             (expanded_position, move_embedding, from_square_hidden, to_square_hidden),
             dim=-1,
         )
-        return self.candidate_scorer(scorer_input)
+        return scorer_input
 
 
 def _candidate_square_hidden(
