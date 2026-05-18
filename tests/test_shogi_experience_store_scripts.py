@@ -14,6 +14,7 @@ import shogi
 from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
+from intrep.worlds.shogi.generated_record_archive import archive_shogi_generated_records
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -132,6 +133,86 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             self.assertTrue((store_dir / "games.jsonl").exists())
             self.assertTrue((store_dir / "manifest.json").exists())
+
+    def test_archives_generated_records_as_durable_record_set(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "run" / "generated-games.jsonl"
+            output_root = root / "data" / "shogi" / "records" / "generated"
+            write_shogi_game_records_jsonl(
+                input_path,
+                [
+                    _record(("7g7f", "3c3d"), "black"),
+                    _record(("2g2f", "8c8d", "2f2e"), "white"),
+                ],
+            )
+
+            result = archive_shogi_generated_records(
+                input_path=input_path,
+                output_root=output_root,
+                record_set_id="online-replay-20260518-001",
+                source_run="runs/shogi/online-replay-x",
+                generation_method="online_replay",
+            )
+
+            archive_dir = output_root / "online-replay-20260518-001"
+            self.assertEqual(result["game_count"], 2)
+            self.assertEqual(load_shogi_game_records_jsonl(archive_dir / "games.jsonl"), load_shogi_game_records_jsonl(input_path))
+            manifest = json.loads((archive_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["schema"], "intrep.shogi_generated_record_archive.v1")
+            self.assertEqual(manifest["record_schema"], "shogi_game_record_jsonl")
+            self.assertEqual(manifest["source_name"], "generated")
+            self.assertEqual(manifest["source_path"], str(input_path))
+            self.assertEqual(manifest["source_run"], "runs/shogi/online-replay-x")
+            self.assertEqual(manifest["generation_method"], "online_replay")
+            self.assertEqual(manifest["game_count"], 2)
+            self.assertEqual(manifest["transition_count"], 5)
+            self.assertEqual(manifest["files"], {"games": "games.jsonl"})
+
+    def test_archive_generated_records_refuses_to_overwrite_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "generated-games.jsonl"
+            output_root = root / "records" / "generated"
+            write_shogi_game_records_jsonl(input_path, [_record(("7g7f", "3c3d"), "black")])
+            archive_shogi_generated_records(
+                input_path=input_path,
+                output_root=output_root,
+                record_set_id="existing",
+            )
+
+            with self.assertRaises(FileExistsError):
+                archive_shogi_generated_records(
+                    input_path=input_path,
+                    output_root=output_root,
+                    record_set_id="existing",
+                )
+
+    def test_archive_generated_records_script_is_thin_cli_wrapper(self) -> None:
+        archive_module = _load_script_module("archive_shogi_generated_records")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "generated-games.jsonl"
+            output_root = root / "records" / "generated"
+            write_shogi_game_records_jsonl(input_path, [_record(("7g7f", "3c3d"), "black")])
+
+            with patch("sys.stdout", new_callable=StringIO):
+                archive_module.main(
+                    [
+                        "--input",
+                        str(input_path),
+                        "--record-set-id",
+                        "cli-archive",
+                        "--output-root",
+                        str(output_root),
+                        "--source-run",
+                        "runs/shogi/run-a",
+                    ]
+                )
+
+            self.assertTrue((output_root / "cli-archive" / "games.jsonl").exists())
+            manifest = json.loads((output_root / "cli-archive" / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["source_run"], "runs/shogi/run-a")
 
     def test_checkpoint_actor_summary_groups_same_checkpoint_settings_across_sides(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
