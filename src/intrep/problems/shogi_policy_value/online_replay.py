@@ -72,6 +72,8 @@ class ShogiGeneratedExperienceSource:
     games: int
     black_player: ShogiGeneratedPlayerSpec
     white_player: ShogiGeneratedPlayerSpec
+    policy_target_construction: str = "mcts_visit_counts"
+    value_target_construction: str = "winner"
 
 
 @dataclass(frozen=True)
@@ -254,7 +256,7 @@ def run_shogi_online_replay(
         )
         phase_timings["experience_store_append_wall_time_sec"] = time.perf_counter() - experience_store_start
         generated_train_extraction_start = time.perf_counter()
-        new_examples = _load_online_replay_iteration_examples(artifacts=artifacts)
+        new_examples = _load_online_replay_iteration_examples(config=config, artifacts=artifacts)
         phase_timings["generated_train_extraction_wall_time_sec"] = (
             time.perf_counter() - generated_train_extraction_start
         )
@@ -440,6 +442,8 @@ def _generate_online_replay_iteration_experience(
                 "games": source.games,
                 "black_player": _player_summary(source.black_player),
                 "white_player": _player_summary(source.white_player),
+                "policy_target_construction": source.policy_target_construction,
+                "value_target_construction": source.value_target_construction,
                 "path": str(games_jsonl),
                 "summary_path": str(summary_path),
                 "summary": _load_json_if_exists(summary_path),
@@ -545,10 +549,21 @@ def _generator_candidate_lost(result: dict[str, object]) -> bool:
 
 def _load_online_replay_iteration_examples(
     *,
+    config: ShogiOnlineReplayConfig,
     artifacts: ShogiOnlineReplayIterationArtifacts,
 ) -> list[ShogiPolicyValueExample]:
     artifacts.generated_train_jsonl.write_text(artifacts.games_jsonl.read_text(encoding="utf-8"), encoding="utf-8")
-    return _load_generated_policy_value_examples(artifacts.generated_train_jsonl)
+    examples: list[ShogiPolicyValueExample] = []
+    for source_index, source in enumerate(config.experience_sources):
+        source_path = artifacts.iteration_dir / f"source-{source_index:03d}-{source.name}" / "generated-games.jsonl"
+        examples.extend(
+            _load_generated_policy_value_examples(
+                source_path,
+                policy_target_construction=source.policy_target_construction,
+                value_target_construction=source.value_target_construction,
+            )
+        )
+    return examples
 
 
 def _train_online_replay_iteration(
@@ -818,6 +833,20 @@ def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
         raise ValueError("experience source name must contain only letters, numbers, hyphen, or underscore")
     if source.games <= 0:
         raise ValueError("experience source games must be positive")
+    if source.policy_target_construction not in {
+        "chosen_move",
+        "decision_usi_multipv",
+        "engine_analysis_multipv",
+        "mcts_visit_counts",
+    }:
+        raise ValueError(
+            "experience source policy_target_construction must be chosen_move, "
+            "decision_usi_multipv, engine_analysis_multipv, or mcts_visit_counts"
+        )
+    if source.value_target_construction not in {"winner", "decision_usi_score", "engine_analysis_score"}:
+        raise ValueError(
+            "experience source value_target_construction must be winner, decision_usi_score, or engine_analysis_score"
+        )
     _validate_generated_player(source.black_player, side="black")
     _validate_generated_player(source.white_player, side="white")
 
@@ -1081,11 +1110,16 @@ def _append_to_experience_store(*, store_dir: Path | None, games_jsonl: Path) ->
     return append_shogi_experience_store(input_path=games_jsonl, store_dir=store_dir)
 
 
-def _load_generated_policy_value_examples(path: Path) -> list[ShogiPolicyValueExample]:
+def _load_generated_policy_value_examples(
+    path: Path,
+    *,
+    policy_target_construction: str,
+    value_target_construction: str,
+) -> list[ShogiPolicyValueExample]:
     return load_shogi_policy_value_examples_from_game_records_jsonl(
         path,
-        policy_target_construction="mcts_visit_counts",
-        value_target_construction="winner",
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
         policy_temperature_cp=100.0,
         policy_mate_cp=100000.0,
         score_cp_scale=600.0,

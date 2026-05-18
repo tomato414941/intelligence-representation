@@ -21,6 +21,7 @@ class ShogiMoveChoiceExample:
     legal_moves: tuple[str, ...]
     chosen_move: str
     policy_targets: dict[str, float] | None = None
+    policy_target_source: str = "chosen_move"
     game_index: int | None = None
     ply_index: int | None = None
 
@@ -49,6 +50,8 @@ class ShogiPolicyValueExample:
     chosen_move: str
     policy_targets: dict[str, float] | None = None
     value_target: float | None = None
+    policy_target_source: str = "chosen_move"
+    value_target_source: str = "winner"
     game_index: int | None = None
     ply_index: int | None = None
 
@@ -98,8 +101,10 @@ def shogi_policy_value_example_to_json(example: ShogiPolicyValueExample) -> dict
     }
     if example.policy_targets is not None:
         payload["policy_targets"] = dict(sorted(example.policy_targets.items()))
+    payload["policy_target_source"] = example.policy_target_source
     if example.value_target is not None:
         payload["value_target"] = example.value_target
+    payload["value_target_source"] = example.value_target_source
     if example.game_index is not None:
         payload["game_index"] = example.game_index
     if example.ply_index is not None:
@@ -121,6 +126,8 @@ def shogi_policy_value_example_from_json(payload: object) -> ShogiPolicyValueExa
         chosen_move=str(payload["chosen_move"]),
         policy_targets=policy_targets,
         value_target=_optional_float(payload.get("value_target")),
+        policy_target_source=str(payload.get("policy_target_source", "chosen_move")),
+        value_target_source=str(payload.get("value_target_source", "winner")),
         game_index=_optional_int(payload.get("game_index")),
         ply_index=_optional_int(payload.get("ply_index")),
     )
@@ -242,6 +249,8 @@ def _policy_sample(
     candidate_mask[: len(example.legal_moves)] = True
     policy_targets = torch.zeros(max_choice_count, dtype=torch.float32)
     if example.policy_targets is None:
+        if example.policy_target_source != "chosen_move":
+            raise ValueError(f"missing policy_targets for policy_target_source={example.policy_target_source}")
         policy_targets[move_index] = 1.0
     else:
         total = sum(example.policy_targets.values())

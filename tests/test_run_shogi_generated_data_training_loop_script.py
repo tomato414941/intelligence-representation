@@ -44,6 +44,10 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
                     "3",
                     "--seed",
                     "11",
+                    "--policy-target-construction",
+                    "chosen_move",
+                    "--value-target-construction",
+                    "winner",
                     "--board-backend",
                     "cshogi",
                     "--max-steps",
@@ -60,6 +64,8 @@ class RunShogiGeneratedDataTrainingLoopScriptTest(unittest.TestCase):
         self.assertEqual(config.concurrent_games_per_process, 2)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.seed, 11)
+        self.assertEqual(config.policy_target_construction, "chosen_move")
+        self.assertEqual(config.value_target_construction, "winner")
         self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_steps, 4)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())

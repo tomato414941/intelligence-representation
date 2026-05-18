@@ -1,6 +1,6 @@
 # Shogi Generated Data MCTS Visit Target Adoption
 
-Status: open
+Status: closed
 Priority: high
 
 ## Problem
@@ -66,3 +66,14 @@ generated checkpoint dataset was expected to use visit counts.
 
 The implementation should make that boundary explicit rather than relying on an
 implicit fallback.
+
+## Close Note
+
+Closed after target construction was made explicit on generated-data training
+cycles and generated experience sources.
+
+`ShogiPolicyValueExample` now records `policy_target_source` and
+`value_target_source`, and tensorization rejects missing policy targets for
+non-`chosen_move` policy sources. Checkpoint self-play generated data defaults
+to `mcts_visit_counts`; USI mixed generated sources explicitly use
+`chosen_move`.

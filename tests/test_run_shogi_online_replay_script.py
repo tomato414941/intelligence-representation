@@ -181,6 +181,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.experience_sources[0].games, 4)
         self.assertEqual(config.experience_sources[0].black_player.kind, "checkpoint")
         self.assertEqual(config.experience_sources[0].white_player.kind, "checkpoint")
+        self.assertEqual(config.experience_sources[0].policy_target_construction, "mcts_visit_counts")
+        self.assertEqual(config.experience_sources[0].value_target_construction, "winner")
         self.assertEqual(config.experience_sources[0].black_player.move_selection_profile, "visit-sampling")
         self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature, 0.75)
         self.assertEqual(config.experience_sources[0].black_player.move_selection_temperature_plies, 12)
@@ -256,9 +258,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(sources[0].games, 2)
         self.assertEqual(sources[0].black_player.kind, "checkpoint")
         self.assertEqual(sources[0].white_player.kind, "checkpoint")
+        self.assertEqual(sources[0].policy_target_construction, "mcts_visit_counts")
         self.assertEqual(sources[1].games, 2)
         self.assertEqual(sources[1].black_player.kind, "checkpoint")
         self.assertEqual(sources[1].white_player.kind, "usi_engine")
+        self.assertEqual(sources[1].policy_target_construction, "chosen_move")
         self.assertEqual(sources[1].white_player.usi_command, "engine")
         self.assertEqual(sources[1].white_player.usi_options, ("Threads=2",))
         self.assertEqual(sources[1].white_player.usi_go_command, "go nodes 4")
@@ -266,6 +270,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(sources[2].games, 1)
         self.assertEqual(sources[2].black_player.kind, "usi_engine")
         self.assertEqual(sources[2].white_player.kind, "checkpoint")
+        self.assertEqual(sources[2].policy_target_construction, "chosen_move")
 
 
 def _load_script_module() -> ModuleType:

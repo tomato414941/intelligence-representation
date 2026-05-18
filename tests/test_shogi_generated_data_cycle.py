@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -39,7 +40,9 @@ from intrep.problems.shogi_policy_value.training import (
 )
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
+    ShogiDecisionTelemetry,
     ShogiGameRecord,
+    ShogiMoveRecord,
     load_shogi_game_records_jsonl,
     shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
@@ -59,12 +62,30 @@ def _record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
+def _mcts_record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
+    record = _record(moves, winner)
+    return replace(
+        record,
+        moves=tuple(
+            ShogiMoveRecord(
+                action_usi=move.action_usi,
+                decision_telemetry=ShogiDecisionTelemetry(
+                    search_evidence={"mcts_root_child_visit_counts": {move.action_usi: 3}},
+                ),
+            )
+            for move in record.moves
+        ),
+    )
+
+
 def _self_play_source(*, games: int, name: str = "self-play") -> ShogiGeneratedExperienceSource:
     return ShogiGeneratedExperienceSource(
         name=name,
         games=games,
         black_player=checkpoint_generated_player("black"),
         white_player=checkpoint_generated_player("white"),
+        policy_target_construction="mcts_visit_counts",
+        value_target_construction="winner",
     )
 
 
@@ -80,6 +101,8 @@ def _checkpoint_vs_usi_source(*, games: int, name: str = "checkpoint-vs-usi") ->
             go_command="go nodes 4",
             read_timeout_seconds=31,
         ),
+        policy_target_construction="chosen_move",
+        value_target_construction="winner",
     )
 
 
@@ -95,6 +118,8 @@ def _usi_vs_checkpoint_source(*, games: int, name: str = "usi-vs-checkpoint") ->
             read_timeout_seconds=31,
         ),
         white_player=checkpoint_generated_player("checkpoint"),
+        policy_target_construction="chosen_move",
+        value_target_construction="winner",
     )
 
 
@@ -237,8 +262,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
 
@@ -266,6 +291,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertNotIn("target_construction", dataset)
             self.assertEqual(dataset["train_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
             self.assertEqual(dataset["eval_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
+            train_example = json.loads((run_dir / "train-examples.jsonl").read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(train_example["policy_target_source"], "mcts_visit_counts")
+            self.assertEqual(train_example["policy_targets"][train_example["chosen_move"]], 1.0)
             self.assertTrue((run_dir / "train-examples.jsonl").exists())
             self.assertTrue((run_dir / "eval-examples.jsonl").exists())
             self.assertEqual(run.call_count, 2)
@@ -332,6 +360,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "seed": 11,
                     "checkpoint_device": "cuda",
                     "mcts_move_time_limit_sec": 9.0,
+                    "policy_target_construction": "mcts_visit_counts",
+                    "value_target_construction": "winner",
                 },
             )
 
@@ -350,8 +380,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
                 return None
@@ -370,6 +400,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         ),
                         games=2,
                         device="cuda",
+                        policy_target_construction="chosen_move",
                     )
                 )
 
@@ -401,8 +432,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
                 return None
@@ -448,8 +479,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
                 return None
@@ -493,8 +524,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
                     return None
@@ -597,7 +628,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(out_path, [_record(("7g7f", "3c3d"), "black")])
+                    write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
                     return None
                 if any(item.endswith("evaluate_shogi_players.py") for item in command):
                     return subprocess.CompletedProcess(
@@ -661,8 +692,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             seed_train_record = _record(("9g9f", "9c9d"), "black")
             seed_eval_record = _record(("1g1f", "1c1d"), "white")
             generated_records = [
-                _record(("7g7f", "3c3d"), "black"),
-                _record(("2g2f", "8c8d"), "white"),
+                _mcts_record(("7g7f", "3c3d"), "black"),
+                _mcts_record(("2g2f", "8c8d"), "white"),
             ]
             write_shogi_game_records_jsonl(bundle_dir / "train-games.jsonl", [seed_train_record])
             write_shogi_game_records_jsonl(bundle_dir / "eval-games.jsonl", [seed_eval_record])
@@ -775,11 +806,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
                     if command[command.index("--white-kind") + 1] == "usi_engine":
-                        records = [_record(("2g2f", "8c8d"), "white")]
+                        records = [_mcts_record(("2g2f", "8c8d"), "white")]
                     elif command[command.index("--black-kind") + 1] == "usi_engine":
-                        records = [_record(("7g7f", "3c3d"), "black")]
+                        records = [_mcts_record(("7g7f", "3c3d"), "black")]
                     else:
-                        records = [_record(("7g7f", "3c3d"), "black")]
+                        records = [_mcts_record(("7g7f", "3c3d"), "black")]
                     write_shogi_game_records_jsonl(out_path, records)
                     return subprocess.CompletedProcess(
                         command,
@@ -879,8 +910,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
 
@@ -967,7 +998,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             def fake_run(command: list[str], **_kwargs: object) -> None:
                 if any(item.endswith("generate_shogi_games.py") for item in command):
                     out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(out_path, [_record(("7g7f", "3c3d"), "black")])
+                    write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 result = _training_result(config)
@@ -1046,8 +1077,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(
                         out_path,
                         [
-                            _record(("7g7f", "3c3d"), "black"),
-                            _record(("2g2f", "8c8d"), "white"),
+                            _mcts_record(("7g7f", "3c3d"), "black"),
+                            _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
 

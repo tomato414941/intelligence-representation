@@ -162,7 +162,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record_with_multipv_info(("7g7f", "3c3d"), "white")])
-            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record_with_multipv_info(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
                 json.dumps(
                     {
@@ -214,8 +214,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 0)
             self.assertEqual(metrics["train_policy_target_summary"]["available_ratio"], 1.0)
             self.assertEqual(metrics["train_policy_target_summary"]["mean_nonzero_count"], 1.0)
-            self.assertEqual(metrics["eval_policy_target_summary"]["available_count"], 0)
-            self.assertEqual(metrics["eval_policy_target_summary"]["missing_count"], 2)
+            self.assertEqual(metrics["eval_policy_target_summary"]["available_count"], 2)
+            self.assertEqual(metrics["eval_policy_target_summary"]["missing_count"], 0)
 
     def test_trains_from_tensor_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

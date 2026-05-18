@@ -78,6 +78,19 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(float(policy_targets[legal_moves.index("7g7f")].item()), 0.75)
         self.assertEqual(float(policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 
+    def test_policy_value_dataset_rejects_missing_non_chosen_policy_targets(self) -> None:
+        board = shogi.Board()
+        example = ShogiPolicyValueExample(
+            position_sfen=board.sfen(),
+            legal_moves=tuple(sorted(move.usi() for move in board.legal_moves)),
+            chosen_move="7g7f",
+            policy_target_source="mcts_visit_counts",
+        )
+        dataset = ShogiPolicyValueDataset((example,))
+
+        with self.assertRaisesRegex(ValueError, "missing policy_targets"):
+            dataset[0]
+
     def test_policy_value_dataset_returns_optional_value_target(self) -> None:
         board = shogi.Board()
         example = ShogiPolicyValueExample(

@@ -88,6 +88,8 @@ class ShogiGeneratedDataTrainingCycleConfig:
     generation_worker_processes: int = 1
     seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
+    policy_target_construction: str = "mcts_visit_counts"
+    value_target_construction: str = "winner"
     eval_ratio: float = 0.25
     max_steps: int = 100
     batch_size: int = 128
@@ -120,6 +122,8 @@ class ShogiGeneratedDataTrainingLoopConfig:
     generation_worker_processes: int = 1
     seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
+    policy_target_construction: str = "mcts_visit_counts"
+    value_target_construction: str = "winner"
     eval_ratio: float = 0.25
     max_steps: int = 100
     batch_size: int = 128
@@ -173,8 +177,18 @@ def run_shogi_generated_data_training_cycle(
         eval_jsonl=eval_jsonl,
         eval_ratio=config.eval_ratio,
     )
-    _write_examples(train_jsonl, train_examples_jsonl)
-    _write_examples(eval_jsonl, eval_examples_jsonl)
+    _write_examples(
+        train_jsonl,
+        train_examples_jsonl,
+        policy_target_construction=config.policy_target_construction,
+        value_target_construction=config.value_target_construction,
+    )
+    _write_examples(
+        eval_jsonl,
+        eval_examples_jsonl,
+        policy_target_construction=config.policy_target_construction,
+        value_target_construction=config.value_target_construction,
+    )
     _write_data_selection(data_selection_json, train_jsonl=train_examples_jsonl, eval_jsonl=eval_examples_jsonl)
     _run_training(
         data_selection_json=data_selection_json,
@@ -205,6 +219,8 @@ def run_shogi_generated_data_training_cycle(
         "seed": config.seed,
         "checkpoint_device": config.device,
         "mcts_move_time_limit_sec": config.mcts_move_time_limit_sec,
+        "policy_target_construction": config.policy_target_construction,
+        "value_target_construction": config.value_target_construction,
     }
     return ShogiGeneratedDataTrainingCycleResult(
         run_dir=run_dir,
@@ -245,6 +261,8 @@ def run_shogi_generated_data_training_loop(
                 generation_worker_processes=config.generation_worker_processes,
                 seed=config.seed,
                 mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+                policy_target_construction=config.policy_target_construction,
+                value_target_construction=config.value_target_construction,
                 eval_ratio=config.eval_ratio,
                 max_steps=config.max_steps,
                 batch_size=config.batch_size,
@@ -287,6 +305,18 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
         raise ValueError("generation_worker_processes must be positive")
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
         raise ValueError("mcts_move_time_limit_sec must be positive")
+    if config.policy_target_construction not in {
+        "chosen_move",
+        "decision_usi_multipv",
+        "engine_analysis_multipv",
+        "mcts_visit_counts",
+    }:
+        raise ValueError(
+            "policy_target_construction must be chosen_move, decision_usi_multipv, "
+            "engine_analysis_multipv, or mcts_visit_counts"
+        )
+    if config.value_target_construction not in {"winner", "decision_usi_score", "engine_analysis_score"}:
+        raise ValueError("value_target_construction must be winner, decision_usi_score, or engine_analysis_score")
     if not 0.0 < config.eval_ratio < 1.0:
         raise ValueError("eval_ratio must be between 0 and 1")
     if config.max_steps <= 0:
@@ -334,6 +364,8 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             generation_worker_processes=config.generation_worker_processes,
             seed=config.seed,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
+            policy_target_construction=config.policy_target_construction,
+            value_target_construction=config.value_target_construction,
             eval_ratio=config.eval_ratio,
             max_steps=config.max_steps,
             batch_size=config.batch_size,
@@ -393,11 +425,17 @@ def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) ->
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def _write_examples(games_jsonl: Path, examples_jsonl: Path) -> None:
+def _write_examples(
+    games_jsonl: Path,
+    examples_jsonl: Path,
+    *,
+    policy_target_construction: str,
+    value_target_construction: str,
+) -> None:
     examples = load_shogi_policy_value_examples_from_game_records_jsonl(
         games_jsonl,
-        policy_target_construction="chosen_move",
-        value_target_construction="winner",
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
     )
     write_shogi_policy_value_examples_jsonl(examples_jsonl, examples)
 

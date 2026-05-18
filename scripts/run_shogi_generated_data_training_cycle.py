@@ -36,6 +36,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--generation-worker-processes", type=int, default=1)
     parser.add_argument("--seed", type=int)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
+    parser.add_argument(
+        "--policy-target-construction",
+        choices=("chosen_move", "decision_usi_multipv", "engine_analysis_multipv", "mcts_visit_counts"),
+        default="mcts_visit_counts",
+    )
+    parser.add_argument(
+        "--value-target-construction",
+        choices=("winner", "decision_usi_score", "engine_analysis_score"),
+        default="winner",
+    )
     parser.add_argument("--eval-ratio", type=float, default=0.25)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -63,6 +73,8 @@ def main(argv: list[str] | None = None) -> None:
             generation_worker_processes=args.generation_worker_processes,
             seed=args.seed,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
+            policy_target_construction=args.policy_target_construction,
+            value_target_construction=args.value_target_construction,
             eval_ratio=args.eval_ratio,
             max_steps=args.max_steps,
             batch_size=args.batch_size,

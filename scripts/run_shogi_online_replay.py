@@ -156,6 +156,8 @@ def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGenera
                     games=game_count,
                     black_player=_checkpoint_player(args, name="black"),
                     white_player=_checkpoint_player(args, name="white"),
+                    policy_target_construction="mcts_visit_counts",
+                    value_target_construction="winner",
                 )
             )
             continue
@@ -210,6 +212,8 @@ def _checkpoint_vs_usi_source(args: argparse.Namespace, *, name: str, games: int
         games=games,
         black_player=_checkpoint_player(args, name="checkpoint"),
         white_player=_usi_player(args, name="usi_engine"),
+        policy_target_construction="chosen_move",
+        value_target_construction="winner",
     )
 
 
@@ -219,6 +223,8 @@ def _usi_vs_checkpoint_source(args: argparse.Namespace, *, name: str, games: int
         games=games,
         black_player=_usi_player(args, name="usi_engine"),
         white_player=_checkpoint_player(args, name="checkpoint"),
+        policy_target_construction="chosen_move",
+        value_target_construction="winner",
     )
 
 

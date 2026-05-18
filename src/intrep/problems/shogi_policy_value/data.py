@@ -108,6 +108,8 @@ def shogi_policy_value_examples_from_game_record(
             chosen_move=transition.action_usi,
             policy_targets=policy_targets[index],
             value_target=value_targets[index],
+            policy_target_source=policy_target_construction,
+            value_target_source=value_target_construction,
         )
         for index, transition in enumerate(trace.transitions)
     ]
@@ -145,6 +147,8 @@ def shogi_policy_value_examples_from_game_record_plies(
                     chosen_move=move_record.action_usi,
                     policy_targets=None,
                     value_target=_winner_value_target(side=side, winner=record.winner),
+                    policy_target_source=policy_target_construction,
+                    value_target_source=value_target_construction,
                     game_index=game_index,
                     ply_index=ply_index,
                 )
@@ -173,6 +177,7 @@ def shogi_move_choice_examples_from_game_record(
             legal_moves=transition.legal_moves,
             chosen_move=transition.action_usi,
             policy_targets=policy_targets[index],
+            policy_target_source=policy_target_construction,
         )
         for index, transition in enumerate(trace.transitions)
     ]
