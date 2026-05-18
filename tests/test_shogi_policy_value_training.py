@@ -5,7 +5,7 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
-from intrep.problems.shogi_policy_value.model import ShogiPolicyValueModel, ShogiPolicyValueModelConfig
+from intrep.problems.shogi_policy_value.model import DirectShogiPolicyValueModel, DirectShogiPolicyValueModelConfig
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
@@ -316,7 +316,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
             )
             for example in base_examples
         )
-        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
+        model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
         model.forward_policy_value = Mock(wraps=model.forward_policy_value)
         model.predict_value = Mock(wraps=model.predict_value)
 

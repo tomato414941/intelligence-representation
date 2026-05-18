@@ -43,15 +43,15 @@ SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
 
 
 @dataclass(frozen=True)
-class ShogiPolicyValueModelConfig:
+class DirectShogiPolicyValueModelConfig:
     embedding_dim: int = 256
     hidden_dim: int = 1024
 
 
-class ShogiPolicyValueModel(nn.Module):
-    def __init__(self, config: ShogiPolicyValueModelConfig | None = None) -> None:
+class DirectShogiPolicyValueModel(nn.Module):
+    def __init__(self, config: DirectShogiPolicyValueModelConfig | None = None) -> None:
         super().__init__()
-        self.config = config or ShogiPolicyValueModelConfig()
+        self.config = config or DirectShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_embedding = nn.Embedding(SHOGI_POSITION_VOCAB_SIZE, embedding_dim)
         self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)

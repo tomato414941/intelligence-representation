@@ -7,10 +7,10 @@ from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.problems.shogi_policy_value.model import (
+    DirectShogiPolicyValueModel,
+    DirectShogiPolicyValueModelConfig,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
-    ShogiPolicyValueModel,
-    ShogiPolicyValueModelConfig,
     _candidate_square_hidden,
 )
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
@@ -19,7 +19,7 @@ from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_model_returns_candidate_logits(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
-        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
+        model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
 
@@ -28,7 +28,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_model_masks_invalid_candidates(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         candidate_mask[:, -1] = False
-        model = ShogiPolicyValueModel(ShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
+        model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
         logits = model(position_token_ids, candidate_move_features, candidate_mask)
 

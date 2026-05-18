@@ -18,10 +18,10 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.model import (
+    DirectShogiPolicyValueModel,
+    DirectShogiPolicyValueModelConfig,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
-    ShogiPolicyValueModel,
-    ShogiPolicyValueModelConfig,
 )
 
 
@@ -554,8 +554,8 @@ def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn
                 num_layers=config.num_layers,
             )
         )
-    return ShogiPolicyValueModel(
-        ShogiPolicyValueModelConfig(
+    return DirectShogiPolicyValueModel(
+        DirectShogiPolicyValueModelConfig(
             embedding_dim=config.embedding_dim,
             hidden_dim=config.hidden_dim,
         )
