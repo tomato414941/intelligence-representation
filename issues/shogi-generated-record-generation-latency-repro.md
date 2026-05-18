@@ -28,16 +28,45 @@ sharding, output-flush, or move-generation bug. The current output shape makes
 that hard to distinguish because shard JSONL files appear only after a shard is
 complete.
 
+## Reproduction
+
+On 2026-05-18, an 8-game checkpoint self-play repro completed on RunPod secure
+RTX A5000:
+
+- `games=8`
+- `generation-worker-processes=1`
+- `concurrent-games-per-process=8`
+- `mcts-simulations-per-move=128`
+- `nn-leaf-eval-batch-limit=64`
+- `max-plies=320`
+- output: `data/shogi/records/checkpoint-self-repro-20260518-g8`
+
+Result:
+
+- game count: 8
+- end reasons: 6 `game_over`, 2 `max_plies`
+- result distribution: black 5, white 1, draws 2
+- average plies: 151.875
+- generation wall time: 378.389 sec
+- plies/sec: 3.211
+- actual NN leaf eval batch size avg: 5.087
+- actual NN leaf eval batch size max: 8
+- actual NN leaf eval batch fill ratio avg: 0.079
+
+Interpretation:
+
+- The 8-game path completed, so this does not look like a basic game-completion
+  deadlock.
+- Two games reached `max_plies`, so long games can delay a shard substantially.
+- With 8 games taking about 6.3 minutes, a 128-game shard can plausibly take
+  about 100 minutes before producing a shard JSONL file.
+- The full 1024-game run used 8 shards of 128 games. Seeing no shard file after
+  40-50 minutes is therefore plausible without implying a hang.
+- The main design problem is observability and durability granularity: progress
+  is visible on stdout, but completed records are not durable until the shard
+  finishes.
+
 ## Desired Shape
-
-Before running another full 1024-games-per-source generation, establish a small
-reproducible checkpoint self-play check:
-
-- run 8 checkpoint-vs-checkpoint games with the same player/search settings
-- confirm games complete
-- record wall time, average plies, result distribution, and illegal-move count
-- inspect whether any games are stuck near `max-plies`
-- compare the small-run rate against the failed full-run observation
 
 Generation should also expose durable progress before a full shard completes,
 or use smaller shard units for long self-play runs, so interrupted runs are
@@ -45,9 +74,7 @@ diagnosable and partially useful.
 
 ## Close Condition
 
-- An 8-game checkpoint self-play reproduction is run and interpreted.
-- If the result is normal, the expected runtime for 1024 self-play games is
-  recorded before retrying the full mixed generation.
-- If the result is abnormal, the underlying game-generation bug is isolated.
 - Long generated-record runs no longer require waiting for a full 128-game shard
   before seeing durable progress.
+- Interrupted generated-record runs leave enough durable state to distinguish
+  normal long games from a broken worker.
