@@ -5,7 +5,10 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_ARCHITECTURE
+from intrep.problems.shogi_policy_value.model import (
+    SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC,
+    SHOGI_POLICY_VALUE_MODEL_SPEC,
+)
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
 
@@ -27,7 +30,7 @@ def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: objec
             "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
             "config": {
                 "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
-                "model_architecture": SHOGI_POLICY_VALUE_MODEL_ARCHITECTURE,
+                "model_spec": _checkpoint_model_spec(config),
                 "embedding_dim": config.embedding_dim,
                 "hidden_dim": config.hidden_dim,
                 "num_heads": config.num_heads,
@@ -48,7 +51,7 @@ def load_shogi_policy_value_checkpoint_state_dict(path: str | Path, *, device: s
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_encoding(payload)
-    _validate_checkpoint_model_architecture(payload)
+    _validate_checkpoint_model_spec(payload)
     return payload["model_state_dict"]
 
 
@@ -57,7 +60,7 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_encoding(payload)
-    _validate_checkpoint_model_architecture(payload)
+    _validate_checkpoint_model_spec(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
     config_payload = payload["config"]
@@ -78,7 +81,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_encoding(payload)
-    _validate_checkpoint_model_architecture(payload)
+    _validate_checkpoint_model_spec(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
     config_payload = payload["config"]
@@ -107,9 +110,22 @@ def _validate_checkpoint_input_encoding(payload: dict[str, object]) -> None:
         raise ValueError("unsupported shogi checkpoint input encoding")
 
 
-def _validate_checkpoint_model_architecture(payload: dict[str, object]) -> None:
+def _validate_checkpoint_model_spec(payload: dict[str, object]) -> None:
     config = payload.get("config")
     if not isinstance(config, dict):
         raise ValueError("shogi checkpoint config must be an object")
-    if config.get("model_architecture") != SHOGI_POLICY_VALUE_MODEL_ARCHITECTURE:
-        raise ValueError("unsupported shogi checkpoint model architecture")
+    if config.get("model_spec") != _checkpoint_model_spec(config):
+        raise ValueError("unsupported shogi checkpoint model spec")
+
+
+def _checkpoint_model_spec(config: object) -> dict[str, object]:
+    use_shared_core = _config_bool(config, "use_shared_core")
+    if use_shared_core:
+        return dict(SHOGI_POLICY_VALUE_MODEL_SPEC)
+    return dict(SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC)
+
+
+def _config_bool(config: object, name: str) -> bool:
+    if isinstance(config, dict):
+        return bool(config.get(name, False))
+    return bool(getattr(config, name))

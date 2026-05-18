@@ -61,7 +61,8 @@ boundary.
 
 - Shogi policy/value now exposes separate model parts for position input,
   candidate move input, shared core, policy head, and value head.
-- Shogi checkpoint metadata now records a model architecture identity in
+- Shogi checkpoint metadata now records a model spec with position input,
+  candidate move input, core, pooling, policy head, and value head identities in
   addition to the input encoding identity, so incompatible full-checkpoint
   restores are rejected deliberately.
 

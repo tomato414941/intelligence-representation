@@ -7,6 +7,7 @@ import torch
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
 from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
 from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_SPEC
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 
 
@@ -30,6 +31,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
+            payload = torch.load(path, weights_only=False)
+            self.assertEqual(payload["config"]["model_spec"], SHOGI_POLICY_VALUE_MODEL_SPEC)
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -84,7 +87,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "input encoding"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_missing_model_architecture(self) -> None:
+    def test_load_rejects_missing_model_spec(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -101,10 +104,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            payload["config"].pop("model_architecture")
+            payload["config"].pop("model_spec")
             torch.save(payload, path)
 
-            with self.assertRaisesRegex(ValueError, "model architecture"):
+            with self.assertRaisesRegex(ValueError, "model spec"):
                 load_shogi_policy_value_checkpoint(path)
 
 

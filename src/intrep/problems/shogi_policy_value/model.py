@@ -17,7 +17,29 @@ FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1
 TO_SQUARE_VOCAB_SIZE = 81
 PROMOTION_VOCAB_SIZE = 2
 DROP_PIECE_VOCAB_SIZE = 8
-SHOGI_POLICY_VALUE_MODEL_ARCHITECTURE = "shogi_policy_value_components"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_position_tokens"
+SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
+SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
+SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
+SHOGI_POLICY_HEAD_MODULE_ID = "candidate_policy_head"
+SHOGI_VALUE_HEAD_MODULE_ID = "scalar_tanh_value_head"
+SHOGI_DIRECT_POSITION_POOLING_MODULE_ID = "mean_direct_position_embedding"
+SHOGI_POLICY_VALUE_MODEL_SPEC = {
+    "position_input": SHOGI_POSITION_INPUT_MODULE_ID,
+    "candidate_move_input": SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID,
+    "core": SHOGI_SHARED_CORE_MODULE_ID,
+    "position_pooling": SHOGI_POSITION_POOLING_MODULE_ID,
+    "policy_head": SHOGI_POLICY_HEAD_MODULE_ID,
+    "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
+}
+SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
+    "position_input": SHOGI_POSITION_INPUT_MODULE_ID,
+    "candidate_move_input": SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID,
+    "core": None,
+    "position_pooling": SHOGI_DIRECT_POSITION_POOLING_MODULE_ID,
+    "policy_head": SHOGI_POLICY_HEAD_MODULE_ID,
+    "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
+}
 
 
 @dataclass(frozen=True)
