@@ -77,8 +77,9 @@ experience from the losing checkpoint.
 
 Generation uses game-level worker processes for produced experience, and the
 generator gate uses match-level worker processes for checkpoint-vs-checkpoint
-evaluation. `NN leaf eval batch limit` remains the MCTS-internal batching
-setting for model evaluation inside a move.
+evaluation. `NN leaf eval batch limit` is the neural evaluator batch cap used by
+both single-game in-tree leaf batching and generated-game multi-position
+batching.
 
 ## Playing Strength Evaluation
 

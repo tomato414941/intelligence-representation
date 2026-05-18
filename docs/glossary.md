@@ -262,30 +262,42 @@ In-Tree Leaf Selection Parallelism is a Monte Carlo Tree Search parallelization
 pattern where one search tree selects multiple pending leaf nodes before neural
 evaluation and backup. It is a narrower form of MCTS leaf parallelization.
 
-It is different from running multiple games at the same time. It is also
-different from the neural evaluation batch size:
+It is different from advancing multiple games or positions at the same time. It
+is also different from the neural evaluation batch limit:
 
-- concurrent games per process: multiple games or root positions are active at once
+- multi-position NN leaf batching: leaf positions from multiple root positions
+  are evaluated together
 - in-tree leaf selection parallelism: one MCTS tree has multiple in-flight leaf
   selections
-- evaluation batch size: the maximum number of selected leaf positions sent to
-  the model in one forward pass
+- NN leaf eval batch limit: the maximum number of selected leaf positions sent
+  to the model in one forward pass
 
 Without an in-flight marker such as virtual loss or virtual visits, multiple
 parallel selections can choose the same promising path or even the same leaf,
 because the search tree statistics have not yet been updated by backup.
 
-The current shogi self-play implementation batches across active games. It does
-not implement in-tree leaf selection parallelism.
+The single-game shogi `MctsMoveSelector` path uses in-tree pending-leaf
+batching. The generated-game path uses multi-position NN leaf batching across
+active games through the arena runtime.
+
+### Multi-Position NN Leaf Batching
+
+Multi-Position NN Leaf Batching means collecting MCTS leaf evaluations from
+multiple root positions and sending them to the neural-network evaluator
+together.
+
+In shogi generated-game runs, this is supplied by
+`--concurrent-games-per-process`. It is not in-tree leaf selection
+parallelism, and it is not process-level parallelism.
 
 ### Concurrent Games Per Process
 
 Concurrent Games Per Process is the number of games advanced together inside one
 generator process.
 
-In the current shogi self-play CLI, this is the `--concurrent-games-per-process` value. It is
-not process-level parallelism. It supplies leaf positions from multiple active
-games so neural-network evaluation can be batched.
+In the current shogi generated-game CLI, this is the
+`--concurrent-games-per-process` value. It controls how many games can supply
+positions for Multi-Position NN Leaf Batching inside one process.
 
 Do not confuse this with Total Games, which is the total number of games to
 generate for a run or measurement.

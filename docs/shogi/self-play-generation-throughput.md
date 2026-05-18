@@ -12,6 +12,8 @@ Unless noted otherwise:
 - generation entrypoint: `shogi-arena-agent/scripts/generate_shogi_games.py`
 - board backend: `cshogi`
 - max plies: 320
+- batching path: generated-game measurements use multi-position NN leaf
+  batching across active games
 
 ## Summary
 

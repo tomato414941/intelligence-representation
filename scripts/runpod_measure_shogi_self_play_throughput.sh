@@ -230,7 +230,7 @@ def run_case(
         '--black-move-selection-profile', 'visit-sampling',
         '--black-move-selector', 'mcts',
         '--black-mcts-simulations', str(simulations),
-        '--black-mcts-evaluation-batch-size', str(batch),
+        '--black-mcts-nn-leaf-eval-batch-limit', str(batch),
         '--black-device', 'cuda',
         '--black-board-backend', 'cshogi',
         '--white-kind', 'checkpoint',
@@ -238,7 +238,7 @@ def run_case(
         '--white-move-selection-profile', 'visit-sampling',
         '--white-move-selector', 'mcts',
         '--white-mcts-simulations', str(simulations),
-        '--white-mcts-evaluation-batch-size', str(batch),
+        '--white-mcts-nn-leaf-eval-batch-limit', str(batch),
         '--white-device', 'cuda',
         '--white-board-backend', 'cshogi',
     ]

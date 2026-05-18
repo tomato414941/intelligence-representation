@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--board-backend", choices=("python-shogi", "cshogi"), default="cshogi")
     parser.add_argument("--max-plies", type=int, default=DEFAULT_SHOGI_MAX_PLIES)
     parser.add_argument("--simulations", type=int, default=128)
-    parser.add_argument("--evaluation-batch-size", type=int, default=64)
+    parser.add_argument("--nn-leaf-eval-batch-limit", type=int, default=64)
     parser.add_argument("--generation-worker-processes", type=int, default=DEFAULT_GENERATION_WORKER_PROCESSES)
     parser.add_argument("--mcts-move-time-limit-sec", type=float)
     parser.add_argument("--learning-rate", type=float, default=0.0005)
@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> None:
             board_backend=args.board_backend,
             max_plies=args.max_plies,
             simulations=args.simulations,
-            evaluation_batch_size=args.evaluation_batch_size,
+            nn_leaf_eval_batch_limit=args.nn_leaf_eval_batch_limit,
             generation_worker_processes=args.generation_worker_processes,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
             training_config=ShogiPolicyValueTrainingConfig(

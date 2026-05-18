@@ -160,7 +160,7 @@ checkpoint_args() {
     --\"\$side\"-move-selection-profile visit-sampling \
     --\"\$side\"-move-selector mcts \
     --\"\$side\"-mcts-simulations \"$CHECKPOINT_SIMULATIONS\" \
-    --\"\$side\"-mcts-evaluation-batch-size \"$CHECKPOINT_NN_LEAF_EVAL_BATCH_LIMIT\" \
+    --\"\$side\"-mcts-nn-leaf-eval-batch-limit \"$CHECKPOINT_NN_LEAF_EVAL_BATCH_LIMIT\" \
     --\"\$side\"-device cuda \
     --\"\$side\"-board-backend \"$BOARD_BACKEND\"
 }

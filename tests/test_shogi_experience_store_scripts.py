@@ -30,7 +30,11 @@ from intrep.worlds.shogi.training_data_bundle import create_shogi_training_data_
 BLACK_ACTOR = ShogiActorSpec(
     kind="checkpoint",
     name="black-model",
-    settings={"checkpoint": "runs/shogi/model-a/checkpoint.pt", "policy": "mcts", "simulations": 8},
+    settings={
+        "checkpoint": "runs/shogi/model-a/checkpoint.pt",
+        "move_selector": "mcts",
+        "mcts_simulations_per_move": 8,
+    },
 )
 WHITE_ACTOR = ShogiActorSpec(kind="usi_engine", name="white-engine", settings={"go_command": "go nodes 1"})
 USI_ENGINE_ACTOR = ShogiActorSpec(kind="usi_engine", name="yaneuraou", settings={"go_command": "go nodes 1"})
@@ -93,7 +97,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:usi_engine": 3})
             self.assertEqual(
                 manifest["checkpoint_actor_counts"],
-                {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 3},
+                {"runs/shogi/model-a/checkpoint.pt | move_selector=mcts | mcts_simulations_per_move=8": 3},
             )
             self.assertEqual(
                 manifest["checkpoint_actor_summaries"],
@@ -114,7 +118,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:usi_engine": 1})
             self.assertEqual(
                 second_history["added_checkpoint_actor_counts"],
-                {"runs/shogi/model-a/checkpoint.pt | policy=mcts | simulations=8": 1},
+                {"runs/shogi/model-a/checkpoint.pt | move_selector=mcts | mcts_simulations_per_move=8": 1},
             )
             self.assertEqual(second_history["added_checkpoint_actor_summaries"][0]["count"], 1)
             self.assertEqual(second_history["total_checkpoint_actor_summaries"][0]["count"], 3)

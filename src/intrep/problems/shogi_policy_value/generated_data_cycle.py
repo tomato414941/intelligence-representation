@@ -84,7 +84,7 @@ class ShogiGeneratedDataTrainingCycleConfig:
     # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
-    evaluation_batch_size: int = 1
+    nn_leaf_eval_batch_limit: int = 1
     generation_worker_processes: int = 1
     seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
@@ -116,7 +116,7 @@ class ShogiGeneratedDataTrainingLoopConfig:
     # the WCSC-style 320-ply cap as the default and warn on shorter overrides.
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 16
-    evaluation_batch_size: int = 1
+    nn_leaf_eval_batch_limit: int = 1
     generation_worker_processes: int = 1
     seed: int | None = None
     mcts_move_time_limit_sec: float | None = None
@@ -161,7 +161,7 @@ def run_shogi_generated_data_training_cycle(
         board_backend=config.board_backend,
         max_plies=config.max_plies,
         simulations=config.simulations,
-        evaluation_batch_size=config.evaluation_batch_size,
+        nn_leaf_eval_batch_limit=config.nn_leaf_eval_batch_limit,
         generation_worker_processes=config.generation_worker_processes,
         seed=config.seed,
         checkpoint_device=config.device,
@@ -200,7 +200,7 @@ def run_shogi_generated_data_training_cycle(
         "board_backend": config.board_backend,
         "max_plies": config.max_plies,
         "simulations": config.simulations,
-        "evaluation_batch_size": config.evaluation_batch_size,
+        "nn_leaf_eval_batch_limit": config.nn_leaf_eval_batch_limit,
         "generation_worker_processes": config.generation_worker_processes,
         "seed": config.seed,
         "checkpoint_device": config.device,
@@ -241,7 +241,7 @@ def run_shogi_generated_data_training_loop(
                 board_backend=config.board_backend,
                 max_plies=config.max_plies,
                 simulations=config.simulations,
-                evaluation_batch_size=config.evaluation_batch_size,
+                nn_leaf_eval_batch_limit=config.nn_leaf_eval_batch_limit,
                 generation_worker_processes=config.generation_worker_processes,
                 seed=config.seed,
                 mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,
@@ -281,8 +281,8 @@ def _validate_config(config: ShogiGeneratedDataTrainingCycleConfig) -> None:
     warn_short_max_plies(config.max_plies)
     if config.simulations <= 0:
         raise ValueError("simulations must be positive")
-    if config.evaluation_batch_size <= 0:
-        raise ValueError("evaluation_batch_size must be positive")
+    if config.nn_leaf_eval_batch_limit <= 0:
+        raise ValueError("nn_leaf_eval_batch_limit must be positive")
     if config.generation_worker_processes <= 0:
         raise ValueError("generation_worker_processes must be positive")
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:
@@ -330,7 +330,7 @@ def _validate_loop_config(config: ShogiGeneratedDataTrainingLoopConfig) -> None:
             board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
-            evaluation_batch_size=config.evaluation_batch_size,
+            nn_leaf_eval_batch_limit=config.nn_leaf_eval_batch_limit,
             generation_worker_processes=config.generation_worker_processes,
             seed=config.seed,
             mcts_move_time_limit_sec=config.mcts_move_time_limit_sec,

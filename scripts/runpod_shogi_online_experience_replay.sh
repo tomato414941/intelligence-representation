@@ -269,7 +269,7 @@ echo \"online_experience_replay_config iterations=$ITERATIONS experience_sources
   --board-backend cshogi \
   --max-plies \"$MAX_PLIES\" \
   --simulations \"$SIMULATIONS\" \
-  --evaluation-batch-size \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
+  --nn-leaf-eval-batch-limit \"$NN_LEAF_EVAL_BATCH_LIMIT\" \
   --learning-rate \"$LEARNING_RATE\" \
   --policy-loss-weight \"$POLICY_LOSS_WEIGHT\" \
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \

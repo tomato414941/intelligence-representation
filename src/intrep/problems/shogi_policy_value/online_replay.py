@@ -117,7 +117,7 @@ class ShogiOnlineReplayConfig:
     board_backend: str = "cshogi"
     max_plies: int = DEFAULT_SHOGI_MAX_PLIES
     simulations: int = 128
-    evaluation_batch_size: int = 64
+    nn_leaf_eval_batch_limit: int = 64
     generation_worker_processes: int = DEFAULT_GENERATION_WORKER_PROCESSES
     mcts_move_time_limit_sec: float | None = None
     training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
@@ -427,7 +427,7 @@ def _generate_online_replay_iteration_experience(
             board_backend=config.board_backend,
             max_plies=config.max_plies,
             simulations=config.simulations,
-            evaluation_batch_size=config.evaluation_batch_size,
+            nn_leaf_eval_batch_limit=config.nn_leaf_eval_batch_limit,
             generation_worker_processes=config.generation_worker_processes,
             seed=_source_seed(config.seed, artifacts.iteration_dir.name, source_index),
             checkpoint_device=config.training_config.device,
@@ -487,8 +487,8 @@ def _evaluate_generator_candidate(
         "mcts",
         "--player-a-mcts-simulations",
         str(config.simulations),
-        "--player-a-mcts-evaluation-batch-size",
-        str(config.evaluation_batch_size),
+        "--player-a-mcts-nn-leaf-eval-batch-limit",
+        str(config.nn_leaf_eval_batch_limit),
         "--player-a-device",
         config.training_config.device,
         "--player-a-board-backend",
@@ -505,8 +505,8 @@ def _evaluate_generator_candidate(
         "mcts",
         "--player-b-mcts-simulations",
         str(config.simulations),
-        "--player-b-mcts-evaluation-batch-size",
-        str(config.evaluation_batch_size),
+        "--player-b-mcts-nn-leaf-eval-batch-limit",
+        str(config.nn_leaf_eval_batch_limit),
         "--player-b-device",
         config.training_config.device,
         "--player-b-board-backend",
@@ -768,8 +768,8 @@ def _validate_online_replay_config(config: ShogiOnlineReplayConfig) -> None:
     warn_short_max_plies(config.max_plies)
     if config.simulations <= 0:
         raise ValueError("simulations must be positive")
-    if config.evaluation_batch_size <= 0:
-        raise ValueError("evaluation_batch_size must be positive")
+    if config.nn_leaf_eval_batch_limit <= 0:
+        raise ValueError("nn_leaf_eval_batch_limit must be positive")
     if config.generation_worker_processes <= 0:
         raise ValueError("generation_worker_processes must be positive")
     if config.mcts_move_time_limit_sec is not None and config.mcts_move_time_limit_sec <= 0.0:

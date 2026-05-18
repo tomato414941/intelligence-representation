@@ -28,7 +28,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                 "games": 2,
                 "max_plies": 4,
                 "simulations": 3,
-                "evaluation_batch_size": 4,
+                "nn_leaf_eval_batch_limit": 4,
                 "mcts_move_time_limit_sec": 9.0,
             },
         )
@@ -64,7 +64,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
                     "4",
                     "--simulations",
                     "3",
-                    "--evaluation-batch-size",
+                    "--nn-leaf-eval-batch-limit",
                     "4",
                     "--generation-worker-processes",
                     "3",
@@ -106,7 +106,7 @@ class RunShogiGeneratedDataTrainingCycleScriptTest(unittest.TestCase):
         self.assertEqual(config.board_backend, "cshogi")
         self.assertEqual(config.max_plies, 4)
         self.assertEqual(config.simulations, 3)
-        self.assertEqual(config.evaluation_batch_size, 4)
+        self.assertEqual(config.nn_leaf_eval_batch_limit, 4)
         self.assertEqual(config.generation_worker_processes, 3)
         self.assertEqual(config.seed, 11)
         self.assertEqual(config.mcts_move_time_limit_sec, 9.0)

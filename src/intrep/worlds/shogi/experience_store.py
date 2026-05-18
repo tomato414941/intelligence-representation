@@ -95,6 +95,6 @@ def _checkpoint_actor_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
 
 def _checkpoint_actor_key(settings: dict[str, str | int | float | bool | None]) -> str:
     checkpoint = settings.get("checkpoint", "unknown")
-    policy = settings.get("policy", "unknown")
-    simulations = settings.get("simulations", "unknown")
-    return f"{checkpoint} | policy={policy} | simulations={simulations}"
+    move_selector = settings.get("move_selector", "unknown")
+    simulations = settings.get("mcts_simulations_per_move", "unknown")
+    return f"{checkpoint} | move_selector={move_selector} | mcts_simulations_per_move={simulations}"

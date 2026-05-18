@@ -252,7 +252,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         concurrent_games_per_process=2,
                         max_plies=4,
                         simulations=3,
-                        evaluation_batch_size=4,
+                        nn_leaf_eval_batch_limit=4,
                         generation_worker_processes=3,
                         seed=11,
                         mcts_move_time_limit_sec=9.0,
@@ -290,8 +290,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--white-move-selection-temperature") + 1], "1.0")
             self.assertEqual(generate_command[generate_command.index("--black-move-selection-temperature-plies") + 1], "40")
             self.assertEqual(generate_command[generate_command.index("--white-move-selection-temperature-plies") + 1], "40")
-            self.assertEqual(generate_command[generate_command.index("--black-mcts-evaluation-batch-size") + 1], "4")
-            self.assertEqual(generate_command[generate_command.index("--white-mcts-evaluation-batch-size") + 1], "4")
+            self.assertEqual(generate_command[generate_command.index("--black-mcts-nn-leaf-eval-batch-limit") + 1], "4")
+            self.assertEqual(generate_command[generate_command.index("--white-mcts-nn-leaf-eval-batch-limit") + 1], "4")
             self.assertEqual(generate_command[generate_command.index("--black-device") + 1], "cuda")
             self.assertEqual(generate_command[generate_command.index("--white-device") + 1], "cuda")
             self.assertEqual(generate_command[generate_command.index("--black-board-backend") + 1], "cshogi")
@@ -327,7 +327,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     "board_backend": "cshogi",
                     "max_plies": 4,
                     "simulations": 3,
-                    "evaluation_batch_size": 4,
+                    "nn_leaf_eval_batch_limit": 4,
                     "generation_worker_processes": 3,
                     "seed": 11,
                     "checkpoint_device": "cuda",

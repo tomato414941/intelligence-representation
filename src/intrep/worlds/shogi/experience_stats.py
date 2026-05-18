@@ -122,8 +122,8 @@ def _checkpoint_actor_summary(actor: ShogiActorSpec) -> dict[str, object]:
         or "unknown",
     }
     _add_optional_setting(summary, settings, "move_selection_profile")
-    _add_optional_setting(summary, settings, "mcts_simulations_per_move", fallback_key="simulations")
-    _add_optional_setting(summary, settings, "nn_leaf_eval_batch_limit", fallback_key="evaluation_batch_size")
+    _add_optional_setting(summary, settings, "mcts_simulations_per_move")
+    _add_optional_setting(summary, settings, "nn_leaf_eval_batch_limit")
     _add_optional_setting(summary, settings, "mcts_move_time_limit_sec")
     _add_optional_setting(summary, settings, "board_backend")
     return summary
