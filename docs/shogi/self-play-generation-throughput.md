@@ -1,7 +1,6 @@
 # Shogi Generated Game Throughput
 
-This document records throughput measurements for generated shogi games. It is
-not a model-quality report and it is not a complete run history.
+This document records throughput measurements for generated shogi games.
 
 `runs/` is disposable. Measurements that should survive must be summarized here
 instead of relying on run-local paths.
