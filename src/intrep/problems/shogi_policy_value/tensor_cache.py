@@ -9,7 +9,7 @@ import torch
 
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
-    shogi_policy_value_examples_from_game_record,
+    load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
 )
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
@@ -20,10 +20,10 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     TensorizedShogiPolicyValueSample,
+    load_shogi_policy_value_examples_jsonl,
     tensorize_shogi_policy_value_examples,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v2"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
@@ -46,21 +46,24 @@ def build_shogi_policy_value_tensor_cache(
     *,
     data_selection_path: Path,
     output_path: Path | None = None,
-    shard_games: int = 100,
+    shard_examples: int = 100_000,
+    shard_games: int | None = None,
     resume: bool = False,
 ) -> dict[str, object]:
-    if shard_games <= 0:
-        raise ValueError("shard_games must be positive")
+    if shard_games is not None:
+        shard_examples = shard_games
+    if shard_examples <= 0:
+        raise ValueError("shard_examples must be positive")
     data_selection = load_shogi_policy_value_data_selection(data_selection_path)
-    analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
-        tuple(source.path for source in data_selection.analysis_sources)
-    )
     cache_dir = output_path or default_shogi_policy_value_tensor_cache_path(data_selection_path)
     cache_dir.mkdir(parents=True, exist_ok=True)
     shards: list[dict[str, object]] = []
     train_summary = _empty_policy_target_summary()
     eval_summary = _empty_policy_target_summary()
     max_choice_count = 0
+    analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
+        tuple(source.path for source in data_selection.analysis_sources)
+    )
 
     for split, sources in (("train", data_selection.train_sources), ("eval", data_selection.eval_sources)):
         split_dir = cache_dir / split
@@ -71,7 +74,7 @@ def build_shogi_policy_value_tensor_cache(
                 source=source,
                 source_index=source_index,
                 split_dir=split_dir,
-                shard_games=shard_games,
+                shard_examples=shard_examples,
                 data_selection=data_selection,
                 data_selection_path=data_selection_path,
                 analyses_by_position=analyses_by_position,
@@ -86,10 +89,10 @@ def build_shogi_policy_value_tensor_cache(
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
-        "shard_games": shard_games,
+        "shard_examples": shard_examples,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
-        "skipped_game_count": sum(int(shard.get("skipped_game_count", 0)) for shard in shards),
+        "skipped_example_count": sum(int(shard.get("skipped_example_count", 0)) for shard in shards),
         "max_choice_count": max_choice_count,
         "train_policy_target_summary": _finalize_policy_target_summary(train_summary),
         "eval_policy_target_summary": _finalize_policy_target_summary(eval_summary),
@@ -102,7 +105,7 @@ def build_shogi_policy_value_tensor_cache(
         "data_selection_path": str(data_selection_path),
         "train_count": manifest["train_count"],
         "eval_count": manifest["eval_count"],
-        "skipped_game_count": manifest["skipped_game_count"],
+        "skipped_example_count": manifest["skipped_example_count"],
         "shard_count": len(shards),
     }
 
@@ -113,30 +116,39 @@ def build_shogi_policy_value_tensor_cache_shard(
     cache_dir: Path,
     split: str,
     source_index: int,
-    source_game_start_index: int,
-    source_game_end_index: int,
+    source_example_start_index: int | None = None,
+    source_example_end_index: int | None = None,
+    source_game_start_index: int | None = None,
+    source_game_end_index: int | None = None,
     shard_index: int,
     resume: bool = False,
 ) -> dict[str, object]:
-    if source_game_start_index < 0:
-        raise ValueError("source_game_start_index must be non-negative")
-    if source_game_end_index <= source_game_start_index:
-        raise ValueError("source_game_end_index must be greater than source_game_start_index")
+    if source_example_start_index is None:
+        source_example_start_index = source_game_start_index
+    if source_example_end_index is None:
+        source_example_end_index = source_game_end_index
+    if source_example_start_index is None or source_example_end_index is None:
+        raise ValueError("source_example_start_index and source_example_end_index are required")
+    if source_example_start_index < 0:
+        raise ValueError("source_example_start_index must be non-negative")
+    if source_example_end_index <= source_example_start_index:
+        raise ValueError("source_example_end_index must be greater than source_example_start_index")
     data_selection = load_shogi_policy_value_data_selection(data_selection_path)
     sources = _split_sources(data_selection, split)
     if source_index < 0 or source_index >= len(sources):
         raise ValueError("source_index is out of range")
     source = sources[source_index]
     analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
-        tuple(analysis_source.path for analysis_source in data_selection.analysis_sources)
+        tuple(source.path for source in data_selection.analysis_sources)
     )
-    records = [
-        (source_game_index, record)
-        for source_game_index, record in enumerate(iter_shogi_game_records_jsonl(source.path))
-        if source_game_start_index <= source_game_index < source_game_end_index
+    source_examples = _source_examples(source, data_selection=data_selection, analyses_by_position=analyses_by_position)
+    examples = [
+        (source_example_index, example)
+        for source_example_index, example in enumerate(source_examples)
+        if source_example_start_index <= source_example_index < source_example_end_index
     ]
-    if not records:
-        raise ValueError("shard range must contain at least one game")
+    if not examples:
+        raise ValueError("shard range must contain at least one example")
     split_dir = cache_dir / split
     split_dir.mkdir(parents=True, exist_ok=True)
     return _build_shard(
@@ -145,10 +157,9 @@ def build_shogi_policy_value_tensor_cache_shard(
         source_index=source_index,
         split_dir=split_dir,
         shard_index=shard_index,
-        records=records,
+        examples=examples,
         data_selection=data_selection,
         data_selection_path=data_selection_path,
-        analyses_by_position=analyses_by_position,
         resume=resume,
     )
 
@@ -157,15 +168,18 @@ def write_shogi_policy_value_tensor_cache_manifest(
     *,
     data_selection_path: Path,
     cache_dir: Path,
-    shard_games: int,
+    shard_examples: int = 100_000,
+    shard_games: int | None = None,
 ) -> dict[str, object]:
+    if shard_games is not None:
+        shard_examples = shard_games
     data_selection = load_shogi_policy_value_data_selection(data_selection_path)
     shards = sorted(
         (_load_shard_manifest_file(path) for path in cache_dir.glob("*/*.json")),
         key=lambda shard: (
             str(shard["split"]),
             int(shard["source_index"]),
-            int(shard["source_game_start_index"]),
+            int(shard["source_example_start_index"]),
         ),
     )
     if not shards:
@@ -184,10 +198,10 @@ def write_shogi_policy_value_tensor_cache_manifest(
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
-        "shard_games": shard_games,
+        "shard_examples": shard_examples,
         "train_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "train"),
         "eval_count": sum(int(shard["sample_count"]) for shard in shards if shard["split"] == "eval"),
-        "skipped_game_count": sum(int(shard.get("skipped_game_count", 0)) for shard in shards),
+        "skipped_example_count": sum(int(shard.get("skipped_example_count", 0)) for shard in shards),
         "max_choice_count": max_choice_count,
         "train_policy_target_summary": _finalize_policy_target_summary(train_summary),
         "eval_policy_target_summary": _finalize_policy_target_summary(eval_summary),
@@ -236,7 +250,7 @@ def _portable_manifest_data_selection(manifest: dict[str, object]) -> dict[str, 
 
 def _data_selection_json_with_paths_relative_to(payload: dict[str, object], *, root: Path) -> dict[str, object]:
     result = dict(payload)
-    for key in ("analysis_sources", "train_sources", "eval_sources"):
+    for key in ("train_sources", "eval_sources"):
         sources = []
         for source in _object_list(result.get(key, [])):
             source_payload = dict(_object_dict(source))
@@ -331,21 +345,23 @@ def _build_source_shards(
     source: ShogiPolicyValueDataSelectionSource,
     source_index: int,
     split_dir: Path,
-    shard_games: int,
+    shard_examples: int,
     data_selection: ShogiPolicyValueDataSelection,
     data_selection_path: Path,
     analyses_by_position: dict[str, ShogiEngineAnalysis],
     resume: bool,
 ) -> list[dict[str, object]]:
     shards: list[dict[str, object]] = []
-    batch: list[tuple[int, ShogiGameRecord]] = []
+    batch: list[tuple[int, ShogiPolicyValueExample]] = []
     emitted = 0
-    for source_game_index, record in enumerate(iter_shogi_game_records_jsonl(source.path)):
-        if source.max_games is not None and emitted >= source.max_games:
+    for source_example_index, example in enumerate(
+        _source_examples(source, data_selection=data_selection, analyses_by_position=analyses_by_position)
+    ):
+        if source.max_examples is not None and emitted >= source.max_examples:
             break
-        batch.append((source_game_index, record))
+        batch.append((source_example_index, example))
         emitted += 1
-        if len(batch) >= shard_games:
+        if len(batch) >= shard_examples:
             shards.append(
                 _build_shard(
                     split=split,
@@ -353,10 +369,9 @@ def _build_source_shards(
                     source_index=source_index,
                     split_dir=split_dir,
                     shard_index=len(shards),
-                    records=batch,
+                    examples=batch,
                     data_selection=data_selection,
                     data_selection_path=data_selection_path,
-                    analyses_by_position=analyses_by_position,
                     resume=resume,
                 )
             )
@@ -369,14 +384,37 @@ def _build_source_shards(
                 source_index=source_index,
                 split_dir=split_dir,
                 shard_index=len(shards),
-                records=batch,
+                examples=batch,
                 data_selection=data_selection,
                 data_selection_path=data_selection_path,
-                analyses_by_position=analyses_by_position,
                 resume=resume,
             )
         )
     return shards
+
+
+def _source_examples(
+    source: ShogiPolicyValueDataSelectionSource,
+    *,
+    data_selection: ShogiPolicyValueDataSelection,
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+) -> list[ShogiPolicyValueExample]:
+    if source.kind == "shogi_policy_value_examples_jsonl":
+        return load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples)
+    if source.kind == "game_records_jsonl":
+        if data_selection.target_construction is None:
+            raise ValueError("target_construction is required for game_records_jsonl sources")
+        return load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+            source.path,
+            policy_target_construction=data_selection.target_construction.policy,
+            value_target_construction=data_selection.target_construction.value,
+            analyses_by_position=analyses_by_position,
+            policy_temperature_cp=data_selection.target_construction.policy_temperature_cp,
+            policy_mate_cp=data_selection.target_construction.policy_mate_cp,
+            score_cp_scale=data_selection.target_construction.score_cp_scale,
+            max_games=source.max_games,
+        )
+    raise ValueError(f"unsupported data selection source kind: {source.kind}")
 
 
 def _build_shard(
@@ -386,15 +424,14 @@ def _build_shard(
     source_index: int,
     split_dir: Path,
     shard_index: int,
-    records: Sequence[tuple[int, ShogiGameRecord]],
+    examples: Sequence[tuple[int, ShogiPolicyValueExample]],
     data_selection: ShogiPolicyValueDataSelection,
     data_selection_path: Path,
-    analyses_by_position: dict[str, ShogiEngineAnalysis],
     resume: bool,
 ) -> dict[str, object]:
-    first_index = records[0][0]
-    last_index = records[-1][0]
-    shard_path = split_dir / f"source-{source_index:04d}-games-{first_index:08d}-{last_index + 1:08d}.pt"
+    first_index = examples[0][0]
+    last_index = examples[-1][0]
+    shard_path = split_dir / f"source-{source_index:04d}-examples-{first_index:08d}-{last_index + 1:08d}.pt"
     expected = _shard_identity(
         split=split,
         source=source,
@@ -411,39 +448,17 @@ def _build_shard(
         if loaded is not None:
             return loaded
 
-    examples: list[ShogiPolicyValueExample] = []
-    failures: list[dict[str, object]] = []
-    for source_game_index, record in records:
-        try:
-            examples.extend(
-                shogi_policy_value_examples_from_game_record(
-                    record,
-                    policy_target_construction=data_selection.target_construction.policy,
-                    value_target_construction=data_selection.target_construction.value,
-                    analyses_by_position=analyses_by_position,
-                    policy_temperature_cp=data_selection.target_construction.policy_temperature_cp,
-                    policy_mate_cp=data_selection.target_construction.policy_mate_cp,
-                    score_cp_scale=data_selection.target_construction.score_cp_scale,
-                )
-            )
-        except ValueError as exc:
-            failures.append(
-                {
-                    "source_game_index": source_game_index,
-                    "error": str(exc),
-                    "source_metadata": record.metadata,
-                }
-            )
-    samples = tensorize_shogi_policy_value_examples(examples)
-    summary = _policy_target_summary(examples)
+    shard_examples = [example for _source_example_index, example in examples]
+    samples = tensorize_shogi_policy_value_examples(shard_examples)
+    summary = _policy_target_summary(shard_examples)
     max_choice_count = max((int(sample.candidate_move_features.shape[0]) for sample in samples), default=0)
     payload = {
         **expected,
         "sample_count": len(samples),
         "max_choice_count": max_choice_count,
         "policy_target_summary": summary,
-        "skipped_game_count": len(failures),
-        "failures": failures,
+        "skipped_example_count": 0,
+        "failures": [],
         "samples": [_sample_to_payload(sample) for sample in samples],
     }
     torch.save(payload, shard_path)
@@ -470,11 +485,10 @@ def _shard_identity(
         "shard_index": shard_index,
         "source_kind": source.kind,
         "source_path": str(source.path),
-        "source_max_games": source.max_games,
-        "source_game_start_index": first_index,
-        "source_game_end_index": last_index + 1,
+        "source_max_examples": source.max_examples,
+        "source_example_start_index": first_index,
+        "source_example_end_index": last_index + 1,
         "data_selection_path": str(data_selection_path),
-        "target_construction": shogi_policy_value_data_selection_to_json(data_selection)["target_construction"],
         "path": str(path.relative_to(path.parents[1])),
     }
 
@@ -539,15 +553,14 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
             "shard_index",
             "source_kind",
             "source_path",
-            "source_max_games",
-            "source_game_start_index",
-            "source_game_end_index",
+            "source_max_examples",
+            "source_example_start_index",
+            "source_example_end_index",
             "data_selection_path",
-            "target_construction",
             "sample_count",
             "max_choice_count",
             "policy_target_summary",
-            "skipped_game_count",
+            "skipped_example_count",
             "failures",
             "path",
         )

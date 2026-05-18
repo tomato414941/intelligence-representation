@@ -21,7 +21,6 @@ class ShogiPolicyValueTrainingInputs:
         for source in (
             *self.data_selection.train_sources,
             *self.data_selection.eval_sources,
-            *self.data_selection.analysis_sources,
         ):
             paths.add(source.path)
         if self.tensor_cache_path is not None:

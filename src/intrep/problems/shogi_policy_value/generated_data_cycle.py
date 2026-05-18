@@ -11,12 +11,13 @@ from intrep.problems.shogi_policy_value.generated_data_artifacts import (
     ShogiGeneratedDataTrainingLoopResult,
     promoted_generated_data_checkpoint,
 )
+from intrep.problems.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
     ShogiPolicyValueDataSelectionSource,
-    ShogiPolicyValueTargetConstruction,
     shogi_policy_value_data_selection_to_json,
 )
+from intrep.problems.shogi_policy_value.examples import write_shogi_policy_value_examples_jsonl
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
     ShogiGeneratedPlayerSpec,
@@ -139,6 +140,8 @@ def run_shogi_generated_data_training_cycle(
     games_jsonl = run_dir / "generated-games.jsonl"
     train_jsonl = run_dir / "train-games.jsonl"
     eval_jsonl = run_dir / "eval-games.jsonl"
+    train_examples_jsonl = run_dir / "train-examples.jsonl"
+    eval_examples_jsonl = run_dir / "eval-examples.jsonl"
     generation_summary_path = run_dir / "generation-summary.json"
     data_selection_json = run_dir / "data-selection.json"
     checkpoint_path = run_dir / "checkpoint.pt"
@@ -170,7 +173,9 @@ def run_shogi_generated_data_training_cycle(
         eval_jsonl=eval_jsonl,
         eval_ratio=config.eval_ratio,
     )
-    _write_data_selection(data_selection_json, train_jsonl=train_jsonl, eval_jsonl=eval_jsonl)
+    _write_examples(train_jsonl, train_examples_jsonl)
+    _write_examples(eval_jsonl, eval_examples_jsonl)
+    _write_data_selection(data_selection_json, train_jsonl=train_examples_jsonl, eval_jsonl=eval_examples_jsonl)
     _run_training(
         data_selection_json=data_selection_json,
         init_checkpoint_path=config.checkpoint,
@@ -378,20 +383,23 @@ def _player_summary(player: ShogiGeneratedPlayerSpec) -> dict[str, object]:
 def _write_data_selection(path: Path, *, train_jsonl: Path, eval_jsonl: Path) -> None:
     selection = ShogiPolicyValueDataSelection(
         name=path.parent.name,
-        objective="shogi policy/value from generated game records",
-        target_construction=ShogiPolicyValueTargetConstruction(
-            policy="chosen_move",
-            policy_temperature_cp=100.0,
-            policy_mate_cp=100000.0,
-            value="winner",
-            score_cp_scale=600.0,
-        ),
+        objective="shogi policy/value from generated training examples",
+        target_construction=None,
         analysis_sources=(),
-        train_sources=(ShogiPolicyValueDataSelectionSource(kind="game_records_jsonl", path=train_jsonl),),
-        eval_sources=(ShogiPolicyValueDataSelectionSource(kind="game_records_jsonl", path=eval_jsonl),),
+        train_sources=(ShogiPolicyValueDataSelectionSource(kind="shogi_policy_value_examples_jsonl", path=train_jsonl),),
+        eval_sources=(ShogiPolicyValueDataSelectionSource(kind="shogi_policy_value_examples_jsonl", path=eval_jsonl),),
     )
     payload = shogi_policy_value_data_selection_to_json(selection)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _write_examples(games_jsonl: Path, examples_jsonl: Path) -> None:
+    examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+        games_jsonl,
+        policy_target_construction="chosen_move",
+        value_target_construction="winner",
+    )
+    write_shogi_policy_value_examples_jsonl(examples_jsonl, examples)
 
 
 def _run_training(

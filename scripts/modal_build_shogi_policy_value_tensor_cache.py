@@ -44,8 +44,8 @@ if modal is not None:
             cache_dir=cache_dir,
             split=str(task["split"]),
             source_index=int(task["source_index"]),
-            source_game_start_index=int(task["source_game_start_index"]),
-            source_game_end_index=int(task["source_game_end_index"]),
+            source_example_start_index=int(task["source_example_start_index"]),
+            source_example_end_index=int(task["source_example_end_index"]),
             shard_index=int(task["shard_index"]),
             resume=True,
         )
@@ -61,7 +61,7 @@ if modal is not None:
         return {"remote_cache": f"{remote_bundle}/cache/{DEFAULT_CACHE_NAME}", "removed": True}
 
     @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=60 * 60)
-    def write_remote_manifest(remote_bundle: str, shard_games: int) -> dict[str, object]:
+    def write_remote_manifest(remote_bundle: str, shard_examples: int) -> dict[str, object]:
         from intrep.problems.shogi_policy_value.tensor_cache import (
             write_shogi_policy_value_tensor_cache_manifest,
         )
@@ -71,7 +71,7 @@ if modal is not None:
         result = write_shogi_policy_value_tensor_cache_manifest(
             data_selection_path=data_selection_path,
             cache_dir=cache_dir,
-            shard_games=shard_games,
+            shard_examples=shard_examples,
         )
         volume.commit()
         return result
@@ -80,7 +80,7 @@ if modal is not None:
     def main(
         local_bundle: str = str(DEFAULT_LOCAL_BUNDLE),
         remote_bundle: str = DEFAULT_REMOTE_BUNDLE,
-        shard_games: int = 100,
+        shard_examples: int = 100_000,
         split: str = "all",
         skip_upload: bool = False,
         limit_shards: int = 0,
@@ -89,7 +89,7 @@ if modal is not None:
         run(
             local_bundle=Path(local_bundle),
             remote_bundle=remote_bundle,
-            shard_games=shard_games,
+            shard_examples=shard_examples,
             split=split,
             skip_upload=skip_upload,
             limit_shards=limit_shards or None,
@@ -104,7 +104,7 @@ def run(
     *,
     local_bundle: Path,
     remote_bundle: str,
-    shard_games: int,
+    shard_examples: int,
     split: str,
     skip_upload: bool,
     limit_shards: int | None,
@@ -112,8 +112,8 @@ def run(
 ) -> None:
     if modal is None:
         raise RuntimeError("Modal is required. Run with: uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py")
-    if shard_games <= 0:
-        raise ValueError("shard_games must be positive")
+    if shard_examples <= 0:
+        raise ValueError("shard_examples must be positive")
     if split not in {"all", "train", "eval"}:
         raise ValueError("split must be all, train, or eval")
     if limit_shards is not None and limit_shards <= 0:
@@ -133,7 +133,7 @@ def run(
     tasks = _build_tasks(
         local_data_selection_path=data_selection_path,
         remote_bundle=remote_bundle,
-        shard_games=shard_games,
+        shard_examples=shard_examples,
         split=split,
     )
     if limit_shards is not None:
@@ -141,7 +141,7 @@ def run(
 
     print(json.dumps({"volume": VOLUME_NAME, "remote_bundle": remote_bundle, "shard_count": len(tasks)}, indent=2))
     results = list(build_remote_shard.map(tasks))
-    manifest = write_remote_manifest.remote(remote_bundle, shard_games)
+    manifest = write_remote_manifest.remote(remote_bundle, shard_examples)
     print(
         json.dumps(
             {
@@ -150,7 +150,7 @@ def run(
                 "built_shards": len(results),
                 "train_count": manifest["train_count"],
                 "eval_count": manifest["eval_count"],
-                "skipped_game_count": manifest["skipped_game_count"],
+                "skipped_example_count": manifest["skipped_example_count"],
                 "shard_count": len(manifest["shards"]),
             },
             indent=2,
@@ -168,7 +168,7 @@ def _build_tasks(
     *,
     local_data_selection_path: Path,
     remote_bundle: str,
-    shard_games: int,
+    shard_examples: int,
     split: str,
 ) -> list[dict[str, object]]:
     payload = json.loads(local_data_selection_path.read_text(encoding="utf-8"))
@@ -180,19 +180,19 @@ def _build_tasks(
         for source_index, source in enumerate(sources):
             source_payload = _object_dict(source)
             source_path = _local_source_path(local_bundle, source_payload)
-            game_count = _count_jsonl_records(source_path)
-            if "max_games" in source_payload:
-                game_count = min(game_count, int(source_payload["max_games"]))
+            example_count = _count_jsonl_records(source_path)
+            if "max_examples" in source_payload:
+                example_count = min(example_count, int(source_payload["max_examples"]))
             shard_index = 0
-            for start in range(0, game_count, shard_games):
-                end = min(start + shard_games, game_count)
+            for start in range(0, example_count, shard_examples):
+                end = min(start + shard_examples, example_count)
                 tasks.append(
                     {
                         "remote_bundle": remote_bundle,
                         "split": split_name,
                         "source_index": source_index,
-                        "source_game_start_index": start,
-                        "source_game_end_index": end,
+                        "source_example_start_index": start,
+                        "source_example_end_index": end,
                         "shard_index": shard_index,
                     }
                 )

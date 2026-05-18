@@ -87,14 +87,16 @@ training configuration, not only by a convenient artifact path.
 
 ## Target Construction
 
-Target Construction is downstream of selection.
+Target Construction happens before durable Training Data Bundles are consumed
+by training.
 
 ```text
-selected material
+source records or evidence
   -> Target Construction
   -> Training Example
+  -> Data Selection
 ```
 
-Selection decides what material is included. Target Construction decides how
-included material becomes targets, feedback, or objective-specific training
-examples.
+Target Construction decides how source material becomes targets, feedback, or
+objective-specific training examples. Data Selection for training should then
+select already-constructed training examples for a declared use and split.

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
 
 import shogi
@@ -65,6 +67,82 @@ class TensorizedShogiPolicyValueSample:
 
 
 ShogiPolicyValueDatasetItem = ShogiPolicyValueExample | TensorizedShogiPolicyValueSample
+
+
+def load_shogi_policy_value_examples_jsonl(path: str | Path, *, max_examples: int | None = None) -> list[ShogiPolicyValueExample]:
+    if max_examples is not None and max_examples <= 0:
+        raise ValueError("max_examples must be positive")
+    examples: list[ShogiPolicyValueExample] = []
+    with Path(path).open(encoding="utf-8") as file:
+        for line in file:
+            if max_examples is not None and len(examples) >= max_examples:
+                break
+            stripped = line.strip()
+            if not stripped:
+                continue
+            examples.append(shogi_policy_value_example_from_json(json.loads(stripped)))
+    return examples
+
+
+def write_shogi_policy_value_examples_jsonl(path: str | Path, examples: Sequence[ShogiPolicyValueExample]) -> None:
+    with Path(path).open("w", encoding="utf-8") as file:
+        for example in examples:
+            file.write(json.dumps(shogi_policy_value_example_to_json(example), ensure_ascii=False) + "\n")
+
+
+def shogi_policy_value_example_to_json(example: ShogiPolicyValueExample) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "position_sfen": example.position_sfen,
+        "legal_moves": list(example.legal_moves),
+        "chosen_move": example.chosen_move,
+    }
+    if example.policy_targets is not None:
+        payload["policy_targets"] = dict(sorted(example.policy_targets.items()))
+    if example.value_target is not None:
+        payload["value_target"] = example.value_target
+    if example.game_index is not None:
+        payload["game_index"] = example.game_index
+    if example.ply_index is not None:
+        payload["ply_index"] = example.ply_index
+    return payload
+
+
+def shogi_policy_value_example_from_json(payload: object) -> ShogiPolicyValueExample:
+    if not isinstance(payload, dict):
+        raise ValueError("shogi policy/value example must be an object")
+    policy_targets = payload.get("policy_targets")
+    if policy_targets is not None:
+        if not isinstance(policy_targets, dict):
+            raise ValueError("policy_targets must be an object")
+        policy_targets = {str(move): float(weight) for move, weight in policy_targets.items()}
+    return ShogiPolicyValueExample(
+        position_sfen=str(payload["position_sfen"]),
+        legal_moves=tuple(str(move) for move in _required_list(payload, "legal_moves")),
+        chosen_move=str(payload["chosen_move"]),
+        policy_targets=policy_targets,
+        value_target=_optional_float(payload.get("value_target")),
+        game_index=_optional_int(payload.get("game_index")),
+        ply_index=_optional_int(payload.get("ply_index")),
+    )
+
+
+def _required_list(payload: dict[str, object], key: str) -> list[object]:
+    value = payload.get(key)
+    if not isinstance(value, list):
+        raise ValueError(f"{key} must be a list")
+    return value
+
+
+def _optional_float(value: object) -> float | None:
+    if value is None:
+        return None
+    return float(value)
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    return int(value)
 
 
 def shogi_move_choice_example_from_board(board: shogi.Board, chosen_move: str) -> ShogiMoveChoiceExample:

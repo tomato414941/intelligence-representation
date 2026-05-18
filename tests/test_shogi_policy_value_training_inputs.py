@@ -10,8 +10,8 @@ class ShogiPolicyValueTrainingInputsTest(unittest.TestCase):
     def test_lists_data_selection_sources_and_tensor_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            train = root / "train-games.jsonl"
-            eval_ = root / "eval-games.jsonl"
+            train = root / "train-examples.jsonl"
+            eval_ = root / "eval-examples.jsonl"
             cache = root / "cache" / "shogi-policy-value-tensors"
             selection = root / "data-selection.json"
             train.write_text("", encoding="utf-8")
@@ -22,15 +22,8 @@ class ShogiPolicyValueTrainingInputsTest(unittest.TestCase):
                     {
                         "name": "test",
                         "objective": "shogi policy-value",
-                        "target_construction": {
-                            "policy": "chosen_move",
-                            "policy_temperature_cp": 100.0,
-                            "policy_mate_cp": 100000.0,
-                            "value": "winner",
-                            "score_cp_scale": 600.0,
-                        },
-                        "train_sources": [{"kind": "game_records_jsonl", "path": "train-games.jsonl"}],
-                        "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+                        "train_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "train-examples.jsonl"}],
+                        "eval_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "eval-examples.jsonl"}],
                     }
                 )
                 + "\n",
@@ -50,8 +43,8 @@ class ShogiPolicyValueTrainingInputsTest(unittest.TestCase):
     def test_rejects_missing_tensor_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            train = root / "train-games.jsonl"
-            eval_ = root / "eval-games.jsonl"
+            train = root / "train-examples.jsonl"
+            eval_ = root / "eval-examples.jsonl"
             selection = root / "data-selection.json"
             train.write_text("", encoding="utf-8")
             eval_.write_text("", encoding="utf-8")
@@ -60,15 +53,8 @@ class ShogiPolicyValueTrainingInputsTest(unittest.TestCase):
                     {
                         "name": "test",
                         "objective": "shogi policy-value",
-                        "target_construction": {
-                            "policy": "chosen_move",
-                            "policy_temperature_cp": 100.0,
-                            "policy_mate_cp": 100000.0,
-                            "value": "winner",
-                            "score_cp_scale": 600.0,
-                        },
-                        "train_sources": [{"kind": "game_records_jsonl", "path": "train-games.jsonl"}],
-                        "eval_sources": [{"kind": "game_records_jsonl", "path": "eval-games.jsonl"}],
+                        "train_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "train-examples.jsonl"}],
+                        "eval_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "eval-examples.jsonl"}],
                     }
                 )
                 + "\n",

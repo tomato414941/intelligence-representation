@@ -432,8 +432,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 cache_dir=tensor_cache_path,
                 split="train",
                 source_index=0,
-                source_game_start_index=0,
-                source_game_end_index=1,
+                source_example_start_index=0,
+                source_example_end_index=2,
                 shard_index=0,
             )
             build_shogi_policy_value_tensor_cache_shard(
@@ -441,8 +441,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 cache_dir=tensor_cache_path,
                 split="eval",
                 source_index=0,
-                source_game_start_index=0,
-                source_game_end_index=1,
+                source_example_start_index=0,
+                source_example_end_index=2,
                 shard_index=0,
             )
             manifest = write_shogi_policy_value_tensor_cache_manifest(
@@ -484,19 +484,12 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            summary = build_shogi_policy_value_tensor_cache(
-                data_selection_path=data_selection_path,
-                output_path=tensor_cache_path,
-                shard_games=1,
-            )
-            manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
-
-            self.assertEqual(summary["skipped_game_count"], 1)
-            self.assertEqual(manifest["skipped_game_count"], 1)
-            self.assertEqual(manifest["train_count"], 0)
-            skipped_shards = [shard for shard in manifest["shards"] if shard["skipped_game_count"]]
-            self.assertEqual(len(skipped_shards), 1)
-            self.assertIn("illegal move", skipped_shards[0]["failures"][0]["error"])
+            with self.assertRaisesRegex(ValueError, "illegal move"):
+                build_shogi_policy_value_tensor_cache(
+                    data_selection_path=data_selection_path,
+                    output_path=tensor_cache_path,
+                    shard_games=1,
+                )
 
     def test_initializes_from_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

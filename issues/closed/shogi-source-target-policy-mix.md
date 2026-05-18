@@ -34,32 +34,28 @@ signals or force weak records into a target policy they cannot support.
 
 ## Resolution
 
-Implemented source-level target policy in the current shogi Data Selection
-implementation.
+Replaced the need for source-level target policy in the normal Training Data
+Bundle path.
 
-Each source may now override the global default with:
+Training Data Bundle creation now applies target construction before writing
+the bundle's train/eval data. The resulting `data-selection.json` points at
+durable `shogi_policy_value_examples_jsonl` files:
 
 ```json
 {
   "train_sources": [
     {
-      "kind": "game_records_jsonl",
-      "path": "teacher-games.jsonl",
-      "policy_target_source": "usi_multipv",
-      "value_target_source": "yaneuraou_best_score"
-    },
-    {
-      "kind": "game_records_jsonl",
-      "path": "self-play-games.jsonl",
-      "policy_target_source": "chosen_move",
-      "value_target_source": "winner"
+      "kind": "shogi_policy_value_examples_jsonl",
+      "path": "train-examples.jsonl"
     }
   ]
 }
 ```
 
-If a source omits those fields, it inherits the global
-`policy_target_source` / `value_target_source` defaults from the definition.
+This keeps mixed source interpretation out of training and tensor-cache
+building. Source game records can still be adapted by the loader for existing
+artifacts, but the preferred durable bundle boundary is constructed training
+examples.
 
 The implementation does not store derived targets in `ShogiGameRecord`.
 
@@ -71,6 +67,5 @@ The implementation does not store derived targets in `ShogiGameRecord`.
 
 ## Acceptance Criteria
 
-- [x] implement source-level target policy with tests showing different sources can
-  derive different policy/value targets without storing derived targets in
-  `ShogiGameRecord`.
+- [x] make the normal Training Data Bundle path store durable policy/value
+  training examples without storing derived targets in `ShogiGameRecord`.

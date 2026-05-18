@@ -9,7 +9,7 @@ from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
     load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, load_shogi_policy_value_examples_jsonl
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 
 
@@ -18,6 +18,7 @@ class ShogiPolicyValueDataSelectionSource:
     kind: str
     path: Path
     max_games: int | None = None
+    max_examples: int | None = None
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class ShogiPolicyValueTargetConstruction:
 class ShogiPolicyValueDataSelection:
     name: str
     objective: str
-    target_construction: ShogiPolicyValueTargetConstruction
+    target_construction: ShogiPolicyValueTargetConstruction | None
     analysis_sources: tuple[ShogiPolicyValueDataSelectionSource, ...]
     train_sources: tuple[ShogiPolicyValueDataSelectionSource, ...]
     eval_sources: tuple[ShogiPolicyValueDataSelectionSource, ...]
@@ -62,16 +63,8 @@ def load_shogi_policy_value_data_selection_examples(
     analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
         tuple(source.path for source in selection.analysis_sources)
     )
-    train_examples = _load_sources(
-        selection.train_sources,
-        target_construction=selection.target_construction,
-        analyses_by_position=analyses_by_position,
-    )
-    eval_examples = _load_sources(
-        selection.eval_sources,
-        target_construction=selection.target_construction,
-        analyses_by_position=analyses_by_position,
-    )
+    train_examples = _load_sources(selection.train_sources, selection=selection, analyses_by_position=analyses_by_position)
+    eval_examples = _load_sources(selection.eval_sources, selection=selection, analyses_by_position=analyses_by_position)
     return train_examples, eval_examples
 
 
@@ -79,14 +72,24 @@ def shogi_policy_value_data_selection_to_json(selection: ShogiPolicyValueDataSel
     return {
         "name": selection.name,
         "objective": selection.objective,
-        "target_construction": _target_construction_to_json(selection.target_construction),
-        "analysis_sources": [_source_to_json(source, root=root) for source in selection.analysis_sources],
+        **(
+            {"target_construction": _target_construction_to_json(selection.target_construction)}
+            if selection.target_construction is not None
+            else {}
+        ),
+        **(
+            {"analysis_sources": [_source_to_json(source, root=root) for source in selection.analysis_sources]}
+            if selection.analysis_sources
+            else {}
+        ),
         "train_sources": [_source_to_json(source, root=root) for source in selection.train_sources],
         "eval_sources": [_source_to_json(source, root=root) for source in selection.eval_sources],
     }
 
 
-def _target_construction_from_json(value: object) -> ShogiPolicyValueTargetConstruction:
+def _target_construction_from_json(value: object) -> ShogiPolicyValueTargetConstruction | None:
+    if value is None:
+        return None
     if not isinstance(value, dict):
         raise ValueError("target_construction must be an object")
     return ShogiPolicyValueTargetConstruction(
@@ -125,7 +128,7 @@ def _sources_from_json(
             raise ValueError("data selection source must be an object")
         kind = str(item["kind"])
         if allowed_kinds is None:
-            allowed_kinds = {"game_records_jsonl"}
+            allowed_kinds = {"shogi_policy_value_examples_jsonl", "game_records_jsonl"}
         if kind not in allowed_kinds:
             raise ValueError(f"data selection source kind must be one of {sorted(allowed_kinds)}")
         source_path = Path(str(item["path"]))
@@ -136,11 +139,17 @@ def _sources_from_json(
             max_games = int(item["max_games"])
             if max_games <= 0:
                 raise ValueError("data selection source max_games must be positive")
+        max_examples = None
+        if "max_examples" in item:
+            max_examples = int(item["max_examples"])
+            if max_examples <= 0:
+                raise ValueError("data selection source max_examples must be positive")
         sources.append(
             ShogiPolicyValueDataSelectionSource(
                 kind=kind,
                 path=source_path,
                 max_games=max_games,
+                max_examples=max_examples,
             )
         )
     return tuple(sources)
@@ -156,6 +165,10 @@ def _validate_split(selection: ShogiPolicyValueDataSelection) -> None:
 
 def _validate_target_construction(selection: ShogiPolicyValueDataSelection) -> None:
     construction = selection.target_construction
+    if construction is None:
+        if any(source.kind == "game_records_jsonl" for source in (*selection.train_sources, *selection.eval_sources)):
+            raise ValueError("target_construction is required for game_records_jsonl sources")
+        return
     if construction.policy not in {"chosen_move", "decision_usi_multipv", "engine_analysis_multipv", "mcts_visit_counts"}:
         raise ValueError(
             "target_construction.policy must be chosen_move, decision_usi_multipv, engine_analysis_multipv, or mcts_visit_counts"
@@ -177,21 +190,25 @@ def _validate_target_construction(selection: ShogiPolicyValueDataSelection) -> N
 def _load_sources(
     sources: tuple[ShogiPolicyValueDataSelectionSource, ...],
     *,
-    target_construction: ShogiPolicyValueTargetConstruction,
+    selection: ShogiPolicyValueDataSelection,
     analyses_by_position: dict[str, ShogiEngineAnalysis],
 ) -> list[ShogiPolicyValueExample]:
     examples: list[ShogiPolicyValueExample] = []
     for source in sources:
-        if source.kind == "game_records_jsonl":
+        if source.kind == "shogi_policy_value_examples_jsonl":
+            examples.extend(load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
+        elif source.kind == "game_records_jsonl":
+            if selection.target_construction is None:
+                raise ValueError("target_construction is required for game_records_jsonl sources")
             examples.extend(
                 load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
                     source.path,
-                    policy_target_construction=target_construction.policy,
-                    value_target_construction=target_construction.value,
+                    policy_target_construction=selection.target_construction.policy,
+                    value_target_construction=selection.target_construction.value,
                     analyses_by_position=analyses_by_position,
-                    policy_temperature_cp=target_construction.policy_temperature_cp,
-                    policy_mate_cp=target_construction.policy_mate_cp,
-                    score_cp_scale=target_construction.score_cp_scale,
+                    policy_temperature_cp=selection.target_construction.policy_temperature_cp,
+                    policy_mate_cp=selection.target_construction.policy_mate_cp,
+                    score_cp_scale=selection.target_construction.score_cp_scale,
                     max_games=source.max_games,
                 )
             )
@@ -215,8 +232,10 @@ def _source_to_json(source: ShogiPolicyValueDataSelectionSource, *, root: Path |
     }
     if source.max_games is not None:
         payload["max_games"] = source.max_games
+    if source.max_examples is not None:
+        payload["max_examples"] = source.max_examples
     return payload
 
 
-def _source_key(source: ShogiPolicyValueDataSelectionSource) -> tuple[str, Path, int | None]:
-    return source.kind, source.path.resolve(), source.max_games
+def _source_key(source: ShogiPolicyValueDataSelectionSource) -> tuple[str, Path, int | None, int | None]:
+    return source.kind, source.path.resolve(), source.max_games, source.max_examples

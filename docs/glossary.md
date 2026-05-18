@@ -420,10 +420,10 @@ on run-local generated files as the source of truth.
 
 ### Data Selection
 
-Data Selection decides which existing records or stored source-side material are
-included for a declared use, and how that material is assigned to splits. It is
-about inclusion and split assignment, not target construction, example
-construction, sampling, or optimization.
+Data Selection decides which existing training examples or other already
+constructed learning material are included for a declared use, and how that
+material is assigned to splits. It is about inclusion and split assignment, not
+target construction, example construction, sampling, or optimization.
 
 ### Training Example
 

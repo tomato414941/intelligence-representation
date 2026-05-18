@@ -11,14 +11,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build a tensor cache for a shogi policy/value data selection.")
     parser.add_argument("--data-selection", type=Path, required=True)
     parser.add_argument("--out", type=Path)
-    parser.add_argument("--shard-games", type=int, default=100)
+    parser.add_argument("--shard-examples", type=int, default=100_000)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
     summary = build_shogi_policy_value_tensor_cache(
         data_selection_path=args.data_selection,
         output_path=args.out,
-        shard_games=args.shard_games,
+        shard_examples=args.shard_examples,
         resume=args.resume,
     )
     print(json.dumps(summary, indent=2))

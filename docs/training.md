@@ -130,8 +130,9 @@ uv run python -m intrep.train_image_text_choice \
 ## Shogi Training Data Bundles
 
 Shogi policy/value training consumes a fixed Training Data Bundle through its
-`data-selection.json`. The normal durable input for creating a bundle should be
-a stable record set or Experience Store-derived game-record JSONL, not a long
+`data-selection.json`. A bundle's train/eval files are durable policy/value
+training examples. The normal durable input for creating a bundle should be a
+stable record set or Experience Store-derived game-record JSONL, not a long
 command line of run-local outputs.
 
 Repeated training can use a rebuildable tensor cache derived from the same
@@ -140,7 +141,7 @@ Repeated training can use a rebuildable tensor cache derived from the same
 ```sh
 uv run python scripts/build_shogi_policy_value_tensor_cache.py \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
-  --shard-games 100 \
+  --shard-examples 100000 \
   --resume
 ```
 
@@ -164,7 +165,7 @@ single local Python process:
 uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py \
   --local-bundle data/shogi/training-data-bundles/qhapaq-full \
   --remote-bundle qhapaq-full \
-  --shard-games 100
+  --shard-examples 100000
 ```
 
 The Modal job uploads the Training Data Bundle to the `intrep-shogi-tensor-cache`
@@ -175,4 +176,6 @@ derived from `data-selection.json`, not a source of truth.
 `scripts/create_shogi_training_data_bundle.py` still accepts repeated
 `--train-games` inputs for temporary experiments and explicit source mixes. When
 multiple train inputs are used, the bundle manifest records every source path
-and the CLI prints a warning.
+and the CLI prints a warning. Target construction happens while the bundle is
+created; training and tensor-cache building consume the resulting example JSONL
+instead of reinterpreting source game records.

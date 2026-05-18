@@ -12,6 +12,7 @@ from unittest.mock import patch
 import shogi
 
 from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
+from intrep.problems.shogi_policy_value.examples import load_shogi_policy_value_examples_jsonl
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.generated_record_archive import archive_shogi_generated_records
@@ -289,20 +290,14 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
 
             view_dir = output_root / "main-view-0001"
             self.assertEqual(result["training_data_bundle"], str(view_dir))
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "games.jsonl"), [train_records[0], eval_records[0]])
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "train-games.jsonl"), [train_records[0]])
-            self.assertEqual(load_shogi_game_records_jsonl(view_dir / "eval-games.jsonl"), [eval_records[0]])
+            self.assertEqual(len(load_shogi_policy_value_examples_jsonl(view_dir / "train-examples.jsonl")), 2)
+            self.assertEqual(len(load_shogi_policy_value_examples_jsonl(view_dir / "eval-examples.jsonl")), 2)
             definition = load_shogi_policy_value_data_selection(view_dir / "data-selection.json")
             self.assertEqual(definition.name, "main-view-0001")
-            self.assertEqual(definition.target_construction.policy, "chosen_move")
-            self.assertEqual(definition.target_construction.policy_temperature_cp, 100.0)
-            self.assertEqual(definition.target_construction.policy_mate_cp, 100000.0)
-            self.assertEqual(definition.target_construction.value, "winner")
-            self.assertEqual(definition.target_construction.score_cp_scale, 600.0)
-            self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
-            self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
-            self.assertEqual(definition.train_sources[0].max_games, 1)
-            self.assertEqual(definition.eval_sources[0].max_games, 1)
+            self.assertEqual(definition.train_sources[0].path, view_dir / "train-examples.jsonl")
+            self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-examples.jsonl")
+            self.assertEqual(definition.train_sources[0].max_examples, None)
+            self.assertEqual(definition.eval_sources[0].max_examples, None)
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema_version"], "intrep.shogi_training_data_bundle.v1")
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_path)])
@@ -352,7 +347,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             )
 
             bundle_dir = output_root / "heldout-eval"
-            self.assertEqual(load_shogi_game_records_jsonl(bundle_dir / "eval-games.jsonl"), [heldout_eval_record])
+            self.assertEqual(len(load_shogi_policy_value_examples_jsonl(bundle_dir / "eval-examples.jsonl")), 1)
             manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["eval_position_policy"], "exclude_train_position_games")
             self.assertEqual(manifest["selected_eval_games_before_position_policy"], 2)
@@ -399,9 +394,10 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(result["analysis_jsonl"], [str(copied_analysis_path)])
             self.assertTrue(copied_analysis_path.exists())
             definition = load_shogi_policy_value_data_selection(bundle_dir / "data-selection.json")
-            self.assertEqual(definition.analysis_sources[0].path, copied_analysis_path)
-            self.assertEqual(definition.target_construction.policy, "engine_analysis_multipv")
-            self.assertEqual(definition.target_construction.value, "engine_analysis_score")
+            self.assertEqual(definition.train_sources[0].path, bundle_dir / "train-examples.jsonl")
+            train_examples = load_shogi_policy_value_examples_jsonl(bundle_dir / "train-examples.jsonl")
+            self.assertEqual(train_examples[0].policy_targets, {"7g7f": 1.0})
+            self.assertIsNotNone(train_examples[0].value_target)
             manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["analysis_source_jsonl"], [str(analysis_path)])
             self.assertEqual(manifest["files"]["analysis"], ["analysis.jsonl"])
@@ -529,11 +525,11 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(result["training_data_bundle"], str(view_dir))
             self.assertEqual(result["train_games"], 4)
             self.assertEqual(result["eval_games"], 1)
-            train_records = load_shogi_game_records_jsonl(view_dir / "train-games.jsonl")
-            self.assertEqual(len(train_records), 4)
+            train_examples = load_shogi_policy_value_examples_jsonl(view_dir / "train-examples.jsonl")
+            self.assertEqual(len(train_examples), 8)
             definition = load_shogi_policy_value_data_selection(view_dir / "data-selection.json")
-            self.assertEqual(definition.train_sources[0].path, view_dir / "train-games.jsonl")
-            self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-games.jsonl")
+            self.assertEqual(definition.train_sources[0].path, view_dir / "train-examples.jsonl")
+            self.assertEqual(definition.eval_sources[0].path, view_dir / "eval-examples.jsonl")
             manifest = json.loads((view_dir / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema_version"], "intrep.shogi_training_data_bundle.v1")
             self.assertEqual(manifest["train_source_games_jsonl"], [str(train_a), str(train_b)])

@@ -263,12 +263,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             dataset = json.loads((run_dir / "data-selection.json").read_text(encoding="utf-8"))
-            self.assertEqual(dataset["target_construction"]["policy"], "chosen_move")
-            self.assertEqual(dataset["target_construction"]["value"], "winner")
-            self.assertEqual(dataset["train_sources"][0]["kind"], "game_records_jsonl")
-            self.assertEqual(dataset["eval_sources"][0]["kind"], "game_records_jsonl")
-            self.assertTrue((run_dir / "train-games.jsonl").exists())
-            self.assertTrue((run_dir / "eval-games.jsonl").exists())
+            self.assertNotIn("target_construction", dataset)
+            self.assertEqual(dataset["train_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
+            self.assertEqual(dataset["eval_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
+            self.assertTrue((run_dir / "train-examples.jsonl").exists())
+            self.assertTrue((run_dir / "eval-examples.jsonl").exists())
             self.assertEqual(run.call_count, 2)
             generate_command = run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")

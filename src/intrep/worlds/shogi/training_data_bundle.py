@@ -4,11 +4,17 @@ import json
 import math
 import random
 import shutil
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from intrep.worlds.shogi.engine_analysis import load_shogi_engine_analysis_jsonl
+from intrep.problems.shogi_policy_value.data import (
+    load_shogi_engine_analysis_by_position_jsonl,
+    shogi_policy_value_examples_from_game_record,
+)
+from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, write_shogi_policy_value_examples_jsonl
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_stats import (
     shogi_actor_pair,
     shogi_actor_pair_counts,
@@ -16,7 +22,7 @@ from intrep.worlds.shogi.experience_stats import (
     shogi_position_stats,
     shogi_train_eval_position_stats,
 )
-from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl, write_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
 from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 ShogiEvalPositionPolicy = Literal["allow_overlap", "exclude_train_position_games"]
@@ -42,9 +48,8 @@ def create_shogi_training_data_bundle(
     include_position_stats: bool = True,
 ) -> dict[str, object]:
     output_dir = output_root / name
-    games_jsonl = output_dir / "games.jsonl"
-    train_jsonl = output_dir / "train-games.jsonl"
-    eval_jsonl = output_dir / "eval-games.jsonl"
+    train_jsonl = output_dir / "train-examples.jsonl"
+    eval_jsonl = output_dir / "eval-examples.jsonl"
     data_selection_json = output_dir / "data-selection.json"
     manifest_path = output_dir / "manifest.json"
 
@@ -91,35 +96,41 @@ def create_shogi_training_data_bundle(
     )
 
     output_dir.mkdir(parents=True)
-    write_shogi_game_records_jsonl(games_jsonl, records)
-    write_shogi_game_records_jsonl(train_jsonl, train_records)
-    write_shogi_game_records_jsonl(eval_jsonl, eval_records)
     analysis_jsonls = _copy_analysis_sources(analysis_sources, output_dir=output_dir)
+    analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(tuple(analysis_jsonls))
+    train_examples = _examples_from_records(
+        train_records,
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
+        analyses_by_position=analyses_by_position,
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+        score_cp_scale=score_cp_scale,
+    )
+    eval_examples = _examples_from_records(
+        eval_records,
+        policy_target_construction=policy_target_construction,
+        value_target_construction=value_target_construction,
+        analyses_by_position=analyses_by_position,
+        policy_temperature_cp=policy_temperature_cp,
+        policy_mate_cp=policy_mate_cp,
+        score_cp_scale=score_cp_scale,
+    )
+    write_shogi_policy_value_examples_jsonl(train_jsonl, train_examples)
+    write_shogi_policy_value_examples_jsonl(eval_jsonl, eval_examples)
     analysis_coverage = shogi_analysis_coverage(train_records, eval_records, analysis_jsonls) if analysis_jsonls else {}
 
     data_selection = {
         "name": name,
         "objective": "shogi move-choice policy/value",
-        "target_construction": {
-            "policy": policy_target_construction,
-            "policy_temperature_cp": policy_temperature_cp,
-            "policy_mate_cp": policy_mate_cp,
-            "value": value_target_construction,
-            "score_cp_scale": score_cp_scale,
-        },
-        "train_sources": [_source_json(train_jsonl.name, max_train_games)],
-        "eval_sources": [_source_json(eval_jsonl.name, max_eval_games)],
+        "train_sources": [_source_json(train_jsonl.name)],
+        "eval_sources": [_source_json(eval_jsonl.name)],
     }
-    if analysis_jsonls:
-        data_selection["analysis_sources"] = [
-            {"kind": "shogi_engine_analysis_jsonl", "path": path.name}
-            for path in analysis_jsonls
-        ]
     data_selection_json.write_text(json.dumps(data_selection, indent=2) + "\n", encoding="utf-8")
 
     manifest = {
         "schema_version": "intrep.shogi_training_data_bundle.v1",
-        "record_schema": "shogi_game_record_jsonl",
+        "example_schema": "shogi_policy_value_example_jsonl",
         "name": name,
         "created_at": datetime.now(UTC).isoformat(),
         "train_source_games_jsonl": [str(path) for path in train_paths],
@@ -148,9 +159,16 @@ def create_shogi_training_data_bundle(
         "eval_checkpoint_actor_summaries": shogi_checkpoint_actor_summaries(eval_records),
         "train_games": len(train_records),
         "eval_games": len(eval_records),
-        "target_construction": data_selection["target_construction"],
+        "target_construction": {
+            "policy": policy_target_construction,
+            "policy_temperature_cp": policy_temperature_cp,
+            "policy_mate_cp": policy_mate_cp,
+            "value": value_target_construction,
+            "score_cp_scale": score_cp_scale,
+        },
+        "train_examples": len(train_examples),
+        "eval_examples": len(eval_examples),
         "files": {
-            "games": games_jsonl.name,
             "train": train_jsonl.name,
             "eval": eval_jsonl.name,
             "analysis": [path.name for path in analysis_jsonls],
@@ -162,7 +180,6 @@ def create_shogi_training_data_bundle(
     return {
         "training_data_bundle": str(output_dir),
         "data_selection_json": str(data_selection_json),
-        "games_jsonl": str(games_jsonl),
         "train_jsonl": str(train_jsonl),
         "eval_jsonl": str(eval_jsonl),
         "analysis_jsonl": [str(path) for path in analysis_jsonls],
@@ -306,11 +323,34 @@ def _validate_eval_position_policy(eval_position_policy: str) -> None:
         raise ValueError("eval_position_policy must be allow_overlap or exclude_train_position_games")
 
 
-def _source_json(path: str, max_games: int | None) -> dict[str, str | int]:
-    payload: dict[str, str | int] = {"kind": "game_records_jsonl", "path": path}
-    if max_games is not None:
-        payload["max_games"] = max_games
-    return payload
+def _source_json(path: str) -> dict[str, str]:
+    return {"kind": "shogi_policy_value_examples_jsonl", "path": path}
+
+
+def _examples_from_records(
+    records: list[ShogiGameRecord],
+    *,
+    policy_target_construction: str,
+    value_target_construction: str,
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    policy_temperature_cp: float,
+    policy_mate_cp: float,
+    score_cp_scale: float,
+) -> list[ShogiPolicyValueExample]:
+    examples: list[ShogiPolicyValueExample] = []
+    for game_index, record in enumerate(records):
+        game_examples = shogi_policy_value_examples_from_game_record(
+            record,
+            policy_target_construction=policy_target_construction,
+            value_target_construction=value_target_construction,
+            analyses_by_position=analyses_by_position,
+            policy_temperature_cp=policy_temperature_cp,
+            policy_mate_cp=policy_mate_cp,
+            score_cp_scale=score_cp_scale,
+        )
+        for ply_index, example in enumerate(game_examples):
+            examples.append(replace(example, game_index=game_index, ply_index=ply_index))
+    return examples
 
 
 def _copy_analysis_sources(paths: tuple[Path, ...], *, output_dir: Path) -> list[Path]:

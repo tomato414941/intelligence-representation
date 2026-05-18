@@ -23,17 +23,16 @@ from intrep.problems.shogi_policy_value.checkpoint import (
 )
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_policy_value_examples_from_game_records_jsonl,
-    shogi_policy_value_examples_from_game_record_plies,
 )
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
-    ShogiPolicyValueDataSelectionSource,
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     TensorizedShogiPolicyValueSample,
+    load_shogi_policy_value_examples_jsonl,
     tensorize_shogi_policy_value_examples,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
@@ -55,7 +54,6 @@ from intrep.problems.shogi_policy_value.training import (
     validate_shogi_policy_value_loss_weights,
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
-from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 2_097_152
 DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288
@@ -919,14 +917,6 @@ def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> d
 
 
 @dataclass(frozen=True)
-class _ReplaySeedGame:
-    source: ShogiPolicyValueDataSelectionSource
-    game_index: int
-    move_count: int
-    start_offset: int
-
-
-@dataclass(frozen=True)
 class _ReplaySeedSelection:
     path: Path
     data_selection: ShogiPolicyValueDataSelection
@@ -951,7 +941,8 @@ def _count_replay_seed_examples(selection: _ReplaySeedSelection | None) -> int:
                 expected_data_selection_root=selection.path.parent,
             ).train_samples
         )
-    return sum(game.move_count for game in _replay_seed_games(selection.data_selection))
+    train_examples, _eval_examples = load_shogi_policy_value_data_selection_examples(selection.data_selection)
+    return len(train_examples)
 
 
 def _sample_replay_seed_samples(
@@ -1038,84 +1029,36 @@ def _sample_replay_seed_examples_from_selection(
         selection = selection.data_selection
     if sample_count <= 0 or selection is None:
         return []
-    games = _replay_seed_games(selection)
-    total_examples = sum(game.move_count for game in games)
+    examples_by_source = []
+    for source in selection.train_sources:
+        if source.kind == "shogi_policy_value_examples_jsonl":
+            examples_by_source.append(load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
+        else:
+            source_selection = ShogiPolicyValueDataSelection(
+                name=selection.name,
+                objective=selection.objective,
+                target_construction=selection.target_construction,
+                analysis_sources=selection.analysis_sources,
+                train_sources=(source,),
+                eval_sources=selection.eval_sources,
+            )
+            source_examples, _eval_examples = load_shogi_policy_value_data_selection_examples(source_selection)
+            examples_by_source.append(source_examples)
+    total_examples = sum(len(examples) for examples in examples_by_source)
     if total_examples == 0:
         return []
-    if selection.analysis_sources:
-        raise ValueError("online replay seed sampling does not support analysis_sources")
     sample_count = min(sample_count, total_examples)
     generator = torch.Generator().manual_seed(seed)
     selected_positions = sorted(torch.randperm(total_examples, generator=generator)[:sample_count].tolist())
-    positions_by_source: dict[Path, dict[int, set[int]]] = {}
-    game_index = 0
+    sampled: list[ShogiPolicyValueExample] = []
+    source_index = 0
+    source_start = 0
     for position in selected_positions:
-        while game_index + 1 < len(games) and position >= games[game_index].start_offset + games[game_index].move_count:
-            game_index += 1
-        game = games[game_index]
-        positions_by_source.setdefault(game.source.path, {}).setdefault(game.game_index, set()).add(
-            position - game.start_offset
-        )
-
-    examples: list[ShogiPolicyValueExample] = []
-    sources_by_path = {source.path: source for source in selection.train_sources}
-    for source_path in sorted(positions_by_source, key=str):
-        source = sources_by_path[source_path]
-        selected_by_game = positions_by_source[source_path]
-        for game_index_in_source, record in enumerate(iter_shogi_game_records_jsonl(source_path)):
-            if source.max_games is not None and game_index_in_source >= source.max_games:
-                break
-            selected_plies = selected_by_game.get(game_index_in_source)
-            if selected_plies is None:
-                continue
-            try:
-                examples.extend(
-                    shogi_policy_value_examples_from_game_record_plies(
-                        record,
-                        ply_indices=selected_plies,
-                        policy_target_construction=selection.target_construction.policy,
-                        value_target_construction=selection.target_construction.value,
-                        game_index=game_index_in_source,
-                    )
-                )
-            except ValueError:
-                continue
-    return examples
-
-
-def _replay_seed_games(selection: ShogiPolicyValueDataSelection) -> list[_ReplaySeedGame]:
-    games: list[_ReplaySeedGame] = []
-    start_offset = 0
-    for source in selection.train_sources:
-        if source.kind != "game_records_jsonl":
-            raise ValueError(f"unsupported online replay seed source kind: {source.kind}")
-        for game_index, move_count in enumerate(_game_record_move_counts(source)):
-            games.append(
-                _ReplaySeedGame(
-                    source=source,
-                    game_index=game_index,
-                    move_count=move_count,
-                    start_offset=start_offset,
-                )
-            )
-            start_offset += move_count
-    return games
-
-
-def _game_record_move_counts(source: ShogiPolicyValueDataSelectionSource) -> list[int]:
-    move_counts: list[int] = []
-    with source.path.open(encoding="utf-8") as file:
-        for line in file:
-            if source.max_games is not None and len(move_counts) >= source.max_games:
-                break
-            stripped = line.strip()
-            if not stripped:
-                continue
-            payload = json.loads(stripped)
-            moves = payload.get("moves", [])
-            if isinstance(moves, list) and moves:
-                move_counts.append(len(moves))
-    return move_counts
+        while source_index + 1 < len(examples_by_source) and position >= source_start + len(examples_by_source[source_index]):
+            source_start += len(examples_by_source[source_index])
+            source_index += 1
+        sampled.append(examples_by_source[source_index][position - source_start])
+    return sampled
 
 
 def _load_training_eval_samples(data_selection_path: Path) -> Sequence[TensorizedShogiPolicyValueSample]:
@@ -1141,7 +1084,7 @@ def _append_to_experience_store(*, store_dir: Path | None, games_jsonl: Path) ->
 def _load_generated_policy_value_examples(path: Path) -> list[ShogiPolicyValueExample]:
     return load_shogi_policy_value_examples_from_game_records_jsonl(
         path,
-        policy_target_construction="chosen_move",
+        policy_target_construction="mcts_visit_counts",
         value_target_construction="winner",
         policy_temperature_cp=100.0,
         policy_mate_cp=100000.0,
