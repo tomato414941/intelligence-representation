@@ -226,6 +226,8 @@ def shogi_policy_targets_from_game_trace(
             policy_temperature_cp=policy_temperature_cp,
             policy_mate_cp=policy_mate_cp,
         )
+    if source == "mcts_visit_counts":
+        return tuple(_policy_target_from_mcts_visit_counts(transition) for transition in trace.transitions)
     raise ValueError(f"unsupported shogi policy target source: {source}")
 
 
@@ -403,6 +405,28 @@ def _policy_target_from_info_lines(
     }
     total = sum(weights.values())
     return {move: weight / total for move, weight in weights.items()}
+
+
+def _policy_target_from_mcts_visit_counts(transition) -> dict[str, float] | None:
+    telemetry = transition.decision_telemetry
+    if telemetry is None or telemetry.search_evidence is None:
+        return None
+    visit_counts = telemetry.search_evidence.get("mcts_root_child_visit_counts")
+    if not isinstance(visit_counts, dict):
+        return None
+    targets: dict[str, float] = {}
+    legal_moves = set(transition.legal_moves)
+    for move, count in visit_counts.items():
+        move_usi = str(move)
+        if move_usi not in legal_moves:
+            continue
+        count_value = float(count)
+        if count_value > 0.0:
+            targets[move_usi] = count_value
+    if not targets:
+        return None
+    total = sum(targets.values())
+    return {move: count / total for move, count in targets.items()}
 
 
 def _score_target_from_info_lines(info_lines: Sequence[str], *, score_cp_scale: float) -> float | None:

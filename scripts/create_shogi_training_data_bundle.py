@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--output-root", type=Path, default=Path("data/shogi/training-data-bundles"))
     parser.add_argument(
         "--policy-target-construction",
-        choices=("chosen_move", "decision_usi_multipv", "engine_analysis_multipv"),
+        choices=("chosen_move", "decision_usi_multipv", "engine_analysis_multipv", "mcts_visit_counts"),
         default="chosen_move",
     )
     parser.add_argument("--policy-temperature-cp", type=float, default=100.0)

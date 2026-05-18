@@ -19,6 +19,7 @@ class ShogiActorSpec:
 class ShogiDecisionTelemetry:
     move_performance: dict[str, object] | None = None
     batch_performance: dict[str, object] | None = None
+    search_evidence: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +151,8 @@ def shogi_decision_telemetry_to_json(telemetry: ShogiDecisionTelemetry) -> dict[
         payload["move_performance"] = telemetry.move_performance
     if telemetry.batch_performance is not None:
         payload["batch_performance"] = telemetry.batch_performance
+    if telemetry.search_evidence is not None:
+        payload["search_evidence"] = telemetry.search_evidence
     return payload
 
 
@@ -160,6 +163,7 @@ def shogi_decision_telemetry_from_json(value: object) -> ShogiDecisionTelemetry 
     return ShogiDecisionTelemetry(
         move_performance=_optional_object_dict(payload.get("move_performance")),
         batch_performance=_optional_object_dict(payload.get("batch_performance")),
+        search_evidence=_optional_object_dict(payload.get("search_evidence")),
     )
 
 

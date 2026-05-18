@@ -155,6 +155,7 @@ class ShogiGameRecordTest(unittest.TestCase):
                     decision_telemetry=ShogiDecisionTelemetry(
                         move_performance={"request_wall_time_sec": 0.4},
                         batch_performance={"position_count": 4},
+                        search_evidence={"mcts_root_child_visit_counts": {"2g2f": 3, "7g7f": 1}},
                     ),
                 ),
             ),

@@ -18,6 +18,7 @@ from intrep.problems.shogi_policy_value.data import (
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
+    ShogiDecisionTelemetry,
     ShogiGameRecord,
     ShogiMoveRecord,
     shogi_game_record_from_usi_moves,
@@ -130,6 +131,29 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         self.assertIsNotNone(targets)
         self.assertGreater(targets["7g7f"], targets["2g2f"])
         self.assertAlmostEqual(sum(targets.values()), 1.0)
+
+    def test_builds_policy_targets_from_mcts_visit_counts(self) -> None:
+        record = _record(("7g7f",), "black")
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(
+                    action_usi="7g7f",
+                    decision_telemetry=ShogiDecisionTelemetry(
+                        search_evidence={
+                            "mcts_root_child_visit_counts": {
+                                "7g7f": 6,
+                                "2g2f": 2,
+                            }
+                        },
+                    ),
+                ),
+            ),
+        )
+
+        targets = shogi_policy_targets_from_game_record(record, source="mcts_visit_counts")[0]
+
+        self.assertEqual(targets, {"7g7f": 0.75, "2g2f": 0.25})
 
     def test_builds_policy_and_score_targets_from_engine_analysis(self) -> None:
         record = _record(("7g7f",), "black")

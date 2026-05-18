@@ -156,8 +156,10 @@ def _validate_split(selection: ShogiPolicyValueDataSelection) -> None:
 
 def _validate_target_construction(selection: ShogiPolicyValueDataSelection) -> None:
     construction = selection.target_construction
-    if construction.policy not in {"chosen_move", "decision_usi_multipv", "engine_analysis_multipv"}:
-        raise ValueError("target_construction.policy must be chosen_move, decision_usi_multipv, or engine_analysis_multipv")
+    if construction.policy not in {"chosen_move", "decision_usi_multipv", "engine_analysis_multipv", "mcts_visit_counts"}:
+        raise ValueError(
+            "target_construction.policy must be chosen_move, decision_usi_multipv, engine_analysis_multipv, or mcts_visit_counts"
+        )
     if construction.value not in {"winner", "decision_usi_score", "engine_analysis_score"}:
         raise ValueError("target_construction.value must be winner, decision_usi_score, or engine_analysis_score")
     if (
