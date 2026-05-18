@@ -18,7 +18,6 @@ Unless noted otherwise:
 - Generation worker processes improved throughput materially in recorded
   light-search self-play measurements.
 - On the observed 6 vCPU Pod, worker 8 did not materially improve over worker 6.
-- Recorded non-model MCTS timing was dominated by expansion and selection.
 - Increasing `NN leaf eval batch limit` from 32 to 64 did not improve
   throughput in the recorded worker 6 comparison.
 - Requesting more vCPU materially improved throughput in the recorded worker 8
