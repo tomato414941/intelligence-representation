@@ -31,8 +31,8 @@ Current represented information:
 - own/opponent piece identity, including promoted piece types through
   `python-shogi` piece types
 - own/opponent attack-count buckets per relative square, capped at 3
-- own/opponent piece-type-specific attack flags per relative square
-- own/opponent king-relative square relation tokens
+- own/opponent square piece-type attack features
+- own/opponent king-relative square features
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -60,8 +60,8 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own/opponent piece identity
   - own attack-count bucket
   - opponent attack-count bucket
-  - own/opponent piece-type-specific attack flags
-  - own/opponent king-relative square relation
+  - own/opponent square piece-type attack features
+  - own/opponent king-relative square features
 
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square.
@@ -120,12 +120,13 @@ state to be represented without broadcasting it over every square.
     piece identity, own attack-count bucket, and opponent attack-count bucket
 - The input identity at this step was
   `shogi_global_square_feature_sequence_v1`.
-- Added own/opponent piece-type-specific attack flags per relative square.
+- Added own/opponent square piece-type attack features.
   These preserve the existing square-token sequence length while giving the
   model the quality of square control, not only the attack count.
-- Added own/opponent king-relative square relation tokens so each square can
-  express its relation to both kings, reflecting the NNUE-style king-piece
-  relation signal in a Transformer-native form.
+- Added own/opponent king-relative square features so each square can express
+  its location relative to both kings. This is not a full NNUE HalfKP-style
+  feature; it is a square-subject feature that lets an occupied square expose
+  the occupying piece together with its king-relative location.
 - The current input identity is `shogi_global_square_feature_sequence_v2`.
 
 ## Follow-Ups

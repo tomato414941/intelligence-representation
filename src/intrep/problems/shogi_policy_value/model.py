@@ -11,9 +11,9 @@ from intrep.worlds.shogi.position_encoding import (
     BOARD_TOKEN_COUNT,
     BOARD_TOKEN_OFFSET,
     HAND_TOKEN_OFFSET,
-    KING_RELATION_TOKEN_OFFSET,
-    PIECE_ATTACK_PIECE_TYPE_COUNT,
-    PIECE_ATTACK_TOKEN_OFFSET,
+    KING_RELATIVE_SQUARE_TOKEN_OFFSET,
+    SQUARE_ATTACK_PIECE_TYPE_COUNT,
+    SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
@@ -251,31 +251,33 @@ class ShogiPositionInputLayer(nn.Module):
             :,
             ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT : ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT * 2,
         ]
-        own_piece_attacks = position_token_ids[
+        own_square_piece_type_attacks = position_token_ids[
             :,
-            PIECE_ATTACK_TOKEN_OFFSET : PIECE_ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT,
-        ].reshape(-1, BOARD_TOKEN_COUNT, PIECE_ATTACK_PIECE_TYPE_COUNT)
-        opponent_piece_attacks = position_token_ids[
+            SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET : SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT,
+        ].reshape(-1, BOARD_TOKEN_COUNT, SQUARE_ATTACK_PIECE_TYPE_COUNT)
+        opponent_square_piece_type_attacks = position_token_ids[
             :,
-            PIECE_ATTACK_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT : PIECE_ATTACK_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT * 2,
-        ].reshape(-1, BOARD_TOKEN_COUNT, PIECE_ATTACK_PIECE_TYPE_COUNT)
-        own_king_relations = position_token_ids[
+            SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT : SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
+        ].reshape(-1, BOARD_TOKEN_COUNT, SQUARE_ATTACK_PIECE_TYPE_COUNT)
+        own_king_relative_squares = position_token_ids[
             :,
-            KING_RELATION_TOKEN_OFFSET : KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT,
+            KING_RELATIVE_SQUARE_TOKEN_OFFSET : KING_RELATIVE_SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT,
         ]
-        opponent_king_relations = position_token_ids[
+        opponent_king_relative_squares = position_token_ids[
             :,
-            KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT : KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT * 2,
+            KING_RELATIVE_SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT : KING_RELATIVE_SQUARE_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * 2,
         ]
         square_features = torch.cat(
             (
                 torch.stack((pieces, own_attacks, opponent_attacks), dim=2),
-                own_piece_attacks,
-                opponent_piece_attacks,
-                own_king_relations.unsqueeze(2),
-                opponent_king_relations.unsqueeze(2),
+                own_square_piece_type_attacks,
+                opponent_square_piece_type_attacks,
+                own_king_relative_squares.unsqueeze(2),
+                opponent_king_relative_squares.unsqueeze(2),
             ),
             dim=2,
         )
