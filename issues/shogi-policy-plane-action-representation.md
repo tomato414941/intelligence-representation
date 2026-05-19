@@ -69,9 +69,11 @@ and MCTS integration. It is a larger change than adding attack input features.
 - Added policy-plane dataset collation, training/evaluation support, CLI model
   selection, and checkpoint save/load coverage for
   `policy_plane_shared_transformer`.
-- Connected policy-plane checkpoints to the `shogi-arena-agent` MCTS runtime by
-  mapping each legal move to its fixed policy-plane action index and using those
-  logits as candidate priors.
+- Added a checkpoint inference adapter in `intrep.problems.shogi_policy_value`
+  that hides candidate-move vs policy-plane output details and returns legal
+  move priors plus value for runtime consumers.
+- Connected policy-plane checkpoints to the `shogi-arena-agent` MCTS runtime
+  through that adapter.
 
 Remaining work:
 
