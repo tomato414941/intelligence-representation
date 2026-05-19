@@ -7,6 +7,7 @@ from torch import nn
 
 from intrep.worlds.shogi.move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
 from intrep.worlds.shogi.position_encoding import (
+    BOARD_TOKEN_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
 )
@@ -23,7 +24,7 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_in_check_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
@@ -252,7 +253,7 @@ def _candidate_square_hidden(
     embedding_dim = position_hidden.size(-1)
     zero_mask = square_ids.eq(zero_square_id) if zero_square_id is not None else torch.zeros_like(square_ids).bool()
     safe_square_ids = square_ids.masked_fill(zero_mask, 0)
-    token_indices = safe_square_ids + 1
+    token_indices = safe_square_ids + BOARD_TOKEN_OFFSET
     gather_indices = token_indices[..., None].expand(-1, -1, embedding_dim)
     square_hidden = position_hidden.gather(dim=1, index=gather_indices)
     return square_hidden.masked_fill(zero_mask[..., None], 0.0)

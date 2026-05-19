@@ -13,7 +13,7 @@ from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModelConfig,
     _candidate_square_hidden,
 )
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
+from intrep.worlds.shogi.position_encoding import BOARD_TOKEN_OFFSET, SHOGI_POSITION_TOKEN_COUNT
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
@@ -109,10 +109,10 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             zero_square_id=NO_FROM_SQUARE_ID,
         )
 
-        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, 1]))
-        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, 81]))
+        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, BOARD_TOKEN_OFFSET]))
+        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, BOARD_TOKEN_OFFSET + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
-        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, 8]))
+        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, BOARD_TOKEN_OFFSET + 7]))
 
 
 def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

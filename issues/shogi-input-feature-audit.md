@@ -78,6 +78,7 @@ Current project differences:
 
 - Represented now:
   - side to move
+  - whether the side to move is in check
   - side-to-move-relative board squares
   - own/opponent piece identity, including promoted piece types through
     `python-shogi` piece types
@@ -88,13 +89,12 @@ Current project differences:
   - move count or game phase
   - position history
   - repetition or no-progress rule context
-  - whether the side to move is in check
   - attack maps or attack-count features
 
 Expected value and cost:
 
-- `in_check` is a low-cost candidate feature. It should be cheap compared with
-  neural-network inference and may help tactical policy/value learning.
+- `in_check` is a low-cost feature compared with neural-network inference and
+  may help tactical policy/value learning.
 - move count is also low-cost, but its isolated strength impact is less clear.
 - history and repetition features are rule-correctness features. They may matter
   for draw/repetition handling, but they add data-shape complexity.
@@ -103,14 +103,22 @@ Expected value and cost:
   cost, especially for MCTS leaf evaluation, so they should be evaluated as a
   separate performance-sensitive change.
 
-Remaining audit areas include rule/history context, attack or check features,
+Remaining audit areas include rule/history context, attack features,
 and whether the current compact token representation is strong enough after the
 relative-coordinate change.
 
 Recommended follow-up split:
 
-- Add and test an `in_check` input feature first.
 - Consider a move-count feature separately.
 - Keep attack-map and attack-count features as a separate issue because their
   strength upside and CPU cost are both larger.
 - Keep history/repetition features separate from basic position features.
+
+2026-05-19:
+
+- Added an `in_check` token to the shogi position input sequence.
+- The position token layout is now side-to-move token, in-check token, board
+  square tokens, then hand-count tokens.
+- The input identity was changed to `shogi_side_to_move_relative_in_check`, so
+  older checkpoints and tensor caches are rejected.
+- Tests cover both safe and checked side-to-move positions.

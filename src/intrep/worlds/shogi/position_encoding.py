@@ -6,16 +6,22 @@ import torch
 
 BOARD_TOKEN_COUNT = 81
 HAND_TOKEN_COUNT = 14
-SHOGI_POSITION_TOKEN_COUNT = 1 + BOARD_TOKEN_COUNT + HAND_TOKEN_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative"
+SIDE_TO_MOVE_TOKEN_INDEX = 0
+IN_CHECK_TOKEN_INDEX = 1
+BOARD_TOKEN_OFFSET = 2
+HAND_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
+SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
+SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative_in_check"
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
 OPPONENT_PIECE_OFFSET = 15
 SIDE_TO_MOVE_BLACK_TOKEN_ID = 29
 SIDE_TO_MOVE_WHITE_TOKEN_ID = 30
+NOT_IN_CHECK_TOKEN_ID = 31
+IN_CHECK_TOKEN_ID = 32
 HAND_COUNT_TOKEN_MAX = 18
-OWN_HAND_OFFSET = 31
+OWN_HAND_OFFSET = 33
 OPPONENT_HAND_OFFSET = OWN_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 SHOGI_POSITION_VOCAB_SIZE = OPPONENT_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 
@@ -32,7 +38,10 @@ HAND_PIECE_TYPES = (
 
 def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     board = shogi.Board(position_sfen)
-    token_ids = [side_to_move_token_id(board.turn)]
+    token_ids = [
+        side_to_move_token_id(board.turn),
+        in_check_token_id(board.is_check()),
+    ]
     token_ids.extend(relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
@@ -44,6 +53,10 @@ def side_to_move_token_id(color: int) -> int:
     if color == shogi.WHITE:
         return SIDE_TO_MOVE_WHITE_TOKEN_ID
     raise ValueError(f"unsupported shogi color: {color}")
+
+
+def in_check_token_id(in_check: bool) -> int:
+    return IN_CHECK_TOKEN_ID if in_check else NOT_IN_CHECK_TOKEN_ID
 
 
 def relative_square_token_id(board: shogi.Board, relative_square: int) -> int:
