@@ -35,6 +35,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_FEATURE_MANIFEST,
     SHOGI_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_POSITION_INPUT_SCHEMA_ID,
+    ShogiPairRelationEdges,
     ShogiPositionFeatures,
 )
 
@@ -879,13 +880,17 @@ def _compact_policy_plane_sample_from_payload(payload: Any) -> CompactPolicyPlan
     )
 
 
-def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, torch.Tensor]:
+def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, Any]:
     return {
         "global_feature_ids": features.global_feature_ids,
         "square_feature_ids": features.square_feature_ids,
         "piece_feature_ids": features.piece_feature_ids,
         "line_feature_ids": features.line_feature_ids,
-        "pair_relation_ids": features.pair_relation_ids,
+        "pair_relation_edges": {
+            "source_token_indices": features.pair_relation_edges.source_token_indices.to(dtype=torch.int16),
+            "target_token_indices": features.pair_relation_edges.target_token_indices.to(dtype=torch.int16),
+            "relation_ids": features.pair_relation_edges.relation_ids.to(dtype=torch.uint8),
+        },
     }
 
 
@@ -897,7 +902,17 @@ def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
         square_feature_ids=payload["square_feature_ids"],
         piece_feature_ids=payload["piece_feature_ids"],
         line_feature_ids=payload["line_feature_ids"],
-        pair_relation_ids=payload["pair_relation_ids"],
+        pair_relation_edges=_pair_relation_edges_from_payload(payload["pair_relation_edges"]),
+    )
+
+
+def _pair_relation_edges_from_payload(payload: Any) -> ShogiPairRelationEdges:
+    if not isinstance(payload, dict):
+        raise ValueError("pair relation edges payload must be a mapping")
+    return ShogiPairRelationEdges(
+        source_token_indices=payload["source_token_indices"].to(dtype=torch.long),
+        target_token_indices=payload["target_token_indices"].to(dtype=torch.long),
+        relation_ids=payload["relation_ids"].to(dtype=torch.long),
     )
 
 

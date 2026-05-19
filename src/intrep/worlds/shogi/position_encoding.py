@@ -28,7 +28,7 @@ GLOBAL_TOKEN_COUNT = 18
 LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
 LINE_FEATURE_COUNT = 6
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence"
+SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_piece_line_pair_edge_drop_counterfactual_flow_feature_sequence"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -131,7 +131,7 @@ def shogi_position_feature_manifest() -> dict[str, object]:
         "piece_feature_count": SHOGI_POSITION_PIECE_FEATURE_COUNT,
         "line_feature_count": SHOGI_POSITION_LINE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
-        "feature_groups": ["global", "square", "piece", "line", "pair_relation"],
+        "feature_groups": ["global", "square", "piece", "line", "pair_relation_edges"],
         "global_features": [
             "state",
             "side_to_move",
@@ -185,6 +185,7 @@ def shogi_position_feature_manifest() -> dict[str, object]:
             "piece_defends_piece": PAIR_RELATION_PIECE_DEFENDS_PIECE,
             "piece_same_side": PAIR_RELATION_PIECE_SAME_SIDE,
         },
+        "pair_relation_representation": "edge_list",
         "hand_piece_types": list(HAND_PIECE_TYPES),
         "square_attack_piece_types": list(SQUARE_ATTACK_PIECE_TYPES),
         "attack_count_token_max": ATTACK_COUNT_TOKEN_MAX,
@@ -258,12 +259,28 @@ SHOGI_POSITION_FEATURE_MANIFEST_HASH = shogi_position_feature_manifest_hash()
 
 
 @dataclass(frozen=True)
+class ShogiPairRelationEdges:
+    source_token_indices: torch.Tensor
+    target_token_indices: torch.Tensor
+    relation_ids: torch.Tensor
+    batch_indices: torch.Tensor | None = None
+
+    def to(self, device: torch.device) -> "ShogiPairRelationEdges":
+        return ShogiPairRelationEdges(
+            source_token_indices=self.source_token_indices.to(device),
+            target_token_indices=self.target_token_indices.to(device),
+            relation_ids=self.relation_ids.to(device),
+            batch_indices=None if self.batch_indices is None else self.batch_indices.to(device),
+        )
+
+
+@dataclass(frozen=True)
 class ShogiPositionFeatures:
     global_feature_ids: torch.Tensor
     square_feature_ids: torch.Tensor
     piece_feature_ids: torch.Tensor
     line_feature_ids: torch.Tensor
-    pair_relation_ids: torch.Tensor
+    pair_relation_edges: ShogiPairRelationEdges
 
     def to(self, device: torch.device) -> "ShogiPositionFeatures":
         return ShogiPositionFeatures(
@@ -271,7 +288,7 @@ class ShogiPositionFeatures:
             square_feature_ids=self.square_feature_ids.to(device),
             piece_feature_ids=self.piece_feature_ids.to(device),
             line_feature_ids=self.line_feature_ids.to(device),
-            pair_relation_ids=self.pair_relation_ids.to(device),
+            pair_relation_edges=self.pair_relation_edges.to(device),
         )
 
 
@@ -281,7 +298,36 @@ def stack_shogi_position_features(features: list[ShogiPositionFeatures]) -> Shog
         square_feature_ids=torch.stack([feature.square_feature_ids for feature in features]),
         piece_feature_ids=torch.stack([feature.piece_feature_ids for feature in features]),
         line_feature_ids=torch.stack([feature.line_feature_ids for feature in features]),
-        pair_relation_ids=torch.stack([feature.pair_relation_ids for feature in features]),
+        pair_relation_edges=stack_shogi_pair_relation_edges([feature.pair_relation_edges for feature in features]),
+    )
+
+
+def stack_shogi_pair_relation_edges(edges: list[ShogiPairRelationEdges]) -> ShogiPairRelationEdges:
+    source_token_indices: list[torch.Tensor] = []
+    target_token_indices: list[torch.Tensor] = []
+    relation_ids: list[torch.Tensor] = []
+    batch_indices: list[torch.Tensor] = []
+    for batch_index, edge_set in enumerate(edges):
+        edge_count = int(edge_set.relation_ids.numel())
+        if edge_count == 0:
+            continue
+        source_token_indices.append(edge_set.source_token_indices)
+        target_token_indices.append(edge_set.target_token_indices)
+        relation_ids.append(edge_set.relation_ids)
+        batch_indices.append(torch.full((edge_count,), batch_index, dtype=torch.long))
+    if not relation_ids:
+        empty = torch.empty((0,), dtype=torch.long)
+        return ShogiPairRelationEdges(
+            source_token_indices=empty,
+            target_token_indices=empty,
+            relation_ids=empty,
+            batch_indices=empty,
+        )
+    return ShogiPairRelationEdges(
+        source_token_indices=torch.cat(source_token_indices),
+        target_token_indices=torch.cat(target_token_indices),
+        relation_ids=torch.cat(relation_ids),
+        batch_indices=torch.cat(batch_indices),
     )
 
 
@@ -300,13 +346,13 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
     square_feature_ids = torch.tensor(square_feature_id_rows(board), dtype=torch.long)
     piece_feature_ids = torch.tensor(piece_feature_id_rows(board), dtype=torch.long)
     line_feature_ids = torch.tensor(line_feature_id_rows(board), dtype=torch.long)
-    pair_relation_ids = torch.tensor(pair_relation_id_matrix(board), dtype=torch.long)
+    pair_relation_edges = pair_relation_edges_from_board(board)
     return ShogiPositionFeatures(
         global_feature_ids=global_feature_ids,
         square_feature_ids=square_feature_ids,
         piece_feature_ids=piece_feature_ids,
         line_feature_ids=line_feature_ids,
-        pair_relation_ids=pair_relation_ids,
+        pair_relation_edges=pair_relation_edges,
     )
 
 
@@ -777,9 +823,20 @@ class PieceSlotRelationInfo:
     relative_square: int | None
 
 
-def pair_relation_id_matrix(board: shogi.Board) -> list[list[int]]:
-    size = SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT
-    matrix = [[PAIR_RELATION_NONE for _ in range(size)] for _ in range(size)]
+def pair_relation_edges_from_board(board: shogi.Board) -> ShogiPairRelationEdges:
+    source_token_indices: list[int] = []
+    target_token_indices: list[int] = []
+    relation_ids: list[int] = []
+
+    def add_edge(source: int, target: int, relation_id: int) -> None:
+        source_token_indices.append(source)
+        target_token_indices.append(target)
+        relation_ids.append(relation_id)
+
+    def add_bidirectional_edge(source: int, target: int, relation_id: int) -> None:
+        add_edge(source, target, relation_id)
+        add_edge(target, source, relation_id)
+
     slot_infos = piece_slot_relation_infos(board)
     legal_drop_targets = {
         board.turn: legal_drop_targets_by_piece_type(board, board.turn),
@@ -792,21 +849,18 @@ def pair_relation_id_matrix(board: shogi.Board) -> list[list[int]]:
         if info.location_kind == "board" and info.relative_square is not None:
             from_absolute_square = relative_to_absolute_square(info.relative_square, board.turn)
             square_token_index = SQUARE_TOKEN_OFFSET + info.relative_square
-            matrix[piece_token_index][square_token_index] = PAIR_RELATION_PIECE_ON_SQUARE
-            matrix[square_token_index][piece_token_index] = PAIR_RELATION_PIECE_ON_SQUARE
+            add_bidirectional_edge(piece_token_index, square_token_index, PAIR_RELATION_PIECE_ON_SQUARE)
             for relative_square in range(BOARD_TOKEN_COUNT):
                 absolute_square = relative_to_absolute_square(relative_square, board.turn)
                 if from_absolute_square in board.attackers(info.piece.color, absolute_square):
                     target_token_index = SQUARE_TOKEN_OFFSET + relative_square
-                    matrix[piece_token_index][target_token_index] = PAIR_RELATION_PIECE_ATTACKS_SQUARE
-                    matrix[target_token_index][piece_token_index] = PAIR_RELATION_PIECE_ATTACKS_SQUARE
+                    add_bidirectional_edge(piece_token_index, target_token_index, PAIR_RELATION_PIECE_ATTACKS_SQUARE)
         elif info.location_kind == "hand":
             targets = legal_drop_targets[info.piece.color].get(info.piece.piece_type, set())
             for absolute_square in targets:
                 relative_square = absolute_to_relative_square(absolute_square, board.turn)
                 square_token_index = SQUARE_TOKEN_OFFSET + relative_square
-                matrix[piece_token_index][square_token_index] = PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE
-                matrix[square_token_index][piece_token_index] = PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE
+                add_bidirectional_edge(piece_token_index, square_token_index, PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE)
 
     for source_slot, source_info in enumerate(slot_infos):
         if source_info.piece is None:
@@ -817,7 +871,7 @@ def pair_relation_id_matrix(board: shogi.Board) -> list[list[int]]:
                 continue
             target_token_index = PIECE_TOKEN_OFFSET + target_slot
             if source_info.piece.color == target_info.piece.color:
-                matrix[source_token_index][target_token_index] = PAIR_RELATION_PIECE_SAME_SIDE
+                add_edge(source_token_index, target_token_index, PAIR_RELATION_PIECE_SAME_SIDE)
             if source_info.location_kind != "board" or target_info.location_kind != "board":
                 continue
             if source_info.relative_square is None or target_info.relative_square is None:
@@ -825,12 +879,18 @@ def pair_relation_id_matrix(board: shogi.Board) -> list[list[int]]:
             source_absolute_square = relative_to_absolute_square(source_info.relative_square, board.turn)
             target_absolute_square = relative_to_absolute_square(target_info.relative_square, board.turn)
             if source_absolute_square in board.attackers(source_info.piece.color, target_absolute_square):
-                matrix[source_token_index][target_token_index] = (
+                add_edge(
+                    source_token_index,
+                    target_token_index,
                     PAIR_RELATION_PIECE_DEFENDS_PIECE
                     if source_info.piece.color == target_info.piece.color
                     else PAIR_RELATION_PIECE_ATTACKS_PIECE
                 )
-    return matrix
+    return ShogiPairRelationEdges(
+        source_token_indices=torch.tensor(source_token_indices, dtype=torch.long),
+        target_token_indices=torch.tensor(target_token_indices, dtype=torch.long),
+        relation_ids=torch.tensor(relation_ids, dtype=torch.long),
+    )
 
 
 def piece_slot_relation_infos(board: shogi.Board) -> list[PieceSlotRelationInfo]:

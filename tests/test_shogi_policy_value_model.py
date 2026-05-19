@@ -204,11 +204,15 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         attention_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
 
         bias = attention_bias(position_features, embeddings)
-        relation_indices = position_features.pair_relation_ids[0].eq(PAIR_RELATION_PIECE_ON_SQUARE).nonzero()
+        pair_relation_edges = position_features.pair_relation_edges
+        relation_indices = pair_relation_edges.relation_ids.eq(PAIR_RELATION_PIECE_ON_SQUARE).nonzero()
 
         self.assertGreater(int(relation_indices.size(0)), 0)
-        row, column = relation_indices[0].tolist()
-        self.assertEqual(float(bias[0, row, column].item()), 700.0)
+        edge_index = int(relation_indices[0].item())
+        batch = int(pair_relation_edges.batch_indices[edge_index].item())
+        row = int(pair_relation_edges.source_token_indices[edge_index].item())
+        column = int(pair_relation_edges.target_token_indices[edge_index].item())
+        self.assertEqual(float(bias[batch, row, column].item()), 700.0)
 
     def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
         position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()

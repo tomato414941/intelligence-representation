@@ -335,8 +335,24 @@ class ShogiPositionGeometryAttentionBias(nn.Module):
         line_square_bias = line_square_bias.to(dtype=embeddings.dtype)
         bias[line_start:line_end, square_start:square_end] = line_square_bias
         bias[square_start:square_end, line_start:line_end] = line_square_bias.transpose(0, 1)
-        pair_bias = self.pair_relation_bias(position_features.pair_relation_ids.to(embeddings.device)).squeeze(-1)
-        bias = bias + pair_bias.to(dtype=embeddings.dtype)
+        bias = bias.unsqueeze(0).expand(embeddings.size(0), -1, -1).clone()
+        pair_relation_edges = position_features.pair_relation_edges.to(embeddings.device)
+        if pair_relation_edges.relation_ids.numel() > 0:
+            batch_indices = pair_relation_edges.batch_indices
+            if batch_indices is None:
+                batch_indices = torch.zeros_like(pair_relation_edges.relation_ids)
+            pair_bias = self.pair_relation_bias(pair_relation_edges.relation_ids.long()).squeeze(-1).to(
+                dtype=embeddings.dtype
+            )
+            bias.index_put_(
+                (
+                    batch_indices.long(),
+                    pair_relation_edges.source_token_indices.long(),
+                    pair_relation_edges.target_token_indices.long(),
+                ),
+                pair_bias,
+                accumulate=True,
+            )
         return bias
 
 

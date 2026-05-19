@@ -348,18 +348,25 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         white_king_token = PIECE_TOKEN_OFFSET
         rook_token = PIECE_TOKEN_OFFSET + 1
 
-        self.assertEqual(
-            int(features.pair_relation_ids[rook_token, SQUARE_TOKEN_OFFSET + relative_5e].item()),
-            PAIR_RELATION_PIECE_ON_SQUARE,
+        relation_edges = {
+            (int(source.item()), int(target.item()), int(relation.item()))
+            for source, target, relation in zip(
+                features.pair_relation_edges.source_token_indices,
+                features.pair_relation_edges.target_token_indices,
+                features.pair_relation_edges.relation_ids,
+                strict=True,
+            )
+        }
+
+        self.assertIn(
+            (rook_token, SQUARE_TOKEN_OFFSET + relative_5e, PAIR_RELATION_PIECE_ON_SQUARE),
+            relation_edges,
         )
-        self.assertEqual(
-            int(features.pair_relation_ids[rook_token, SQUARE_TOKEN_OFFSET + relative_5a].item()),
-            PAIR_RELATION_PIECE_ATTACKS_SQUARE,
+        self.assertIn(
+            (rook_token, SQUARE_TOKEN_OFFSET + relative_5a, PAIR_RELATION_PIECE_ATTACKS_SQUARE),
+            relation_edges,
         )
-        self.assertEqual(
-            int(features.pair_relation_ids[rook_token, white_king_token].item()),
-            PAIR_RELATION_PIECE_ATTACKS_PIECE,
-        )
+        self.assertIn((rook_token, white_king_token, PAIR_RELATION_PIECE_ATTACKS_PIECE), relation_edges)
 
     def test_encodes_line_features(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")

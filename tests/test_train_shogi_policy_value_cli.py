@@ -388,6 +388,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue(list((tensor_cache_path / "train").glob("*.json")))
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
+            shard_path = next((tensor_cache_path / "train").glob("*.pt"))
+            shard_payload = torch.load(shard_path, weights_only=False)
+            position_payload = shard_payload["samples"][0]["position_features"]
+            self.assertNotIn("pair_relation_ids", position_payload)
+            pair_relation_edges = position_payload["pair_relation_edges"]
+            self.assertEqual(pair_relation_edges["source_token_indices"].dtype, torch.int16)
+            self.assertEqual(pair_relation_edges["target_token_indices"].dtype, torch.int16)
+            self.assertEqual(pair_relation_edges["relation_ids"].dtype, torch.uint8)
 
             with patch(
                 "sys.argv",
