@@ -28,6 +28,7 @@ from intrep.problems.shogi_policy_value.model import (
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import (
     LINE_TOKEN_OFFSET,
+    PAIR_RELATION_PIECE_ON_SQUARE,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SQUARE_TOKEN_OFFSET,
     ShogiPositionFeatures,
@@ -108,7 +109,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(tuple(values.shape), (2,))
         self.assertEqual(model.core.forward.call_count, 1)
 
-    def test_shared_core_policy_head_uses_position_move_and_square_hidden(self) -> None:
+    def test_shared_core_policy_head_scores_legal_move_tokens_after_cross_attention(self) -> None:
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -118,7 +119,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(model.policy_head.scorer[0].in_features, 8 * 4)
+        self.assertEqual(model.policy_head.scorer[0].in_features, 8 * 2)
 
     def test_candidate_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
         position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
@@ -149,23 +150,44 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
 
     def test_position_geometry_attention_bias_targets_square_and_line_pairs(self) -> None:
+        position_features, _, _, _, _, _ = _batch()
         embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
         attention_bias = ShogiPositionGeometryAttentionBias()
         attention_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
         attention_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
 
-        bias = attention_bias(embeddings)
+        bias = attention_bias(position_features, embeddings)
         same_square_relation = 8 * 17 + 8
         one_file_right_relation = 8 * 17 + 9
 
-        self.assertEqual(tuple(bias.shape), (SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT))
-        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), float(same_square_relation))
-        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), float(one_file_right_relation))
-        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET].item()), 0.0)
-        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, 0].item()), 0.0)
-        self.assertEqual(float(bias[LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, LINE_TOKEN_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), 0.0)
+        self.assertEqual(
+            tuple(bias.shape),
+            (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT),
+        )
+        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), float(same_square_relation))
+        self.assertEqual(
+            float(bias[0, SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()),
+            float(one_file_right_relation),
+        )
+        self.assertEqual(float(bias[0, 0, SQUARE_TOKEN_OFFSET].item()), 0.0)
+        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, 0].item()), 0.0)
+        self.assertEqual(float(bias[0, LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, LINE_TOKEN_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), 0.0)
+
+    def test_position_geometry_attention_bias_adds_dynamic_pair_relation_bias(self) -> None:
+        position_features, _, _, _, _, _ = _batch()
+        embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        attention_bias = ShogiPositionGeometryAttentionBias()
+        attention_bias.pair_relation_bias.weight.data[:, 0] = 0.0
+        attention_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
+
+        bias = attention_bias(position_features, embeddings)
+        relation_indices = position_features.pair_relation_ids[0].eq(PAIR_RELATION_PIECE_ON_SQUARE).nonzero()
+
+        self.assertGreater(int(relation_indices.size(0)), 0)
+        row, column = relation_indices[0].tolist()
+        self.assertEqual(float(bias[0, row, column].item()), 700.0)
 
     def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
         position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()

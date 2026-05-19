@@ -864,6 +864,7 @@ def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, 
         "square_feature_ids": features.square_feature_ids,
         "piece_feature_ids": features.piece_feature_ids,
         "line_feature_ids": features.line_feature_ids,
+        "pair_relation_ids": features.pair_relation_ids,
     }
 
 
@@ -875,6 +876,7 @@ def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
         square_feature_ids=payload["square_feature_ids"],
         piece_feature_ids=payload["piece_feature_ids"],
         line_feature_ids=payload["line_feature_ids"],
+        pair_relation_ids=payload["pair_relation_ids"],
     )
 
 

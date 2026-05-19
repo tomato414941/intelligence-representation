@@ -34,14 +34,25 @@ Current represented information:
 - own/opponent square piece-type attack features
 - own/opponent king-relative square features
 - own/opponent drop-shadow features for legal drops from hand by piece type
+- counterfactual removal features per square and board-piece token:
+  whether removing the occupying piece exposes own king check, exposes opponent
+  king check, or removes a sliding-line blocker
+- capture-to-hand flow features per square and board-piece token:
+  whether giving that piece to the opponent creates a near-king drop danger, and
+  whether capturing that opponent piece creates a near-king drop opportunity
 - fixed 40 piece tokens for board and hand pieces, with board pieces ordered by
   side-to-move-relative square and remaining incomplete-position slots padded
   as empty
 - fixed 52 line tokens for files, ranks, and both diagonal families, with
   line-kind, king-on-line, slider-on-line, and occupancy features
+- dynamic pair relation ids over the full token sequence, currently covering
+  piece-on-square, piece-attacks-square, hand-piece-drops-to-square,
+  piece-attacks-piece, piece-defends-piece, and same-side piece relations
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
+- shared-core candidate policy scoring uses legal move tokens that cross-attend
+  to the encoded position
 
 The canonical position input object is `ShogiPositionFeatures`:
 
@@ -49,6 +60,7 @@ The canonical position input object is `ShogiPositionFeatures`:
 - `square_feature_ids`
 - `piece_feature_ids`
 - `line_feature_ids`
+- `pair_relation_ids`
 
 There is no canonical flat position vector. Boundaries that consume positions
 must carry the grouped feature object.
@@ -79,12 +91,16 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own/opponent square piece-type attack features
   - own/opponent king-relative square features
   - own/opponent drop-shadow features by hand piece type
+  - counterfactual removal features
+  - capture-to-hand flow features
 - piece tokens x40:
   - location kind: board, hand, or empty
   - own/opponent piece identity
   - side-to-move-relative square for board pieces, or unknown for hand/empty
   - own king-relative square feature for board pieces, or unknown
   - opponent king-relative square feature for board pieces, or unknown
+  - counterfactual removal features for board pieces, or false for hand/empty
+  - capture-to-hand flow features for board pieces, or false for hand/empty
 - line tokens x52:
   - 9 file tokens
   - 9 rank tokens
@@ -101,7 +117,10 @@ tokens add a piece-subject view of the same board rather than dedicated
 relation tokens. Piece tokens are treated as a set-like sequence and do not use
 slot-position embeddings. Square tokens retain square identity and the shared
 shogi Transformer adds static position geometry attention bias over the 81
-board-square tokens and between line tokens and their member squares.
+board-square tokens and between line tokens and their member squares. Dynamic
+pair relation ids are added as learned attention bias so token-to-token shogi
+relations are represented on the attention pair, not only as token-local
+features.
 
 ## Close Condition
 
@@ -194,11 +213,25 @@ board-square tokens and between line tokens and their member squares.
 - Removed the flattened `position_token_ids` compatibility path. Tensor
   samples, batches, inference, model input, and tensor cache payloads now carry
   global/square/piece/line feature groups.
+- Added counterfactual removal features to square and board-piece tokens.
+  These expose cheap causal roles such as "removing this piece exposes own
+  king check" and "this piece is a sliding-line blocker."
+- Added capture-to-hand flow features to square and board-piece tokens. These
+  expose a cheap approximation of whether a captured piece would become a
+  dangerous or useful near-king drop resource.
+- Added dynamic `pair_relation_ids` to `ShogiPositionFeatures` and tensor
+  caches. The shared Transformer uses them as learned pair-relation attention
+  bias.
+- Replaced shared-core candidate policy scoring with legal move tokens that
+  cross-attend to the encoded position before producing candidate logits.
+- The current input identity is
+  `shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence`.
 
 ## Follow-Ups
 
 - Keep history/repetition features separate from basic position features because
   they interact with rule context and data generation.
-- Consider pin/discovered-attack features only after the current representation
-  has been exercised; they are more evaluation-function-like and harder to
-  define cleanly.
+- Consider deeper pin/discovered-attack and threat-response features only after
+  the current representation has been exercised; the current schema now carries
+  a cheap counterfactual/blocker approximation but not full tactical threat
+  search.

@@ -5,6 +5,10 @@ import torch
 
 from intrep.worlds.shogi.position_encoding import (
     ATTACK_COUNT_TOKEN_MAX,
+    CAPTURE_FLOW_OPPORTUNITY_OFFSET,
+    COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
+    COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
+    GIFT_DANGER_OFFSET,
     HAND_COUNT_TOKEN_MAX,
     HAND_PIECE_TYPES,
     IN_CHECK_TOKEN_ID,
@@ -32,9 +36,13 @@ from intrep.worlds.shogi.position_encoding import (
     PIECE_LOCATION_BOARD_TOKEN_ID,
     PIECE_LOCATION_EMPTY_TOKEN_ID,
     PIECE_LOCATION_HAND_TOKEN_ID,
+    PIECE_TOKEN_OFFSET,
     PIECE_SLOT_COUNT,
     PIECE_SQUARE_OFFSET,
     PIECE_SQUARE_UNKNOWN_TOKEN_ID,
+    PAIR_RELATION_PIECE_ATTACKS_PIECE,
+    PAIR_RELATION_PIECE_ATTACKS_SQUARE,
+    PAIR_RELATION_PIECE_ON_SQUARE,
     SQUARE_ATTACK_PIECE_TYPES,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
@@ -47,6 +55,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_VOCAB_SIZE,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
+    SQUARE_TOKEN_OFFSET,
     absolute_to_relative_square,
     king_relative_offset_bucket,
     move_count_bucket_token_id,
@@ -63,6 +72,8 @@ OWN_KING_RELATIVE_FEATURE_INDEX = OPPONENT_PIECE_TYPE_ATTACK_FEATURE_OFFSET + le
 OPPONENT_KING_RELATIVE_FEATURE_INDEX = OWN_KING_RELATIVE_FEATURE_INDEX + 1
 OWN_DROP_SHADOW_FEATURE_OFFSET = OPPONENT_KING_RELATIVE_FEATURE_INDEX + 1
 OPPONENT_DROP_SHADOW_FEATURE_OFFSET = OWN_DROP_SHADOW_FEATURE_OFFSET + len(HAND_PIECE_TYPES)
+COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET = OPPONENT_DROP_SHADOW_FEATURE_OFFSET + len(HAND_PIECE_TYPES)
+GIFT_FLOW_FEATURE_OFFSET = COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET + 3
 
 
 class ShogiPositionEncodingTest(unittest.TestCase):
@@ -288,6 +299,54 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(
             int(features.square_feature_ids[relative_5e, OPPONENT_DROP_SHADOW_FEATURE_OFFSET + bishop_feature].item()),
             OPPONENT_DROP_SHADOW_OFFSET + bishop_feature * 2 + 1,
+        )
+
+    def test_encodes_counterfactual_removal_features(self) -> None:
+        features = shogi_position_features_from_sfen("4r3k/9/9/9/4G4/9/9/9/4K4 b - 1")
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5e, COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET].item()),
+            COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET + 1,
+        )
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5e, COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET + 2].item()),
+            COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET + 1,
+        )
+        self.assertEqual(int(features.piece_feature_ids[2, 5].item()), COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET + 1)
+
+    def test_encodes_capture_to_hand_flow_features(self) -> None:
+        features = shogi_position_features_from_sfen("4k4/9/9/9/4G4/9/9/9/4K4 b - 1")
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5e, GIFT_FLOW_FEATURE_OFFSET].item()),
+            GIFT_DANGER_OFFSET + 1,
+        )
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5e, GIFT_FLOW_FEATURE_OFFSET + 1].item()),
+            CAPTURE_FLOW_OPPORTUNITY_OFFSET,
+        )
+        self.assertEqual(int(features.piece_feature_ids[1, 8].item()), GIFT_DANGER_OFFSET + 1)
+
+    def test_encodes_piece_square_and_piece_piece_pair_relations(self) -> None:
+        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+        white_king_token = PIECE_TOKEN_OFFSET
+        rook_token = PIECE_TOKEN_OFFSET + 1
+
+        self.assertEqual(
+            int(features.pair_relation_ids[rook_token, SQUARE_TOKEN_OFFSET + relative_5e].item()),
+            PAIR_RELATION_PIECE_ON_SQUARE,
+        )
+        self.assertEqual(
+            int(features.pair_relation_ids[rook_token, SQUARE_TOKEN_OFFSET + relative_5a].item()),
+            PAIR_RELATION_PIECE_ATTACKS_SQUARE,
+        )
+        self.assertEqual(
+            int(features.pair_relation_ids[rook_token, white_king_token].item()),
+            PAIR_RELATION_PIECE_ATTACKS_PIECE,
         )
 
     def test_encodes_line_features(self) -> None:

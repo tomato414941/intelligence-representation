@@ -8,6 +8,7 @@ from torch import nn
 from intrep.worlds.shogi.move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
 from intrep.worlds.shogi.position_encoding import (
     LINE_TOKEN_OFFSET,
+    PAIR_RELATION_COUNT,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_PIECE_FEATURE_COUNT,
@@ -37,11 +38,12 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_state_position_features"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_piece_line_pair_drop_counterfactual_flow_position_features"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
-SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_position_geometry_bias"
+SHOGI_DIRECT_POLICY_HEAD_MODULE_ID = "candidate_move_policy_head"
+SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
-SHOGI_POLICY_HEAD_MODULE_ID = "candidate_policy_head"
+SHOGI_POLICY_HEAD_MODULE_ID = "legal_move_token_policy_head"
 SHOGI_POLICY_PLANE_HEAD_MODULE_ID = "policy_plane_head"
 SHOGI_VALUE_HEAD_MODULE_ID = "scalar_tanh_value_head"
 SHOGI_DIRECT_POSITION_POOLING_MODULE_ID = "mean_direct_position_feature_sequence_embedding"
@@ -58,7 +60,7 @@ SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
     "candidate_move_input": SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID,
     "core": None,
     "position_pooling": SHOGI_DIRECT_POSITION_POOLING_MODULE_ID,
-    "policy_head": SHOGI_POLICY_HEAD_MODULE_ID,
+    "policy_head": SHOGI_DIRECT_POLICY_HEAD_MODULE_ID,
     "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
 }
 SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC = {
@@ -159,6 +161,32 @@ class ShogiCandidateMovePolicyHead(nn.Module):
 
     def forward(self, candidate_inputs: torch.Tensor, candidate_mask: torch.Tensor) -> torch.Tensor:
         logits = self.scorer(candidate_inputs).squeeze(-1)
+        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+
+
+class ShogiLegalMoveTokenPolicyHead(nn.Module):
+    def __init__(self, *, embedding_dim: int, num_heads: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.cross_attention = nn.MultiheadAttention(
+            embed_dim=embedding_dim,
+            num_heads=num_heads,
+            batch_first=True,
+        )
+        self.scorer = nn.Sequential(
+            nn.Linear(embedding_dim * 2, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(
+        self,
+        *,
+        position_hidden: torch.Tensor,
+        move_tokens: torch.Tensor,
+        candidate_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        attended, _weights = self.cross_attention(move_tokens, position_hidden, position_hidden, need_weights=False)
+        logits = self.scorer(torch.cat((move_tokens, attended), dim=-1)).squeeze(-1)
         return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
 
 
@@ -273,12 +301,14 @@ class ShogiPositionGeometryAttentionBias(nn.Module):
         super().__init__()
         self.relation_bias = nn.Embedding(17 * 17, 1)
         self.line_square_relation_bias = nn.Embedding(2, 1)
+        self.pair_relation_bias = nn.Embedding(PAIR_RELATION_COUNT, 1)
         nn.init.zeros_(self.relation_bias.weight)
         nn.init.zeros_(self.line_square_relation_bias.weight)
+        nn.init.zeros_(self.pair_relation_bias.weight)
         self.register_buffer("square_relation_ids", _square_geometry_relation_ids(), persistent=False)
         self.register_buffer("line_square_relation_ids", _line_square_relation_ids(), persistent=False)
 
-    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+    def forward(self, position_features: ShogiPositionFeatures, embeddings: torch.Tensor) -> torch.Tensor:
         if embeddings.ndim != 3:
             raise ValueError("embeddings must have shape [batch, sequence, hidden]")
         if embeddings.size(1) != SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT:
@@ -300,6 +330,8 @@ class ShogiPositionGeometryAttentionBias(nn.Module):
         line_square_bias = line_square_bias.to(dtype=embeddings.dtype)
         bias[line_start:line_end, square_start:square_end] = line_square_bias
         bias[square_start:square_end, line_start:line_end] = line_square_bias.transpose(0, 1)
+        pair_bias = self.pair_relation_bias(position_features.pair_relation_ids.to(embeddings.device)).squeeze(-1)
+        bias = bias + pair_bias.to(dtype=embeddings.dtype)
         return bias
 
 
@@ -340,8 +372,9 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             dropout=self.config.dropout,
         )
         self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
-        self.policy_head = ShogiCandidateMovePolicyHead(
-            input_dim=embedding_dim * 4,
+        self.policy_head = ShogiLegalMoveTokenPolicyHead(
+            embedding_dim=embedding_dim,
+            num_heads=self.config.num_heads,
             hidden_dim=self.config.hidden_dim,
         )
         self.value_head = ShogiValueHead(
@@ -359,11 +392,14 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
-        candidate_inputs = self.candidate_policy_inputs(position_hidden, position_embedding, candidate_move_features)
-        return self.policy_head(candidate_inputs, candidate_mask)
+        move_tokens = self.candidate_move_tokens(position_hidden, candidate_move_features)
+        return self.policy_head(
+            position_hidden=position_hidden,
+            move_tokens=move_tokens,
+            candidate_mask=candidate_mask,
+        )
 
     def forward_policy_value(
         self,
@@ -375,11 +411,15 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
         position_embedding = position_hidden.mean(dim=1)
-        candidate_inputs = self.candidate_policy_inputs(position_hidden, position_embedding, candidate_move_features)
-        logits = self.policy_head(candidate_inputs, candidate_mask)
+        move_tokens = self.candidate_move_tokens(position_hidden, candidate_move_features)
+        logits = self.policy_head(
+            position_hidden=position_hidden,
+            move_tokens=move_tokens,
+            candidate_mask=candidate_mask,
+        )
         return logits, self.value_head(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
@@ -387,30 +427,24 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
         position_embedding = position_hidden.mean(dim=1)
         return self.value_head(position_embedding)
 
-    def candidate_policy_inputs(
+    def candidate_move_tokens(
         self,
         position_hidden: torch.Tensor,
-        position_embedding: torch.Tensor,
         candidate_move_features: torch.Tensor,
     ) -> torch.Tensor:
         move_embedding = self.move_input(candidate_move_features)
-        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         from_square_hidden = _candidate_square_hidden(
             position_hidden,
             candidate_move_features[..., 0],
             zero_square_id=NO_FROM_SQUARE_ID,
         )
         to_square_hidden = _candidate_square_hidden(position_hidden, candidate_move_features[..., 1])
-        scorer_input = torch.cat(
-            (expanded_position, move_embedding, from_square_hidden, to_square_hidden),
-            dim=-1,
-        )
-        return scorer_input
+        return move_embedding + from_square_hidden + to_square_hidden
 
 
 class PolicyPlaneShogiPolicyValueModel(nn.Module):
@@ -442,7 +476,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
         position_embedding = position_hidden.mean(dim=1)
         return self.policy_head(position_embedding, policy_plane_legal_mask)
@@ -456,7 +490,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
         position_embedding = position_hidden.mean(dim=1)
         logits = self.policy_head(position_embedding, policy_plane_legal_mask)
@@ -467,7 +501,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         position_hidden = self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.position_attention_bias(position_embeddings),
+            attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
         position_embedding = position_hidden.mean(dim=1)
         return self.value_head(position_embedding)

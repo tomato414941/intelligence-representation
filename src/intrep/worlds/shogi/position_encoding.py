@@ -19,12 +19,14 @@ BOARD_TOKEN_COUNT = 81
 SQUARE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
 SQUARE_ATTACK_PIECE_TYPE_COUNT = len(SQUARE_ATTACK_PIECE_TYPES)
 PIECE_SLOT_COUNT = 40
-PIECE_FEATURE_COUNT = 5
+COUNTERFACTUAL_FEATURE_COUNT = 3
+GIFT_FLOW_FEATURE_COUNT = 2
+PIECE_FEATURE_COUNT = 5 + COUNTERFACTUAL_FEATURE_COUNT + GIFT_FLOW_FEATURE_COUNT
 GLOBAL_TOKEN_COUNT = 18
 LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
 LINE_FEATURE_COUNT = 6
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_drop_shadow_all_piece_line_state_feature_sequence"
+SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -34,6 +36,14 @@ GLOBAL_HAND_TOKEN_OFFSET = 4
 SQUARE_TOKEN_OFFSET = GLOBAL_TOKEN_COUNT
 PIECE_TOKEN_OFFSET = SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 LINE_TOKEN_OFFSET = PIECE_TOKEN_OFFSET + PIECE_SLOT_COUNT
+PAIR_RELATION_NONE = 0
+PAIR_RELATION_PIECE_ON_SQUARE = 1
+PAIR_RELATION_PIECE_ATTACKS_SQUARE = 2
+PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE = 3
+PAIR_RELATION_PIECE_ATTACKS_PIECE = 4
+PAIR_RELATION_PIECE_DEFENDS_PIECE = 5
+PAIR_RELATION_PIECE_SAME_SIDE = 6
+PAIR_RELATION_COUNT = 7
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
@@ -75,7 +85,12 @@ LINE_OWN_SLIDER_ON_LINE_OFFSET = LINE_OPPONENT_KING_ON_LINE_OFFSET + 2
 LINE_OPPONENT_SLIDER_ON_LINE_OFFSET = LINE_OWN_SLIDER_ON_LINE_OFFSET + 2
 LINE_OCCUPANCY_COUNT_MAX = 9
 LINE_OCCUPANCY_COUNT_OFFSET = LINE_OPPONENT_SLIDER_ON_LINE_OFFSET + 2
-PIECE_LOCATION_EMPTY_TOKEN_ID = LINE_OCCUPANCY_COUNT_OFFSET + LINE_OCCUPANCY_COUNT_MAX + 1
+COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET = LINE_OCCUPANCY_COUNT_OFFSET + LINE_OCCUPANCY_COUNT_MAX + 1
+COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET = COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET + 2
+COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET = COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET + 2
+GIFT_DANGER_OFFSET = COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET + 2
+CAPTURE_FLOW_OPPORTUNITY_OFFSET = GIFT_DANGER_OFFSET + 2
+PIECE_LOCATION_EMPTY_TOKEN_ID = CAPTURE_FLOW_OPPORTUNITY_OFFSET + 2
 PIECE_LOCATION_BOARD_TOKEN_ID = PIECE_LOCATION_EMPTY_TOKEN_ID + 1
 PIECE_LOCATION_HAND_TOKEN_ID = PIECE_LOCATION_BOARD_TOKEN_ID + 1
 PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_LOCATION_HAND_TOKEN_ID + 1
@@ -83,7 +98,14 @@ PIECE_SQUARE_OFFSET = PIECE_SQUARE_UNKNOWN_TOKEN_ID + 1
 SHOGI_POSITION_VOCAB_SIZE = PIECE_SQUARE_OFFSET + BOARD_TOKEN_COUNT
 SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_TOKEN_COUNT
 SHOGI_POSITION_SQUARE_COUNT = BOARD_TOKEN_COUNT
-SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 + len(HAND_PIECE_TYPES) * 2
+SHOGI_POSITION_SQUARE_FEATURE_COUNT = (
+    3
+    + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2
+    + 2
+    + len(HAND_PIECE_TYPES) * 2
+    + COUNTERFACTUAL_FEATURE_COUNT
+    + GIFT_FLOW_FEATURE_COUNT
+)
 SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
 SHOGI_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
@@ -99,6 +121,7 @@ class ShogiPositionFeatures:
     square_feature_ids: torch.Tensor
     piece_feature_ids: torch.Tensor
     line_feature_ids: torch.Tensor
+    pair_relation_ids: torch.Tensor
 
     def to(self, device: torch.device) -> "ShogiPositionFeatures":
         return ShogiPositionFeatures(
@@ -106,6 +129,7 @@ class ShogiPositionFeatures:
             square_feature_ids=self.square_feature_ids.to(device),
             piece_feature_ids=self.piece_feature_ids.to(device),
             line_feature_ids=self.line_feature_ids.to(device),
+            pair_relation_ids=self.pair_relation_ids.to(device),
         )
 
 
@@ -115,6 +139,7 @@ def stack_shogi_position_features(features: list[ShogiPositionFeatures]) -> Shog
         square_feature_ids=torch.stack([feature.square_feature_ids for feature in features]),
         piece_feature_ids=torch.stack([feature.piece_feature_ids for feature in features]),
         line_feature_ids=torch.stack([feature.line_feature_ids for feature in features]),
+        pair_relation_ids=torch.stack([feature.pair_relation_ids for feature in features]),
     )
 
 
@@ -133,11 +158,13 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
     square_feature_ids = torch.tensor(square_feature_id_rows(board), dtype=torch.long)
     piece_feature_ids = torch.tensor(piece_feature_id_rows(board), dtype=torch.long)
     line_feature_ids = torch.tensor(line_feature_id_rows(board), dtype=torch.long)
+    pair_relation_ids = torch.tensor(pair_relation_id_matrix(board), dtype=torch.long)
     return ShogiPositionFeatures(
         global_feature_ids=global_feature_ids,
         square_feature_ids=square_feature_ids,
         piece_feature_ids=piece_feature_ids,
         line_feature_ids=line_feature_ids,
+        pair_relation_ids=pair_relation_ids,
     )
 
 
@@ -210,6 +237,8 @@ def square_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     own_square_piece_type_attacks, opponent_square_piece_type_attacks = square_piece_type_attack_token_id_rows(board)
     king_relative_squares = king_relative_square_token_ids(board)
     drop_shadows = drop_shadow_token_id_rows(board)
+    counterfactuals = counterfactual_removal_token_id_rows(board)
+    gift_flows = gift_flow_token_id_rows(board)
     rows: list[list[int]] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         rows.append(
@@ -222,6 +251,8 @@ def square_feature_id_rows(board: shogi.Board) -> list[list[int]]:
                 king_relative_squares[relative_square],
                 king_relative_squares[BOARD_TOKEN_COUNT + relative_square],
                 *drop_shadows[relative_square],
+                *counterfactuals[relative_square],
+                *gift_flows[relative_square],
             ]
         )
     return rows
@@ -343,6 +374,141 @@ def legal_drop_targets_by_piece_type(board: shogi.Board, color: int) -> dict[int
     return targets
 
 
+def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
+    rows: list[list[int]] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        piece = board.piece_at(absolute_square)
+        if piece is None:
+            rows.append(
+                [
+                    COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
+                    COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
+                    COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
+                ]
+            )
+            continue
+        removed_board = shogi.Board(board.sfen())
+        removed_board.remove_piece_at(absolute_square)
+        rows.append(
+            [
+                COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET
+                + int(king_is_attacked(removed_board, board.turn)),
+                COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET
+                + int(king_is_attacked(removed_board, opponent_color(board.turn))),
+                COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET
+                + int(slider_line_blocker(board, absolute_square)),
+            ]
+        )
+    return rows
+
+
+def gift_flow_token_id_rows(board: shogi.Board) -> list[list[int]]:
+    own_king_zone = king_zone_absolute_squares(board, board.turn)
+    opponent_king_zone = king_zone_absolute_squares(board, opponent_color(board.turn))
+    rows: list[list[int]] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        piece = board.piece_at(absolute_square)
+        if piece is None:
+            rows.append([GIFT_DANGER_OFFSET, CAPTURE_FLOW_OPPORTUNITY_OFFSET])
+            continue
+        hand_piece_type = hand_piece_type_after_capture(piece.piece_type)
+        gift_danger = piece.color == board.turn and has_pseudo_drop_target(
+            board,
+            opponent_color(board.turn),
+            hand_piece_type,
+            own_king_zone,
+        )
+        capture_opportunity = piece.color == opponent_color(board.turn) and has_pseudo_drop_target(
+            board,
+            board.turn,
+            hand_piece_type,
+            opponent_king_zone,
+        )
+        rows.append(
+            [
+                GIFT_DANGER_OFFSET + int(gift_danger),
+                CAPTURE_FLOW_OPPORTUNITY_OFFSET + int(capture_opportunity),
+            ]
+        )
+    return rows
+
+
+def king_is_attacked(board: shogi.Board, color: int) -> bool:
+    king_square = board.king_squares[color]
+    return king_square is not None and bool(board.attackers(opponent_color(color), int(king_square)))
+
+
+def slider_line_blocker(board: shogi.Board, absolute_square: int) -> bool:
+    for line_index in range(LINE_TOKEN_COUNT):
+        relative_squares = squares_for_line_index(line_index)
+        absolute_line = [relative_to_absolute_square(square, board.turn) for square in relative_squares]
+        if absolute_square not in absolute_line:
+            continue
+        square_index = absolute_line.index(absolute_square)
+        before = absolute_line[:square_index]
+        after = absolute_line[square_index + 1 :]
+        if line_side_has_slider(board, before, line_kind=line_kind_index(line_index)) and line_side_has_piece(board, after):
+            return True
+        if line_side_has_slider(board, after, line_kind=line_kind_index(line_index)) and line_side_has_piece(board, before):
+            return True
+    return False
+
+
+def line_side_has_slider(board: shogi.Board, squares: list[int], *, line_kind: int) -> bool:
+    for square in squares:
+        piece = board.piece_at(square)
+        if piece is not None and piece_slides_on_line(piece.piece_type, line_kind):
+            return True
+    return False
+
+
+def line_side_has_piece(board: shogi.Board, squares: list[int]) -> bool:
+    return any(board.piece_at(square) is not None for square in squares)
+
+
+def king_zone_absolute_squares(board: shogi.Board, color: int) -> set[int]:
+    king_square = board.king_squares[color]
+    if king_square is None:
+        return set()
+    king_file = int(king_square) % 9
+    king_rank = int(king_square) // 9
+    zone: set[int] = set()
+    for rank_delta in (-1, 0, 1):
+        for file_delta in (-1, 0, 1):
+            file_index = king_file + file_delta
+            rank_index = king_rank + rank_delta
+            if 0 <= file_index < 9 and 0 <= rank_index < 9:
+                zone.add(rank_index * 9 + file_index)
+    return zone
+
+
+def has_pseudo_drop_target(board: shogi.Board, color: int, piece_type: int, candidate_squares: set[int]) -> bool:
+    if piece_type not in HAND_PIECE_TYPES:
+        return False
+    for square in candidate_squares:
+        if board.piece_at(square) is None and piece_type_can_drop_on_square(piece_type, color, square):
+            return True
+    return False
+
+
+def piece_type_can_drop_on_square(piece_type: int, color: int, absolute_square: int) -> bool:
+    rank = absolute_square // 9
+    if piece_type in (shogi.PAWN, shogi.LANCE):
+        return (color == shogi.BLACK and rank != 0) or (color == shogi.WHITE and rank != 8)
+    if piece_type == shogi.KNIGHT:
+        return (color == shogi.BLACK and rank > 1) or (color == shogi.WHITE and rank < 7)
+    return True
+
+
+def hand_piece_type_after_capture(piece_type: int) -> int:
+    for base_piece_type, promoted_piece_type in enumerate(shogi.PIECE_PROMOTED):
+        if promoted_piece_type == piece_type:
+            return base_piece_type
+    return piece_type
+
+
 def line_feature_token_ids(board: shogi.Board) -> list[int]:
     token_ids: list[int] = []
     for row in line_feature_id_rows(board):
@@ -435,11 +601,21 @@ def piece_feature_token_ids(board: shogi.Board) -> list[int]:
 
 def piece_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     piece_features: list[int] = []
+    counterfactuals = counterfactual_removal_token_id_rows(board)
+    gift_flows = gift_flow_token_id_rows(board)
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is not None:
-            piece_features.extend(board_piece_slot_token_ids(board, piece, relative_square))
+            piece_features.extend(
+                board_piece_slot_token_ids(
+                    board,
+                    piece,
+                    relative_square,
+                    counterfactual_tokens=counterfactuals[relative_square],
+                    gift_flow_tokens=gift_flows[relative_square],
+                )
+            )
     piece_features.extend(hand_piece_slot_token_ids(board))
     empty_slot_count = PIECE_SLOT_COUNT - len(piece_features) // PIECE_FEATURE_COUNT
     if empty_slot_count < 0:
@@ -452,7 +628,101 @@ def piece_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     ]
 
 
-def board_piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square: int) -> list[int]:
+@dataclass(frozen=True)
+class PieceSlotRelationInfo:
+    piece: shogi.Piece | None
+    location_kind: str
+    relative_square: int | None
+
+
+def pair_relation_id_matrix(board: shogi.Board) -> list[list[int]]:
+    size = SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT
+    matrix = [[PAIR_RELATION_NONE for _ in range(size)] for _ in range(size)]
+    slot_infos = piece_slot_relation_infos(board)
+    legal_drop_targets = {
+        board.turn: legal_drop_targets_by_piece_type(board, board.turn),
+        opponent_color(board.turn): legal_drop_targets_by_piece_type(board, opponent_color(board.turn)),
+    }
+    for piece_slot, info in enumerate(slot_infos):
+        if info.piece is None:
+            continue
+        piece_token_index = PIECE_TOKEN_OFFSET + piece_slot
+        if info.location_kind == "board" and info.relative_square is not None:
+            from_absolute_square = relative_to_absolute_square(info.relative_square, board.turn)
+            square_token_index = SQUARE_TOKEN_OFFSET + info.relative_square
+            matrix[piece_token_index][square_token_index] = PAIR_RELATION_PIECE_ON_SQUARE
+            matrix[square_token_index][piece_token_index] = PAIR_RELATION_PIECE_ON_SQUARE
+            for relative_square in range(BOARD_TOKEN_COUNT):
+                absolute_square = relative_to_absolute_square(relative_square, board.turn)
+                if from_absolute_square in board.attackers(info.piece.color, absolute_square):
+                    target_token_index = SQUARE_TOKEN_OFFSET + relative_square
+                    matrix[piece_token_index][target_token_index] = PAIR_RELATION_PIECE_ATTACKS_SQUARE
+                    matrix[target_token_index][piece_token_index] = PAIR_RELATION_PIECE_ATTACKS_SQUARE
+        elif info.location_kind == "hand":
+            targets = legal_drop_targets[info.piece.color].get(info.piece.piece_type, set())
+            for absolute_square in targets:
+                relative_square = absolute_to_relative_square(absolute_square, board.turn)
+                square_token_index = SQUARE_TOKEN_OFFSET + relative_square
+                matrix[piece_token_index][square_token_index] = PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE
+                matrix[square_token_index][piece_token_index] = PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE
+
+    for source_slot, source_info in enumerate(slot_infos):
+        if source_info.piece is None:
+            continue
+        source_token_index = PIECE_TOKEN_OFFSET + source_slot
+        for target_slot, target_info in enumerate(slot_infos):
+            if source_slot == target_slot or target_info.piece is None:
+                continue
+            target_token_index = PIECE_TOKEN_OFFSET + target_slot
+            if source_info.piece.color == target_info.piece.color:
+                matrix[source_token_index][target_token_index] = PAIR_RELATION_PIECE_SAME_SIDE
+            if source_info.location_kind != "board" or target_info.location_kind != "board":
+                continue
+            if source_info.relative_square is None or target_info.relative_square is None:
+                continue
+            source_absolute_square = relative_to_absolute_square(source_info.relative_square, board.turn)
+            target_absolute_square = relative_to_absolute_square(target_info.relative_square, board.turn)
+            if source_absolute_square in board.attackers(source_info.piece.color, target_absolute_square):
+                matrix[source_token_index][target_token_index] = (
+                    PAIR_RELATION_PIECE_DEFENDS_PIECE
+                    if source_info.piece.color == target_info.piece.color
+                    else PAIR_RELATION_PIECE_ATTACKS_PIECE
+                )
+    return matrix
+
+
+def piece_slot_relation_infos(board: shogi.Board) -> list[PieceSlotRelationInfo]:
+    infos: list[PieceSlotRelationInfo] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        piece = board.piece_at(absolute_square)
+        if piece is not None:
+            infos.append(PieceSlotRelationInfo(piece=piece, location_kind="board", relative_square=relative_square))
+    for color in (board.turn, opponent_color(board.turn)):
+        for piece_type in HAND_PIECE_TYPES:
+            for _ in range(board.pieces_in_hand[color][piece_type]):
+                infos.append(
+                    PieceSlotRelationInfo(
+                        piece=shogi.Piece(piece_type, color),
+                        location_kind="hand",
+                        relative_square=None,
+                    )
+                )
+    while len(infos) < PIECE_SLOT_COUNT:
+        infos.append(PieceSlotRelationInfo(piece=None, location_kind="empty", relative_square=None))
+    if len(infos) > PIECE_SLOT_COUNT:
+        raise ValueError("shogi board contains more pieces than supported piece slots")
+    return infos
+
+
+def board_piece_slot_token_ids(
+    board: shogi.Board,
+    piece: shogi.Piece,
+    relative_square: int,
+    *,
+    counterfactual_tokens: list[int],
+    gift_flow_tokens: list[int],
+) -> list[int]:
     return [
         PIECE_LOCATION_BOARD_TOKEN_ID,
         piece_token_id(piece, own_color=board.turn),
@@ -469,6 +739,8 @@ def board_piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_
             relative_square,
             offset=OPPONENT_KING_RELATIVE_SQUARE_OFFSET,
         ),
+        *counterfactual_tokens,
+        *gift_flow_tokens,
     ]
 
 
@@ -493,6 +765,11 @@ def hand_piece_token_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
         PIECE_SQUARE_UNKNOWN_TOKEN_ID,
         OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
+        COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
+        COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
+        COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
+        GIFT_DANGER_OFFSET,
+        CAPTURE_FLOW_OPPORTUNITY_OFFSET,
     ]
 
 
@@ -503,6 +780,11 @@ def empty_piece_slot_token_ids() -> list[int]:
         PIECE_SQUARE_UNKNOWN_TOKEN_ID,
         OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
+        COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
+        COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
+        COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
+        GIFT_DANGER_OFFSET,
+        CAPTURE_FLOW_OPPORTUNITY_OFFSET,
     ]
 
 
