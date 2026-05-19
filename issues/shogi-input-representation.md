@@ -33,9 +33,11 @@ Current represented information:
 - own/opponent attack-count buckets per relative square, capped at 3
 - own/opponent square piece-type attack features
 - own/opponent king-relative square features
+- own/opponent drop-shadow features for legal drops from hand by piece type
 - fixed 40 piece tokens for board and hand pieces, with board pieces ordered by
   side-to-move-relative square and remaining incomplete-position slots padded
   as empty
+- fixed 52 line tokens for files, ranks, and both diagonal families
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -65,20 +67,26 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - opponent attack-count bucket
   - own/opponent square piece-type attack features
   - own/opponent king-relative square features
+  - own/opponent drop-shadow features by hand piece type
 - piece tokens x40:
   - location kind: board, hand, or empty
   - own/opponent piece identity
   - side-to-move-relative square for board pieces, or unknown for hand/empty
   - own king-relative square feature for board pieces, or unknown
   - opponent king-relative square feature for board pieces, or unknown
+- line tokens x52:
+  - 9 file tokens
+  - 9 rank tokens
+  - 17 rising diagonal tokens
+  - 17 falling diagonal tokens
 
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square. The piece
 tokens add a piece-subject view of the same board rather than dedicated
 relation tokens. Piece tokens are treated as a set-like sequence and do not use
 slot-position embeddings. Square tokens retain square identity and the shared
-shogi Transformer adds a static square-square geometry attention bias over the
-81 board-square tokens.
+shogi Transformer adds static position geometry attention bias over the 81
+board-square tokens and between line tokens and their member squares.
 
 ## Close Condition
 
@@ -161,6 +169,11 @@ shogi Transformer adds a static square-square geometry attention bias over the
   square tokens. The relation ids are based on side-to-move-relative `dx,dy`
   offsets, giving attention direct access to board geometry without adding
   position-dependent tactical features.
+- Added own/opponent drop-shadow features so each square can see which held
+  piece types can legally be dropped there by either side.
+- Added 52 line tokens for files, ranks, and both diagonal families. Line-square
+  attention bias marks which squares belong to each line, giving the Transformer
+  explicit long-range board subjects without replacing square tokens.
 
 ## Follow-Ups
 

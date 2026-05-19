@@ -10,8 +10,11 @@ from intrep.worlds.shogi.position_encoding import (
     ATTACK_TOKEN_OFFSET,
     BOARD_TOKEN_COUNT,
     BOARD_TOKEN_OFFSET,
+    DROP_SHADOW_TOKEN_OFFSET,
+    HAND_PIECE_TYPES,
     HAND_TOKEN_OFFSET,
     KING_RELATIVE_SQUARE_TOKEN_OFFSET,
+    LINE_TOKEN_OFFSET,
     PIECE_FEATURE_TOKEN_OFFSET,
     SQUARE_ATTACK_PIECE_TYPE_COUNT,
     SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
@@ -20,6 +23,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_PIECE_FEATURE_COUNT,
     SHOGI_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SHOGI_POSITION_LINE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
@@ -43,9 +47,9 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_piece_feature_sequence_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_feature_sequence_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
-SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_square_geometry_bias"
+SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_position_geometry_bias"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
 SHOGI_POLICY_HEAD_MODULE_ID = "candidate_policy_head"
 SHOGI_POLICY_PLANE_HEAD_MODULE_ID = "policy_plane_head"
@@ -222,6 +226,7 @@ class ShogiPositionInputLayer(nn.Module):
         self.square_slot_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_SLOT_COUNT, embedding_dim)
         self.square_feature_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
         self.piece_feature_embedding = nn.Embedding(SHOGI_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
+        self.line_slot_embedding = nn.Embedding(SHOGI_POSITION_LINE_SLOT_COUNT, embedding_dim)
 
     def forward(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         return torch.cat(
@@ -229,6 +234,7 @@ class ShogiPositionInputLayer(nn.Module):
                 self._global_embeddings(position_token_ids),
                 self._square_embeddings(position_token_ids),
                 self._piece_embeddings(position_token_ids),
+                self._line_embeddings(position_token_ids),
             ),
             dim=1,
         )
@@ -277,6 +283,15 @@ class ShogiPositionInputLayer(nn.Module):
             KING_RELATIVE_SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT : KING_RELATIVE_SQUARE_TOKEN_OFFSET
             + BOARD_TOKEN_COUNT * 2,
         ]
+        own_drop_shadows = position_token_ids[
+            :,
+            DROP_SHADOW_TOKEN_OFFSET : DROP_SHADOW_TOKEN_OFFSET + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES),
+        ].reshape(-1, BOARD_TOKEN_COUNT, len(HAND_PIECE_TYPES))
+        opponent_drop_shadows = position_token_ids[
+            :,
+            DROP_SHADOW_TOKEN_OFFSET + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES) : DROP_SHADOW_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES) * 2,
+        ].reshape(-1, BOARD_TOKEN_COUNT, len(HAND_PIECE_TYPES))
         square_features = torch.cat(
             (
                 torch.stack((pieces, own_attacks, opponent_attacks), dim=2),
@@ -284,6 +299,8 @@ class ShogiPositionInputLayer(nn.Module):
                 opponent_square_piece_type_attacks,
                 own_king_relative_squares.unsqueeze(2),
                 opponent_king_relative_squares.unsqueeze(2),
+                own_drop_shadows,
+                opponent_drop_shadows,
             ),
             dim=2,
         )
@@ -310,13 +327,20 @@ class ShogiPositionInputLayer(nn.Module):
         ).sum(dim=2)
         return piece_hidden
 
+    def _line_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        slots = torch.arange(SHOGI_POSITION_LINE_SLOT_COUNT, device=position_token_ids.device).unsqueeze(0)
+        return self.line_slot_embedding(slots).expand(position_token_ids.size(0), -1, -1)
 
-class ShogiSquareGeometryAttentionBias(nn.Module):
+
+class ShogiPositionGeometryAttentionBias(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.relation_bias = nn.Embedding(17 * 17, 1)
+        self.line_square_relation_bias = nn.Embedding(2, 1)
         nn.init.zeros_(self.relation_bias.weight)
+        nn.init.zeros_(self.line_square_relation_bias.weight)
         self.register_buffer("square_relation_ids", _square_geometry_relation_ids(), persistent=False)
+        self.register_buffer("line_square_relation_ids", _line_square_relation_ids(), persistent=False)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         if embeddings.ndim != 3:
@@ -332,6 +356,14 @@ class ShogiSquareGeometryAttentionBias(nn.Module):
         square_start = SQUARE_TOKEN_OFFSET
         square_end = SQUARE_TOKEN_OFFSET + SHOGI_POSITION_SQUARE_COUNT
         bias[square_start:square_end, square_start:square_end] = square_bias.to(dtype=embeddings.dtype)
+        line_start = LINE_TOKEN_OFFSET
+        line_end = LINE_TOKEN_OFFSET + SHOGI_POSITION_LINE_SLOT_COUNT
+        line_square_bias = self.line_square_relation_bias(self.line_square_relation_ids.to(embeddings.device)).squeeze(
+            -1
+        )
+        line_square_bias = line_square_bias.to(dtype=embeddings.dtype)
+        bias[line_start:line_end, square_start:square_end] = line_square_bias
+        bias[square_start:square_end, line_start:line_end] = line_square_bias.transpose(0, 1)
         return bias
 
 
@@ -349,13 +381,35 @@ def _square_geometry_relation_ids() -> torch.Tensor:
     return relation_ids
 
 
+def _line_square_relation_ids() -> torch.Tensor:
+    relation_ids = torch.zeros((SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_SQUARE_COUNT), dtype=torch.long)
+    for line_index in range(SHOGI_POSITION_LINE_SLOT_COUNT):
+        for square in _squares_for_line(line_index):
+            relation_ids[line_index, square] = 1
+    return relation_ids
+
+
+def _squares_for_line(line_index: int) -> tuple[int, ...]:
+    if line_index < 9:
+        file_index = line_index
+        return tuple(rank * 9 + file_index for rank in range(9))
+    if line_index < 18:
+        rank = line_index - 9
+        return tuple(rank * 9 + file_index for file_index in range(9))
+    if line_index < 35:
+        diagonal = line_index - 18
+        return tuple(square for square in range(81) if square // 9 + square % 9 == diagonal)
+    diagonal = line_index - 35
+    return tuple(square for square in range(81) if square // 9 - square % 9 + 8 == diagonal)
+
+
 class SharedCoreShogiPolicyValueModel(nn.Module):
     def __init__(self, config: SharedCoreShogiPolicyValueModelConfig | None = None) -> None:
         super().__init__()
         self.config = config or SharedCoreShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_input = ShogiPositionInputLayer(embedding_dim=embedding_dim)
-        self.position_attention_bias = ShogiSquareGeometryAttentionBias()
+        self.position_attention_bias = ShogiPositionGeometryAttentionBias()
         self.core = SharedTransformerCore(
             embedding_dim=embedding_dim,
             num_heads=self.config.num_heads,
@@ -443,7 +497,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         self.config = config or PolicyPlaneShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.position_input = ShogiPositionInputLayer(embedding_dim=embedding_dim)
-        self.position_attention_bias = ShogiSquareGeometryAttentionBias()
+        self.position_attention_bias = ShogiPositionGeometryAttentionBias()
         self.core = SharedTransformerCore(
             embedding_dim=embedding_dim,
             num_heads=self.config.num_heads,

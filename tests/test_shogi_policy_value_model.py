@@ -21,12 +21,16 @@ from intrep.problems.shogi_policy_value.model import (
     ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
-    ShogiSquareGeometryAttentionBias,
+    ShogiPositionGeometryAttentionBias,
     _candidate_square_hidden,
     shogi_policy_value_model_spec,
 )
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SQUARE_TOKEN_OFFSET
+from intrep.worlds.shogi.position_encoding import (
+    LINE_TOKEN_OFFSET,
+    SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SQUARE_TOKEN_OFFSET,
+)
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
@@ -142,10 +146,11 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
 
-    def test_square_geometry_attention_bias_only_targets_square_pairs(self) -> None:
+    def test_position_geometry_attention_bias_targets_square_and_line_pairs(self) -> None:
         embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
-        attention_bias = ShogiSquareGeometryAttentionBias()
+        attention_bias = ShogiPositionGeometryAttentionBias()
         attention_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
+        attention_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
 
         bias = attention_bias(embeddings)
         same_square_relation = 8 * 17 + 8
@@ -156,8 +161,11 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), float(one_file_right_relation))
         self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET].item()), 0.0)
         self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, 0].item()), 0.0)
+        self.assertEqual(float(bias[LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, LINE_TOKEN_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), 0.0)
 
-    def test_shared_models_pass_square_geometry_attention_bias_to_core(self) -> None:
+    def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(

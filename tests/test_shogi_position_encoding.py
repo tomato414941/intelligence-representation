@@ -7,6 +7,7 @@ from intrep.worlds.shogi.position_encoding import (
     ATTACK_TOKEN_OFFSET,
     BOARD_TOKEN_OFFSET,
     ATTACK_COUNT_TOKEN_MAX,
+    DROP_SHADOW_TOKEN_OFFSET,
     HAND_COUNT_TOKEN_MAX,
     HAND_TOKEN_OFFSET,
     HAND_PIECE_TYPES,
@@ -18,11 +19,13 @@ from intrep.worlds.shogi.position_encoding import (
     MOVE_COUNT_TOKEN_INDEX,
     NOT_IN_CHECK_TOKEN_ID,
     OPPONENT_ATTACK_OFFSET,
+    OPPONENT_DROP_SHADOW_OFFSET,
     OPPONENT_HAND_OFFSET,
     OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
     OPPONENT_PIECE_OFFSET,
     OPPONENT_KING_RELATIVE_SQUARE_OFFSET,
     OWN_ATTACK_OFFSET,
+    OWN_DROP_SHADOW_OFFSET,
     OWN_HAND_OFFSET,
     OWN_KING_RELATIVE_SQUARE_OFFSET,
     OWN_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
@@ -55,7 +58,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(token_ids.dtype, torch.long)
         self.assertEqual(tuple(token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
-        self.assertEqual(SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 139)
+        self.assertEqual(SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 191)
         self.assertEqual(int(token_ids[0].item()), SIDE_TO_MOVE_BLACK_TOKEN_ID)
         self.assertEqual(int(token_ids[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
         self.assertEqual(int(token_ids[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
@@ -263,6 +266,36 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(
             int(token_ids[rook_piece_offset + 4].item()),
             OPPONENT_KING_RELATIVE_SQUARE_OFFSET + 1 + opponent_king_bucket,
+        )
+
+    def test_encodes_drop_shadow_features_for_own_hand_piece(self) -> None:
+        board = shogi.Board("4k4/9/9/9/9/9/9/9/4K4 b P 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+        relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
+        pawn_feature = HAND_PIECE_TYPES.index(shogi.PAWN)
+
+        drop_5e_index = DROP_SHADOW_TOKEN_OFFSET + relative_5e * len(HAND_PIECE_TYPES) + pawn_feature
+        drop_5a_index = DROP_SHADOW_TOKEN_OFFSET + relative_5a * len(HAND_PIECE_TYPES) + pawn_feature
+
+        self.assertEqual(int(token_ids[drop_5e_index].item()), OWN_DROP_SHADOW_OFFSET + pawn_feature * 2 + 1)
+        self.assertEqual(int(token_ids[drop_5a_index].item()), OWN_DROP_SHADOW_OFFSET + pawn_feature * 2)
+
+    def test_encodes_drop_shadow_features_for_opponent_hand_piece(self) -> None:
+        board = shogi.Board("4k4/9/9/9/9/9/9/9/4K4 b b 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+        bishop_feature = HAND_PIECE_TYPES.index(shogi.BISHOP)
+        opponent_drop_5e_index = (
+            DROP_SHADOW_TOKEN_OFFSET
+            + 81 * len(HAND_PIECE_TYPES)
+            + relative_5e * len(HAND_PIECE_TYPES)
+            + bishop_feature
+        )
+
+        self.assertEqual(
+            int(token_ids[opponent_drop_5e_index].item()),
+            OPPONENT_DROP_SHADOW_OFFSET + bishop_feature * 2 + 1,
         )
 
     def test_piece_tokens_include_hand_pieces_after_board_pieces(self) -> None:

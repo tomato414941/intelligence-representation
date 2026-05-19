@@ -4,17 +4,28 @@ import shogi
 import torch
 
 
+HAND_PIECE_TYPES = (
+    shogi.PAWN,
+    shogi.LANCE,
+    shogi.KNIGHT,
+    shogi.SILVER,
+    shogi.GOLD,
+    shogi.BISHOP,
+    shogi.ROOK,
+)
 BOARD_TOKEN_COUNT = 81
 ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
 SQUARE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
 SQUARE_ATTACK_PIECE_TYPE_COUNT = len(SQUARE_ATTACK_PIECE_TYPES)
 SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * SQUARE_ATTACK_PIECE_TYPE_COUNT
 KING_RELATIVE_SQUARE_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
+DROP_SHADOW_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * len(HAND_PIECE_TYPES)
 PIECE_SLOT_COUNT = 40
 PIECE_FEATURE_COUNT = 5
 PIECE_FEATURE_TOKEN_COUNT = PIECE_SLOT_COUNT * PIECE_FEATURE_COUNT
 HAND_TOKEN_COUNT = 14
 GLOBAL_TOKEN_COUNT = 18
+LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
 SIDE_TO_MOVE_TOKEN_INDEX = 0
 IN_CHECK_TOKEN_INDEX = 1
 MOVE_COUNT_TOKEN_INDEX = 2
@@ -22,11 +33,12 @@ BOARD_TOKEN_OFFSET = 3
 ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
 KING_RELATIVE_SQUARE_TOKEN_OFFSET = SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET + SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT
-PIECE_FEATURE_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
+DROP_SHADOW_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
+PIECE_FEATURE_TOKEN_OFFSET = DROP_SHADOW_TOKEN_OFFSET + DROP_SHADOW_TOKEN_COUNT
 HAND_TOKEN_OFFSET = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
-SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_all_piece_feature_sequence"
+SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
+SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_drop_shadow_all_piece_line_feature_sequence"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -35,6 +47,7 @@ GLOBAL_MOVE_COUNT_TOKEN_INDEX = 3
 GLOBAL_HAND_TOKEN_OFFSET = 4
 SQUARE_TOKEN_OFFSET = GLOBAL_TOKEN_COUNT
 PIECE_TOKEN_OFFSET = SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT
+LINE_TOKEN_OFFSET = PIECE_TOKEN_OFFSET + PIECE_SLOT_COUNT
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
@@ -67,7 +80,9 @@ KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT = 17 * 17
 KING_RELATIVE_SQUARE_BUCKET_UNKNOWN = 0
 OWN_KING_RELATIVE_SQUARE_OFFSET = OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2
 OPPONENT_KING_RELATIVE_SQUARE_OFFSET = OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
-PIECE_LOCATION_EMPTY_TOKEN_ID = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
+OWN_DROP_SHADOW_OFFSET = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
+OPPONENT_DROP_SHADOW_OFFSET = OWN_DROP_SHADOW_OFFSET + len(HAND_PIECE_TYPES) * 2
+PIECE_LOCATION_EMPTY_TOKEN_ID = OPPONENT_DROP_SHADOW_OFFSET + len(HAND_PIECE_TYPES) * 2
 PIECE_LOCATION_BOARD_TOKEN_ID = PIECE_LOCATION_EMPTY_TOKEN_ID + 1
 PIECE_LOCATION_HAND_TOKEN_ID = PIECE_LOCATION_BOARD_TOKEN_ID + 1
 PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_LOCATION_HAND_TOKEN_ID + 1
@@ -75,22 +90,13 @@ PIECE_SQUARE_OFFSET = PIECE_SQUARE_UNKNOWN_TOKEN_ID + 1
 SHOGI_POSITION_VOCAB_SIZE = PIECE_SQUARE_OFFSET + BOARD_TOKEN_COUNT
 SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_TOKEN_COUNT
 SHOGI_POSITION_SQUARE_COUNT = BOARD_TOKEN_COUNT
-SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2
+SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 + len(HAND_PIECE_TYPES) * 2
 SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
 SHOGI_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
+SHOGI_POSITION_LINE_SLOT_COUNT = LINE_TOKEN_COUNT
 SHOGI_POSITION_STATE_TOKEN_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_TOKEN_ID + 1
-
-HAND_PIECE_TYPES = (
-    shogi.PAWN,
-    shogi.LANCE,
-    shogi.KNIGHT,
-    shogi.SILVER,
-    shogi.GOLD,
-    shogi.BISHOP,
-    shogi.ROOK,
-)
 
 
 def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
@@ -104,6 +110,7 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     token_ids.extend(attack_token_ids(board))
     token_ids.extend(square_piece_type_attack_token_ids(board))
     token_ids.extend(king_relative_square_token_ids(board))
+    token_ids.extend(drop_shadow_token_ids(board))
     token_ids.extend(piece_feature_token_ids(board))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
@@ -239,6 +246,33 @@ def king_relative_square_token_id(board: shogi.Board, color: int, relative_squar
         return offset + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN
     relative_king_square = absolute_to_relative_square(int(king_square), board.turn)
     return offset + 1 + king_relative_offset_bucket(relative_square, relative_king_square)
+
+
+def drop_shadow_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    token_ids.extend(drop_shadow_token_ids_for_color(board, board.turn, offset=OWN_DROP_SHADOW_OFFSET))
+    token_ids.extend(drop_shadow_token_ids_for_color(board, opponent_color(board.turn), offset=OPPONENT_DROP_SHADOW_OFFSET))
+    return token_ids
+
+
+def drop_shadow_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
+    legal_drop_targets = legal_drop_targets_by_piece_type(board, color)
+    token_ids: list[int] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        for piece_index, piece_type in enumerate(HAND_PIECE_TYPES):
+            token_ids.append(offset + piece_index * 2 + int(absolute_square in legal_drop_targets[piece_type]))
+    return token_ids
+
+
+def legal_drop_targets_by_piece_type(board: shogi.Board, color: int) -> dict[int, set[int]]:
+    perspective_board = shogi.Board(board.sfen())
+    perspective_board.turn = color
+    targets = {piece_type: set() for piece_type in HAND_PIECE_TYPES}
+    for move in perspective_board.legal_moves:
+        if move.drop_piece_type in targets:
+            targets[int(move.drop_piece_type)].add(int(move.to_square))
+    return targets
 
 
 def piece_feature_token_ids(board: shogi.Board) -> list[int]:
