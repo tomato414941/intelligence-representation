@@ -37,3 +37,31 @@ and MCTS integration. It is a larger change than adding attack input features.
 - The policy-plane action space is specified.
 - A migration path from candidate scoring is chosen.
 - Implementation work is split into concrete follow-up tasks.
+
+## Progress
+
+2026-05-19:
+
+- Added a shogi policy-plane action-space module under
+  `intrep.worlds.shogi.policy_plane`.
+- The initial fixed action space is `81 * 43`:
+  - 8 short directions
+  - 8 short promotion directions
+  - 8 long directions
+  - 8 long promotion directions
+  - 2 knight directions
+  - 2 knight promotion directions
+  - 7 drops
+- Actions are side-to-move-relative and indexed as
+  `relative_to_square * 43 + move_type`.
+- Tests cover fixed action size, normal moves, promotion, drops, long moves,
+  knight moves, side-to-move-relative indexing, legal masks, and legal move
+  round-tripping through an action index.
+
+Remaining work:
+
+- Decide whether policy-plane output should replace candidate scoring or coexist
+  behind a separate model.
+- Add policy-plane target tensors.
+- Add a policy-plane model head.
+- Connect MCTS priors to policy-plane outputs.
