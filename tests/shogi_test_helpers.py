@@ -1,8 +1,8 @@
 from intrep.problems.shogi_policy_value.data import (
     shogi_move_choice_examples_from_game_record,
-    shogi_policy_value_examples_from_game_record,
+    shogi_move_policy_value_examples_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiMoveChoiceExample, ShogiPolicyValueExample
+from intrep.problems.shogi_policy_value.examples import ShogiMoveChoiceExample, ShogiMovePolicyValueExample
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -20,13 +20,13 @@ def shogi_move_choice_examples_from_test_moves(
     return shogi_move_choice_examples_from_game_record(record)
 
 
-def shogi_policy_value_examples_from_test_moves(
+def shogi_move_policy_value_examples_from_test_moves(
     moves: tuple[str, ...],
     *,
     winner: str | None = None,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     record = _record_from_test_moves(moves, winner=winner)
-    return shogi_policy_value_examples_from_game_record(record)
+    return shogi_move_policy_value_examples_from_game_record(record)
 
 
 def _record_from_test_moves(moves: tuple[str, ...], *, winner: str | None) -> ShogiGameRecord:

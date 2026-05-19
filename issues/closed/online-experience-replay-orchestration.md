@@ -84,7 +84,7 @@ buffer, and supplies sampled update batches to a trainer.
 
 The first Online Experience Replay implementation should stay narrow:
 
-- buffer item: `ShogiPolicyValueExample`
+- buffer item: `ShogiMovePolicyValueExample`
 - append timing: after each generated-data cycle loads newly generated game
   records into policy-value examples
 - sampling: uniform sampling through `intrep.learning.ReplayBuffer`

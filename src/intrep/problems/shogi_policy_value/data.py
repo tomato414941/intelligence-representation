@@ -10,7 +10,7 @@ import shogi
 
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMoveChoiceExample,
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
     ShogiPositionValueExample,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
@@ -20,7 +20,7 @@ from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
 from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
 
 
-def load_shogi_policy_value_examples_from_game_records_jsonl(
+def load_shogi_move_policy_value_examples_from_game_records_jsonl(
     path: str | Path,
     *,
     policy_target_construction: str,
@@ -29,8 +29,8 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
     max_games: int | None = None,
-) -> list[ShogiPolicyValueExample]:
-    return load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+) -> list[ShogiMovePolicyValueExample]:
+    return load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
         path,
         policy_target_construction=policy_target_construction,
         value_target_construction=value_target_construction,
@@ -42,7 +42,7 @@ def load_shogi_policy_value_examples_from_game_records_jsonl(
     )
 
 
-def load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+def load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
     path: str | Path,
     *,
     policy_target_construction: str,
@@ -52,14 +52,14 @@ def load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysi
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
     max_games: int | None = None,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     if max_games is not None and max_games <= 0:
         raise ValueError("max_games must be positive")
-    examples: list[ShogiPolicyValueExample] = []
+    examples: list[ShogiMovePolicyValueExample] = []
     for game_index, record in enumerate(load_shogi_game_records_jsonl(path)):
         if max_games is not None and game_index >= max_games:
             break
-        game_examples = shogi_policy_value_examples_from_game_record(
+        game_examples = shogi_move_policy_value_examples_from_game_record(
             record,
             policy_target_construction=policy_target_construction,
             value_target_construction=value_target_construction,
@@ -76,7 +76,7 @@ def load_shogi_move_choice_examples_from_kif_file(path: str | Path) -> list[Shog
     return shogi_move_choice_examples_from_game_record(load_shogi_game_record_from_kif_file(path))
 
 
-def shogi_policy_value_examples_from_game_record(
+def shogi_move_policy_value_examples_from_game_record(
     record: ShogiGameRecord,
     *,
     policy_target_construction: str = "chosen_move",
@@ -85,7 +85,7 @@ def shogi_policy_value_examples_from_game_record(
     policy_temperature_cp: float = 100.0,
     policy_mate_cp: float = 100000.0,
     score_cp_scale: float = 600.0,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     analyses = analyses_by_position or {}
     trace = trace_shogi_game_record(record)
     policy_targets = shogi_policy_targets_from_game_trace(
@@ -102,7 +102,7 @@ def shogi_policy_value_examples_from_game_record(
         score_cp_scale=score_cp_scale,
     )
     return [
-        ShogiPolicyValueExample(
+        ShogiMovePolicyValueExample(
             position_sfen=transition.position_sfen,
             legal_moves=transition.legal_moves,
             chosen_move=transition.action_usi,
@@ -115,14 +115,14 @@ def shogi_policy_value_examples_from_game_record(
     ]
 
 
-def shogi_policy_value_examples_from_game_record_plies(
+def shogi_move_policy_value_examples_from_game_record_plies(
     record: ShogiGameRecord,
     *,
     ply_indices: set[int],
     policy_target_construction: str = "chosen_move",
     value_target_construction: str = "winner",
     game_index: int | None = None,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     if policy_target_construction != "chosen_move":
         raise ValueError("selected-ply construction supports only chosen_move policy targets")
     if value_target_construction != "winner":
@@ -131,7 +131,7 @@ def shogi_policy_value_examples_from_game_record_plies(
         return []
     max_ply = max(ply_indices)
     board = shogi.Board(record.initial_position_sfen)
-    examples: list[ShogiPolicyValueExample] = []
+    examples: list[ShogiMovePolicyValueExample] = []
     for ply_index, move_record in enumerate(record.moves):
         if ply_index > max_ply:
             break
@@ -141,7 +141,7 @@ def shogi_policy_value_examples_from_game_record_plies(
             if move_record.action_usi not in legal_moves:
                 raise ValueError(f"illegal move at ply {ply_index}: {move_record.action_usi}")
             examples.append(
-                ShogiPolicyValueExample(
+                ShogiMovePolicyValueExample(
                     position_sfen=board.sfen(),
                     legal_moves=legal_moves,
                     chosen_move=move_record.action_usi,
@@ -464,10 +464,10 @@ def _score_cp_from_fields(fields: dict[str, object], *, mate_cp: float) -> float
 
 
 def _with_game_metadata(
-    examples: Sequence[ShogiPolicyValueExample],
+    examples: Sequence[ShogiMovePolicyValueExample],
     *,
     game_index: int,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     return [
         replace(example, game_index=game_index, ply_index=ply_index)
         for ply_index, example in enumerate(examples)

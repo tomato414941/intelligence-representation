@@ -44,7 +44,7 @@ class ShogiPositionValueExample:
 
 
 @dataclass(frozen=True)
-class ShogiPolicyValueExample:
+class ShogiMovePolicyValueExample:
     position_sfen: str
     legal_moves: tuple[str, ...]
     chosen_move: str
@@ -69,13 +69,13 @@ class CandidateMovePolicyValueTensorSample:
     value_target: torch.Tensor
 
 
-ShogiPolicyValueDatasetItem = ShogiPolicyValueExample | CandidateMovePolicyValueTensorSample
+ShogiPolicyValueDatasetItem = ShogiMovePolicyValueExample | CandidateMovePolicyValueTensorSample
 
 
-def load_shogi_policy_value_examples_jsonl(path: str | Path, *, max_examples: int | None = None) -> list[ShogiPolicyValueExample]:
+def load_shogi_move_policy_value_examples_jsonl(path: str | Path, *, max_examples: int | None = None) -> list[ShogiMovePolicyValueExample]:
     if max_examples is not None and max_examples <= 0:
         raise ValueError("max_examples must be positive")
-    examples: list[ShogiPolicyValueExample] = []
+    examples: list[ShogiMovePolicyValueExample] = []
     with Path(path).open(encoding="utf-8") as file:
         for line in file:
             if max_examples is not None and len(examples) >= max_examples:
@@ -83,17 +83,17 @@ def load_shogi_policy_value_examples_jsonl(path: str | Path, *, max_examples: in
             stripped = line.strip()
             if not stripped:
                 continue
-            examples.append(shogi_policy_value_example_from_json(json.loads(stripped)))
+            examples.append(shogi_move_policy_value_example_from_json(json.loads(stripped)))
     return examples
 
 
-def write_shogi_policy_value_examples_jsonl(path: str | Path, examples: Sequence[ShogiPolicyValueExample]) -> None:
+def write_shogi_move_policy_value_examples_jsonl(path: str | Path, examples: Sequence[ShogiMovePolicyValueExample]) -> None:
     with Path(path).open("w", encoding="utf-8") as file:
         for example in examples:
-            file.write(json.dumps(shogi_policy_value_example_to_json(example), ensure_ascii=False) + "\n")
+            file.write(json.dumps(shogi_move_policy_value_example_to_json(example), ensure_ascii=False) + "\n")
 
 
-def shogi_policy_value_example_to_json(example: ShogiPolicyValueExample) -> dict[str, object]:
+def shogi_move_policy_value_example_to_json(example: ShogiMovePolicyValueExample) -> dict[str, object]:
     payload: dict[str, object] = {
         "position_sfen": example.position_sfen,
         "legal_moves": list(example.legal_moves),
@@ -112,7 +112,7 @@ def shogi_policy_value_example_to_json(example: ShogiPolicyValueExample) -> dict
     return payload
 
 
-def shogi_policy_value_example_from_json(payload: object) -> ShogiPolicyValueExample:
+def shogi_move_policy_value_example_from_json(payload: object) -> ShogiMovePolicyValueExample:
     if not isinstance(payload, dict):
         raise ValueError("shogi policy/value example must be an object")
     policy_targets = payload.get("policy_targets")
@@ -120,7 +120,7 @@ def shogi_policy_value_example_from_json(payload: object) -> ShogiPolicyValueExa
         if not isinstance(policy_targets, dict):
             raise ValueError("policy_targets must be an object")
         policy_targets = {str(move): float(weight) for move, weight in policy_targets.items()}
-    return ShogiPolicyValueExample(
+    return ShogiMovePolicyValueExample(
         position_sfen=str(payload["position_sfen"]),
         legal_moves=tuple(str(move) for move in _required_list(payload, "legal_moves")),
         chosen_move=str(payload["chosen_move"]),
@@ -206,7 +206,7 @@ class ShogiPolicyValueDataset(TorchDataset):
         )
 
 
-def tensorize_candidate_move_policy_value_example(example: ShogiPolicyValueExample) -> CandidateMovePolicyValueTensorSample:
+def tensorize_candidate_move_policy_value_example(example: ShogiMovePolicyValueExample) -> CandidateMovePolicyValueTensorSample:
     position_token_ids, candidate_move_features, _candidate_mask, move_index, policy_targets = _policy_sample(
         example,
         max_choice_count=len(example.legal_moves),
@@ -224,13 +224,13 @@ def tensorize_candidate_move_policy_value_example(example: ShogiPolicyValueExamp
 
 
 def tensorize_candidate_move_policy_value_examples(
-    examples: Sequence[ShogiPolicyValueExample],
+    examples: Sequence[ShogiMovePolicyValueExample],
 ) -> list[CandidateMovePolicyValueTensorSample]:
     return [tensorize_candidate_move_policy_value_example(example) for example in examples]
 
 
 def _policy_sample(
-    example: ShogiMoveChoiceExample | ShogiPolicyValueExample,
+    example: ShogiMoveChoiceExample | ShogiMovePolicyValueExample,
     *,
     max_choice_count: int,
 ):
@@ -306,7 +306,7 @@ def _pad_policy_targets(policy_targets: torch.Tensor, *, max_choice_count: int) 
     return padded
 
 
-def _validate_policy_fields(example: ShogiMoveChoiceExample | ShogiPolicyValueExample) -> None:
+def _validate_policy_fields(example: ShogiMoveChoiceExample | ShogiMovePolicyValueExample) -> None:
     if not example.position_sfen:
         raise ValueError("position_sfen must not be empty")
     if not example.legal_moves:

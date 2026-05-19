@@ -62,7 +62,7 @@ Tests now pin the invariant:
 - `tests.test_shogi_policy_value` covers direct candidate-order alignment with
   drop and promotion moves.
 - `tests.test_shogi_policy_value_data` covers MCTS visit-count targets through
-  `ShogiGameRecord -> ShogiPolicyValueExample -> ShogiPolicyValueDataset`.
+  `ShogiGameRecord -> ShogiMovePolicyValueExample -> ShogiPolicyValueDataset`.
 - existing validation tests reject missing non-`chosen_move` targets and target
   moves outside `legal_moves`.
 

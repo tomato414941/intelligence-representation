@@ -9,7 +9,7 @@ import torch
 
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
-    load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
+    load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
 )
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
@@ -18,9 +18,9 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import (
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
     CandidateMovePolicyValueTensorSample,
-    load_shogi_policy_value_examples_jsonl,
+    load_shogi_move_policy_value_examples_jsonl,
     tensorize_candidate_move_policy_value_examples,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
@@ -357,7 +357,7 @@ def _build_source_shards(
     resume: bool,
 ) -> list[dict[str, object]]:
     shards: list[dict[str, object]] = []
-    batch: list[tuple[int, ShogiPolicyValueExample]] = []
+    batch: list[tuple[int, ShogiMovePolicyValueExample]] = []
     emitted = 0
     for source_example_index, example in enumerate(
         _source_examples(source, data_selection=data_selection, analyses_by_position=analyses_by_position)
@@ -403,13 +403,13 @@ def _source_examples(
     *,
     data_selection: ShogiPolicyValueDataSelection,
     analyses_by_position: dict[str, ShogiEngineAnalysis],
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     if source.kind == "shogi_policy_value_examples_jsonl":
-        return load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples)
+        return load_shogi_move_policy_value_examples_jsonl(source.path, max_examples=source.max_examples)
     if source.kind == "game_records_jsonl":
         if data_selection.target_construction is None:
             raise ValueError("target_construction is required for game_records_jsonl sources")
-        return load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+        return load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
             source.path,
             policy_target_construction=data_selection.target_construction.policy,
             value_target_construction=data_selection.target_construction.value,
@@ -429,7 +429,7 @@ def _build_shard(
     source_index: int,
     split_dir: Path,
     shard_index: int,
-    examples: Sequence[tuple[int, ShogiPolicyValueExample]],
+    examples: Sequence[tuple[int, ShogiMovePolicyValueExample]],
     data_selection: ShogiPolicyValueDataSelection,
     data_selection_path: Path,
     resume: bool,
@@ -600,7 +600,7 @@ def _sample_from_payload(payload: Any) -> CandidateMovePolicyValueTensorSample:
     )
 
 
-def _policy_target_summary(examples: Sequence[ShogiPolicyValueExample]) -> dict[str, float | int]:
+def _policy_target_summary(examples: Sequence[ShogiMovePolicyValueExample]) -> dict[str, float | int]:
     summary = _empty_policy_target_summary()
     for example in examples:
         summary["total_count"] += 1

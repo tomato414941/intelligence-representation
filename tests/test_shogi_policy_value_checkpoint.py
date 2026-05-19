@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
-from tests.shogi_test_helpers import shogi_policy_value_examples_from_test_moves
+from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
 from intrep.problems.shogi_policy_value.model import (
     SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
@@ -16,7 +16,7 @@ from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTraining
 
 class ShogiPolicyValueCheckpointTest(unittest.TestCase):
     def test_save_and_load_preserves_logits(self) -> None:
-        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
             config=ShogiPolicyValueTrainingConfig(
@@ -46,7 +46,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         self.assertTrue(torch.allclose(actual, expected))
 
     def test_load_rejects_missing_model_weights(self) -> None:
-        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
             config=ShogiPolicyValueTrainingConfig(
@@ -69,7 +69,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_input_encoding(self) -> None:
-        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
             config=ShogiPolicyValueTrainingConfig(
@@ -92,7 +92,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_model_spec(self) -> None:
-        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
             config=ShogiPolicyValueTrainingConfig(
@@ -115,7 +115,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_model(self) -> None:
-        examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
             config=ShogiPolicyValueTrainingConfig(

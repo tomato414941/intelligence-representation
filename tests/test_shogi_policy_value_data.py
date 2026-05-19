@@ -7,7 +7,7 @@ from pathlib import Path
 import shogi
 
 from intrep.problems.shogi_policy_value.data import (
-    load_shogi_policy_value_examples_from_game_records_jsonl,
+    load_shogi_move_policy_value_examples_from_game_records_jsonl,
     shogi_engine_analysis_by_position,
     shogi_policy_targets_from_engine_analysis,
     shogi_policy_targets_from_game_record,
@@ -58,7 +58,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
             path = Path(directory) / "games.jsonl"
             write_shogi_game_records_jsonl(path, [_record(("7g7f", "3c3d"), "white")])
 
-            examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+            examples = load_shogi_move_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_construction="chosen_move",
                 value_target_construction="winner",
@@ -85,7 +85,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            records = load_shogi_policy_value_examples_from_game_records_jsonl(
+            records = load_shogi_move_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_construction="decision_usi_multipv",
                 value_target_construction="winner",
@@ -175,7 +175,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
             path = Path(directory) / "games.jsonl"
             write_shogi_game_records_jsonl(path, [record])
 
-            examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+            examples = load_shogi_move_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_construction="mcts_visit_counts",
                 value_target_construction="winner",
@@ -201,7 +201,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"
             write_shogi_game_records_jsonl(path, [record])
-            examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+            examples = load_shogi_move_policy_value_examples_from_game_records_jsonl(
                 path,
                 policy_target_construction="mcts_visit_counts",
                 value_target_construction="winner",

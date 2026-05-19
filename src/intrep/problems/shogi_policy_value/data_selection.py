@@ -7,9 +7,9 @@ from typing import Any
 
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
-    load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
+    load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, load_shogi_policy_value_examples_jsonl
+from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample, load_shogi_move_policy_value_examples_jsonl
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 
 
@@ -59,7 +59,7 @@ def load_shogi_policy_value_data_selection(path: str | Path) -> ShogiPolicyValue
 
 def load_shogi_policy_value_data_selection_examples(
     selection: ShogiPolicyValueDataSelection,
-) -> tuple[list[ShogiPolicyValueExample], list[ShogiPolicyValueExample]]:
+) -> tuple[list[ShogiMovePolicyValueExample], list[ShogiMovePolicyValueExample]]:
     analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
         tuple(source.path for source in selection.analysis_sources)
     )
@@ -192,16 +192,16 @@ def _load_sources(
     *,
     selection: ShogiPolicyValueDataSelection,
     analyses_by_position: dict[str, ShogiEngineAnalysis],
-) -> list[ShogiPolicyValueExample]:
-    examples: list[ShogiPolicyValueExample] = []
+) -> list[ShogiMovePolicyValueExample]:
+    examples: list[ShogiMovePolicyValueExample] = []
     for source in sources:
         if source.kind == "shogi_policy_value_examples_jsonl":
-            examples.extend(load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
+            examples.extend(load_shogi_move_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
         elif source.kind == "game_records_jsonl":
             if selection.target_construction is None:
                 raise ValueError("target_construction is required for game_records_jsonl sources")
             examples.extend(
-                load_shogi_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
+                load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis(
                     source.path,
                     policy_target_construction=selection.target_construction.policy,
                     value_target_construction=selection.target_construction.value,

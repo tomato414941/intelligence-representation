@@ -15,7 +15,7 @@ from intrep.core.training_utils import build_adamw
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueDataset,
     ShogiPolicyValueDatasetItem,
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
@@ -507,9 +507,9 @@ def _forward_policy_value(
 
 
 def _limit_examples(
-    examples: Sequence[ShogiPolicyValueExample],
+    examples: Sequence[ShogiMovePolicyValueExample],
     max_examples: int | None,
-) -> Sequence[ShogiPolicyValueExample]:
+) -> Sequence[ShogiMovePolicyValueExample]:
     if max_examples is None:
         return examples
     if max_examples <= 0:

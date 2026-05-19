@@ -25,7 +25,7 @@ Closed by adding a shared tensorized shogi policy/value sample representation
 and a bundle-local tensor cache path.
 
 - `CandidateMovePolicyValueTensorSample` is the runtime training sample.
-- `ShogiPolicyValueDataset` accepts either semantic `ShogiPolicyValueExample`
+- `ShogiPolicyValueDataset` accepts either semantic `ShogiMovePolicyValueExample`
   objects or tensorized samples.
 - Online Replay stores tensorized samples in its `ReplayBuffer`.
 - `scripts/build_shogi_policy_value_tensor_cache.py` builds a cache from a

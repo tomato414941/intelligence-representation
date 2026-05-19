@@ -18,7 +18,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueDatasetItem,
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.model import (
@@ -151,7 +151,7 @@ def main() -> None:
     print(json.dumps(metrics, indent=2))
 
 
-def _policy_target_summary(examples: list[ShogiPolicyValueExample]) -> dict[str, float | int]:
+def _policy_target_summary(examples: list[ShogiMovePolicyValueExample]) -> dict[str, float | int]:
     available_counts = [
         sum(1 for weight in example.policy_targets.values() if weight > 0.0)
         for example in examples

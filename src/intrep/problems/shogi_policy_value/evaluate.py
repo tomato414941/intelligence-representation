@@ -16,7 +16,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueDataset,
     ShogiPolicyValueDatasetItem,
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
@@ -113,11 +113,11 @@ def _loader(
 
 
 def _limit_examples(
-    examples: list[ShogiPolicyValueExample],
+    examples: list[ShogiMovePolicyValueExample],
     max_examples: int | None,
     *,
     label: str,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     if max_examples is None:
         return examples
     if max_examples <= 0:
@@ -125,7 +125,7 @@ def _limit_examples(
     return examples[:max_examples]
 
 
-def _policy_target_summary(examples: list[ShogiPolicyValueExample]) -> dict[str, float | int]:
+def _policy_target_summary(examples: list[ShogiMovePolicyValueExample]) -> dict[str, float | int]:
     available_counts = [
         sum(1 for weight in example.policy_targets.values() if weight > 0.0)
         for example in examples

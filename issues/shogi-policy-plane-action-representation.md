@@ -68,7 +68,7 @@ Remaining work:
 
 ## Policy Output Space Boundary
 
-`ShogiPolicyValueExample` is a Training Example in the glossary sense: it is a
+`ShogiMovePolicyValueExample` is a Training Example in the glossary sense: it is a
 meaning-level unit that records a position, legal moves, a move target or move
 target distribution, and an optional value target. It is not yet tied to a
 candidate-move-policy output space or a fixed policy-plane output space.
@@ -76,14 +76,14 @@ candidate-move-policy output space or a fixed policy-plane output space.
 That makes it reasonable as the common source for both policy outputs:
 
 ```text
-ShogiPolicyValueExample
+ShogiMovePolicyValueExample
   -> candidate-move-policy sample
   -> policy-plane sample
 ```
 
-The current name is acceptable for now, but it is broad. If the boundary keeps
-drifting, a future rename such as `ShogiMovePolicyValueExample` would be more
-explicit because the policy target is a move target.
+The name is intentionally move-specific because the policy target is a move
+target. It should stay shared only while candidate-move policy and policy plane
+consume the same move-policy/value Training Example.
 
 `CandidateMovePolicyValueTensorSample` is explicitly the existing
 candidate-move-policy/value runtime sample:
@@ -104,3 +104,8 @@ PolicyPlaneValueTensorSample
 Both may share position input tensors and value targets, but they should own
 separate policy target tensors, masks, losses, metrics, tensor-cache schemas,
 and model heads.
+
+The serialized data-selection source kind remains
+`shogi_policy_value_examples_jsonl` for now. Renaming that artifact schema should
+be a separate migration decision because existing bundles and data-selection
+files already use it.

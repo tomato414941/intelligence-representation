@@ -22,7 +22,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     save_shogi_policy_value_state_checkpoint,
 )
 from intrep.problems.shogi_policy_value.data import (
-    load_shogi_policy_value_examples_from_game_records_jsonl,
+    load_shogi_move_policy_value_examples_from_game_records_jsonl,
 )
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
@@ -30,9 +30,9 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
 )
 from intrep.problems.shogi_policy_value.examples import (
-    ShogiPolicyValueExample,
+    ShogiMovePolicyValueExample,
     CandidateMovePolicyValueTensorSample,
-    load_shogi_policy_value_examples_jsonl,
+    load_shogi_move_policy_value_examples_jsonl,
     tensorize_candidate_move_policy_value_examples,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
@@ -551,9 +551,9 @@ def _load_online_replay_iteration_examples(
     *,
     config: ShogiOnlineReplayConfig,
     artifacts: ShogiOnlineReplayIterationArtifacts,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     artifacts.generated_train_jsonl.write_text(artifacts.games_jsonl.read_text(encoding="utf-8"), encoding="utf-8")
-    examples: list[ShogiPolicyValueExample] = []
+    examples: list[ShogiMovePolicyValueExample] = []
     for source_index, source in enumerate(config.experience_sources):
         source_path = artifacts.iteration_dir / f"source-{source_index:03d}-{source.name}" / "generated-games.jsonl"
         examples.extend(
@@ -1053,7 +1053,7 @@ def _sample_replay_seed_examples_from_selection(
     *,
     sample_count: int,
     seed: int,
-) -> list[ShogiPolicyValueExample]:
+) -> list[ShogiMovePolicyValueExample]:
     if isinstance(selection, _ReplaySeedSelection):
         selection = selection.data_selection
     if sample_count <= 0 or selection is None:
@@ -1061,7 +1061,7 @@ def _sample_replay_seed_examples_from_selection(
     examples_by_source = []
     for source in selection.train_sources:
         if source.kind == "shogi_policy_value_examples_jsonl":
-            examples_by_source.append(load_shogi_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
+            examples_by_source.append(load_shogi_move_policy_value_examples_jsonl(source.path, max_examples=source.max_examples))
         else:
             source_selection = ShogiPolicyValueDataSelection(
                 name=selection.name,
@@ -1079,7 +1079,7 @@ def _sample_replay_seed_examples_from_selection(
     sample_count = min(sample_count, total_examples)
     generator = torch.Generator().manual_seed(seed)
     selected_positions = sorted(torch.randperm(total_examples, generator=generator)[:sample_count].tolist())
-    sampled: list[ShogiPolicyValueExample] = []
+    sampled: list[ShogiMovePolicyValueExample] = []
     source_index = 0
     source_start = 0
     for position in selected_positions:
@@ -1115,8 +1115,8 @@ def _load_generated_policy_value_examples(
     *,
     policy_target_construction: str,
     value_target_construction: str,
-) -> list[ShogiPolicyValueExample]:
-    return load_shogi_policy_value_examples_from_game_records_jsonl(
+) -> list[ShogiMovePolicyValueExample]:
+    return load_shogi_move_policy_value_examples_from_game_records_jsonl(
         path,
         policy_target_construction=policy_target_construction,
         value_target_construction=value_target_construction,

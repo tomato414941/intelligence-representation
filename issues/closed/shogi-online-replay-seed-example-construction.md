@@ -5,7 +5,7 @@ Status: closed. Priority: high.
 ## Issue
 
 Shogi Online Replay currently builds replay seed examples by loading the full
-selected training split into `ShogiPolicyValueExample` objects before sampling.
+selected training split into `ShogiMovePolicyValueExample` objects before sampling.
 
 With `qhapaq-full`, this means the run starts by turning about 4.95 million
 positions into Python objects on one CPU core. The 2026-05-17 RunPod attempt

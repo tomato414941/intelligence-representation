@@ -11,9 +11,9 @@ from typing import Literal
 
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
-    shogi_policy_value_examples_from_game_record,
+    shogi_move_policy_value_examples_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueExample, write_shogi_policy_value_examples_jsonl
+from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample, write_shogi_move_policy_value_examples_jsonl
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.worlds.shogi.experience_stats import (
     shogi_actor_pair,
@@ -116,8 +116,8 @@ def create_shogi_training_data_bundle(
         policy_mate_cp=policy_mate_cp,
         score_cp_scale=score_cp_scale,
     )
-    write_shogi_policy_value_examples_jsonl(train_jsonl, train_examples)
-    write_shogi_policy_value_examples_jsonl(eval_jsonl, eval_examples)
+    write_shogi_move_policy_value_examples_jsonl(train_jsonl, train_examples)
+    write_shogi_move_policy_value_examples_jsonl(eval_jsonl, eval_examples)
     analysis_coverage = shogi_analysis_coverage(train_records, eval_records, analysis_jsonls) if analysis_jsonls else {}
 
     data_selection = {
@@ -336,10 +336,10 @@ def _examples_from_records(
     policy_temperature_cp: float,
     policy_mate_cp: float,
     score_cp_scale: float,
-) -> list[ShogiPolicyValueExample]:
-    examples: list[ShogiPolicyValueExample] = []
+) -> list[ShogiMovePolicyValueExample]:
+    examples: list[ShogiMovePolicyValueExample] = []
     for game_index, record in enumerate(records):
-        game_examples = shogi_policy_value_examples_from_game_record(
+        game_examples = shogi_move_policy_value_examples_from_game_record(
             record,
             policy_target_construction=policy_target_construction,
             value_target_construction=value_target_construction,

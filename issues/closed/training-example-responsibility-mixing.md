@@ -40,7 +40,7 @@ Shogi move choice is the clearest pressure point:
   style Data Selection.
 - It also contains policy/value target-source settings, which are closer to
   Training Example Definition.
-- `ShogiPolicyValueDataset` then converts `ShogiPolicyValueExample` into tensor
+- `ShogiPolicyValueDataset` then converts `ShogiMovePolicyValueExample` into tensor
   samples.
 
 ## Progress

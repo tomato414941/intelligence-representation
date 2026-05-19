@@ -28,7 +28,7 @@ chosen.
 problem:
 
 - Data Selection loading for policy/value training
-- conversion from selected game traces to durable `ShogiPolicyValueExample` records
+- conversion from selected game traces to durable `ShogiMovePolicyValueExample` records
 - tensorized policy/value samples and tensor caches
 - policy/value model training and evaluation
 - generated-data training cycles

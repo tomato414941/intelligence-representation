@@ -35,7 +35,7 @@ The boundary has been renamed and split enough for the current implementation:
 
 - `ShogiMoveChoiceExample` is policy-only.
 - `ShogiPositionValueExample` is value-only.
-- `ShogiPolicyValueExample` is the joint policy/value example used by the
+- `ShogiMovePolicyValueExample` is the joint policy/value example used by the
   current training path.
 - The package, training, model, checkpoint, and CLI boundary is now
   `shogi_policy_value`.

@@ -53,7 +53,7 @@ The adoption gap is therefore narrow:
 ```text
 src/intrep/problems/shogi_policy_value/generated_data_cycle.py
   _write_examples(...)
-    load_shogi_policy_value_examples_from_game_records_jsonl(
+    load_shogi_move_policy_value_examples_from_game_records_jsonl(
       policy_target_construction="chosen_move",
       value_target_construction="winner",
     )
@@ -72,7 +72,7 @@ implicit fallback.
 Closed after target construction was made explicit on generated-data training
 cycles and generated experience sources.
 
-`ShogiPolicyValueExample` now records `policy_target_source` and
+`ShogiMovePolicyValueExample` now records `policy_target_source` and
 `value_target_source`, and tensorization rejects missing policy targets for
 non-`chosen_move` policy sources. Checkpoint self-play generated data defaults
 to `mcts_visit_counts`; USI mixed generated sources explicitly use

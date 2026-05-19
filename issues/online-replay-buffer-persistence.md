@@ -24,7 +24,7 @@ output, persistence layer, or source of truth for Online Replay Buffer state.
 
 A future implementation may need to persist:
 
-- buffered `ShogiPolicyValueExample` items
+- buffered `ShogiMovePolicyValueExample` items
 - replay capacity
 - sampling seed or random state
 - completed cycle index

@@ -11,13 +11,13 @@ from intrep.problems.shogi_policy_value.generated_data_artifacts import (
     ShogiGeneratedDataTrainingLoopResult,
     promoted_generated_data_checkpoint,
 )
-from intrep.problems.shogi_policy_value.data import load_shogi_policy_value_examples_from_game_records_jsonl
+from intrep.problems.shogi_policy_value.data import load_shogi_move_policy_value_examples_from_game_records_jsonl
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
     ShogiPolicyValueDataSelectionSource,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import write_shogi_policy_value_examples_jsonl
+from intrep.problems.shogi_policy_value.examples import write_shogi_move_policy_value_examples_jsonl
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
     ShogiGeneratedPlayerSpec,
@@ -432,12 +432,12 @@ def _write_examples(
     policy_target_construction: str,
     value_target_construction: str,
 ) -> None:
-    examples = load_shogi_policy_value_examples_from_game_records_jsonl(
+    examples = load_shogi_move_policy_value_examples_from_game_records_jsonl(
         games_jsonl,
         policy_target_construction=policy_target_construction,
         value_target_construction=value_target_construction,
     )
-    write_shogi_policy_value_examples_jsonl(examples_jsonl, examples)
+    write_shogi_move_policy_value_examples_jsonl(examples_jsonl, examples)
 
 
 def _run_training(
