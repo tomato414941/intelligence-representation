@@ -333,6 +333,7 @@ def stack_shogi_pair_relation_edges(edges: list[ShogiPairRelationEdges]) -> Shog
 
 def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
     board = shogi.Board(position_sfen)
+    derived = _shogi_position_derived_relations(board)
     global_feature_ids = torch.tensor(
         [
             SHOGI_POSITION_STATE_TOKEN_ID,
@@ -343,16 +344,39 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
         ],
         dtype=torch.long,
     )
-    square_feature_ids = torch.tensor(square_feature_id_rows(board), dtype=torch.long)
-    piece_feature_ids = torch.tensor(piece_feature_id_rows(board), dtype=torch.long)
+    square_feature_ids = torch.tensor(square_feature_id_rows(board, derived=derived), dtype=torch.long)
+    piece_feature_ids = torch.tensor(piece_feature_id_rows(board, derived=derived), dtype=torch.long)
     line_feature_ids = torch.tensor(line_feature_id_rows(board), dtype=torch.long)
-    pair_relation_edges = pair_relation_edges_from_board(board)
+    pair_relation_edges = pair_relation_edges_from_board(board, derived=derived)
     return ShogiPositionFeatures(
         global_feature_ids=global_feature_ids,
         square_feature_ids=square_feature_ids,
         piece_feature_ids=piece_feature_ids,
         line_feature_ids=line_feature_ids,
         pair_relation_edges=pair_relation_edges,
+    )
+
+
+@dataclass(frozen=True)
+class _ShogiPositionDerivedRelations:
+    counterfactual_removal_token_rows: list[list[int]]
+    gift_flow_token_rows: list[list[int]]
+    drop_shadow_token_rows: list[list[int]]
+    legal_drop_targets_by_color: dict[int, dict[int, set[int]]]
+    piece_slot_relation_infos: list["PieceSlotRelationInfo"]
+
+
+def _shogi_position_derived_relations(board: shogi.Board) -> _ShogiPositionDerivedRelations:
+    legal_drop_targets_by_color = {
+        board.turn: legal_drop_targets_by_piece_type(board, board.turn),
+        opponent_color(board.turn): legal_drop_targets_by_piece_type(board, opponent_color(board.turn)),
+    }
+    return _ShogiPositionDerivedRelations(
+        counterfactual_removal_token_rows=counterfactual_removal_token_id_rows(board),
+        gift_flow_token_rows=gift_flow_token_id_rows(board),
+        drop_shadow_token_rows=drop_shadow_token_id_rows(board, legal_drop_targets_by_color=legal_drop_targets_by_color),
+        legal_drop_targets_by_color=legal_drop_targets_by_color,
+        piece_slot_relation_infos=piece_slot_relation_infos(board),
     )
 
 
@@ -419,14 +443,17 @@ def attack_count_token_id(board: shogi.Board, color: int, square: int, *, offset
     return offset + min(count, ATTACK_COUNT_TOKEN_MAX)
 
 
-def square_feature_id_rows(board: shogi.Board) -> list[list[int]]:
+def square_feature_id_rows(
+    board: shogi.Board,
+    *,
+    derived: _ShogiPositionDerivedRelations | None = None,
+) -> list[list[int]]:
     pieces = [relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT)]
     attacks = attack_token_ids(board)
     own_square_piece_type_attacks, opponent_square_piece_type_attacks = square_piece_type_attack_token_id_rows(board)
     king_relative_squares = king_relative_square_token_ids(board)
-    drop_shadows = drop_shadow_token_id_rows(board)
-    counterfactuals = counterfactual_removal_token_id_rows(board)
-    gift_flows = gift_flow_token_id_rows(board)
+    if derived is None:
+        derived = _shogi_position_derived_relations(board)
     rows: list[list[int]] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         rows.append(
@@ -438,9 +465,9 @@ def square_feature_id_rows(board: shogi.Board) -> list[list[int]]:
                 *opponent_square_piece_type_attacks[relative_square],
                 king_relative_squares[relative_square],
                 king_relative_squares[BOARD_TOKEN_COUNT + relative_square],
-                *drop_shadows[relative_square],
-                *counterfactuals[relative_square],
-                *gift_flows[relative_square],
+                *derived.drop_shadow_token_rows[relative_square],
+                *derived.counterfactual_removal_token_rows[relative_square],
+                *derived.gift_flow_token_rows[relative_square],
             ]
         )
     return rows
@@ -533,9 +560,18 @@ def drop_shadow_token_ids(board: shogi.Board) -> list[int]:
     return token_ids
 
 
-def drop_shadow_token_id_rows(board: shogi.Board) -> list[list[int]]:
-    own_legal_drop_targets = legal_drop_targets_by_piece_type(board, board.turn)
-    opponent_legal_drop_targets = legal_drop_targets_by_piece_type(board, opponent_color(board.turn))
+def drop_shadow_token_id_rows(
+    board: shogi.Board,
+    *,
+    legal_drop_targets_by_color: dict[int, dict[int, set[int]]] | None = None,
+) -> list[list[int]]:
+    if legal_drop_targets_by_color is None:
+        legal_drop_targets_by_color = {
+            board.turn: legal_drop_targets_by_piece_type(board, board.turn),
+            opponent_color(board.turn): legal_drop_targets_by_piece_type(board, opponent_color(board.turn)),
+        }
+    own_legal_drop_targets = legal_drop_targets_by_color[board.turn]
+    opponent_legal_drop_targets = legal_drop_targets_by_color[opponent_color(board.turn)]
     rows: list[list[int]] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
@@ -787,10 +823,14 @@ def piece_feature_token_ids(board: shogi.Board) -> list[int]:
     return [token_id for row in piece_feature_id_rows(board) for token_id in row]
 
 
-def piece_feature_id_rows(board: shogi.Board) -> list[list[int]]:
+def piece_feature_id_rows(
+    board: shogi.Board,
+    *,
+    derived: _ShogiPositionDerivedRelations | None = None,
+) -> list[list[int]]:
     piece_features: list[int] = []
-    counterfactuals = counterfactual_removal_token_id_rows(board)
-    gift_flows = gift_flow_token_id_rows(board)
+    if derived is None:
+        derived = _shogi_position_derived_relations(board)
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
@@ -800,8 +840,8 @@ def piece_feature_id_rows(board: shogi.Board) -> list[list[int]]:
                     board,
                     piece,
                     relative_square,
-                    counterfactual_tokens=counterfactuals[relative_square],
-                    gift_flow_tokens=gift_flows[relative_square],
+                    counterfactual_tokens=derived.counterfactual_removal_token_rows[relative_square],
+                    gift_flow_tokens=derived.gift_flow_token_rows[relative_square],
                 )
             )
     piece_features.extend(hand_piece_slot_token_ids(board))
@@ -823,7 +863,11 @@ class PieceSlotRelationInfo:
     relative_square: int | None
 
 
-def pair_relation_edges_from_board(board: shogi.Board) -> ShogiPairRelationEdges:
+def pair_relation_edges_from_board(
+    board: shogi.Board,
+    *,
+    derived: _ShogiPositionDerivedRelations | None = None,
+) -> ShogiPairRelationEdges:
     source_token_indices: list[int] = []
     target_token_indices: list[int] = []
     relation_ids: list[int] = []
@@ -837,11 +881,10 @@ def pair_relation_edges_from_board(board: shogi.Board) -> ShogiPairRelationEdges
         add_edge(source, target, relation_id)
         add_edge(target, source, relation_id)
 
-    slot_infos = piece_slot_relation_infos(board)
-    legal_drop_targets = {
-        board.turn: legal_drop_targets_by_piece_type(board, board.turn),
-        opponent_color(board.turn): legal_drop_targets_by_piece_type(board, opponent_color(board.turn)),
-    }
+    if derived is None:
+        derived = _shogi_position_derived_relations(board)
+    slot_infos = derived.piece_slot_relation_infos
+    legal_drop_targets = derived.legal_drop_targets_by_color
     for piece_slot, info in enumerate(slot_infos):
         if info.piece is None:
             continue
