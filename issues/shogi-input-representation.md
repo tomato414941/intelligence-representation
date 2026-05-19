@@ -120,7 +120,12 @@ shogi Transformer adds static position geometry attention bias over the 81
 board-square tokens and between line tokens and their member squares. Dynamic
 pair relation ids are added as learned attention bias so token-to-token shogi
 relations are represented on the attention pair, not only as token-local
-features.
+features. The model input layer normalizes global, square, piece, and line
+token groups separately after feature composition so feature-rich token groups
+do not dominate attention by raw embedding scale. Shared-core models pool from
+the state token for global policy/value context; the direct model still uses
+mean pooling because it has no Transformer layer that lets the state token read
+the rest of the sequence.
 
 ## Close Condition
 
@@ -224,6 +229,11 @@ features.
   bias.
 - Replaced shared-core candidate policy scoring with legal move tokens that
   cross-attend to the encoded position before producing candidate logits.
+- Added group-specific LayerNorm after global/square/piece/line feature
+  composition to remove token-type scale imbalance caused by different feature
+  counts.
+- Changed shared-core and policy-plane position pooling from sequence mean to
+  the state token hidden state.
 - The current input identity is
   `shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence`.
 

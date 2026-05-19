@@ -18,6 +18,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
+    STATE_TOKEN_INDEX,
     ShogiPositionFeatures,
     SQUARE_TOKEN_OFFSET,
     squares_for_line_index,
@@ -42,7 +43,7 @@ SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_piece_line_pair_drop_count
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_DIRECT_POLICY_HEAD_MODULE_ID = "candidate_move_policy_head"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"
-SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
+SHOGI_POSITION_POOLING_MODULE_ID = "state_token_position_pooling"
 SHOGI_POLICY_HEAD_MODULE_ID = "legal_move_token_policy_head"
 SHOGI_POLICY_PLANE_HEAD_MODULE_ID = "policy_plane_head"
 SHOGI_VALUE_HEAD_MODULE_ID = "scalar_tanh_value_head"
@@ -246,6 +247,10 @@ class ShogiPositionInputLayer(nn.Module):
         self.piece_feature_embedding = nn.Embedding(SHOGI_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
         self.line_feature_embedding = nn.Embedding(SHOGI_POSITION_LINE_FEATURE_COUNT, embedding_dim)
         self.line_slot_embedding = nn.Embedding(SHOGI_POSITION_LINE_SLOT_COUNT, embedding_dim)
+        self.global_norm = nn.LayerNorm(embedding_dim)
+        self.square_norm = nn.LayerNorm(embedding_dim)
+        self.piece_norm = nn.LayerNorm(embedding_dim)
+        self.line_norm = nn.LayerNorm(embedding_dim)
 
     def forward(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         return torch.cat(
@@ -261,7 +266,7 @@ class ShogiPositionInputLayer(nn.Module):
     def _global_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         global_token_ids = position_features.global_feature_ids
         slots = torch.arange(SHOGI_POSITION_GLOBAL_SLOT_COUNT, device=global_token_ids.device).unsqueeze(0)
-        return self.token_embedding(global_token_ids) + self.global_slot_embedding(slots)
+        return self.global_norm(self.token_embedding(global_token_ids) + self.global_slot_embedding(slots))
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_features = position_features.square_feature_ids
@@ -272,7 +277,7 @@ class ShogiPositionInputLayer(nn.Module):
             + self.square_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_SQUARE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         square_slots = torch.arange(SHOGI_POSITION_SQUARE_COUNT, device=square_features.device).unsqueeze(0)
-        return square_hidden + self.square_slot_embedding(square_slots)
+        return self.square_norm(square_hidden + self.square_slot_embedding(square_slots))
 
     def _piece_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         piece_features = position_features.piece_feature_ids
@@ -282,7 +287,7 @@ class ShogiPositionInputLayer(nn.Module):
             piece_feature_embeddings
             + self.piece_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_PIECE_FEATURE_COUNT, -1)
         ).sum(dim=2)
-        return piece_hidden
+        return self.piece_norm(piece_hidden)
 
     def _line_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         line_features = position_features.line_feature_ids
@@ -293,7 +298,7 @@ class ShogiPositionInputLayer(nn.Module):
             + self.line_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_LINE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         slots = torch.arange(SHOGI_POSITION_LINE_SLOT_COUNT, device=line_features.device).unsqueeze(0)
-        return line_hidden + self.line_slot_embedding(slots)
+        return self.line_norm(line_hidden + self.line_slot_embedding(slots))
 
 
 class ShogiPositionGeometryAttentionBias(nn.Module):
@@ -413,7 +418,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             causal=False,
             attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
+        position_embedding = _state_token_hidden(position_hidden)
         move_tokens = self.candidate_move_tokens(position_hidden, candidate_move_features)
         logits = self.policy_head(
             position_hidden=position_hidden,
@@ -429,7 +434,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             causal=False,
             attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
+        position_embedding = _state_token_hidden(position_hidden)
         return self.value_head(position_embedding)
 
     def candidate_move_tokens(
@@ -478,7 +483,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             causal=False,
             attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
+        position_embedding = _state_token_hidden(position_hidden)
         return self.policy_head(position_embedding, policy_plane_legal_mask)
 
     def forward_policy_value(
@@ -492,7 +497,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             causal=False,
             attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
+        position_embedding = _state_token_hidden(position_hidden)
         logits = self.policy_head(position_embedding, policy_plane_legal_mask)
         return logits, self.value_head(position_embedding)
 
@@ -503,7 +508,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             causal=False,
             attention_bias=self.position_attention_bias(position_features, position_embeddings),
         )
-        position_embedding = position_hidden.mean(dim=1)
+        position_embedding = _state_token_hidden(position_hidden)
         return self.value_head(position_embedding)
 
 
@@ -520,3 +525,7 @@ def _candidate_square_hidden(
     gather_indices = token_indices[..., None].expand(-1, -1, embedding_dim)
     square_hidden = position_hidden.gather(dim=1, index=gather_indices)
     return square_hidden.masked_fill(zero_mask[..., None], 0.0)
+
+
+def _state_token_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
+    return position_hidden[:, STATE_TOKEN_INDEX]

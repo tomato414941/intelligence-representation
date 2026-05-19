@@ -23,6 +23,7 @@ from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModelConfig,
     ShogiPositionGeometryAttentionBias,
     _candidate_square_hidden,
+    _state_token_hidden,
     shogi_policy_value_model_spec,
 )
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
@@ -148,6 +149,26 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
+
+    def test_position_input_layer_normalizes_feature_groups(self) -> None:
+        position_features, _, _, _, _, _ = _batch()
+        layer = ShogiPositionInputLayer(embedding_dim=8)
+
+        embeddings = layer(position_features)
+
+        token_norms = embeddings.norm(dim=-1)
+        self.assertLess(float(token_norms.max().item() - token_norms.min().item()), 1e-3)
+
+    def test_state_token_hidden_uses_first_position_token(self) -> None:
+        position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
+            2,
+            SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+            3,
+        )
+
+        state_hidden = _state_token_hidden(position_hidden)
+
+        self.assertTrue(torch.equal(state_hidden, position_hidden[:, 0]))
 
     def test_position_geometry_attention_bias_targets_square_and_line_pairs(self) -> None:
         position_features, _, _, _, _, _ = _batch()
