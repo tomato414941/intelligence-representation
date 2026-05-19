@@ -37,6 +37,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_INPUT_SCHEMA_ID,
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
+    validate_shogi_position_feature_structure,
 )
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
@@ -897,13 +898,15 @@ def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, 
 def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
     if not isinstance(payload, dict):
         raise ValueError("position features payload must be a mapping")
-    return ShogiPositionFeatures(
+    features = ShogiPositionFeatures(
         global_feature_ids=payload["global_feature_ids"],
         square_feature_ids=payload["square_feature_ids"],
         piece_feature_ids=payload["piece_feature_ids"],
         line_feature_ids=payload["line_feature_ids"],
         pair_relation_edges=_pair_relation_edges_from_payload(payload["pair_relation_edges"]),
     )
+    validate_shogi_position_feature_structure(features)
+    return features
 
 
 def _pair_relation_edges_from_payload(payload: Any) -> ShogiPairRelationEdges:

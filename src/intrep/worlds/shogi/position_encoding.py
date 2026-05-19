@@ -331,6 +331,90 @@ def stack_shogi_pair_relation_edges(edges: list[ShogiPairRelationEdges]) -> Shog
     )
 
 
+def validate_shogi_position_feature_structure(features: ShogiPositionFeatures) -> None:
+    _validate_integer_tensor_shape(
+        "global_feature_ids",
+        features.global_feature_ids,
+        (SHOGI_POSITION_GLOBAL_SLOT_COUNT,),
+    )
+    _validate_integer_tensor_shape(
+        "square_feature_ids",
+        features.square_feature_ids,
+        (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
+    )
+    _validate_integer_tensor_shape(
+        "piece_feature_ids",
+        features.piece_feature_ids,
+        (SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT),
+    )
+    _validate_integer_tensor_shape(
+        "line_feature_ids",
+        features.line_feature_ids,
+        (SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT),
+    )
+    _validate_pair_relation_edge_structure(features.pair_relation_edges)
+
+
+def _validate_integer_tensor_shape(name: str, tensor: object, expected_shape: tuple[int, ...]) -> None:
+    if not isinstance(tensor, torch.Tensor):
+        raise ValueError(f"{name} must be a tensor")
+    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8):
+        raise ValueError(f"{name} must use an integer dtype")
+    if tuple(tensor.shape) != expected_shape:
+        raise ValueError(f"{name} must have shape {expected_shape}")
+
+
+def _validate_pair_relation_edge_structure(edges: ShogiPairRelationEdges) -> None:
+    _validate_integer_vector("pair_relation_edges.source_token_indices", edges.source_token_indices)
+    _validate_integer_vector("pair_relation_edges.target_token_indices", edges.target_token_indices)
+    _validate_integer_vector("pair_relation_edges.relation_ids", edges.relation_ids)
+    edge_count = int(edges.relation_ids.numel())
+    if int(edges.source_token_indices.numel()) != edge_count:
+        raise ValueError("pair relation source and relation edge counts must match")
+    if int(edges.target_token_indices.numel()) != edge_count:
+        raise ValueError("pair relation target and relation edge counts must match")
+    _validate_integer_vector_range(
+        "pair_relation_edges.source_token_indices",
+        edges.source_token_indices,
+        minimum=0,
+        maximum_exclusive=SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    )
+    _validate_integer_vector_range(
+        "pair_relation_edges.target_token_indices",
+        edges.target_token_indices,
+        minimum=0,
+        maximum_exclusive=SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    )
+    _validate_integer_vector_range(
+        "pair_relation_edges.relation_ids",
+        edges.relation_ids,
+        minimum=0,
+        maximum_exclusive=PAIR_RELATION_COUNT,
+    )
+
+
+def _validate_integer_vector(name: str, tensor: object) -> None:
+    if not isinstance(tensor, torch.Tensor):
+        raise ValueError(f"{name} must be a tensor")
+    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8):
+        raise ValueError(f"{name} must use an integer dtype")
+    if tensor.ndim != 1:
+        raise ValueError(f"{name} must be a 1D tensor")
+
+
+def _validate_integer_vector_range(
+    name: str,
+    tensor: torch.Tensor,
+    *,
+    minimum: int,
+    maximum_exclusive: int,
+) -> None:
+    if tensor.numel() == 0:
+        return
+    if int(tensor.min().item()) < minimum or int(tensor.max().item()) >= maximum_exclusive:
+        raise ValueError(f"{name} values must be in [{minimum}, {maximum_exclusive})")
+
+
 def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
     board = shogi.Board(position_sfen)
     derived = _shogi_position_derived_relations(board)

@@ -55,6 +55,8 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
+    ShogiPairRelationEdges,
+    ShogiPositionFeatures,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
     SQUARE_TOKEN_OFFSET,
@@ -63,6 +65,7 @@ from intrep.worlds.shogi.position_encoding import (
     move_count_bucket_token_id,
     shogi_position_feature_manifest_hash,
     shogi_position_features_from_sfen,
+    validate_shogi_position_feature_structure,
 )
 
 
@@ -428,6 +431,41 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(int(features.global_feature_ids[own_pawn_hand_index].item()), OWN_HAND_OFFSET + 2)
         self.assertEqual(int(features.global_feature_ids[opponent_pawn_hand_index].item()), OPPONENT_HAND_OFFSET + 1)
+
+    def test_validates_position_feature_structure(self) -> None:
+        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+
+        validate_shogi_position_feature_structure(features)
+
+    def test_rejects_invalid_position_feature_shape(self) -> None:
+        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        invalid = ShogiPositionFeatures(
+            global_feature_ids=features.global_feature_ids[:-1],
+            square_feature_ids=features.square_feature_ids,
+            piece_feature_ids=features.piece_feature_ids,
+            line_feature_ids=features.line_feature_ids,
+            pair_relation_edges=features.pair_relation_edges,
+        )
+
+        with self.assertRaisesRegex(ValueError, "global_feature_ids"):
+            validate_shogi_position_feature_structure(invalid)
+
+    def test_rejects_invalid_pair_relation_edge_range(self) -> None:
+        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        invalid = ShogiPositionFeatures(
+            global_feature_ids=features.global_feature_ids,
+            square_feature_ids=features.square_feature_ids,
+            piece_feature_ids=features.piece_feature_ids,
+            line_feature_ids=features.line_feature_ids,
+            pair_relation_edges=ShogiPairRelationEdges(
+                source_token_indices=torch.tensor([SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT]),
+                target_token_indices=torch.tensor([0]),
+                relation_ids=torch.tensor([PAIR_RELATION_PIECE_ON_SQUARE]),
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "source_token_indices"):
+            validate_shogi_position_feature_structure(invalid)
 
 
 if __name__ == "__main__":
