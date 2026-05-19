@@ -50,6 +50,13 @@ from intrep.worlds.shogi.position_encoding import (
     SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SHOGI_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_POSITION_LINE_FEATURE_COUNT,
+    SHOGI_POSITION_LINE_SLOT_COUNT,
+    SHOGI_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_POSITION_PIECE_SLOT_COUNT,
+    SHOGI_POSITION_SQUARE_COUNT,
+    SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
@@ -57,6 +64,7 @@ from intrep.worlds.shogi.position_encoding import (
     king_relative_offset_bucket,
     move_count_bucket_token_id,
     shogi_position_token_ids_from_sfen,
+    shogi_position_features_from_sfen,
 )
 
 
@@ -72,6 +80,24 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(token_ids[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
         self.assertGreaterEqual(int(token_ids.min().item()), 0)
         self.assertLess(int(token_ids.max().item()), SHOGI_POSITION_VOCAB_SIZE)
+
+    def test_encodes_start_position_as_feature_groups(self) -> None:
+        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+
+        self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_POSITION_GLOBAL_SLOT_COUNT,))
+        self.assertEqual(
+            tuple(features.square_feature_ids.shape),
+            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
+        )
+        self.assertEqual(
+            tuple(features.piece_feature_ids.shape),
+            (SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT),
+        )
+        self.assertEqual(
+            tuple(features.line_feature_ids.shape),
+            (SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT),
+        )
+        self.assertTrue(torch.equal(features.flat_feature_ids(), shogi_position_token_ids_from_sfen(shogi.Board().sfen())))
 
     def test_side_to_move_changes_after_one_move(self) -> None:
         board = shogi.Board()

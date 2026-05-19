@@ -13,7 +13,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER
 from intrep.worlds.shogi.move_encoding import shogi_candidate_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
-from intrep.worlds.shogi.position_encoding import shogi_position_token_ids_from_sfen
+from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen, stack_shogi_position_features
 
 
 PositionEvaluation = tuple[dict[str, float], float]
@@ -51,8 +51,8 @@ def _candidate_move_evaluator(model: torch.nn.Module, torch_device: torch.device
             return []
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
         max_choice_count = max(len(legal_moves) for _position_sfen, legal_moves in requests)
-        position_token_ids = torch.stack(
-            [shogi_position_token_ids_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_features = stack_shogi_position_features(
+            [shogi_position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
         candidate_move_features = torch.stack(
             [
@@ -70,10 +70,10 @@ def _candidate_move_evaluator(model: torch.nn.Module, torch_device: torch.device
 
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
-                logits, values = model.forward_policy_value(position_token_ids, candidate_move_features, candidate_mask)
+                logits, values = model.forward_policy_value(position_features, candidate_move_features, candidate_mask)
             else:
-                logits = model(position_token_ids, candidate_move_features, candidate_mask)
-                values = model.predict_value(position_token_ids) if hasattr(model, "predict_value") else None
+                logits = model(position_features, candidate_move_features, candidate_mask)
+                values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
 
         evaluations: list[PositionEvaluation] = []
         for index, (_position_sfen, legal_moves) in enumerate(requests):
@@ -89,17 +89,17 @@ def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device):
         if not requests:
             return []
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
-        position_token_ids = torch.stack(
-            [shogi_position_token_ids_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_features = stack_shogi_position_features(
+            [shogi_position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
         legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(torch_device)
 
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
-                logits, values = model.forward_policy_value(position_token_ids, legal_action_mask)
+                logits, values = model.forward_policy_value(position_features, legal_action_mask)
             else:
-                logits = model(position_token_ids, legal_action_mask)
-                values = model.predict_value(position_token_ids) if hasattr(model, "predict_value") else None
+                logits = model(position_features, legal_action_mask)
+                values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
 
         evaluations: list[PositionEvaluation] = []
         for index, (board, (_position_sfen, legal_moves)) in enumerate(zip(boards, requests, strict=True)):

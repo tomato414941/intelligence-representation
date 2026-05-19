@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import shogi
 import torch
 
@@ -110,22 +112,98 @@ SHOGI_POSITION_STATE_TOKEN_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_TOKEN_ID + 1
 
 
-def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
+@dataclass(frozen=True)
+class ShogiPositionFeatures:
+    global_feature_ids: torch.Tensor
+    square_feature_ids: torch.Tensor
+    piece_feature_ids: torch.Tensor
+    line_feature_ids: torch.Tensor
+
+    def to(self, device: torch.device) -> "ShogiPositionFeatures":
+        return ShogiPositionFeatures(
+            global_feature_ids=self.global_feature_ids.to(device),
+            square_feature_ids=self.square_feature_ids.to(device),
+            piece_feature_ids=self.piece_feature_ids.to(device),
+            line_feature_ids=self.line_feature_ids.to(device),
+        )
+
+    def flat_feature_ids(self) -> torch.Tensor:
+        global_without_state = self.global_feature_ids[..., 1:]
+        return torch.cat(
+            (
+                global_without_state[..., :3],
+                self.square_feature_ids[..., :, 0],
+                self.square_feature_ids[..., :, 1],
+                self.square_feature_ids[..., :, 2],
+                self.square_feature_ids[..., :, 3 : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT].flatten(start_dim=-2),
+                self.square_feature_ids[
+                    ...,
+                    :,
+                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
+                ].flatten(start_dim=-2),
+                self.square_feature_ids[
+                    ...,
+                    :,
+                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
+                ],
+                self.square_feature_ids[
+                    ...,
+                    :,
+                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 1,
+                ],
+                self.square_feature_ids[
+                    ...,
+                    :,
+                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2
+                    + len(HAND_PIECE_TYPES),
+                ].flatten(start_dim=-2),
+                self.square_feature_ids[
+                    ...,
+                    :,
+                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 + len(HAND_PIECE_TYPES) :,
+                ].flatten(start_dim=-2),
+                self.line_feature_ids.flatten(start_dim=-2),
+                self.piece_feature_ids.flatten(start_dim=-2),
+                global_without_state[..., 3:],
+            ),
+            dim=-1,
+        )
+
+
+def stack_shogi_position_features(features: list[ShogiPositionFeatures]) -> ShogiPositionFeatures:
+    return ShogiPositionFeatures(
+        global_feature_ids=torch.stack([feature.global_feature_ids for feature in features]),
+        square_feature_ids=torch.stack([feature.square_feature_ids for feature in features]),
+        piece_feature_ids=torch.stack([feature.piece_feature_ids for feature in features]),
+        line_feature_ids=torch.stack([feature.line_feature_ids for feature in features]),
+    )
+
+
+def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
     board = shogi.Board(position_sfen)
-    token_ids = [
-        side_to_move_token_id(board.turn),
-        in_check_token_id(board.is_check()),
-        move_count_bucket_token_id(board.move_number),
-    ]
-    token_ids.extend(relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT))
-    token_ids.extend(attack_token_ids(board))
-    token_ids.extend(square_piece_type_attack_token_ids(board))
-    token_ids.extend(king_relative_square_token_ids(board))
-    token_ids.extend(drop_shadow_token_ids(board))
-    token_ids.extend(line_feature_token_ids(board))
-    token_ids.extend(piece_feature_token_ids(board))
-    token_ids.extend(hand_token_ids(board))
-    return torch.tensor(token_ids, dtype=torch.long)
+    global_feature_ids = torch.tensor(
+        [
+            SHOGI_POSITION_STATE_TOKEN_ID,
+            side_to_move_token_id(board.turn),
+            in_check_token_id(board.is_check()),
+            move_count_bucket_token_id(board.move_number),
+            *hand_token_ids(board),
+        ],
+        dtype=torch.long,
+    )
+    square_feature_ids = torch.tensor(square_feature_id_rows(board), dtype=torch.long)
+    piece_feature_ids = torch.tensor(piece_feature_id_rows(board), dtype=torch.long)
+    line_feature_ids = torch.tensor(line_feature_id_rows(board), dtype=torch.long)
+    return ShogiPositionFeatures(
+        global_feature_ids=global_feature_ids,
+        square_feature_ids=square_feature_ids,
+        piece_feature_ids=piece_feature_ids,
+        line_feature_ids=line_feature_ids,
+    )
+
+
+def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
+    return shogi_position_features_from_sfen(position_sfen).flat_feature_ids()
 
 
 def side_to_move_token_id(color: int) -> int:
@@ -191,27 +269,56 @@ def attack_count_token_id(board: shogi.Board, color: int, square: int, *, offset
     return offset + min(count, ATTACK_COUNT_TOKEN_MAX)
 
 
+def square_feature_id_rows(board: shogi.Board) -> list[list[int]]:
+    pieces = [relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT)]
+    attacks = attack_token_ids(board)
+    own_square_piece_type_attacks, opponent_square_piece_type_attacks = square_piece_type_attack_token_id_rows(board)
+    king_relative_squares = king_relative_square_token_ids(board)
+    drop_shadows = drop_shadow_token_id_rows(board)
+    rows: list[list[int]] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        rows.append(
+            [
+                pieces[relative_square],
+                attacks[relative_square],
+                attacks[BOARD_TOKEN_COUNT + relative_square],
+                *own_square_piece_type_attacks[relative_square],
+                *opponent_square_piece_type_attacks[relative_square],
+                king_relative_squares[relative_square],
+                king_relative_squares[BOARD_TOKEN_COUNT + relative_square],
+                *drop_shadows[relative_square],
+            ]
+        )
+    return rows
+
+
 def square_piece_type_attack_token_ids(board: shogi.Board) -> list[int]:
     token_ids: list[int] = []
-    token_ids.extend(
-        _square_piece_type_attack_token_ids_for_color(
-            board,
-            board.turn,
-            offset=OWN_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
-        )
-    )
-    token_ids.extend(
-        _square_piece_type_attack_token_ids_for_color(
-            board,
-            opponent_color(board.turn),
-            offset=OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
-        )
-    )
+    own_rows, opponent_rows = square_piece_type_attack_token_id_rows(board)
+    for row in own_rows:
+        token_ids.extend(row)
+    for row in opponent_rows:
+        token_ids.extend(row)
     return token_ids
 
 
-def _square_piece_type_attack_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
-    token_ids: list[int] = []
+def square_piece_type_attack_token_id_rows(board: shogi.Board) -> tuple[list[list[int]], list[list[int]]]:
+    return (
+        _square_piece_type_attack_token_id_rows_for_color(
+            board,
+            board.turn,
+            offset=OWN_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
+        ),
+        _square_piece_type_attack_token_id_rows_for_color(
+            board,
+            opponent_color(board.turn),
+            offset=OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
+        ),
+    )
+
+
+def _square_piece_type_attack_token_id_rows_for_color(board: shogi.Board, color: int, *, offset: int) -> list[list[int]]:
+    rows: list[list[int]] = []
     piece_type_to_index = {piece_type: index for index, piece_type in enumerate(SQUARE_ATTACK_PIECE_TYPES)}
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
@@ -220,10 +327,12 @@ def _square_piece_type_attack_token_ids_for_color(board: shogi.Board, color: int
             piece = board.piece_at(attacker_square)
             if piece is not None:
                 attacked_piece_types.add(int(piece.piece_type))
+        row: list[int] = []
         for piece_type in SQUARE_ATTACK_PIECE_TYPES:
             feature_index = piece_type_to_index[piece_type]
-            token_ids.append(offset + feature_index * 2 + int(piece_type in attacked_piece_types))
-    return token_ids
+            row.append(offset + feature_index * 2 + int(piece_type in attacked_piece_types))
+        rows.append(row)
+    return rows
 
 
 def king_relative_square_token_ids(board: shogi.Board) -> list[int]:
@@ -262,19 +371,31 @@ def king_relative_square_token_id(board: shogi.Board, color: int, relative_squar
 
 def drop_shadow_token_ids(board: shogi.Board) -> list[int]:
     token_ids: list[int] = []
-    token_ids.extend(drop_shadow_token_ids_for_color(board, board.turn, offset=OWN_DROP_SHADOW_OFFSET))
-    token_ids.extend(drop_shadow_token_ids_for_color(board, opponent_color(board.turn), offset=OPPONENT_DROP_SHADOW_OFFSET))
+    rows = drop_shadow_token_id_rows(board)
+    for row in rows:
+        token_ids.extend(row[: len(HAND_PIECE_TYPES)])
+    for row in rows:
+        token_ids.extend(row[len(HAND_PIECE_TYPES) :])
     return token_ids
 
 
-def drop_shadow_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
-    legal_drop_targets = legal_drop_targets_by_piece_type(board, color)
-    token_ids: list[int] = []
+def drop_shadow_token_id_rows(board: shogi.Board) -> list[list[int]]:
+    own_legal_drop_targets = legal_drop_targets_by_piece_type(board, board.turn)
+    opponent_legal_drop_targets = legal_drop_targets_by_piece_type(board, opponent_color(board.turn))
+    rows: list[list[int]] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        row: list[int] = []
         for piece_index, piece_type in enumerate(HAND_PIECE_TYPES):
-            token_ids.append(offset + piece_index * 2 + int(absolute_square in legal_drop_targets[piece_type]))
-    return token_ids
+            row.append(OWN_DROP_SHADOW_OFFSET + piece_index * 2 + int(absolute_square in own_legal_drop_targets[piece_type]))
+        for piece_index, piece_type in enumerate(HAND_PIECE_TYPES):
+            row.append(
+                OPPONENT_DROP_SHADOW_OFFSET
+                + piece_index * 2
+                + int(absolute_square in opponent_legal_drop_targets[piece_type])
+            )
+        rows.append(row)
+    return rows
 
 
 def legal_drop_targets_by_piece_type(board: shogi.Board, color: int) -> dict[int, set[int]]:
@@ -289,9 +410,13 @@ def legal_drop_targets_by_piece_type(board: shogi.Board, color: int) -> dict[int
 
 def line_feature_token_ids(board: shogi.Board) -> list[int]:
     token_ids: list[int] = []
-    for line_index in range(LINE_TOKEN_COUNT):
-        token_ids.extend(line_slot_feature_token_ids(board, line_index))
+    for row in line_feature_id_rows(board):
+        token_ids.extend(row)
     return token_ids
+
+
+def line_feature_id_rows(board: shogi.Board) -> list[list[int]]:
+    return [line_slot_feature_token_ids(board, line_index) for line_index in range(LINE_TOKEN_COUNT)]
 
 
 def line_slot_feature_token_ids(board: shogi.Board, line_index: int) -> list[int]:
@@ -370,6 +495,10 @@ def piece_slides_on_line(piece_type: int, line_kind: int) -> bool:
 
 
 def piece_feature_token_ids(board: shogi.Board) -> list[int]:
+    return [token_id for row in piece_feature_id_rows(board) for token_id in row]
+
+
+def piece_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     piece_features: list[int] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
@@ -382,7 +511,10 @@ def piece_feature_token_ids(board: shogi.Board) -> list[int]:
         raise ValueError("shogi board contains more pieces than supported piece slots")
     for _ in range(empty_slot_count):
         piece_features.extend(empty_piece_slot_token_ids())
-    return piece_features
+    return [
+        piece_features[index : index + PIECE_FEATURE_COUNT]
+        for index in range(0, len(piece_features), PIECE_FEATURE_COUNT)
+    ]
 
 
 def board_piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square: int) -> list[int]:

@@ -19,8 +19,8 @@ representation that gives the model useful shogi structure:
 
 ## Current Shape
 
-The current implementation still uses a compact token sequence rather than a
-full `9x9xN` input plane tensor.
+The current implementation uses explicit feature groups rather than treating a
+single flattened token-id sequence as the canonical model input.
 
 Current represented information:
 
@@ -42,6 +42,16 @@ Current represented information:
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
+
+The canonical position input object is `ShogiPositionFeatures`:
+
+- `global_feature_ids`
+- `square_feature_ids`
+- `piece_feature_ids`
+- `line_feature_ids`
+
+The older flat token-id sequence is retained only as a derived compatibility
+view for boundaries that still need a single vector.
 
 Current missing or intentionally deferred information:
 
@@ -181,6 +191,10 @@ board-square tokens and between line tokens and their member squares.
   Line-square attention bias marks which squares belong to each line, giving the
   Transformer explicit long-range board subjects without replacing square
   tokens.
+- Replaced the flattened `position_token_ids` model path with grouped
+  `ShogiPositionFeatures`. Tensor samples, batches, inference, and tensor cache
+  payloads now carry global/square/piece/line feature groups as the primary
+  representation.
 
 ## Follow-Ups
 

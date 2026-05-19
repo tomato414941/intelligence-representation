@@ -30,6 +30,8 @@ from intrep.worlds.shogi.position_encoding import (
     LINE_TOKEN_OFFSET,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SQUARE_TOKEN_OFFSET,
+    ShogiPositionFeatures,
+    stack_shogi_position_features,
 )
 
 
@@ -41,24 +43,24 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertIsNone(spec["candidate_move_input"])
 
     def test_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
-        logits = model(position_token_ids, candidate_move_features, candidate_mask)
+        logits = model(position_features, candidate_move_features, candidate_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
     def test_model_masks_invalid_candidates(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
         candidate_mask[:, -1] = False
         model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
 
-        logits = model(position_token_ids, candidate_move_features, candidate_mask)
+        logits = model(position_features, candidate_move_features, candidate_mask)
 
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
     def test_shared_core_model_returns_candidate_logits(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -68,12 +70,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_token_ids, candidate_move_features, candidate_mask)
+        logits = model(position_features, candidate_move_features, candidate_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
 
     def test_shared_core_model_returns_position_value(self) -> None:
-        position_token_ids, _, _, _, _, _ = _batch()
+        position_features, _, _, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -83,13 +85,13 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        values = model.predict_value(position_token_ids)
+        values = model.predict_value(position_features)
 
         self.assertEqual(tuple(values.shape), (2,))
         self.assertLessEqual(float(values.abs().max().item()), 1.0)
 
     def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -100,7 +102,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.core.forward = Mock(wraps=model.core.forward)
 
-        logits, values = model.forward_policy_value(position_token_ids, candidate_move_features, candidate_mask)
+        logits, values = model.forward_policy_value(position_features, candidate_move_features, candidate_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
         self.assertEqual(tuple(values.shape), (2,))
@@ -138,10 +140,10 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_TOKEN_OFFSET + 7]))
 
     def test_position_input_layer_builds_global_square_piece_sequence(self) -> None:
-        position_token_ids, _, _, _, _, _ = _batch()
+        position_features, _, _, _, _, _ = _batch()
         layer = ShogiPositionInputLayer(embedding_dim=8)
 
-        embeddings = layer(position_token_ids)
+        embeddings = layer(position_features)
 
         self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
@@ -166,7 +168,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(float(bias[LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), 0.0)
 
     def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -177,7 +179,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.core.forward = Mock(wraps=model.core.forward)
 
-        model(position_token_ids, candidate_move_features, candidate_mask)
+        model(position_features, candidate_move_features, candidate_mask)
 
         self.assertIn("attention_bias", model.core.forward.call_args.kwargs)
 
@@ -210,7 +212,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertLess(float(logits[1, -1].item()), -1e20)
 
     def test_policy_plane_model_returns_fixed_action_logits(self) -> None:
-        position_token_ids, legal_action_mask = _policy_plane_batch()
+        position_features, legal_action_mask = _policy_plane_batch()
         model = PolicyPlaneShogiPolicyValueModel(
             PolicyPlaneShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -220,12 +222,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_token_ids, legal_action_mask)
+        logits = model(position_features, legal_action_mask)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
 
     def test_policy_plane_model_masks_illegal_actions(self) -> None:
-        position_token_ids, legal_action_mask = _policy_plane_batch()
+        position_features, legal_action_mask = _policy_plane_batch()
         legal_action_mask[:, -1] = False
         model = PolicyPlaneShogiPolicyValueModel(
             PolicyPlaneShogiPolicyValueModelConfig(
@@ -236,12 +238,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_token_ids, legal_action_mask)
+        logits = model(position_features, legal_action_mask)
 
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
     def test_policy_plane_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_token_ids, legal_action_mask = _policy_plane_batch()
+        position_features, legal_action_mask = _policy_plane_batch()
         model = PolicyPlaneShogiPolicyValueModel(
             PolicyPlaneShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -252,19 +254,19 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.core.forward = Mock(wraps=model.core.forward)
 
-        logits, values = model.forward_policy_value(position_token_ids, legal_action_mask)
+        logits, values = model.forward_policy_value(position_features, legal_action_mask)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
         self.assertEqual(tuple(values.shape), (2,))
         self.assertEqual(model.core.forward.call_count, 1)
 
 
-def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
     dataset = ShogiPolicyValueDataset(examples)
     batch = collate_candidate_move_policy_value_samples([dataset[index] for index in range(len(dataset))])
     return (
-        batch.position_token_ids,
+        batch.position_features,
         batch.candidate_move_features,
         batch.candidate_mask,
         batch.labels,
@@ -273,11 +275,11 @@ def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, to
     )
 
 
-def _policy_plane_batch() -> tuple[torch.Tensor, torch.Tensor]:
+def _policy_plane_batch() -> tuple[ShogiPositionFeatures, torch.Tensor]:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
     samples = tensorize_policy_plane_value_examples(examples)
     return (
-        torch.stack([sample.position_token_ids for sample in samples]),
+        stack_shogi_position_features([sample.position_features for sample in samples]),
         torch.stack([sample.policy_plane_legal_mask for sample in samples]),
     )
 

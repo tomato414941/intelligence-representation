@@ -31,9 +31,9 @@ from intrep.problems.shogi_policy_value.output_space import (
     validate_shogi_policy_value_output_space,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID, ShogiPositionFeatures
 
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v2"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors"
 DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "shogi-policy-plane-value-tensors"
@@ -802,7 +802,7 @@ def _sample_output_space_stats(
     raise ValueError(f"unsupported shogi policy/value output space: {output_space}")
 
 
-def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: str) -> dict[str, torch.Tensor]:
+def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: str) -> dict[str, Any]:
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         if not isinstance(sample, CompactPolicyPlaneValueTensorSample):
             raise TypeError("policy-plane tensor cache requires compact policy-plane samples")
@@ -812,9 +812,9 @@ def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: 
     return _candidate_sample_to_payload(sample)
 
 
-def _candidate_sample_to_payload(sample: CandidateMovePolicyValueTensorSample) -> dict[str, torch.Tensor]:
+def _candidate_sample_to_payload(sample: CandidateMovePolicyValueTensorSample) -> dict[str, Any]:
     return {
-        "position_token_ids": sample.position_token_ids,
+        "position_features": _position_features_to_payload(sample.position_features),
         "candidate_move_features": sample.candidate_move_features,
         "label": sample.label,
         "policy_targets": sample.policy_targets,
@@ -826,7 +826,7 @@ def _candidate_sample_from_payload(payload: Any) -> CandidateMovePolicyValueTens
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
     return CandidateMovePolicyValueTensorSample(
-        position_token_ids=payload["position_token_ids"],
+        position_features=_position_features_from_payload(payload["position_features"]),
         candidate_move_features=payload["candidate_move_features"],
         label=payload["label"],
         policy_targets=payload["policy_targets"],
@@ -834,9 +834,9 @@ def _candidate_sample_from_payload(payload: Any) -> CandidateMovePolicyValueTens
     )
 
 
-def _compact_policy_plane_sample_to_payload(sample: CompactPolicyPlaneValueTensorSample) -> dict[str, torch.Tensor]:
+def _compact_policy_plane_sample_to_payload(sample: CompactPolicyPlaneValueTensorSample) -> dict[str, Any]:
     return {
-        "position_token_ids": sample.position_token_ids,
+        "position_features": _position_features_to_payload(sample.position_features),
         "legal_action_indices": sample.legal_action_indices,
         "target_action_indices": sample.target_action_indices,
         "target_weights": sample.target_weights,
@@ -849,12 +849,32 @@ def _compact_policy_plane_sample_from_payload(payload: Any) -> CompactPolicyPlan
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
     return CompactPolicyPlaneValueTensorSample(
-        position_token_ids=payload["position_token_ids"],
+        position_features=_position_features_from_payload(payload["position_features"]),
         legal_action_indices=payload["legal_action_indices"],
         target_action_indices=payload["target_action_indices"],
         target_weights=payload["target_weights"],
         policy_plane_label=payload["policy_plane_label"],
         value_target=payload["value_target"],
+    )
+
+
+def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, torch.Tensor]:
+    return {
+        "global_feature_ids": features.global_feature_ids,
+        "square_feature_ids": features.square_feature_ids,
+        "piece_feature_ids": features.piece_feature_ids,
+        "line_feature_ids": features.line_feature_ids,
+    }
+
+
+def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
+    if not isinstance(payload, dict):
+        raise ValueError("position features payload must be a mapping")
+    return ShogiPositionFeatures(
+        global_feature_ids=payload["global_feature_ids"],
+        square_feature_ids=payload["square_feature_ids"],
+        piece_feature_ids=payload["piece_feature_ids"],
+        line_feature_ids=payload["line_feature_ids"],
     )
 
 

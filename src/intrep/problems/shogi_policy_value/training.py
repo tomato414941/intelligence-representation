@@ -32,6 +32,7 @@ from intrep.problems.shogi_policy_value.model import (
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
 )
+from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
 
 @dataclass(frozen=True)
@@ -216,7 +217,7 @@ def train_shogi_policy_value_model(
             value_mask = torch.isfinite(batch.value_targets)
             forward_backward_started = time.monotonic()
             if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
-                value_predictions = model.predict_value(batch.position_token_ids)
+                value_predictions = model.predict_value(batch.position_features)
                 loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
             elif training_config.value_loss_weight > 0.0 and value_mask.any():
                 logits, value_predictions = _forward_batch_policy_value(model, batch)
@@ -534,9 +535,9 @@ def _batch_policy_target_loss(logits: torch.Tensor, batch: ShogiPolicyValueBatch
 
 def _forward_batch_policy(model: nn.Module, batch: ShogiPolicyValueBatch) -> torch.Tensor:
     if isinstance(batch, CandidateMovePolicyValueBatch):
-        return model(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
+        return model(batch.position_features, batch.candidate_move_features, batch.candidate_mask)
     if isinstance(batch, PolicyPlaneValueBatch):
-        return model(batch.position_token_ids, batch.legal_action_mask)
+        return model(batch.position_features, batch.legal_action_mask)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
@@ -544,24 +545,24 @@ def _forward_batch_policy_value(model: nn.Module, batch: ShogiPolicyValueBatch) 
     if isinstance(batch, CandidateMovePolicyValueBatch):
         return _forward_policy_value(
             model,
-            batch.position_token_ids,
+            batch.position_features,
             batch.candidate_move_features,
             batch.candidate_mask,
         )
     if isinstance(batch, PolicyPlaneValueBatch):
-        return _forward_policy_value(model, batch.position_token_ids, batch.legal_action_mask)
+        return _forward_policy_value(model, batch.position_features, batch.legal_action_mask)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
 def _forward_policy_value(
     model: nn.Module,
-    position_token_ids: torch.Tensor,
+    position_features: ShogiPositionFeatures,
     *policy_args: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if hasattr(model, "forward_policy_value"):
-        return model.forward_policy_value(position_token_ids, *policy_args)
-    logits = model(position_token_ids, *policy_args)
-    value_predictions = model.predict_value(position_token_ids)
+        return model.forward_policy_value(position_features, *policy_args)
+    logits = model(position_features, *policy_args)
+    value_predictions = model.predict_value(position_features)
     return logits, value_predictions
 
 

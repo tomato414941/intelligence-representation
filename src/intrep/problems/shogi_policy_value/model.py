@@ -7,30 +7,18 @@ from torch import nn
 
 from intrep.worlds.shogi.move_encoding import NO_DROP_PIECE_ID, NO_FROM_SQUARE_ID
 from intrep.worlds.shogi.position_encoding import (
-    ATTACK_TOKEN_OFFSET,
-    BOARD_TOKEN_COUNT,
-    BOARD_TOKEN_OFFSET,
-    DROP_SHADOW_TOKEN_OFFSET,
-    HAND_PIECE_TYPES,
-    HAND_TOKEN_OFFSET,
-    KING_RELATIVE_SQUARE_TOKEN_OFFSET,
-    LINE_FEATURE_TOKEN_OFFSET,
     LINE_TOKEN_OFFSET,
-    PIECE_FEATURE_TOKEN_OFFSET,
-    SQUARE_ATTACK_PIECE_TYPE_COUNT,
-    SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_PIECE_FEATURE_COUNT,
-    SHOGI_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SHOGI_POSITION_LINE_FEATURE_COUNT,
     SHOGI_POSITION_LINE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
-    SHOGI_POSITION_STATE_TOKEN_ID,
     SHOGI_POSITION_VOCAB_SIZE,
+    ShogiPositionFeatures,
     SQUARE_TOKEN_OFFSET,
     squares_for_line_index,
 )
@@ -118,29 +106,29 @@ class DirectShogiPolicyValueModel(nn.Module):
 
     def forward(
         self,
-        position_token_ids: torch.Tensor,
+        position_features: ShogiPositionFeatures,
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> torch.Tensor:
-        position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
+        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
         move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         return self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
 
     def forward_policy_value(
         self,
-        position_token_ids: torch.Tensor,
+        position_features: ShogiPositionFeatures,
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
+        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
         move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         logits = self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
         return logits, self.value_head(position_embedding)
 
-    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        position_embedding = self.position_embedding(position_token_ids).mean(dim=1)
+    def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
         return self.value_head(position_embedding)
 
 
@@ -232,118 +220,52 @@ class ShogiPositionInputLayer(nn.Module):
         self.line_feature_embedding = nn.Embedding(SHOGI_POSITION_LINE_FEATURE_COUNT, embedding_dim)
         self.line_slot_embedding = nn.Embedding(SHOGI_POSITION_LINE_SLOT_COUNT, embedding_dim)
 
-    def forward(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+    def forward(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         return torch.cat(
             (
-                self._global_embeddings(position_token_ids),
-                self._square_embeddings(position_token_ids),
-                self._piece_embeddings(position_token_ids),
-                self._line_embeddings(position_token_ids),
+                self._global_embeddings(position_features),
+                self._square_embeddings(position_features),
+                self._piece_embeddings(position_features),
+                self._line_embeddings(position_features),
             ),
             dim=1,
         )
 
-    def _global_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        global_token_ids = torch.cat(
-            (
-                torch.full(
-                    (position_token_ids.size(0), 1),
-                    SHOGI_POSITION_STATE_TOKEN_ID,
-                    dtype=position_token_ids.dtype,
-                    device=position_token_ids.device,
-                ),
-                position_token_ids[:, [0, 1, 2]],
-                position_token_ids[:, HAND_TOKEN_OFFSET:],
-            ),
-            dim=1,
-        )
-        slots = torch.arange(SHOGI_POSITION_GLOBAL_SLOT_COUNT, device=position_token_ids.device).unsqueeze(0)
+    def _global_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        global_token_ids = position_features.global_feature_ids
+        slots = torch.arange(SHOGI_POSITION_GLOBAL_SLOT_COUNT, device=global_token_ids.device).unsqueeze(0)
         return self.token_embedding(global_token_ids) + self.global_slot_embedding(slots)
 
-    def _square_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        pieces = position_token_ids[:, BOARD_TOKEN_OFFSET : BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT]
-        own_attacks = position_token_ids[:, ATTACK_TOKEN_OFFSET : ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT]
-        opponent_attacks = position_token_ids[
-            :,
-            ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT : ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT * 2,
-        ]
-        own_square_piece_type_attacks = position_token_ids[
-            :,
-            SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET : SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT,
-        ].reshape(-1, BOARD_TOKEN_COUNT, SQUARE_ATTACK_PIECE_TYPE_COUNT)
-        opponent_square_piece_type_attacks = position_token_ids[
-            :,
-            SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT : SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
-        ].reshape(-1, BOARD_TOKEN_COUNT, SQUARE_ATTACK_PIECE_TYPE_COUNT)
-        own_king_relative_squares = position_token_ids[
-            :,
-            KING_RELATIVE_SQUARE_TOKEN_OFFSET : KING_RELATIVE_SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT,
-        ]
-        opponent_king_relative_squares = position_token_ids[
-            :,
-            KING_RELATIVE_SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT : KING_RELATIVE_SQUARE_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * 2,
-        ]
-        own_drop_shadows = position_token_ids[
-            :,
-            DROP_SHADOW_TOKEN_OFFSET : DROP_SHADOW_TOKEN_OFFSET + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES),
-        ].reshape(-1, BOARD_TOKEN_COUNT, len(HAND_PIECE_TYPES))
-        opponent_drop_shadows = position_token_ids[
-            :,
-            DROP_SHADOW_TOKEN_OFFSET + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES) : DROP_SHADOW_TOKEN_OFFSET
-            + BOARD_TOKEN_COUNT * len(HAND_PIECE_TYPES) * 2,
-        ].reshape(-1, BOARD_TOKEN_COUNT, len(HAND_PIECE_TYPES))
-        square_features = torch.cat(
-            (
-                torch.stack((pieces, own_attacks, opponent_attacks), dim=2),
-                own_square_piece_type_attacks,
-                opponent_square_piece_type_attacks,
-                own_king_relative_squares.unsqueeze(2),
-                opponent_king_relative_squares.unsqueeze(2),
-                own_drop_shadows,
-                opponent_drop_shadows,
-            ),
-            dim=2,
-        )
+    def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        square_features = position_features.square_feature_ids
         square_feature_embeddings = self.token_embedding(square_features)
-        feature_slots = torch.arange(SHOGI_POSITION_SQUARE_FEATURE_COUNT, device=position_token_ids.device)
+        feature_slots = torch.arange(SHOGI_POSITION_SQUARE_FEATURE_COUNT, device=square_features.device)
         square_hidden = (
             square_feature_embeddings
             + self.square_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_SQUARE_FEATURE_COUNT, -1)
         ).sum(dim=2)
-        square_slots = torch.arange(SHOGI_POSITION_SQUARE_COUNT, device=position_token_ids.device).unsqueeze(0)
+        square_slots = torch.arange(SHOGI_POSITION_SQUARE_COUNT, device=square_features.device).unsqueeze(0)
         return square_hidden + self.square_slot_embedding(square_slots)
 
-    def _piece_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        piece_features = position_token_ids[
-            :,
-            PIECE_FEATURE_TOKEN_OFFSET : PIECE_FEATURE_TOKEN_OFFSET
-            + SHOGI_POSITION_PIECE_SLOT_COUNT * SHOGI_POSITION_PIECE_FEATURE_COUNT,
-        ].reshape(-1, SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT)
+    def _piece_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        piece_features = position_features.piece_feature_ids
         piece_feature_embeddings = self.token_embedding(piece_features)
-        feature_slots = torch.arange(SHOGI_POSITION_PIECE_FEATURE_COUNT, device=position_token_ids.device)
+        feature_slots = torch.arange(SHOGI_POSITION_PIECE_FEATURE_COUNT, device=piece_features.device)
         piece_hidden = (
             piece_feature_embeddings
             + self.piece_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_PIECE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         return piece_hidden
 
-    def _line_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        line_features = position_token_ids[
-            :,
-            LINE_FEATURE_TOKEN_OFFSET : LINE_FEATURE_TOKEN_OFFSET
-            + SHOGI_POSITION_LINE_SLOT_COUNT * SHOGI_POSITION_LINE_FEATURE_COUNT,
-        ].reshape(-1, SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT)
+    def _line_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        line_features = position_features.line_feature_ids
         line_feature_embeddings = self.token_embedding(line_features)
-        feature_slots = torch.arange(SHOGI_POSITION_LINE_FEATURE_COUNT, device=position_token_ids.device)
+        feature_slots = torch.arange(SHOGI_POSITION_LINE_FEATURE_COUNT, device=line_features.device)
         line_hidden = (
             line_feature_embeddings
             + self.line_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_LINE_FEATURE_COUNT, -1)
         ).sum(dim=2)
-        slots = torch.arange(SHOGI_POSITION_LINE_SLOT_COUNT, device=position_token_ids.device).unsqueeze(0)
+        slots = torch.arange(SHOGI_POSITION_LINE_SLOT_COUNT, device=line_features.device).unsqueeze(0)
         return line_hidden + self.line_slot_embedding(slots)
 
 
@@ -430,11 +352,11 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
 
     def forward(
         self,
-        position_token_ids: torch.Tensor,
+        position_features: ShogiPositionFeatures,
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> torch.Tensor:
-        position_embeddings = self.position_input(position_token_ids)
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,
@@ -446,11 +368,11 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
 
     def forward_policy_value(
         self,
-        position_token_ids: torch.Tensor,
+        position_features: ShogiPositionFeatures,
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        position_embeddings = self.position_input(position_token_ids)
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,
@@ -461,8 +383,8 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         logits = self.policy_head(candidate_inputs, candidate_mask)
         return logits, self.value_head(position_embedding)
 
-    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        position_embeddings = self.position_input(position_token_ids)
+    def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,
@@ -516,8 +438,8 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             hidden_dim=self.config.hidden_dim,
         )
 
-    def forward(self, position_token_ids: torch.Tensor, policy_plane_legal_mask: torch.Tensor) -> torch.Tensor:
-        position_embeddings = self.position_input(position_token_ids)
+    def forward(self, position_features: ShogiPositionFeatures, policy_plane_legal_mask: torch.Tensor) -> torch.Tensor:
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,
@@ -528,10 +450,10 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
 
     def forward_policy_value(
         self,
-        position_token_ids: torch.Tensor,
+        position_features: ShogiPositionFeatures,
         policy_plane_legal_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        position_embeddings = self.position_input(position_token_ids)
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,
@@ -541,8 +463,8 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         logits = self.policy_head(position_embedding, policy_plane_legal_mask)
         return logits, self.value_head(position_embedding)
 
-    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
-        position_embeddings = self.position_input(position_token_ids)
+    def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
+        position_embeddings = self.position_input(position_features)
         position_hidden = self.core(
             position_embeddings,
             causal=False,

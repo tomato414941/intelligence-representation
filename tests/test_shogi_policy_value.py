@@ -19,7 +19,15 @@ from intrep.problems.shogi_policy_value.examples import (
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT, shogi_policy_plane_action_index
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
+from intrep.worlds.shogi.position_encoding import (
+    SHOGI_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_POSITION_LINE_FEATURE_COUNT,
+    SHOGI_POSITION_LINE_SLOT_COUNT,
+    SHOGI_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_POSITION_PIECE_SLOT_COUNT,
+    SHOGI_POSITION_SQUARE_COUNT,
+    SHOGI_POSITION_SQUARE_FEATURE_COUNT,
+)
 
 
 class ShogiMoveChoiceExampleTest(unittest.TestCase):
@@ -57,9 +65,13 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         dataset = ShogiMoveChoiceDataset(examples)
 
-        position_token_ids, candidate_move_features, candidate_mask, label_index, policy_targets = dataset[0]
+        position_features, candidate_move_features, candidate_mask, label_index, policy_targets = dataset[0]
 
-        self.assertEqual(tuple(position_token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
+        self.assertEqual(tuple(position_features.global_feature_ids.shape), (SHOGI_POSITION_GLOBAL_SLOT_COUNT,))
+        self.assertEqual(
+            tuple(position_features.square_feature_ids.shape),
+            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
+        )
         self.assertEqual(tuple(candidate_move_features.shape), (len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
         self.assertEqual(candidate_mask.dtype, torch.bool)
         self.assertEqual(int(candidate_mask.sum().item()), len(examples[0].legal_moves))
@@ -147,7 +159,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
         batch = next(iter(loader))
 
-        self.assertEqual(tuple(batch.position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
+        self.assertEqual(tuple(batch.position_features.global_feature_ids.shape), (2, SHOGI_POSITION_GLOBAL_SLOT_COUNT))
         self.assertEqual(tuple(batch.candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
         self.assertEqual(tuple(batch.candidate_mask.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.labels.shape), (2,))
@@ -165,7 +177,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
         batch = next(iter(loader))
 
-        self.assertEqual(tuple(batch.position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
+        self.assertEqual(tuple(batch.position_features.global_feature_ids.shape), (2, SHOGI_POSITION_GLOBAL_SLOT_COUNT))
         self.assertEqual(tuple(batch.candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
         self.assertEqual(tuple(batch.candidate_mask.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.labels.shape), (2,))
@@ -184,7 +196,15 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         sample = tensorize_policy_plane_value_example(example)
         action_index = shogi_policy_plane_action_index("7g7f", turn=board.turn)
 
-        self.assertEqual(tuple(sample.position_token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
+        self.assertEqual(tuple(sample.position_features.global_feature_ids.shape), (SHOGI_POSITION_GLOBAL_SLOT_COUNT,))
+        self.assertEqual(
+            tuple(sample.position_features.piece_feature_ids.shape),
+            (SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT),
+        )
+        self.assertEqual(
+            tuple(sample.position_features.line_feature_ids.shape),
+            (SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT),
+        )
         self.assertEqual(tuple(sample.policy_plane_targets.shape), (SHOGI_POLICY_PLANE_ACTION_COUNT,))
         self.assertEqual(tuple(sample.policy_plane_legal_mask.shape), (SHOGI_POLICY_PLANE_ACTION_COUNT,))
         self.assertEqual(int(sample.policy_plane_label.item()), action_index)

@@ -53,8 +53,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
-            actual = loaded(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
+            expected = result.model(batch.position_features, batch.candidate_move_features, batch.candidate_mask)
+            actual = loaded(batch.position_features, batch.candidate_move_features, batch.candidate_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 
@@ -90,8 +90,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(batch.position_token_ids, batch.legal_action_mask)
-            actual = loaded(batch.position_token_ids, batch.legal_action_mask)
+            expected = result.model(batch.position_features, batch.legal_action_mask)
+            actual = loaded(batch.position_features, batch.legal_action_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 
