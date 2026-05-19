@@ -1,6 +1,6 @@
 # Shogi Policy Plane Action Representation
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -80,10 +80,52 @@ and MCTS integration. It is a larger change than adding attack input features.
   - confirmed generated transitions include
     `mcts_root_child_visit_counts` search evidence
 
-Remaining work:
+## Migration Decision
 
-- Decide whether policy-plane output should replace candidate scoring or coexist
-  behind a separate model.
+Candidate-move policy and policy-plane policy should coexist behind separate
+model names rather than replacing candidate scoring now.
+
+Reasons:
+
+- Candidate-move policy is the existing compatible checkpoint path and remains a
+  useful baseline.
+- Policy plane is a separate output-space hypothesis that should be evaluated
+  against candidate scoring before becoming the default.
+- Both output spaces can share `ShogiMovePolicyValueExample` as a meaning-level
+  training example without sharing tensor samples, heads, losses, or metrics.
+- Runtime code consumes legal move priors and value through the checkpoint
+  inference adapter, so it does not need to know which output space produced
+  them.
+
+The chosen migration path is coexistence:
+
+```text
+ShogiMovePolicyValueExample
+  -> CandidateMovePolicyValueTensorSample
+  -> PolicyPlaneValueTensorSample
+
+shared_transformer / direct
+  -> candidate-move policy head
+
+policy_plane_shared_transformer
+  -> policy-plane policy head
+
+checkpoint inference adapter
+  -> legal move priors + value
+```
+
+## Close Notes
+
+The close condition is satisfied:
+
+- The fixed policy-plane action space is specified and tested.
+- The migration path is coexistence behind separate model names.
+- Implementation follow-up has been completed through tensorization, model,
+  training, checkpoint inference, runtime MCTS connection, and local E2E smoke.
+
+Follow-up comparison work should be tracked separately: train candidate-move and
+policy-plane models on the same small dataset and compare supervised metrics,
+MCTS smoke behavior, and runtime cost.
 
 ## Policy Output Space Boundary
 
