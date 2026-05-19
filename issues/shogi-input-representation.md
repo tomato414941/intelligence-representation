@@ -33,8 +33,9 @@ Current represented information:
 - own/opponent attack-count buckets per relative square, capped at 3
 - own/opponent square piece-type attack features
 - own/opponent king-relative square features
-- fixed 40 piece tokens for board pieces, ordered by side-to-move-relative
-  square and padded with empty piece slots
+- fixed 40 piece tokens for board and hand pieces, with board pieces ordered by
+  side-to-move-relative square and remaining incomplete-position slots padded
+  as empty
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -65,11 +66,11 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own/opponent square piece-type attack features
   - own/opponent king-relative square features
 - piece tokens x40:
-  - empty/occupied slot state
+  - location kind: board, hand, or empty
   - own/opponent piece identity
-  - side-to-move-relative square
-  - own king-relative square feature
-  - opponent king-relative square feature
+  - side-to-move-relative square for board pieces, or unknown for hand/empty
+  - own king-relative square feature for board pieces, or unknown
+  - opponent king-relative square feature for board pieces, or unknown
 
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square. The piece
@@ -145,6 +146,12 @@ relation tokens.
   own/opponent king-relative square features.
 - The current input identity is
   `shogi_global_square_piece_feature_sequence_v1`.
+- Extended fixed 40-slot piece tokens to include hand pieces after board
+  pieces. Global hand-count tokens remain as direct aggregate count features,
+  while hand piece tokens expose held pieces through the same piece-subject
+  sequence as board pieces.
+- The current input identity is
+  `shogi_global_square_piece_feature_sequence_v2`.
 
 ## Follow-Ups
 

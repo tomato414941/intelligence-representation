@@ -26,7 +26,7 @@ PIECE_FEATURE_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_S
 HAND_TOKEN_OFFSET = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_piece_feature_sequence_v1"
+SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_piece_feature_sequence_v2"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -67,9 +67,10 @@ KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT = 17 * 17
 KING_RELATIVE_SQUARE_BUCKET_UNKNOWN = 0
 OWN_KING_RELATIVE_SQUARE_OFFSET = OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2
 OPPONENT_KING_RELATIVE_SQUARE_OFFSET = OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
-PIECE_SLOT_EMPTY_TOKEN_ID = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
-PIECE_SLOT_OCCUPIED_TOKEN_ID = PIECE_SLOT_EMPTY_TOKEN_ID + 1
-PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_SLOT_OCCUPIED_TOKEN_ID + 1
+PIECE_LOCATION_EMPTY_TOKEN_ID = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
+PIECE_LOCATION_BOARD_TOKEN_ID = PIECE_LOCATION_EMPTY_TOKEN_ID + 1
+PIECE_LOCATION_HAND_TOKEN_ID = PIECE_LOCATION_BOARD_TOKEN_ID + 1
+PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_LOCATION_HAND_TOKEN_ID + 1
 PIECE_SQUARE_OFFSET = PIECE_SQUARE_UNKNOWN_TOKEN_ID + 1
 SHOGI_POSITION_VOCAB_SIZE = PIECE_SQUARE_OFFSET + BOARD_TOKEN_COUNT
 SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_TOKEN_COUNT
@@ -241,23 +242,24 @@ def king_relative_square_token_id(board: shogi.Board, color: int, relative_squar
 
 
 def piece_feature_token_ids(board: shogi.Board) -> list[int]:
-    occupied_piece_features: list[int] = []
+    piece_features: list[int] = []
     for relative_square in range(BOARD_TOKEN_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is not None:
-            occupied_piece_features.extend(piece_slot_token_ids(board, piece, relative_square))
-    empty_slot_count = PIECE_SLOT_COUNT - len(occupied_piece_features) // PIECE_FEATURE_COUNT
+            piece_features.extend(board_piece_slot_token_ids(board, piece, relative_square))
+    piece_features.extend(hand_piece_slot_token_ids(board))
+    empty_slot_count = PIECE_SLOT_COUNT - len(piece_features) // PIECE_FEATURE_COUNT
     if empty_slot_count < 0:
         raise ValueError("shogi board contains more pieces than supported piece slots")
     for _ in range(empty_slot_count):
-        occupied_piece_features.extend(empty_piece_slot_token_ids())
-    return occupied_piece_features
+        piece_features.extend(empty_piece_slot_token_ids())
+    return piece_features
 
 
-def piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square: int) -> list[int]:
+def board_piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square: int) -> list[int]:
     return [
-        PIECE_SLOT_OCCUPIED_TOKEN_ID,
+        PIECE_LOCATION_BOARD_TOKEN_ID,
         piece_token_id(piece, own_color=board.turn),
         PIECE_SQUARE_OFFSET + relative_square,
         king_relative_square_token_id(
@@ -275,9 +277,33 @@ def piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square
     ]
 
 
+def hand_piece_slot_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    for color in (board.turn, opponent_color(board.turn)):
+        for piece_type in HAND_PIECE_TYPES:
+            for _ in range(board.pieces_in_hand[color][piece_type]):
+                token_ids.extend(
+                    hand_piece_token_ids(
+                        shogi.Piece(piece_type, color),
+                        own_color=board.turn,
+                    )
+                )
+    return token_ids
+
+
+def hand_piece_token_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
+    return [
+        PIECE_LOCATION_HAND_TOKEN_ID,
+        piece_token_id(piece, own_color=own_color),
+        PIECE_SQUARE_UNKNOWN_TOKEN_ID,
+        OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
+        OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
+    ]
+
+
 def empty_piece_slot_token_ids() -> list[int]:
     return [
-        PIECE_SLOT_EMPTY_TOKEN_ID,
+        PIECE_LOCATION_EMPTY_TOKEN_ID,
         EMPTY_SQUARE_TOKEN_ID,
         PIECE_SQUARE_UNKNOWN_TOKEN_ID,
         OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
