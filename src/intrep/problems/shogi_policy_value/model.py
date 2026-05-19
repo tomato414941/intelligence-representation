@@ -70,7 +70,7 @@ class DirectShogiPolicyValueModel(nn.Module):
         embedding_dim = self.config.embedding_dim
         self.position_embedding = nn.Embedding(SHOGI_POSITION_VOCAB_SIZE, embedding_dim)
         self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
-        self.policy_head = ShogiCandidatePolicyHead(
+        self.policy_head = ShogiCandidateMovePolicyHead(
             input_dim=embedding_dim * 2,
             hidden_dim=self.config.hidden_dim,
         )
@@ -124,7 +124,7 @@ class ShogiCandidateMoveInputLayer(nn.Module):
         )
 
 
-class ShogiCandidatePolicyHead(nn.Module):
+class ShogiCandidateMovePolicyHead(nn.Module):
     def __init__(self, *, input_dim: int, hidden_dim: int) -> None:
         super().__init__()
         self.scorer = nn.Sequential(
@@ -200,7 +200,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             dropout=self.config.dropout,
         )
         self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
-        self.policy_head = ShogiCandidatePolicyHead(
+        self.policy_head = ShogiCandidateMovePolicyHead(
             input_dim=embedding_dim * 4,
             hidden_dim=self.config.hidden_dim,
         )
