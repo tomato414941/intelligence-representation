@@ -9,6 +9,7 @@ from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
     DirectShogiPolicyValueModelConfig,
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
+    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
@@ -51,6 +52,27 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreaterEqual(result.metrics.top_5_accuracy, result.metrics.top_3_accuracy)
         self.assertGreater(result.metrics.mean_reciprocal_rank, 0.0)
         self.assertGreaterEqual(result.metrics.mean_correct_move_rank, 1.0)
+
+    def test_trains_policy_plane_model_for_one_step(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
+
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                model=SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+            ),
+        )
+
+        self.assertEqual(result.metrics.train_case_count, 3)
+        self.assertGreater(result.metrics.initial_loss, 0.0)
+        self.assertGreater(result.metrics.final_loss, 0.0)
+        self.assertGreaterEqual(result.metrics.top_3_accuracy, result.metrics.accuracy)
+        self.assertGreaterEqual(result.metrics.top_5_accuracy, result.metrics.top_3_accuracy)
 
     def test_can_overfit_tiny_move_sequence(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))

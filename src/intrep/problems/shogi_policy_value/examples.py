@@ -78,7 +78,9 @@ class PolicyPlaneValueTensorSample:
     value_target: torch.Tensor
 
 
-ShogiPolicyValueDatasetItem = ShogiMovePolicyValueExample | CandidateMovePolicyValueTensorSample
+ShogiPolicyValueDatasetItem = (
+    ShogiMovePolicyValueExample | CandidateMovePolicyValueTensorSample | PolicyPlaneValueTensorSample
+)
 
 
 def load_shogi_move_policy_value_examples_jsonl(path: str | Path, *, max_examples: int | None = None) -> list[ShogiMovePolicyValueExample]:
@@ -238,6 +240,30 @@ def tensorize_candidate_move_policy_value_examples(
     return [tensorize_candidate_move_policy_value_example(example) for example in examples]
 
 
+class ShogiPolicyPlaneValueDataset(TorchDataset):
+    def __init__(self, examples: Sequence[ShogiPolicyValueDatasetItem]) -> None:
+        if not examples:
+            raise ValueError("examples must not be empty")
+        if any(isinstance(example, CandidateMovePolicyValueTensorSample) for example in examples):
+            raise ValueError("candidate-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
+        self.examples = examples
+
+    def __len__(self) -> int:
+        return len(self.examples)
+
+    def __getitem__(self, index: int):
+        if torch is None:
+            raise RuntimeError("torch is required to materialize ShogiPolicyPlaneValueDataset items")
+        sample = _policy_plane_value_tensor_sample(self.examples[index])
+        return (
+            sample.position_token_ids,
+            sample.policy_plane_legal_mask,
+            sample.policy_plane_label,
+            sample.policy_plane_targets,
+            sample.value_target,
+        )
+
+
 def tensorize_policy_plane_value_example(example: ShogiMovePolicyValueExample) -> PolicyPlaneValueTensorSample:
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy-plane samples")
@@ -325,12 +351,26 @@ def _candidate_move_policy_value_tensor_sample(
 ) -> CandidateMovePolicyValueTensorSample:
     if isinstance(example, CandidateMovePolicyValueTensorSample):
         return example
+    if isinstance(example, PolicyPlaneValueTensorSample):
+        raise ValueError("policy-plane tensor samples cannot be used with ShogiPolicyValueDataset")
     return tensorize_candidate_move_policy_value_example(example)
+
+
+def _policy_plane_value_tensor_sample(
+    example: ShogiPolicyValueDatasetItem,
+) -> PolicyPlaneValueTensorSample:
+    if isinstance(example, PolicyPlaneValueTensorSample):
+        return example
+    if isinstance(example, CandidateMovePolicyValueTensorSample):
+        raise ValueError("candidate-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
+    return tensorize_policy_plane_value_example(example)
 
 
 def _choice_count(example: ShogiPolicyValueDatasetItem) -> int:
     if isinstance(example, CandidateMovePolicyValueTensorSample):
         return int(example.candidate_move_features.shape[0])
+    if isinstance(example, PolicyPlaneValueTensorSample):
+        raise ValueError("policy-plane tensor samples do not have candidate choices")
     return len(example.legal_moves)
 
 

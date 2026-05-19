@@ -66,12 +66,14 @@ and MCTS integration. It is a larger change than adding attack input features.
 - Added `PolicyPlaneShogiPolicyValueModel` as a separate fixed-action shared-core
   model skeleton. It is intentionally not exposed through the training CLI until
   policy-plane dataset collation and loss/metrics are wired.
+- Added policy-plane dataset collation, training/evaluation support, CLI model
+  selection, and checkpoint save/load coverage for
+  `policy_plane_shared_transformer`.
 
 Remaining work:
 
 - Decide whether policy-plane output should replace candidate scoring or coexist
   behind a separate model.
-- Add a policy-plane training path.
 - Connect MCTS priors to policy-plane outputs.
 
 ## Policy Output Space Boundary
