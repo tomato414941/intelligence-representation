@@ -11,6 +11,9 @@ from intrep.worlds.shogi.position_encoding import (
     BOARD_TOKEN_COUNT,
     BOARD_TOKEN_OFFSET,
     HAND_TOKEN_OFFSET,
+    KING_RELATION_TOKEN_OFFSET,
+    PIECE_ATTACK_PIECE_TYPE_COUNT,
+    PIECE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
@@ -248,7 +251,34 @@ class ShogiPositionInputLayer(nn.Module):
             :,
             ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT : ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT * 2,
         ]
-        square_features = torch.stack((pieces, own_attacks, opponent_attacks), dim=2)
+        own_piece_attacks = position_token_ids[
+            :,
+            PIECE_ATTACK_TOKEN_OFFSET : PIECE_ATTACK_TOKEN_OFFSET + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT,
+        ].reshape(-1, BOARD_TOKEN_COUNT, PIECE_ATTACK_PIECE_TYPE_COUNT)
+        opponent_piece_attacks = position_token_ids[
+            :,
+            PIECE_ATTACK_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT : PIECE_ATTACK_TOKEN_OFFSET
+            + BOARD_TOKEN_COUNT * PIECE_ATTACK_PIECE_TYPE_COUNT * 2,
+        ].reshape(-1, BOARD_TOKEN_COUNT, PIECE_ATTACK_PIECE_TYPE_COUNT)
+        own_king_relations = position_token_ids[
+            :,
+            KING_RELATION_TOKEN_OFFSET : KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT,
+        ]
+        opponent_king_relations = position_token_ids[
+            :,
+            KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT : KING_RELATION_TOKEN_OFFSET + BOARD_TOKEN_COUNT * 2,
+        ]
+        square_features = torch.cat(
+            (
+                torch.stack((pieces, own_attacks, opponent_attacks), dim=2),
+                own_piece_attacks,
+                opponent_piece_attacks,
+                own_king_relations.unsqueeze(2),
+                opponent_king_relations.unsqueeze(2),
+            ),
+            dim=2,
+        )
         square_feature_embeddings = self.token_embedding(square_features)
         feature_slots = torch.arange(SHOGI_POSITION_SQUARE_FEATURE_COUNT, device=position_token_ids.device)
         square_hidden = (

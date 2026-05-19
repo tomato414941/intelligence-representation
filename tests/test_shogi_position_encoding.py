@@ -12,22 +12,29 @@ from intrep.worlds.shogi.position_encoding import (
     HAND_PIECE_TYPES,
     IN_CHECK_TOKEN_ID,
     IN_CHECK_TOKEN_INDEX,
+    KING_RELATION_TOKEN_OFFSET,
     MOVE_COUNT_BUCKET_OFFSET,
     MOVE_COUNT_BUCKET_OVERFLOW,
     MOVE_COUNT_TOKEN_INDEX,
     NOT_IN_CHECK_TOKEN_ID,
     OPPONENT_ATTACK_OFFSET,
     OPPONENT_HAND_OFFSET,
+    OPPONENT_PIECE_ATTACK_OFFSET,
     OPPONENT_PIECE_OFFSET,
     OWN_ATTACK_OFFSET,
     OWN_HAND_OFFSET,
+    OWN_KING_RELATION_OFFSET,
+    OWN_PIECE_ATTACK_OFFSET,
     OWN_PIECE_OFFSET,
+    PIECE_ATTACK_PIECE_TYPES,
+    PIECE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
     absolute_to_relative_square,
+    king_relative_offset_bucket,
     move_count_bucket_token_id,
     shogi_position_token_ids_from_sfen,
 )
@@ -128,6 +135,62 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(
             int(white_tokens[ATTACK_TOKEN_OFFSET + 81 + white_relative_7f].item()),
             OPPONENT_ATTACK_OFFSET + 1,
+        )
+
+    def test_encodes_piece_type_specific_attacks(self) -> None:
+        board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5b = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.BLACK)
+        rook_feature = PIECE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
+        pawn_feature = PIECE_ATTACK_PIECE_TYPES.index(shogi.PAWN)
+        rook_attack_index = PIECE_ATTACK_TOKEN_OFFSET + relative_5b * len(PIECE_ATTACK_PIECE_TYPES) + rook_feature
+        pawn_attack_index = PIECE_ATTACK_TOKEN_OFFSET + relative_5b * len(PIECE_ATTACK_PIECE_TYPES) + pawn_feature
+
+        self.assertEqual(int(token_ids[rook_attack_index].item()), OWN_PIECE_ATTACK_OFFSET + rook_feature * 2 + 1)
+        self.assertEqual(int(token_ids[pawn_attack_index].item()), OWN_PIECE_ATTACK_OFFSET + pawn_feature * 2)
+
+    def test_white_to_move_piece_type_specific_attacks_are_side_to_move_relative(self) -> None:
+        black_board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        white_board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 w - 1")
+        relative_5b_black = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.BLACK)
+        relative_5b_white = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.WHITE)
+        rook_feature = PIECE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
+
+        black_tokens = shogi_position_token_ids_from_sfen(black_board.sfen())
+        white_tokens = shogi_position_token_ids_from_sfen(white_board.sfen())
+        black_index = PIECE_ATTACK_TOKEN_OFFSET + relative_5b_black * len(PIECE_ATTACK_PIECE_TYPES) + rook_feature
+        white_index = (
+            PIECE_ATTACK_TOKEN_OFFSET
+            + 81 * len(PIECE_ATTACK_PIECE_TYPES)
+            + relative_5b_white * len(PIECE_ATTACK_PIECE_TYPES)
+            + rook_feature
+        )
+
+        self.assertEqual(int(black_tokens[black_index].item()), OWN_PIECE_ATTACK_OFFSET + rook_feature * 2 + 1)
+        self.assertEqual(int(white_tokens[white_index].item()), OPPONENT_PIECE_ATTACK_OFFSET + rook_feature * 2 + 1)
+
+    def test_encodes_king_relations_for_each_square(self) -> None:
+        board = shogi.Board("4k4/9/9/9/9/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
+        relative_5h = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5h"), shogi.BLACK)
+        relation_index = KING_RELATION_TOKEN_OFFSET + relative_5h
+        expected_bucket = king_relative_offset_bucket(relative_5h, relative_5i)
+
+        self.assertEqual(int(token_ids[relation_index].item()), OWN_KING_RELATION_OFFSET + 1 + expected_bucket)
+
+    def test_white_to_move_king_relations_are_side_to_move_relative(self) -> None:
+        white_board = shogi.Board("4k4/9/9/9/9/9/9/9/4K4 w - 1")
+        relative_5a_for_white = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.WHITE)
+        relative_5b_for_white = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.WHITE)
+        relation_index = KING_RELATION_TOKEN_OFFSET + relative_5b_for_white
+        expected_bucket = king_relative_offset_bucket(relative_5b_for_white, relative_5a_for_white)
+
+        white_tokens = shogi_position_token_ids_from_sfen(white_board.sfen())
+
+        self.assertEqual(
+            int(white_tokens[relation_index].item()),
+            OWN_KING_RELATION_OFFSET + 1 + expected_bucket,
         )
 
     def test_large_own_pawn_hand_counts_are_not_collapsed_to_six(self) -> None:

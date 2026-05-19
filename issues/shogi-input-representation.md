@@ -31,6 +31,8 @@ Current represented information:
 - own/opponent piece identity, including promoted piece types through
   `python-shogi` piece types
 - own/opponent attack-count buckets per relative square, capped at 3
+- own/opponent piece-type-specific attack flags per relative square
+- own/opponent king-relative square relation tokens
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -39,7 +41,8 @@ Current missing or intentionally deferred information:
 
 - position history
 - repetition or no-progress rule context
-- piece-type-specific attack maps
+- pin and discovered-attack context
+- king-safety aggregate features
 
 ## Desired Shape
 
@@ -57,7 +60,8 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own/opponent piece identity
   - own attack-count bucket
   - opponent attack-count bucket
-  - optional future piece-type attack features
+  - own/opponent piece-type-specific attack flags
+  - own/opponent king-relative square relation
 
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square.
@@ -105,7 +109,7 @@ state to be represented without broadcasting it over every square.
 - Added a global move-count bucket token to the shogi position input sequence.
 - Move counts use coarse buckets with an explicit unknown bucket:
   unknown, 1-30, 31-60, 61-90, 91-120, 121-160, 161-220, and 221+.
-- The current input identity is
+- The input identity at this step was
   `shogi_side_to_move_relative_in_check_move_count_bucket_attack_counts`, so
   older checkpoints and tensor caches are rejected.
 - Replaced the shared Transformer position input layer with a
@@ -114,11 +118,20 @@ state to be represented without broadcasting it over every square.
     move-count bucket, and 14 hand tokens
   - 81 square tokens, each combining side-to-move-relative square identity,
     piece identity, own attack-count bucket, and opponent attack-count bucket
-- The current input identity is `shogi_global_square_feature_sequence_v1`.
+- The input identity at this step was
+  `shogi_global_square_feature_sequence_v1`.
+- Added own/opponent piece-type-specific attack flags per relative square.
+  These preserve the existing square-token sequence length while giving the
+  model the quality of square control, not only the attack count.
+- Added own/opponent king-relative square relation tokens so each square can
+  express its relation to both kings, reflecting the NNUE-style king-piece
+  relation signal in a Transformer-native form.
+- The current input identity is `shogi_global_square_feature_sequence_v2`.
 
 ## Follow-Ups
 
-- Keep piece-type-specific attack-map features as a separate issue because their
-  strength upside and CPU cost are both larger.
 - Keep history/repetition features separate from basic position features because
   they interact with rule context and data generation.
+- Consider pin/discovered-attack features only after the v2 representation has
+  been exercised; they are more evaluation-function-like and harder to define
+  cleanly.

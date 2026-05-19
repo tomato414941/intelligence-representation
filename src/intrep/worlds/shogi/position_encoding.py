@@ -6,6 +6,10 @@ import torch
 
 BOARD_TOKEN_COUNT = 81
 ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
+PIECE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
+PIECE_ATTACK_PIECE_TYPE_COUNT = len(PIECE_ATTACK_PIECE_TYPES)
+PIECE_ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * PIECE_ATTACK_PIECE_TYPE_COUNT
+KING_RELATION_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
 HAND_TOKEN_COUNT = 14
 GLOBAL_TOKEN_COUNT = 18
 SIDE_TO_MOVE_TOKEN_INDEX = 0
@@ -13,10 +17,12 @@ IN_CHECK_TOKEN_INDEX = 1
 MOVE_COUNT_TOKEN_INDEX = 2
 BOARD_TOKEN_OFFSET = 3
 ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
-HAND_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
+PIECE_ATTACK_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
+KING_RELATION_TOKEN_OFFSET = PIECE_ATTACK_TOKEN_OFFSET + PIECE_ATTACK_TOKEN_COUNT
+HAND_TOKEN_OFFSET = KING_RELATION_TOKEN_OFFSET + KING_RELATION_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_feature_sequence_v1"
+SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_feature_sequence_v2"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -50,10 +56,16 @@ MOVE_COUNT_BUCKETS = (
 MOVE_COUNT_BUCKET_OFFSET = OPPONENT_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 MOVE_COUNT_BUCKET_OVERFLOW = len(MOVE_COUNT_BUCKETS) + 1
 MOVE_COUNT_BUCKET_VOCAB_SIZE = MOVE_COUNT_BUCKET_OVERFLOW + 1
-SHOGI_POSITION_VOCAB_SIZE = MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_VOCAB_SIZE
+OWN_PIECE_ATTACK_OFFSET = MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_VOCAB_SIZE
+OPPONENT_PIECE_ATTACK_OFFSET = OWN_PIECE_ATTACK_OFFSET + PIECE_ATTACK_PIECE_TYPE_COUNT * 2
+KING_RELATION_OFFSET_BUCKET_COUNT = 17 * 17
+KING_RELATION_BUCKET_UNKNOWN = 0
+OWN_KING_RELATION_OFFSET = OPPONENT_PIECE_ATTACK_OFFSET + PIECE_ATTACK_PIECE_TYPE_COUNT * 2
+OPPONENT_KING_RELATION_OFFSET = OWN_KING_RELATION_OFFSET + KING_RELATION_OFFSET_BUCKET_COUNT + 1
+SHOGI_POSITION_VOCAB_SIZE = OPPONENT_KING_RELATION_OFFSET + KING_RELATION_OFFSET_BUCKET_COUNT + 1
 SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_TOKEN_COUNT
 SHOGI_POSITION_SQUARE_COUNT = BOARD_TOKEN_COUNT
-SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3
+SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3 + PIECE_ATTACK_PIECE_TYPE_COUNT * 2 + 2
 SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_STATE_TOKEN_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_TOKEN_ID + 1
@@ -78,6 +90,8 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     ]
     token_ids.extend(relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT))
     token_ids.extend(attack_token_ids(board))
+    token_ids.extend(piece_attack_token_ids(board))
+    token_ids.extend(king_relation_token_ids(board))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
 
@@ -143,6 +157,61 @@ def attack_token_ids(board: shogi.Board) -> list[int]:
 def attack_count_token_id(board: shogi.Board, color: int, square: int, *, offset: int) -> int:
     count = len(board.attackers(color, square))
     return offset + min(count, ATTACK_COUNT_TOKEN_MAX)
+
+
+def piece_attack_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    token_ids.extend(_piece_attack_token_ids_for_color(board, board.turn, offset=OWN_PIECE_ATTACK_OFFSET))
+    token_ids.extend(
+        _piece_attack_token_ids_for_color(board, opponent_color(board.turn), offset=OPPONENT_PIECE_ATTACK_OFFSET)
+    )
+    return token_ids
+
+
+def _piece_attack_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
+    token_ids: list[int] = []
+    piece_type_to_index = {piece_type: index for index, piece_type in enumerate(PIECE_ATTACK_PIECE_TYPES)}
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        attacked_piece_types: set[int] = set()
+        for attacker_square in board.attackers(color, absolute_square):
+            piece = board.piece_at(attacker_square)
+            if piece is not None:
+                attacked_piece_types.add(int(piece.piece_type))
+        for piece_type in PIECE_ATTACK_PIECE_TYPES:
+            feature_index = piece_type_to_index[piece_type]
+            token_ids.append(offset + feature_index * 2 + int(piece_type in attacked_piece_types))
+    return token_ids
+
+
+def king_relation_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    token_ids.extend(_king_relation_token_ids_for_color(board, board.turn, offset=OWN_KING_RELATION_OFFSET))
+    token_ids.extend(
+        _king_relation_token_ids_for_color(board, opponent_color(board.turn), offset=OPPONENT_KING_RELATION_OFFSET)
+    )
+    return token_ids
+
+
+def _king_relation_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
+    king_square = board.king_squares[color]
+    if king_square is None:
+        return [offset + KING_RELATION_BUCKET_UNKNOWN for _ in range(BOARD_TOKEN_COUNT)]
+    relative_king_square = absolute_to_relative_square(int(king_square), board.turn)
+    return [
+        offset + 1 + king_relative_offset_bucket(relative_square, relative_king_square)
+        for relative_square in range(BOARD_TOKEN_COUNT)
+    ]
+
+
+def king_relative_offset_bucket(relative_square: int, relative_king_square: int) -> int:
+    square_file = relative_square % 9
+    square_rank = relative_square // 9
+    king_file = relative_king_square % 9
+    king_rank = relative_king_square // 9
+    file_delta = square_file - king_file
+    rank_delta = square_rank - king_rank
+    return (rank_delta + 8) * 17 + file_delta + 8
 
 
 def absolute_to_relative_square(square: int, turn: int) -> int:
