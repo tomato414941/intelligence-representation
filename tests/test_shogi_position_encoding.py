@@ -23,6 +23,7 @@ from intrep.worlds.shogi.position_encoding import (
     OWN_HAND_OFFSET,
     OWN_PIECE_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
+    SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
@@ -38,6 +39,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(token_ids.dtype, torch.long)
         self.assertEqual(tuple(token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
+        self.assertEqual(SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 99)
         self.assertEqual(int(token_ids[0].item()), SIDE_TO_MOVE_BLACK_TOKEN_ID)
         self.assertEqual(int(token_ids[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
         self.assertEqual(int(token_ids[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)

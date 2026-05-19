@@ -17,6 +17,7 @@ from intrep.problems.shogi_policy_value.model import (
     PolicyPlaneShogiPolicyValueModelConfig,
     SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+    ShogiPositionInputLayer,
     ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
@@ -24,7 +25,7 @@ from intrep.problems.shogi_policy_value.model import (
     shogi_policy_value_model_spec,
 )
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
-from intrep.worlds.shogi.position_encoding import BOARD_TOKEN_OFFSET, SHOGI_POSITION_TOKEN_COUNT
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SQUARE_TOKEN_OFFSET
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
@@ -113,9 +114,9 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(model.policy_head.scorer[0].in_features, 8 * 4)
 
     def test_candidate_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_POSITION_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
+        position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_POSITION_TOKEN_COUNT,
+            SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
             3,
         )
         square_ids = torch.tensor([[0, 80], [NO_FROM_SQUARE_ID, 7]])
@@ -126,10 +127,18 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             zero_square_id=NO_FROM_SQUARE_ID,
         )
 
-        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, BOARD_TOKEN_OFFSET]))
-        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, BOARD_TOKEN_OFFSET + 80]))
+        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, SQUARE_TOKEN_OFFSET]))
+        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, SQUARE_TOKEN_OFFSET + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
-        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, BOARD_TOKEN_OFFSET + 7]))
+        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_TOKEN_OFFSET + 7]))
+
+    def test_position_input_layer_builds_global_square_sequence(self) -> None:
+        position_token_ids, _, _, _, _, _ = _batch()
+        layer = ShogiPositionInputLayer(embedding_dim=8)
+
+        embeddings = layer(position_token_ids)
+
+        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
 
     def test_policy_plane_head_returns_fixed_action_logits(self) -> None:
         head = ShogiPolicyPlaneHead(

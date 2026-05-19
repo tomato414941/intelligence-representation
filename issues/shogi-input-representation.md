@@ -40,7 +40,6 @@ Current missing or intentionally deferred information:
 - position history
 - repetition or no-progress rule context
 - piece-type-specific attack maps
-- Transformer-native `global tokens + 81 square tokens` input structure
 
 ## Desired Shape
 
@@ -109,11 +108,16 @@ state to be represented without broadcasting it over every square.
 - The current input identity is
   `shogi_side_to_move_relative_in_check_move_count_bucket_attack_counts`, so
   older checkpoints and tensor caches are rejected.
+- Replaced the shared Transformer position input layer with a
+  Transformer-native feature sequence:
+  - 18 global tokens: state/value token, side-to-move, in-check,
+    move-count bucket, and 14 hand tokens
+  - 81 square tokens, each combining side-to-move-relative square identity,
+    piece identity, own attack-count bucket, and opponent attack-count bucket
+- The current input identity is `shogi_global_square_feature_sequence_v1`.
 
 ## Follow-Ups
 
-- Decide whether to replace the compact token sequence with the desired
-  `global tokens + 81 square tokens` structure before full training.
 - Keep piece-type-specific attack-map features as a separate issue because their
   strength upside and CPU cost are both larger.
 - Keep history/repetition features separate from basic position features because
