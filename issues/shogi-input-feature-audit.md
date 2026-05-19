@@ -125,3 +125,12 @@ Recommended follow-up split:
   `shogi_side_to_move_relative_in_check_attack_counts`, so older checkpoints and
   tensor caches are rejected.
 - Tests cover both safe and checked side-to-move positions.
+
+2026-05-19:
+
+- Added a global move-count bucket token to the shogi position input sequence.
+- Move counts use coarse buckets with an explicit unknown bucket:
+  unknown, 1-30, 31-60, 61-90, 91-120, 121-160, 161-220, and 221+.
+- The input identity was changed to
+  `shogi_side_to_move_relative_in_check_move_count_bucket_attack_counts`, so
+  older checkpoints and tensor caches are rejected.

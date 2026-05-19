@@ -9,11 +9,12 @@ ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
 HAND_TOKEN_COUNT = 14
 SIDE_TO_MOVE_TOKEN_INDEX = 0
 IN_CHECK_TOKEN_INDEX = 1
-BOARD_TOKEN_OFFSET = 2
+MOVE_COUNT_TOKEN_INDEX = 2
+BOARD_TOKEN_OFFSET = 3
 ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 HAND_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative_in_check_attack_counts"
+SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative_in_check_move_count_bucket_attack_counts"
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
@@ -28,7 +29,19 @@ OPPONENT_ATTACK_OFFSET = OWN_ATTACK_OFFSET + ATTACK_COUNT_TOKEN_MAX + 1
 HAND_COUNT_TOKEN_MAX = 18
 OWN_HAND_OFFSET = OPPONENT_ATTACK_OFFSET + ATTACK_COUNT_TOKEN_MAX + 1
 OPPONENT_HAND_OFFSET = OWN_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
-SHOGI_POSITION_VOCAB_SIZE = OPPONENT_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
+MOVE_COUNT_BUCKET_UNKNOWN = 0
+MOVE_COUNT_BUCKETS = (
+    (1, 30),
+    (31, 60),
+    (61, 90),
+    (91, 120),
+    (121, 160),
+    (161, 220),
+)
+MOVE_COUNT_BUCKET_OFFSET = OPPONENT_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
+MOVE_COUNT_BUCKET_OVERFLOW = len(MOVE_COUNT_BUCKETS) + 1
+MOVE_COUNT_BUCKET_VOCAB_SIZE = MOVE_COUNT_BUCKET_OVERFLOW + 1
+SHOGI_POSITION_VOCAB_SIZE = MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_VOCAB_SIZE
 
 HAND_PIECE_TYPES = (
     shogi.PAWN,
@@ -46,6 +59,7 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     token_ids = [
         side_to_move_token_id(board.turn),
         in_check_token_id(board.is_check()),
+        move_count_bucket_token_id(board.move_number),
     ]
     token_ids.extend(relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT))
     token_ids.extend(attack_token_ids(board))
@@ -63,6 +77,15 @@ def side_to_move_token_id(color: int) -> int:
 
 def in_check_token_id(in_check: bool) -> int:
     return IN_CHECK_TOKEN_ID if in_check else NOT_IN_CHECK_TOKEN_ID
+
+
+def move_count_bucket_token_id(move_number: int | None) -> int:
+    if move_number is None or move_number <= 0:
+        return MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_UNKNOWN
+    for bucket_index, (start, end) in enumerate(MOVE_COUNT_BUCKETS, start=1):
+        if start <= move_number <= end:
+            return MOVE_COUNT_BUCKET_OFFSET + bucket_index
+    return MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_OVERFLOW
 
 
 def relative_square_token_id(board: shogi.Board, relative_square: int) -> int:

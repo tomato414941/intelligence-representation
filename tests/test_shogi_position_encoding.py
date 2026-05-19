@@ -12,6 +12,9 @@ from intrep.worlds.shogi.position_encoding import (
     HAND_PIECE_TYPES,
     IN_CHECK_TOKEN_ID,
     IN_CHECK_TOKEN_INDEX,
+    MOVE_COUNT_BUCKET_OFFSET,
+    MOVE_COUNT_BUCKET_OVERFLOW,
+    MOVE_COUNT_TOKEN_INDEX,
     NOT_IN_CHECK_TOKEN_ID,
     OPPONENT_ATTACK_OFFSET,
     OPPONENT_HAND_OFFSET,
@@ -24,6 +27,7 @@ from intrep.worlds.shogi.position_encoding import (
     SIDE_TO_MOVE_BLACK_TOKEN_ID,
     SIDE_TO_MOVE_WHITE_TOKEN_ID,
     absolute_to_relative_square,
+    move_count_bucket_token_id,
     shogi_position_token_ids_from_sfen,
 )
 
@@ -36,6 +40,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(tuple(token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
         self.assertEqual(int(token_ids[0].item()), SIDE_TO_MOVE_BLACK_TOKEN_ID)
         self.assertEqual(int(token_ids[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
+        self.assertEqual(int(token_ids[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
         self.assertGreaterEqual(int(token_ids.min().item()), 0)
         self.assertLess(int(token_ids.max().item()), SHOGI_POSITION_VOCAB_SIZE)
 
@@ -75,6 +80,22 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(int(safe_tokens[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
         self.assertEqual(int(checked_tokens[IN_CHECK_TOKEN_INDEX].item()), IN_CHECK_TOKEN_ID)
+
+    def test_encodes_move_count_bucket(self) -> None:
+        early_board = shogi.Board()
+        late_board = shogi.Board()
+        late_board.move_number = 95
+
+        early_tokens = shogi_position_token_ids_from_sfen(early_board.sfen())
+        late_tokens = shogi_position_token_ids_from_sfen(late_board.sfen())
+
+        self.assertEqual(int(early_tokens[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
+        self.assertEqual(int(late_tokens[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 4)
+
+    def test_move_count_bucket_supports_unknown_and_overflow(self) -> None:
+        self.assertEqual(move_count_bucket_token_id(None), MOVE_COUNT_BUCKET_OFFSET)
+        self.assertEqual(move_count_bucket_token_id(0), MOVE_COUNT_BUCKET_OFFSET)
+        self.assertEqual(move_count_bucket_token_id(221), MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_OVERFLOW)
 
     def test_encodes_attack_counts_relative_to_side_to_move(self) -> None:
         board = shogi.Board()
