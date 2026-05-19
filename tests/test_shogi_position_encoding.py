@@ -21,11 +21,19 @@ from intrep.worlds.shogi.position_encoding import (
     OPPONENT_HAND_OFFSET,
     OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
     OPPONENT_PIECE_OFFSET,
+    OPPONENT_KING_RELATIVE_SQUARE_OFFSET,
     OWN_ATTACK_OFFSET,
     OWN_HAND_OFFSET,
     OWN_KING_RELATIVE_SQUARE_OFFSET,
     OWN_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
     OWN_PIECE_OFFSET,
+    PIECE_FEATURE_COUNT,
+    PIECE_FEATURE_TOKEN_OFFSET,
+    PIECE_SLOT_COUNT,
+    PIECE_SLOT_EMPTY_TOKEN_ID,
+    PIECE_SLOT_OCCUPIED_TOKEN_ID,
+    PIECE_SQUARE_OFFSET,
+    PIECE_SQUARE_UNKNOWN_TOKEN_ID,
     SQUARE_ATTACK_PIECE_TYPES,
     SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
@@ -46,7 +54,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(token_ids.dtype, torch.long)
         self.assertEqual(tuple(token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
-        self.assertEqual(SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 99)
+        self.assertEqual(SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 139)
         self.assertEqual(int(token_ids[0].item()), SIDE_TO_MOVE_BLACK_TOKEN_ID)
         self.assertEqual(int(token_ids[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
         self.assertEqual(int(token_ids[MOVE_COUNT_TOKEN_INDEX].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
@@ -63,6 +71,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
     def test_position_is_side_to_move_relative(self) -> None:
         board = shogi.Board()
+        board.remove_piece_at(shogi.SQUARE_NAMES.index("1a"))
         board.set_piece_at(shogi.SQUARE_NAMES.index("5e"), shogi.Piece(shogi.PAWN, shogi.WHITE))
         black_tokens = shogi_position_token_ids_from_sfen(board.sfen())
         board.turn = shogi.WHITE
@@ -212,6 +221,58 @@ class ShogiPositionEncodingTest(unittest.TestCase):
             int(white_tokens[feature_index].item()),
             OWN_KING_RELATIVE_SQUARE_OFFSET + 1 + expected_bucket,
         )
+
+    def test_encodes_fixed_piece_tokens_in_relative_square_order(self) -> None:
+        board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+        relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
+
+        first_piece_offset = PIECE_FEATURE_TOKEN_OFFSET
+        second_piece_offset = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_COUNT
+        third_piece_offset = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_COUNT * 2
+        fourth_piece_offset = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_COUNT * 3
+
+        self.assertEqual(int(token_ids[first_piece_offset].item()), PIECE_SLOT_OCCUPIED_TOKEN_ID)
+        self.assertEqual(int(token_ids[first_piece_offset + 1].item()), OPPONENT_PIECE_OFFSET + shogi.KING - 1)
+        self.assertEqual(int(token_ids[first_piece_offset + 2].item()), PIECE_SQUARE_OFFSET + relative_5a)
+        self.assertEqual(int(token_ids[second_piece_offset + 1].item()), OWN_PIECE_OFFSET + shogi.ROOK - 1)
+        self.assertEqual(int(token_ids[second_piece_offset + 2].item()), PIECE_SQUARE_OFFSET + relative_5e)
+        self.assertEqual(int(token_ids[third_piece_offset + 1].item()), OWN_PIECE_OFFSET + shogi.KING - 1)
+        self.assertEqual(int(token_ids[third_piece_offset + 2].item()), PIECE_SQUARE_OFFSET + relative_5i)
+        self.assertEqual(int(token_ids[fourth_piece_offset].item()), PIECE_SLOT_EMPTY_TOKEN_ID)
+        self.assertEqual(int(token_ids[fourth_piece_offset + 2].item()), PIECE_SQUARE_UNKNOWN_TOKEN_ID)
+
+    def test_piece_tokens_include_king_relative_square_features(self) -> None:
+        board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
+        relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
+        rook_piece_offset = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_COUNT
+
+        own_king_bucket = king_relative_offset_bucket(relative_5e, relative_5i)
+        opponent_king_bucket = king_relative_offset_bucket(relative_5e, relative_5a)
+
+        self.assertEqual(
+            int(token_ids[rook_piece_offset + 3].item()),
+            OWN_KING_RELATIVE_SQUARE_OFFSET + 1 + own_king_bucket,
+        )
+        self.assertEqual(
+            int(token_ids[rook_piece_offset + 4].item()),
+            OPPONENT_KING_RELATIVE_SQUARE_OFFSET + 1 + opponent_king_bucket,
+        )
+
+    def test_piece_tokens_are_padded_to_forty_slots(self) -> None:
+        board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        final_piece_offset = PIECE_FEATURE_TOKEN_OFFSET + (PIECE_SLOT_COUNT - 1) * PIECE_FEATURE_COUNT
+
+        self.assertEqual(PIECE_SLOT_COUNT, 40)
+        self.assertEqual(int(token_ids[final_piece_offset].item()), PIECE_SLOT_EMPTY_TOKEN_ID)
+        self.assertEqual(int(token_ids[final_piece_offset + 1].item()), 0)
+        self.assertEqual(int(token_ids[final_piece_offset + 2].item()), PIECE_SQUARE_UNKNOWN_TOKEN_ID)
 
     def test_large_own_pawn_hand_counts_are_not_collapsed_to_six(self) -> None:
         board = shogi.Board()

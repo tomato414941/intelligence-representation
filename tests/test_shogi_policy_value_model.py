@@ -132,7 +132,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
         self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_TOKEN_OFFSET + 7]))
 
-    def test_position_input_layer_builds_global_square_sequence(self) -> None:
+    def test_position_input_layer_builds_global_square_piece_sequence(self) -> None:
         position_token_ids, _, _, _, _, _ = _batch()
         layer = ShogiPositionInputLayer(embedding_dim=8)
 

@@ -10,6 +10,9 @@ SQUARE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
 SQUARE_ATTACK_PIECE_TYPE_COUNT = len(SQUARE_ATTACK_PIECE_TYPES)
 SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * SQUARE_ATTACK_PIECE_TYPE_COUNT
 KING_RELATIVE_SQUARE_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
+PIECE_SLOT_COUNT = 40
+PIECE_FEATURE_COUNT = 5
+PIECE_FEATURE_TOKEN_COUNT = PIECE_SLOT_COUNT * PIECE_FEATURE_COUNT
 HAND_TOKEN_COUNT = 14
 GLOBAL_TOKEN_COUNT = 18
 SIDE_TO_MOVE_TOKEN_INDEX = 0
@@ -19,10 +22,11 @@ BOARD_TOKEN_OFFSET = 3
 ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
 KING_RELATIVE_SQUARE_TOKEN_OFFSET = SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET + SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT
-HAND_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
+PIECE_FEATURE_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
+HAND_TOKEN_OFFSET = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
-SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_feature_sequence_v2"
+SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT
+SHOGI_POSITION_INPUT_ENCODING = "shogi_global_square_piece_feature_sequence_v1"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -30,6 +34,7 @@ GLOBAL_IN_CHECK_TOKEN_INDEX = 2
 GLOBAL_MOVE_COUNT_TOKEN_INDEX = 3
 GLOBAL_HAND_TOKEN_OFFSET = 4
 SQUARE_TOKEN_OFFSET = GLOBAL_TOKEN_COUNT
+PIECE_TOKEN_OFFSET = SQUARE_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
@@ -62,11 +67,17 @@ KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT = 17 * 17
 KING_RELATIVE_SQUARE_BUCKET_UNKNOWN = 0
 OWN_KING_RELATIVE_SQUARE_OFFSET = OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2
 OPPONENT_KING_RELATIVE_SQUARE_OFFSET = OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
-SHOGI_POSITION_VOCAB_SIZE = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
+PIECE_SLOT_EMPTY_TOKEN_ID = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
+PIECE_SLOT_OCCUPIED_TOKEN_ID = PIECE_SLOT_EMPTY_TOKEN_ID + 1
+PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_SLOT_OCCUPIED_TOKEN_ID + 1
+PIECE_SQUARE_OFFSET = PIECE_SQUARE_UNKNOWN_TOKEN_ID + 1
+SHOGI_POSITION_VOCAB_SIZE = PIECE_SQUARE_OFFSET + BOARD_TOKEN_COUNT
 SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_TOKEN_COUNT
 SHOGI_POSITION_SQUARE_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_SQUARE_FEATURE_COUNT = 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2
 SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
+SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
+SHOGI_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
 SHOGI_POSITION_STATE_TOKEN_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_TOKEN_ID + 1
 
@@ -92,6 +103,7 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     token_ids.extend(attack_token_ids(board))
     token_ids.extend(square_piece_type_attack_token_ids(board))
     token_ids.extend(king_relative_square_token_ids(board))
+    token_ids.extend(piece_feature_token_ids(board))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
 
@@ -214,13 +226,62 @@ def king_relative_square_token_ids(board: shogi.Board) -> list[int]:
 
 
 def _king_relative_square_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
+    return [
+        king_relative_square_token_id(board, color, relative_square, offset=offset)
+        for relative_square in range(BOARD_TOKEN_COUNT)
+    ]
+
+
+def king_relative_square_token_id(board: shogi.Board, color: int, relative_square: int, *, offset: int) -> int:
     king_square = board.king_squares[color]
     if king_square is None:
-        return [offset + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN for _ in range(BOARD_TOKEN_COUNT)]
+        return offset + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN
     relative_king_square = absolute_to_relative_square(int(king_square), board.turn)
+    return offset + 1 + king_relative_offset_bucket(relative_square, relative_king_square)
+
+
+def piece_feature_token_ids(board: shogi.Board) -> list[int]:
+    occupied_piece_features: list[int] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        piece = board.piece_at(absolute_square)
+        if piece is not None:
+            occupied_piece_features.extend(piece_slot_token_ids(board, piece, relative_square))
+    empty_slot_count = PIECE_SLOT_COUNT - len(occupied_piece_features) // PIECE_FEATURE_COUNT
+    if empty_slot_count < 0:
+        raise ValueError("shogi board contains more pieces than supported piece slots")
+    for _ in range(empty_slot_count):
+        occupied_piece_features.extend(empty_piece_slot_token_ids())
+    return occupied_piece_features
+
+
+def piece_slot_token_ids(board: shogi.Board, piece: shogi.Piece, relative_square: int) -> list[int]:
     return [
-        offset + 1 + king_relative_offset_bucket(relative_square, relative_king_square)
-        for relative_square in range(BOARD_TOKEN_COUNT)
+        PIECE_SLOT_OCCUPIED_TOKEN_ID,
+        piece_token_id(piece, own_color=board.turn),
+        PIECE_SQUARE_OFFSET + relative_square,
+        king_relative_square_token_id(
+            board,
+            board.turn,
+            relative_square,
+            offset=OWN_KING_RELATIVE_SQUARE_OFFSET,
+        ),
+        king_relative_square_token_id(
+            board,
+            opponent_color(board.turn),
+            relative_square,
+            offset=OPPONENT_KING_RELATIVE_SQUARE_OFFSET,
+        ),
+    ]
+
+
+def empty_piece_slot_token_ids() -> list[int]:
+    return [
+        PIECE_SLOT_EMPTY_TOKEN_ID,
+        EMPTY_SQUARE_TOKEN_ID,
+        PIECE_SQUARE_UNKNOWN_TOKEN_ID,
+        OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
+        OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
     ]
 
 

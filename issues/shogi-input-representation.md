@@ -33,6 +33,8 @@ Current represented information:
 - own/opponent attack-count buckets per relative square, capped at 3
 - own/opponent square piece-type attack features
 - own/opponent king-relative square features
+- fixed 40 piece tokens for board pieces, ordered by side-to-move-relative
+  square and padded with empty piece slots
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -62,9 +64,17 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - opponent attack-count bucket
   - own/opponent square piece-type attack features
   - own/opponent king-relative square features
+- piece tokens x40:
+  - empty/occupied slot state
+  - own/opponent piece identity
+  - side-to-move-relative square
+  - own king-relative square feature
+  - opponent king-relative square feature
 
 This keeps the shogi board as 81 square subjects while still allowing global
-state to be represented without broadcasting it over every square.
+state to be represented without broadcasting it over every square. The piece
+tokens add a piece-subject view of the same board rather than dedicated
+relation tokens.
 
 ## Close Condition
 
@@ -127,7 +137,14 @@ state to be represented without broadcasting it over every square.
   its location relative to both kings. This is not a full NNUE HalfKP-style
   feature; it is a square-subject feature that lets an occupied square expose
   the occupying piece together with its king-relative location.
-- The current input identity is `shogi_global_square_feature_sequence_v2`.
+- The input identity at this step was
+  `shogi_global_square_feature_sequence_v2`.
+- Added fixed 40-slot piece tokens. Occupied board pieces are ordered by
+  side-to-move-relative square, and remaining slots are padded as empty. Each
+  piece token includes slot state, piece identity, relative square, and
+  own/opponent king-relative square features.
+- The current input identity is
+  `shogi_global_square_piece_feature_sequence_v1`.
 
 ## Follow-Ups
 

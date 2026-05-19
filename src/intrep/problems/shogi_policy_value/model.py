@@ -12,10 +12,13 @@ from intrep.worlds.shogi.position_encoding import (
     BOARD_TOKEN_OFFSET,
     HAND_TOKEN_OFFSET,
     KING_RELATIVE_SQUARE_TOKEN_OFFSET,
+    PIECE_FEATURE_TOKEN_OFFSET,
     SQUARE_ATTACK_PIECE_TYPE_COUNT,
     SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
@@ -39,7 +42,7 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_feature_sequence_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_piece_feature_sequence_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
@@ -217,12 +220,15 @@ class ShogiPositionInputLayer(nn.Module):
         self.global_slot_embedding = nn.Embedding(SHOGI_POSITION_GLOBAL_SLOT_COUNT, embedding_dim)
         self.square_slot_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_SLOT_COUNT, embedding_dim)
         self.square_feature_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
+        self.piece_slot_embedding = nn.Embedding(SHOGI_POSITION_PIECE_SLOT_COUNT, embedding_dim)
+        self.piece_feature_embedding = nn.Embedding(SHOGI_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
 
     def forward(self, position_token_ids: torch.Tensor) -> torch.Tensor:
         return torch.cat(
             (
                 self._global_embeddings(position_token_ids),
                 self._square_embeddings(position_token_ids),
+                self._piece_embeddings(position_token_ids),
             ),
             dim=1,
         )
@@ -289,6 +295,21 @@ class ShogiPositionInputLayer(nn.Module):
         ).sum(dim=2)
         square_slots = torch.arange(SHOGI_POSITION_SQUARE_COUNT, device=position_token_ids.device).unsqueeze(0)
         return square_hidden + self.square_slot_embedding(square_slots)
+
+    def _piece_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        piece_features = position_token_ids[
+            :,
+            PIECE_FEATURE_TOKEN_OFFSET : PIECE_FEATURE_TOKEN_OFFSET
+            + SHOGI_POSITION_PIECE_SLOT_COUNT * SHOGI_POSITION_PIECE_FEATURE_COUNT,
+        ].reshape(-1, SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT)
+        piece_feature_embeddings = self.token_embedding(piece_features)
+        feature_slots = torch.arange(SHOGI_POSITION_PIECE_FEATURE_COUNT, device=position_token_ids.device)
+        piece_hidden = (
+            piece_feature_embeddings
+            + self.piece_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_PIECE_FEATURE_COUNT, -1)
+        ).sum(dim=2)
+        piece_slots = torch.arange(SHOGI_POSITION_PIECE_SLOT_COUNT, device=position_token_ids.device).unsqueeze(0)
+        return piece_hidden + self.piece_slot_embedding(piece_slots)
 
 
 class SharedCoreShogiPolicyValueModel(nn.Module):
