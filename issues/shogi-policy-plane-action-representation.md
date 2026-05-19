@@ -69,12 +69,14 @@ and MCTS integration. It is a larger change than adding attack input features.
 - Added policy-plane dataset collation, training/evaluation support, CLI model
   selection, and checkpoint save/load coverage for
   `policy_plane_shared_transformer`.
+- Connected policy-plane checkpoints to the `shogi-arena-agent` MCTS runtime by
+  mapping each legal move to its fixed policy-plane action index and using those
+  logits as candidate priors.
 
 Remaining work:
 
 - Decide whether policy-plane output should replace candidate scoring or coexist
   behind a separate model.
-- Connect MCTS priors to policy-plane outputs.
 
 ## Policy Output Space Boundary
 
