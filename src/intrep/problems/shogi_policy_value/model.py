@@ -11,6 +11,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_TOKEN_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
 )
+from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.core.transformer_core import SharedTransformerCore
 
 
@@ -20,6 +21,7 @@ PROMOTION_VOCAB_SIZE = 2
 DROP_PIECE_VOCAB_SIZE = 8
 SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER = "shared_transformer"
 SHOGI_POLICY_VALUE_MODEL_DIRECT = "direct"
+SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER = "policy_plane_shared_transformer"
 SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
@@ -29,6 +31,7 @@ SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_mo
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
 SHOGI_POLICY_HEAD_MODULE_ID = "candidate_policy_head"
+SHOGI_POLICY_PLANE_HEAD_MODULE_ID = "policy_plane_head"
 SHOGI_VALUE_HEAD_MODULE_ID = "scalar_tanh_value_head"
 SHOGI_DIRECT_POSITION_POOLING_MODULE_ID = "mean_direct_position_embedding"
 SHOGI_POLICY_VALUE_MODEL_SPEC = {
@@ -47,6 +50,14 @@ SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
     "policy_head": SHOGI_POLICY_HEAD_MODULE_ID,
     "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
 }
+SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC = {
+    "position_input": SHOGI_POSITION_INPUT_MODULE_ID,
+    "candidate_move_input": None,
+    "core": SHOGI_SHARED_CORE_MODULE_ID,
+    "position_pooling": SHOGI_POSITION_POOLING_MODULE_ID,
+    "policy_head": SHOGI_POLICY_PLANE_HEAD_MODULE_ID,
+    "value_head": SHOGI_VALUE_HEAD_MODULE_ID,
+}
 
 
 def shogi_policy_value_model_spec(model: str) -> dict[str, object]:
@@ -54,6 +65,8 @@ def shogi_policy_value_model_spec(model: str) -> dict[str, object]:
         return dict(SHOGI_POLICY_VALUE_MODEL_SPEC)
     if model == SHOGI_POLICY_VALUE_MODEL_DIRECT:
         return dict(SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC)
+    if model == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
+        return dict(SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
     raise ValueError(f"unsupported shogi policy/value model: {model}")
 
 
@@ -175,6 +188,15 @@ class SharedCoreShogiPolicyValueModelConfig:
     dropout: float = 0.0
 
 
+@dataclass(frozen=True)
+class PolicyPlaneShogiPolicyValueModelConfig:
+    embedding_dim: int = 256
+    num_heads: int = 8
+    hidden_dim: int = 1024
+    num_layers: int = 6
+    dropout: float = 0.0
+
+
 class ShogiPositionInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
@@ -256,6 +278,50 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             dim=-1,
         )
         return scorer_input
+
+
+class PolicyPlaneShogiPolicyValueModel(nn.Module):
+    def __init__(self, config: PolicyPlaneShogiPolicyValueModelConfig | None = None) -> None:
+        super().__init__()
+        self.config = config or PolicyPlaneShogiPolicyValueModelConfig()
+        embedding_dim = self.config.embedding_dim
+        self.position_input = ShogiPositionInputLayer(embedding_dim=embedding_dim)
+        self.core = SharedTransformerCore(
+            embedding_dim=embedding_dim,
+            num_heads=self.config.num_heads,
+            hidden_dim=self.config.hidden_dim,
+            num_layers=self.config.num_layers,
+            dropout=self.config.dropout,
+        )
+        self.policy_head = ShogiPolicyPlaneHead(
+            embedding_dim=embedding_dim,
+            hidden_dim=self.config.hidden_dim,
+            action_count=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        )
+        self.value_head = ShogiValueHead(
+            embedding_dim=embedding_dim,
+            hidden_dim=self.config.hidden_dim,
+        )
+
+    def forward(self, position_token_ids: torch.Tensor, policy_plane_legal_mask: torch.Tensor) -> torch.Tensor:
+        position_hidden = self.core(self.position_input(position_token_ids), causal=False)
+        position_embedding = position_hidden.mean(dim=1)
+        return self.policy_head(position_embedding, policy_plane_legal_mask)
+
+    def forward_policy_value(
+        self,
+        position_token_ids: torch.Tensor,
+        policy_plane_legal_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        position_hidden = self.core(self.position_input(position_token_ids), causal=False)
+        position_embedding = position_hidden.mean(dim=1)
+        logits = self.policy_head(position_embedding, policy_plane_legal_mask)
+        return logits, self.value_head(position_embedding)
+
+    def predict_value(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        position_hidden = self.core(self.position_input(position_token_ids), causal=False)
+        position_embedding = position_hidden.mean(dim=1)
+        return self.value_head(position_embedding)
 
 
 def _candidate_square_hidden(

@@ -3,22 +3,36 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyValueDataset,
+    tensorize_policy_plane_value_examples,
+)
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
     DirectShogiPolicyValueModelConfig,
+    PolicyPlaneShogiPolicyValueModel,
+    PolicyPlaneShogiPolicyValueModelConfig,
+    SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC,
+    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
     ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _candidate_square_hidden,
+    shogi_policy_value_model_spec,
 )
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import BOARD_TOKEN_OFFSET, SHOGI_POSITION_TOKEN_COUNT
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
+    def test_policy_plane_model_spec_uses_fixed_policy_head(self) -> None:
+        spec = shogi_policy_value_model_spec(SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
+
+        self.assertEqual(spec, SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
+        self.assertIsNone(spec["candidate_move_input"])
+
     def test_model_returns_candidate_logits(self) -> None:
         position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
         model = DirectShogiPolicyValueModel(DirectShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
@@ -144,12 +158,70 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertLess(float(logits[0, -1].item()), -1e20)
         self.assertLess(float(logits[1, -1].item()), -1e20)
 
+    def test_policy_plane_model_returns_fixed_action_logits(self) -> None:
+        position_token_ids, legal_action_mask = _policy_plane_batch()
+        model = PolicyPlaneShogiPolicyValueModel(
+            PolicyPlaneShogiPolicyValueModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
+
+        logits = model(position_token_ids, legal_action_mask)
+
+        self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
+
+    def test_policy_plane_model_masks_illegal_actions(self) -> None:
+        position_token_ids, legal_action_mask = _policy_plane_batch()
+        legal_action_mask[:, -1] = False
+        model = PolicyPlaneShogiPolicyValueModel(
+            PolicyPlaneShogiPolicyValueModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
+
+        logits = model(position_token_ids, legal_action_mask)
+
+        self.assertLess(float(logits[0, -1].item()), -1e20)
+
+    def test_policy_plane_model_returns_policy_and_value_with_one_core_forward(self) -> None:
+        position_token_ids, legal_action_mask = _policy_plane_batch()
+        model = PolicyPlaneShogiPolicyValueModel(
+            PolicyPlaneShogiPolicyValueModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
+        model.core.forward = Mock(wraps=model.core.forward)
+
+        logits, values = model.forward_policy_value(position_token_ids, legal_action_mask)
+
+        self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
+        self.assertEqual(tuple(values.shape), (2,))
+        self.assertEqual(model.core.forward.call_count, 1)
+
 
 def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
     dataset = ShogiPolicyValueDataset(examples)
     rows = [dataset[index] for index in range(len(dataset))]
     return tuple(torch.stack(values) for values in zip(*rows))  # type: ignore[return-value]
+
+
+def _policy_plane_batch() -> tuple[torch.Tensor, torch.Tensor]:
+    examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+    samples = tensorize_policy_plane_value_examples(examples)
+    return (
+        torch.stack([sample.position_token_ids for sample in samples]),
+        torch.stack([sample.policy_plane_legal_mask for sample in samples]),
+    )
 
 
 if __name__ == "__main__":

@@ -62,13 +62,16 @@ and MCTS integration. It is a larger change than adding attack input features.
 - Policy-plane tensorization maps chosen-move targets and weighted move-policy
   targets into the fixed action space, and builds the legal action mask.
 - Added `ShogiPolicyPlaneHead` as a standalone fixed-action policy head. It is
-  not yet wired into a full model variant or training loop.
+  not yet wired into the training loop.
+- Added `PolicyPlaneShogiPolicyValueModel` as a separate fixed-action shared-core
+  model skeleton. It is intentionally not exposed through the training CLI until
+  policy-plane dataset collation and loss/metrics are wired.
 
 Remaining work:
 
 - Decide whether policy-plane output should replace candidate scoring or coexist
   behind a separate model.
-- Add a policy-plane model variant and training path.
+- Add a policy-plane training path.
 - Connect MCTS priors to policy-plane outputs.
 
 ## Policy Output Space Boundary
