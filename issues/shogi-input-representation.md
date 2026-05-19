@@ -50,8 +50,8 @@ The canonical position input object is `ShogiPositionFeatures`:
 - `piece_feature_ids`
 - `line_feature_ids`
 
-The older flat token-id sequence is retained only as a derived compatibility
-view for boundaries that still need a single vector.
+There is no canonical flat position vector. Boundaries that consume positions
+must carry the grouped feature object.
 
 Current missing or intentionally deferred information:
 
@@ -191,10 +191,9 @@ board-square tokens and between line tokens and their member squares.
   Line-square attention bias marks which squares belong to each line, giving the
   Transformer explicit long-range board subjects without replacing square
   tokens.
-- Replaced the flattened `position_token_ids` model path with grouped
-  `ShogiPositionFeatures`. Tensor samples, batches, inference, and tensor cache
-  payloads now carry global/square/piece/line feature groups as the primary
-  representation.
+- Removed the flattened `position_token_ids` compatibility path. Tensor
+  samples, batches, inference, model input, and tensor cache payloads now carry
+  global/square/piece/line feature groups.
 
 ## Follow-Ups
 

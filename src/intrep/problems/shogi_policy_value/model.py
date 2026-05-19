@@ -17,7 +17,6 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
-    SHOGI_POSITION_VOCAB_SIZE,
     ShogiPositionFeatures,
     SQUARE_TOKEN_OFFSET,
     squares_for_line_index,
@@ -38,14 +37,14 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_state_feature_sequence_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_state_position_features"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_position_geometry_bias"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
 SHOGI_POLICY_HEAD_MODULE_ID = "candidate_policy_head"
 SHOGI_POLICY_PLANE_HEAD_MODULE_ID = "policy_plane_head"
 SHOGI_VALUE_HEAD_MODULE_ID = "scalar_tanh_value_head"
-SHOGI_DIRECT_POSITION_POOLING_MODULE_ID = "mean_direct_position_embedding"
+SHOGI_DIRECT_POSITION_POOLING_MODULE_ID = "mean_direct_position_feature_sequence_embedding"
 SHOGI_POLICY_VALUE_MODEL_SPEC = {
     "position_input": SHOGI_POSITION_INPUT_MODULE_ID,
     "candidate_move_input": SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID,
@@ -93,7 +92,7 @@ class DirectShogiPolicyValueModel(nn.Module):
         super().__init__()
         self.config = config or DirectShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
-        self.position_embedding = nn.Embedding(SHOGI_POSITION_VOCAB_SIZE, embedding_dim)
+        self.position_input = ShogiPositionInputLayer(embedding_dim=embedding_dim)
         self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
         self.policy_head = ShogiCandidateMovePolicyHead(
             input_dim=embedding_dim * 2,
@@ -110,7 +109,7 @@ class DirectShogiPolicyValueModel(nn.Module):
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> torch.Tensor:
-        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
+        position_embedding = self.position_input(position_features).mean(dim=1)
         move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         return self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
@@ -121,14 +120,14 @@ class DirectShogiPolicyValueModel(nn.Module):
         candidate_move_features: torch.Tensor,
         candidate_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
+        position_embedding = self.position_input(position_features).mean(dim=1)
         move_embedding = self.move_input(candidate_move_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
         logits = self.policy_head(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
         return logits, self.value_head(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
-        position_embedding = self.position_embedding(position_features.flat_feature_ids()).mean(dim=1)
+        position_embedding = self.position_input(position_features).mean(dim=1)
         return self.value_head(position_embedding)
 
 

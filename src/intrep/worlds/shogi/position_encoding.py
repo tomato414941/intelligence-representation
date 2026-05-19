@@ -16,32 +16,13 @@ HAND_PIECE_TYPES = (
     shogi.ROOK,
 )
 BOARD_TOKEN_COUNT = 81
-ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
 SQUARE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
 SQUARE_ATTACK_PIECE_TYPE_COUNT = len(SQUARE_ATTACK_PIECE_TYPES)
-SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * SQUARE_ATTACK_PIECE_TYPE_COUNT
-KING_RELATIVE_SQUARE_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
-DROP_SHADOW_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2 * len(HAND_PIECE_TYPES)
 PIECE_SLOT_COUNT = 40
 PIECE_FEATURE_COUNT = 5
-PIECE_FEATURE_TOKEN_COUNT = PIECE_SLOT_COUNT * PIECE_FEATURE_COUNT
-HAND_TOKEN_COUNT = 14
 GLOBAL_TOKEN_COUNT = 18
 LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
 LINE_FEATURE_COUNT = 6
-LINE_FEATURE_TOKEN_COUNT = LINE_TOKEN_COUNT * LINE_FEATURE_COUNT
-SIDE_TO_MOVE_TOKEN_INDEX = 0
-IN_CHECK_TOKEN_INDEX = 1
-MOVE_COUNT_TOKEN_INDEX = 2
-BOARD_TOKEN_OFFSET = 3
-ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
-SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
-KING_RELATIVE_SQUARE_TOKEN_OFFSET = SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET + SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT
-DROP_SHADOW_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
-LINE_FEATURE_TOKEN_OFFSET = DROP_SHADOW_TOKEN_OFFSET + DROP_SHADOW_TOKEN_COUNT
-PIECE_FEATURE_TOKEN_OFFSET = LINE_FEATURE_TOKEN_OFFSET + LINE_FEATURE_TOKEN_COUNT
-HAND_TOKEN_OFFSET = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_TOKEN_COUNT
-SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
 SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_drop_shadow_all_piece_line_state_feature_sequence"
 
@@ -127,48 +108,6 @@ class ShogiPositionFeatures:
             line_feature_ids=self.line_feature_ids.to(device),
         )
 
-    def flat_feature_ids(self) -> torch.Tensor:
-        global_without_state = self.global_feature_ids[..., 1:]
-        return torch.cat(
-            (
-                global_without_state[..., :3],
-                self.square_feature_ids[..., :, 0],
-                self.square_feature_ids[..., :, 1],
-                self.square_feature_ids[..., :, 2],
-                self.square_feature_ids[..., :, 3 : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT].flatten(start_dim=-2),
-                self.square_feature_ids[
-                    ...,
-                    :,
-                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
-                ].flatten(start_dim=-2),
-                self.square_feature_ids[
-                    ...,
-                    :,
-                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2,
-                ],
-                self.square_feature_ids[
-                    ...,
-                    :,
-                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 1,
-                ],
-                self.square_feature_ids[
-                    ...,
-                    :,
-                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 : 3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2
-                    + len(HAND_PIECE_TYPES),
-                ].flatten(start_dim=-2),
-                self.square_feature_ids[
-                    ...,
-                    :,
-                    3 + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2 + 2 + len(HAND_PIECE_TYPES) :,
-                ].flatten(start_dim=-2),
-                self.line_feature_ids.flatten(start_dim=-2),
-                self.piece_feature_ids.flatten(start_dim=-2),
-                global_without_state[..., 3:],
-            ),
-            dim=-1,
-        )
-
 
 def stack_shogi_position_features(features: list[ShogiPositionFeatures]) -> ShogiPositionFeatures:
     return ShogiPositionFeatures(
@@ -200,10 +139,6 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
         piece_feature_ids=piece_feature_ids,
         line_feature_ids=line_feature_ids,
     )
-
-
-def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
-    return shogi_position_features_from_sfen(position_sfen).flat_feature_ids()
 
 
 def side_to_move_token_id(color: int) -> int:
