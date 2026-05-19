@@ -74,6 +74,11 @@ and MCTS integration. It is a larger change than adding attack input features.
   move priors plus value for runtime consumers.
 - Connected policy-plane checkpoints to the `shogi-arena-agent` MCTS runtime
   through that adapter.
+- Ran a local end-to-end smoke test:
+  - trained a tiny `policy_plane_shared_transformer` checkpoint for one step
+  - generated one two-ply game through `shogi-arena-agent` checkpoint MCTS
+  - confirmed generated transitions include
+    `mcts_root_child_visit_counts` search evidence
 
 Remaining work:
 
