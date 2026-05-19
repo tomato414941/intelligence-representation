@@ -60,7 +60,57 @@ missing or ambiguous features are identified.
 - Checkpoints now record `input_encoding`. Older checkpoints without that input
   identity are rejected instead of being compatibility-loaded into the new
   representation.
+- Tensor caches now record `input_encoding`. Older tensor caches without that
+  identity are rejected instead of being silently reused after representation
+  changes.
+
+2026-05-19:
+
+External shogi neural-network inputs are richer than the current compact token
+sequence:
+
+- AlphaZero shogi uses side-to-move-relative inputs with position history,
+  pieces in hand, move-count, and repetition-state features.
+- dlshogi/PGX-style inputs include own/opponent piece planes, hand planes,
+  attack planes, attack-count planes, and an in-check feature.
+
+Current project differences:
+
+- Represented now:
+  - side to move
+  - side-to-move-relative board squares
+  - own/opponent piece identity, including promoted piece types through
+    `python-shogi` piece types
+  - own/opponent hand counts capped at 18
+  - side-to-move-relative candidate move from/to squares
+  - promotion and drop-piece candidate move fields
+- Not represented now:
+  - move count or game phase
+  - position history
+  - repetition or no-progress rule context
+  - whether the side to move is in check
+  - attack maps or attack-count features
+
+Expected value and cost:
+
+- `in_check` is a low-cost candidate feature. It should be cheap compared with
+  neural-network inference and may help tactical policy/value learning.
+- move count is also low-cost, but its isolated strength impact is less clear.
+- history and repetition features are rule-correctness features. They may matter
+  for draw/repetition handling, but they add data-shape complexity.
+- attack maps and attack counts are plausible strength features because strong
+  shogi input designs use them. They also add CPU-side feature construction
+  cost, especially for MCTS leaf evaluation, so they should be evaluated as a
+  separate performance-sensitive change.
 
 Remaining audit areas include rule/history context, attack or check features,
 and whether the current compact token representation is strong enough after the
 relative-coordinate change.
+
+Recommended follow-up split:
+
+- Add and test an `in_check` input feature first.
+- Consider a move-count feature separately.
+- Keep attack-map and attack-count features as a separate issue because their
+  strength upside and CPU cost are both larger.
+- Keep history/repetition features separate from basic position features.
