@@ -9,10 +9,12 @@ from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
     DirectShogiPolicyValueModelConfig,
+    ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _candidate_square_hidden,
 )
+from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import BOARD_TOKEN_OFFSET, SHOGI_POSITION_TOKEN_COUNT
 
 
@@ -113,6 +115,34 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, BOARD_TOKEN_OFFSET + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
         self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, BOARD_TOKEN_OFFSET + 7]))
+
+    def test_policy_plane_head_returns_fixed_action_logits(self) -> None:
+        head = ShogiPolicyPlaneHead(
+            embedding_dim=8,
+            hidden_dim=16,
+            action_count=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        )
+        position_embedding = torch.randn(2, 8)
+        legal_action_mask = torch.ones(2, SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.bool)
+
+        logits = head(position_embedding, legal_action_mask)
+
+        self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
+
+    def test_policy_plane_head_masks_illegal_actions(self) -> None:
+        head = ShogiPolicyPlaneHead(
+            embedding_dim=8,
+            hidden_dim=16,
+            action_count=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        )
+        position_embedding = torch.randn(2, 8)
+        legal_action_mask = torch.ones(2, SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.bool)
+        legal_action_mask[:, -1] = False
+
+        logits = head(position_embedding, legal_action_mask)
+
+        self.assertLess(float(logits[0, -1].item()), -1e20)
+        self.assertLess(float(logits[1, -1].item()), -1e20)
 
 
 def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
