@@ -75,7 +75,10 @@ The preferred direction is a Transformer-native shogi feature sequence:
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square. The piece
 tokens add a piece-subject view of the same board rather than dedicated
-relation tokens.
+relation tokens. Piece tokens are treated as a set-like sequence and do not use
+slot-position embeddings. Square tokens retain square identity and the shared
+shogi Transformer adds a static square-square geometry attention bias over the
+81 board-square tokens.
 
 ## Close Condition
 
@@ -152,6 +155,12 @@ relation tokens.
   sequence as board pieces.
 - The current input identity is
   `shogi_global_square_all_piece_feature_sequence`.
+- Removed piece slot embeddings so same-type pieces and hand pieces are not
+  given artificial slot identity beyond their actual features.
+- Added a learnable static square-square geometry attention bias over board
+  square tokens. The relation ids are based on side-to-move-relative `dx,dy`
+  offsets, giving attention direct access to board geometry without adding
+  position-dependent tactical features.
 
 ## Follow-Ups
 

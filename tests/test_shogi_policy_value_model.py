@@ -21,6 +21,7 @@ from intrep.problems.shogi_policy_value.model import (
     ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
+    ShogiSquareGeometryAttentionBias,
     _candidate_square_hidden,
     shogi_policy_value_model_spec,
 )
@@ -139,6 +140,38 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         embeddings = layer(position_token_ids)
 
         self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        self.assertFalse(hasattr(layer, "piece_slot_embedding"))
+
+    def test_square_geometry_attention_bias_only_targets_square_pairs(self) -> None:
+        embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        attention_bias = ShogiSquareGeometryAttentionBias()
+        attention_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
+
+        bias = attention_bias(embeddings)
+        same_square_relation = 8 * 17 + 8
+        one_file_right_relation = 8 * 17 + 9
+
+        self.assertEqual(tuple(bias.shape), (SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT))
+        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), float(same_square_relation))
+        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), float(one_file_right_relation))
+        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET].item()), 0.0)
+        self.assertEqual(float(bias[SQUARE_TOKEN_OFFSET, 0].item()), 0.0)
+
+    def test_shared_models_pass_square_geometry_attention_bias_to_core(self) -> None:
+        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = _batch()
+        model = SharedCoreShogiPolicyValueModel(
+            SharedCoreShogiPolicyValueModelConfig(
+                embedding_dim=8,
+                num_heads=2,
+                hidden_dim=16,
+                num_layers=1,
+            )
+        )
+        model.core.forward = Mock(wraps=model.core.forward)
+
+        model(position_token_ids, candidate_move_features, candidate_mask)
+
+        self.assertIn("attention_bias", model.core.forward.call_args.kwargs)
 
     def test_policy_plane_head_returns_fixed_action_logits(self) -> None:
         head = ShogiPolicyPlaneHead(
