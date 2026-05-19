@@ -15,7 +15,7 @@ representation that gives the model useful shogi structure:
 - board-square information should be easy for a Transformer to attend over
 - global state such as hands, check, and move count should be explicit
 - expensive or rule-context features should have clear follow-up paths
-- checkpoints and tensor caches must identify the exact input encoding
+- checkpoints and tensor caches must identify the exact input schema
 
 ## Current Shape
 
@@ -80,7 +80,7 @@ relation tokens.
 ## Close Condition
 
 - The intended shogi position input representation is documented.
-- The implemented input encoding matches that representation.
+- The implemented input schema matches that representation.
 - Tests cover important encoding invariants.
 - Any deliberately omitted features are split into concrete follow-up issues.
 
@@ -101,10 +101,10 @@ relation tokens.
   - pieces are encoded as own/opponent instead of black/white
   - hands are encoded as own/opponent instead of black/white
   - candidate move from/to squares use the same relative coordinate system
-- Checkpoints now record `input_encoding`. Older checkpoints without that input
+- Checkpoints now record `input_schema_id`. Older checkpoints without that input
   identity are rejected instead of being compatibility-loaded into the new
   representation.
-- Tensor caches now record `input_encoding`. Older tensor caches without that
+- Tensor caches now record `input_schema_id`. Older tensor caches without that
   identity are rejected instead of being silently reused after representation
   changes.
 
@@ -151,7 +151,7 @@ relation tokens.
   while hand piece tokens expose held pieces through the same piece-subject
   sequence as board pieces.
 - The current input identity is
-  `shogi_global_square_piece_feature_sequence_v2`.
+  `shogi_global_square_all_piece_feature_sequence`.
 
 ## Follow-Ups
 

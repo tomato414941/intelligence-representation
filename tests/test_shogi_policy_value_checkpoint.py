@@ -118,7 +118,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Missing key"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_missing_input_encoding(self) -> None:
+    def test_load_rejects_missing_input_schema_id(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -135,10 +135,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            payload["config"].pop("input_encoding")
+            payload["config"].pop("input_schema_id")
             torch.save(payload, path)
 
-            with self.assertRaisesRegex(ValueError, "input encoding"):
+            with self.assertRaisesRegex(ValueError, "input schema"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_model_spec(self) -> None:

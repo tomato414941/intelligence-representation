@@ -31,7 +31,7 @@ from intrep.problems.shogi_policy_value.output_space import (
     validate_shogi_policy_value_output_space,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v2"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
@@ -111,7 +111,7 @@ def build_shogi_policy_value_tensor_cache(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
+        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -236,7 +236,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
+        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -264,8 +264,8 @@ def load_shogi_policy_value_tensor_cache(
     manifest = _object_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
-    if manifest.get("input_encoding") != SHOGI_POSITION_INPUT_ENCODING:
-        raise ValueError("unsupported shogi policy/value tensor cache input encoding")
+    if manifest.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+        raise ValueError("unsupported shogi policy/value tensor cache input schema")
     output_space = _manifest_output_space(manifest)
     if expected_output_space is not None:
         validate_shogi_policy_value_output_space(expected_output_space)
@@ -663,7 +663,7 @@ def _shard_identity(
 ) -> dict[str, object]:
     return {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA,
-        "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
+        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "output_space": output_space,
         "split": split,
         "source_index": source_index,
@@ -714,8 +714,8 @@ def _load_shard_manifest_file(path: Path) -> dict[str, object]:
     payload = _object_dict(json.loads(path.read_text(encoding="utf-8")))
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
-    if payload.get("input_encoding") != SHOGI_POSITION_INPUT_ENCODING:
-        raise ValueError("unsupported shogi policy/value tensor cache shard input encoding")
+    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+        raise ValueError("unsupported shogi policy/value tensor cache shard input schema")
     return payload
 
 
@@ -727,15 +727,15 @@ def _load_shard(path: Path) -> dict[str, object]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard schema")
-    if payload.get("input_encoding") != SHOGI_POSITION_INPUT_ENCODING:
-        raise ValueError("unsupported shogi policy/value tensor cache shard input encoding")
+    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+        raise ValueError("unsupported shogi policy/value tensor cache shard input schema")
     return payload
 
 
 def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
     keys = [
         "schema_version",
-        "input_encoding",
+        "input_schema_id",
         "output_space",
         "split",
         "source_index",

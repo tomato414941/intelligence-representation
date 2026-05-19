@@ -10,7 +10,7 @@ from intrep.problems.shogi_policy_value.model import (
     shogi_policy_value_model_spec,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
 
 
 SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v1"
@@ -29,7 +29,7 @@ def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: objec
         {
             "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
             "config": {
-                "input_encoding": SHOGI_POSITION_INPUT_ENCODING,
+                "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
                 "model": config.model,
                 "model_spec": _checkpoint_model_spec(config),
                 "embedding_dim": config.embedding_dim,
@@ -50,7 +50,7 @@ def load_shogi_policy_value_checkpoint_state_dict(path: str | Path, *, device: s
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
-    _validate_checkpoint_input_encoding(payload)
+    _validate_checkpoint_input_schema_id(payload)
     _validate_checkpoint_model_spec(payload)
     return payload["model_state_dict"]
 
@@ -59,7 +59,7 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
-    _validate_checkpoint_input_encoding(payload)
+    _validate_checkpoint_input_schema_id(payload)
     _validate_checkpoint_model_spec(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
@@ -80,7 +80,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     payload = torch.load(path, map_location=torch.device(device), weights_only=False)
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
-    _validate_checkpoint_input_encoding(payload)
+    _validate_checkpoint_input_schema_id(payload)
     _validate_checkpoint_model_spec(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
@@ -102,12 +102,12 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     return model
 
 
-def _validate_checkpoint_input_encoding(payload: dict[str, object]) -> None:
+def _validate_checkpoint_input_schema_id(payload: dict[str, object]) -> None:
     config = payload.get("config")
     if not isinstance(config, dict):
         raise ValueError("shogi checkpoint config must be an object")
-    if config.get("input_encoding") != SHOGI_POSITION_INPUT_ENCODING:
-        raise ValueError("unsupported shogi checkpoint input encoding")
+    if config.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+        raise ValueError("unsupported shogi checkpoint input schema")
 
 
 def _validate_checkpoint_model_spec(payload: dict[str, object]) -> None:

@@ -36,7 +36,7 @@ from intrep.worlds.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.game_trace import trace_shogi_game_record
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
 from intrep.train_shogi_policy_value import main
 
 
@@ -383,7 +383,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue((tensor_cache_path / "eval").exists())
             self.assertTrue(list((tensor_cache_path / "train").glob("*.json")))
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["input_encoding"], SHOGI_POSITION_INPUT_ENCODING)
+            self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
 
             with patch(
                 "sys.argv",
@@ -480,7 +480,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(len(cache.train_samples), 2)
             self.assertEqual(len(cache.eval_samples), 2)
 
-    def test_tensor_cache_rejects_missing_input_encoding(self) -> None:
+    def test_tensor_cache_rejects_missing_input_schema_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
@@ -515,10 +515,10 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
             manifest_path = tensor_cache_path / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest.pop("input_encoding")
+            manifest.pop("input_schema_id")
             manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "input encoding"):
+            with self.assertRaisesRegex(ValueError, "input schema"):
                 load_shogi_policy_value_tensor_cache(tensor_cache_path)
 
     def test_tensor_cache_build_can_resume_existing_shards(self) -> None:
@@ -621,7 +621,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 shard_games=1,
             )
 
-            self.assertEqual(manifest["input_encoding"], SHOGI_POSITION_INPUT_ENCODING)
+            self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
             self.assertEqual(manifest["train_count"], 2)
             self.assertEqual(manifest["eval_count"], 2)
             self.assertTrue((tensor_cache_path / "manifest.json").exists())
