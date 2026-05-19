@@ -61,7 +61,7 @@ class ShogiPolicyValueExample:
 
 
 @dataclass(frozen=True)
-class TensorizedShogiPolicyValueSample:
+class CandidateMovePolicyValueTensorSample:
     position_token_ids: torch.Tensor
     candidate_move_features: torch.Tensor
     label: torch.Tensor
@@ -69,7 +69,7 @@ class TensorizedShogiPolicyValueSample:
     value_target: torch.Tensor
 
 
-ShogiPolicyValueDatasetItem = ShogiPolicyValueExample | TensorizedShogiPolicyValueSample
+ShogiPolicyValueDatasetItem = ShogiPolicyValueExample | CandidateMovePolicyValueTensorSample
 
 
 def load_shogi_policy_value_examples_jsonl(path: str | Path, *, max_examples: int | None = None) -> list[ShogiPolicyValueExample]:
@@ -195,7 +195,7 @@ class ShogiPolicyValueDataset(TorchDataset):
     def __getitem__(self, index: int):
         if torch is None:
             raise RuntimeError("torch is required to materialize ShogiPolicyValueDataset items")
-        sample = _tensorized_policy_value_sample(self.examples[index])
+        sample = _candidate_move_policy_value_tensor_sample(self.examples[index])
         return (
             sample.position_token_ids,
             _pad_candidate_move_features(sample.candidate_move_features, max_choice_count=self.max_choice_count),
@@ -206,12 +206,12 @@ class ShogiPolicyValueDataset(TorchDataset):
         )
 
 
-def tensorize_shogi_policy_value_example(example: ShogiPolicyValueExample) -> TensorizedShogiPolicyValueSample:
+def tensorize_candidate_move_policy_value_example(example: ShogiPolicyValueExample) -> CandidateMovePolicyValueTensorSample:
     position_token_ids, candidate_move_features, _candidate_mask, move_index, policy_targets = _policy_sample(
         example,
         max_choice_count=len(example.legal_moves),
     )
-    return TensorizedShogiPolicyValueSample(
+    return CandidateMovePolicyValueTensorSample(
         position_token_ids=position_token_ids,
         candidate_move_features=candidate_move_features,
         label=move_index,
@@ -223,10 +223,10 @@ def tensorize_shogi_policy_value_example(example: ShogiPolicyValueExample) -> Te
     )
 
 
-def tensorize_shogi_policy_value_examples(
+def tensorize_candidate_move_policy_value_examples(
     examples: Sequence[ShogiPolicyValueExample],
-) -> list[TensorizedShogiPolicyValueSample]:
-    return [tensorize_shogi_policy_value_example(example) for example in examples]
+) -> list[CandidateMovePolicyValueTensorSample]:
+    return [tensorize_candidate_move_policy_value_example(example) for example in examples]
 
 
 def _policy_sample(
@@ -267,14 +267,16 @@ def _policy_sample(
     )
 
 
-def _tensorized_policy_value_sample(example: ShogiPolicyValueDatasetItem) -> TensorizedShogiPolicyValueSample:
-    if isinstance(example, TensorizedShogiPolicyValueSample):
+def _candidate_move_policy_value_tensor_sample(
+    example: ShogiPolicyValueDatasetItem,
+) -> CandidateMovePolicyValueTensorSample:
+    if isinstance(example, CandidateMovePolicyValueTensorSample):
         return example
-    return tensorize_shogi_policy_value_example(example)
+    return tensorize_candidate_move_policy_value_example(example)
 
 
 def _choice_count(example: ShogiPolicyValueDatasetItem) -> int:
-    if isinstance(example, TensorizedShogiPolicyValueSample):
+    if isinstance(example, CandidateMovePolicyValueTensorSample):
         return int(example.candidate_move_features.shape[0])
     return len(example.legal_moves)
 

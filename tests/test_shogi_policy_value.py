@@ -11,7 +11,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
     ShogiPositionValueExample,
     shogi_move_choice_example_from_board,
-    tensorize_shogi_policy_value_example,
+    tensorize_candidate_move_policy_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
@@ -148,7 +148,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
     def test_policy_value_dataset_accepts_tensorized_samples(self) -> None:
         examples = shogi_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-        samples = [tensorize_shogi_policy_value_example(example) for example in examples]
+        samples = [tensorize_candidate_move_policy_value_example(example) for example in examples]
         loader = DataLoader(ShogiPolicyValueDataset(samples), batch_size=2)
 
         position_token_ids, candidate_move_features, candidate_masks, label_indexes, policy_targets, value_targets = next(iter(loader))

@@ -19,9 +19,9 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
-    TensorizedShogiPolicyValueSample,
+    CandidateMovePolicyValueTensorSample,
     load_shogi_policy_value_examples_jsonl,
-    tensorize_shogi_policy_value_examples,
+    tensorize_candidate_move_policy_value_examples,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_ENCODING
@@ -33,8 +33,8 @@ DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors"
 
 @dataclass(frozen=True)
 class ShogiPolicyValueTensorCache:
-    train_samples: Sequence[TensorizedShogiPolicyValueSample]
-    eval_samples: Sequence[TensorizedShogiPolicyValueSample]
+    train_samples: Sequence[CandidateMovePolicyValueTensorSample]
+    eval_samples: Sequence[CandidateMovePolicyValueTensorSample]
     train_policy_target_summary: dict[str, float | int]
     eval_policy_target_summary: dict[str, float | int]
 
@@ -238,8 +238,8 @@ def load_shogi_policy_value_tensor_cache(
     eval_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "eval"]
     max_choice_count = int(manifest["max_choice_count"])
     return ShogiPolicyValueTensorCache(
-        train_samples=ShardedShogiPolicyValueTensorSamples(path, train_shards, max_choice_count=max_choice_count),
-        eval_samples=ShardedShogiPolicyValueTensorSamples(path, eval_shards, max_choice_count=max_choice_count),
+        train_samples=ShardedCandidateMovePolicyValueTensorSamples(path, train_shards, max_choice_count=max_choice_count),
+        eval_samples=ShardedCandidateMovePolicyValueTensorSamples(path, eval_shards, max_choice_count=max_choice_count),
         train_policy_target_summary=_object_dict(manifest["train_policy_target_summary"]),
         eval_policy_target_summary=_object_dict(manifest["eval_policy_target_summary"]),
     )
@@ -282,7 +282,7 @@ def _split_sources(
     raise ValueError("split must be train or eval")
 
 
-class ShardedShogiPolicyValueTensorSamples(Sequence[TensorizedShogiPolicyValueSample]):
+class ShardedCandidateMovePolicyValueTensorSamples(Sequence[CandidateMovePolicyValueTensorSample]):
     def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, max_choice_count: int) -> None:
         self.cache_dir = cache_dir
         self.shards = tuple(shards)
@@ -295,20 +295,20 @@ class ShardedShogiPolicyValueTensorSamples(Sequence[TensorizedShogiPolicyValueSa
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_samples: list[TensorizedShogiPolicyValueSample] = []
+        self._loaded_samples: list[CandidateMovePolicyValueTensorSample] = []
 
     def __len__(self) -> int:
         return self.sample_count
 
     @overload
-    def __getitem__(self, index: int) -> TensorizedShogiPolicyValueSample:
+    def __getitem__(self, index: int) -> CandidateMovePolicyValueTensorSample:
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> list[TensorizedShogiPolicyValueSample]:
+    def __getitem__(self, index: slice) -> list[CandidateMovePolicyValueTensorSample]:
         ...
 
-    def __getitem__(self, index: int | slice) -> TensorizedShogiPolicyValueSample | list[TensorizedShogiPolicyValueSample]:
+    def __getitem__(self, index: int | slice) -> CandidateMovePolicyValueTensorSample | list[CandidateMovePolicyValueTensorSample]:
         if isinstance(index, slice):
             return [self[item] for item in range(*index.indices(len(self)))]
         if index < 0:
@@ -334,7 +334,7 @@ class ShardedShogiPolicyValueTensorSamples(Sequence[TensorizedShogiPolicyValueSa
                 return mid
         raise IndexError(index)
 
-    def _load_shard_samples(self, shard_index: int) -> list[TensorizedShogiPolicyValueSample]:
+    def _load_shard_samples(self, shard_index: int) -> list[CandidateMovePolicyValueTensorSample]:
         if self._loaded_shard_index == shard_index:
             return self._loaded_samples
         shard = self.shards[shard_index]
@@ -454,7 +454,7 @@ def _build_shard(
             return loaded
 
     shard_examples = [example for _source_example_index, example in examples]
-    samples = tensorize_shogi_policy_value_examples(shard_examples)
+    samples = tensorize_candidate_move_policy_value_examples(shard_examples)
     summary = _policy_target_summary(shard_examples)
     max_choice_count = max((int(sample.candidate_move_features.shape[0]) for sample in samples), default=0)
     payload = {
@@ -578,7 +578,7 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _sample_to_payload(sample: TensorizedShogiPolicyValueSample) -> dict[str, torch.Tensor]:
+def _sample_to_payload(sample: CandidateMovePolicyValueTensorSample) -> dict[str, torch.Tensor]:
     return {
         "position_token_ids": sample.position_token_ids,
         "candidate_move_features": sample.candidate_move_features,
@@ -588,10 +588,10 @@ def _sample_to_payload(sample: TensorizedShogiPolicyValueSample) -> dict[str, to
     }
 
 
-def _sample_from_payload(payload: Any) -> TensorizedShogiPolicyValueSample:
+def _sample_from_payload(payload: Any) -> CandidateMovePolicyValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
-    return TensorizedShogiPolicyValueSample(
+    return CandidateMovePolicyValueTensorSample(
         position_token_ids=payload["position_token_ids"],
         candidate_move_features=payload["candidate_move_features"],
         label=payload["label"],

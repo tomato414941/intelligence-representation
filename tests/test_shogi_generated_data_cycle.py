@@ -30,7 +30,7 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
     checkpoint_generated_player,
     usi_engine_generated_player,
 )
-from intrep.problems.shogi_policy_value.examples import TensorizedShogiPolicyValueSample
+from intrep.problems.shogi_policy_value.examples import CandidateMovePolicyValueTensorSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
@@ -179,7 +179,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             )
 
         self.assertEqual(len(sampled), 1)
-        self.assertIsInstance(sampled[0], TensorizedShogiPolicyValueSample)
+        self.assertIsInstance(sampled[0], CandidateMovePolicyValueTensorSample)
 
     def test_rejects_invalid_loop_config(self) -> None:
         with self.assertRaisesRegex(ValueError, "cycles"):
@@ -550,8 +550,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
-                self.assertIsInstance(examples[0], TensorizedShogiPolicyValueSample)
-                self.assertIsInstance(eval_examples[0], TensorizedShogiPolicyValueSample)
+                self.assertIsInstance(examples[0], CandidateMovePolicyValueTensorSample)
+                self.assertIsInstance(eval_examples[0], CandidateMovePolicyValueTensorSample)
                 return _training_result(config)
 
             with (

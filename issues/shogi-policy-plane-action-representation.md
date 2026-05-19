@@ -71,13 +71,13 @@ Remaining work:
 `ShogiPolicyValueExample` is a Training Example in the glossary sense: it is a
 meaning-level unit that records a position, legal moves, a move target or move
 target distribution, and an optional value target. It is not yet tied to a
-candidate-policy output space or a fixed policy-plane output space.
+candidate-move-policy output space or a fixed policy-plane output space.
 
 That makes it reasonable as the common source for both policy outputs:
 
 ```text
 ShogiPolicyValueExample
-  -> candidate-policy sample
+  -> candidate-move-policy sample
   -> policy-plane sample
 ```
 
@@ -85,8 +85,8 @@ The current name is acceptable for now, but it is broad. If the boundary keeps
 drifting, a future rename such as `ShogiMovePolicyValueExample` would be more
 explicit because the policy target is a move target.
 
-`TensorizedShogiPolicyValueSample` is not neutral. It currently means a
-candidate-policy/value runtime sample:
+`CandidateMovePolicyValueTensorSample` is explicitly the existing
+candidate-move-policy/value runtime sample:
 
 - candidate move features
 - candidate-length policy target tensor
@@ -97,7 +97,7 @@ Do not add policy-plane fields directly to that sample unless the sample schema
 is first split or renamed. The cleaner migration path is:
 
 ```text
-CandidatePolicyValueTensorSample
+CandidateMovePolicyValueTensorSample
 PolicyPlaneValueTensorSample
 ```
 

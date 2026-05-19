@@ -31,9 +31,9 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueExample,
-    TensorizedShogiPolicyValueSample,
+    CandidateMovePolicyValueTensorSample,
     load_shogi_policy_value_examples_jsonl,
-    tensorize_shogi_policy_value_examples,
+    tensorize_candidate_move_policy_value_examples,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
@@ -210,7 +210,7 @@ def run_shogi_online_replay(
     run_dir = config.run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = config.checkpoint
-    generated_replay = ReplayBuffer[TensorizedShogiPolicyValueSample](capacity=config.replay_capacity)
+    generated_replay = ReplayBuffer[CandidateMovePolicyValueTensorSample](capacity=config.replay_capacity)
     replay_seed_selection = _load_replay_seed_selection(config.replay_seed_data_selection)
     replay_seed_eligible_examples = _count_replay_seed_examples(replay_seed_selection)
     training_eval_samples = _load_training_eval_samples(config.training_eval_data_selection)
@@ -261,11 +261,11 @@ def run_shogi_online_replay(
             time.perf_counter() - generated_train_extraction_start
         )
         generated_tensorize_start = time.perf_counter()
-        generated_replay.extend(tensorize_shogi_policy_value_examples(new_examples))
+        generated_replay.extend(tensorize_candidate_move_policy_value_examples(new_examples))
         phase_timings["generated_tensorize_wall_time_sec"] = time.perf_counter() - generated_tensorize_start
         replay_size = replay_seed_eligible_examples + len(generated_replay)
         if replay_size < config.min_replay_size:
-            sampled_examples: list[TensorizedShogiPolicyValueSample] = []
+            sampled_examples: list[CandidateMovePolicyValueTensorSample] = []
             seed_sampled_examples = 0
             generated_sampled_examples = 0
             training_skipped = True
@@ -571,8 +571,8 @@ def _train_online_replay_iteration(
     config: ShogiOnlineReplayConfig,
     iteration_index: int,
     checkpoint: Path,
-    sampled_examples: list[TensorizedShogiPolicyValueSample],
-    eval_examples: Sequence[TensorizedShogiPolicyValueSample],
+    sampled_examples: list[CandidateMovePolicyValueTensorSample],
+    eval_examples: Sequence[CandidateMovePolicyValueTensorSample],
     replay_size: int,
     training_eval_examples: int,
 ) -> ShogiPolicyValueTrainingResult:
@@ -979,7 +979,7 @@ def _sample_replay_seed_samples(
     *,
     sample_count: int,
     seed: int,
-) -> list[TensorizedShogiPolicyValueSample]:
+) -> list[CandidateMovePolicyValueTensorSample]:
     if sample_count <= 0 or selection is None:
         return []
     cache_path = default_shogi_policy_value_tensor_cache_path(selection.path)
@@ -990,7 +990,7 @@ def _sample_replay_seed_samples(
             expected_data_selection_root=selection.path.parent,
         )
         return _sample_sequence(cache.train_samples, sample_count=sample_count, seed=seed)
-    return tensorize_shogi_policy_value_examples(
+    return tensorize_candidate_move_policy_value_examples(
         _sample_replay_seed_examples_from_selection(selection.data_selection, sample_count=sample_count, seed=seed)
     )
 
@@ -1000,7 +1000,7 @@ def _sample_sequence(
     *,
     sample_count: int,
     seed: int,
-) -> list[TensorizedShogiPolicyValueSample]:
+) -> list[CandidateMovePolicyValueTensorSample]:
     if hasattr(samples, "shards") and hasattr(samples, "offsets"):
         return _sample_sharded_sequence(samples, sample_count=sample_count, seed=seed)
     sample_count = min(sample_count, len(samples))
@@ -1014,7 +1014,7 @@ def _sample_sharded_sequence(
     *,
     sample_count: int,
     seed: int,
-) -> list[TensorizedShogiPolicyValueSample]:
+) -> list[CandidateMovePolicyValueTensorSample]:
     sample_count = min(sample_count, len(samples))
     if sample_count <= 0:
         return []
@@ -1090,7 +1090,7 @@ def _sample_replay_seed_examples_from_selection(
     return sampled
 
 
-def _load_training_eval_samples(data_selection_path: Path) -> Sequence[TensorizedShogiPolicyValueSample]:
+def _load_training_eval_samples(data_selection_path: Path) -> Sequence[CandidateMovePolicyValueTensorSample]:
     selection_path = Path(data_selection_path)
     selection = load_shogi_policy_value_data_selection(selection_path)
     cache_path = default_shogi_policy_value_tensor_cache_path(selection_path)
@@ -1101,7 +1101,7 @@ def _load_training_eval_samples(data_selection_path: Path) -> Sequence[Tensorize
             expected_data_selection_root=selection_path.parent,
         ).eval_samples
     _train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(selection)
-    return tensorize_shogi_policy_value_examples(eval_examples)
+    return tensorize_candidate_move_policy_value_examples(eval_examples)
 
 
 def _append_to_experience_store(*, store_dir: Path | None, games_jsonl: Path) -> dict[str, object] | None:
