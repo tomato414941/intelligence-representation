@@ -39,6 +39,7 @@ EMBEDDING_DIM=${EMBEDDING_DIM:-256}
 HIDDEN_DIM=${HIDDEN_DIM:-1024}
 NUM_HEADS=${NUM_HEADS:-8}
 NUM_LAYERS=${NUM_LAYERS:-6}
+MODEL=${MODEL:-shared_transformer}
 # Optional RunPod data-center pin. See docs/runpod.md before long baselines.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
@@ -86,7 +87,7 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE tensor_cache=$TENSOR_CACHE init_checkpoint_path=$INIT_CHECKPOINT_PATH\"
+echo \"run_config max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS model=$MODEL num_workers=$NUM_WORKERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES checkpoint_every=$CHECKPOINT_EVERY metrics_every=$METRICS_EVERY keep_last_n_checkpoints=$KEEP_LAST_N_CHECKPOINTS eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE tensor_cache=$TENSOR_CACHE init_checkpoint_path=$INIT_CHECKPOINT_PATH\"
 TRAIN_ARGS=()
 if [[ -n \"$TENSOR_CACHE\" ]]; then
   TRAIN_ARGS+=(--tensor-cache \"$TENSOR_CACHE\")
@@ -116,6 +117,7 @@ fi
   --hidden-dim \"$HIDDEN_DIM\" \
   --num-heads \"$NUM_HEADS\" \
   --num-layers \"$NUM_LAYERS\" \
+  --model \"$MODEL\" \
   --policy-loss-weight \"$POLICY_LOSS_WEIGHT\" \
   --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
   --device cuda \
