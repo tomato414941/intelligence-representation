@@ -4,15 +4,19 @@ import shogi
 import torch
 
 from intrep.worlds.shogi.position_encoding import (
+    ATTACK_TOKEN_OFFSET,
     BOARD_TOKEN_OFFSET,
+    ATTACK_COUNT_TOKEN_MAX,
     HAND_COUNT_TOKEN_MAX,
     HAND_TOKEN_OFFSET,
     HAND_PIECE_TYPES,
     IN_CHECK_TOKEN_ID,
     IN_CHECK_TOKEN_INDEX,
     NOT_IN_CHECK_TOKEN_ID,
+    OPPONENT_ATTACK_OFFSET,
     OPPONENT_HAND_OFFSET,
     OPPONENT_PIECE_OFFSET,
+    OWN_ATTACK_OFFSET,
     OWN_HAND_OFFSET,
     OWN_PIECE_OFFSET,
     SHOGI_POSITION_TOKEN_COUNT,
@@ -71,6 +75,37 @@ class ShogiPositionEncodingTest(unittest.TestCase):
 
         self.assertEqual(int(safe_tokens[IN_CHECK_TOKEN_INDEX].item()), NOT_IN_CHECK_TOKEN_ID)
         self.assertEqual(int(checked_tokens[IN_CHECK_TOKEN_INDEX].item()), IN_CHECK_TOKEN_ID)
+
+    def test_encodes_attack_counts_relative_to_side_to_move(self) -> None:
+        board = shogi.Board()
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.BLACK)
+        relative_3d = absolute_to_relative_square(shogi.SQUARE_NAMES.index("3d"), shogi.BLACK)
+        own_attack_index = ATTACK_TOKEN_OFFSET + relative_7f
+        opponent_attack_index = ATTACK_TOKEN_OFFSET + 81 + relative_3d
+
+        self.assertEqual(ATTACK_COUNT_TOKEN_MAX, 3)
+        self.assertEqual(int(token_ids[own_attack_index].item()), OWN_ATTACK_OFFSET + 1)
+        self.assertEqual(int(token_ids[opponent_attack_index].item()), OPPONENT_ATTACK_OFFSET + 1)
+
+    def test_white_to_move_attack_counts_are_side_to_move_relative(self) -> None:
+        black_board = shogi.Board()
+        white_board = shogi.Board()
+        white_board.turn = shogi.WHITE
+        black_relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.BLACK)
+        white_relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.WHITE)
+
+        black_tokens = shogi_position_token_ids_from_sfen(black_board.sfen())
+        white_tokens = shogi_position_token_ids_from_sfen(white_board.sfen())
+
+        self.assertEqual(
+            int(black_tokens[ATTACK_TOKEN_OFFSET + black_relative_7f].item()),
+            OWN_ATTACK_OFFSET + 1,
+        )
+        self.assertEqual(
+            int(white_tokens[ATTACK_TOKEN_OFFSET + 81 + white_relative_7f].item()),
+            OPPONENT_ATTACK_OFFSET + 1,
+        )
 
     def test_large_own_pawn_hand_counts_are_not_collapsed_to_six(self) -> None:
         board = shogi.Board()

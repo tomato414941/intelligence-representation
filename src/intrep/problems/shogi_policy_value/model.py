@@ -24,7 +24,7 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_in_check_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_side_to_move_relative_in_check_attack_count_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"

@@ -83,13 +83,14 @@ Current project differences:
   - own/opponent piece identity, including promoted piece types through
     `python-shogi` piece types
   - own/opponent hand counts capped at 18
+  - own/opponent attack-count buckets per relative square, capped at 3
   - side-to-move-relative candidate move from/to squares
   - promotion and drop-piece candidate move fields
 - Not represented now:
   - move count or game phase
   - position history
   - repetition or no-progress rule context
-  - attack maps or attack-count features
+  - piece-type-specific attack maps
 
 Expected value and cost:
 
@@ -98,27 +99,29 @@ Expected value and cost:
 - move count is also low-cost, but its isolated strength impact is less clear.
 - history and repetition features are rule-correctness features. They may matter
   for draw/repetition handling, but they add data-shape complexity.
-- attack maps and attack counts are plausible strength features because strong
-  shogi input designs use them. They also add CPU-side feature construction
-  cost, especially for MCTS leaf evaluation, so they should be evaluated as a
-  separate performance-sensitive change.
+- piece-type-specific attack maps are plausible strength features because
+  strong shogi input designs use them. They also add CPU-side feature
+  construction cost, especially for MCTS leaf evaluation, so they should be
+  evaluated as a separate performance-sensitive change.
 
-Remaining audit areas include rule/history context, attack features,
+Remaining audit areas include rule/history context, piece-type-specific attack features,
 and whether the current compact token representation is strong enough after the
 relative-coordinate change.
 
 Recommended follow-up split:
 
 - Consider a move-count feature separately.
-- Keep attack-map and attack-count features as a separate issue because their
+- Keep piece-type-specific attack-map features as a separate issue because their
   strength upside and CPU cost are both larger.
 - Keep history/repetition features separate from basic position features.
 
 2026-05-19:
 
 - Added an `in_check` token to the shogi position input sequence.
+- Added own/opponent attack-count buckets per relative square.
 - The position token layout is now side-to-move token, in-check token, board
-  square tokens, then hand-count tokens.
-- The input identity was changed to `shogi_side_to_move_relative_in_check`, so
-  older checkpoints and tensor caches are rejected.
+  square tokens, attack-count tokens, then hand-count tokens.
+- The input identity was changed to
+  `shogi_side_to_move_relative_in_check_attack_counts`, so older checkpoints and
+  tensor caches are rejected.
 - Tests cover both safe and checked side-to-move positions.

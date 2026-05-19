@@ -5,13 +5,15 @@ import torch
 
 
 BOARD_TOKEN_COUNT = 81
+ATTACK_TOKEN_COUNT = BOARD_TOKEN_COUNT * 2
 HAND_TOKEN_COUNT = 14
 SIDE_TO_MOVE_TOKEN_INDEX = 0
 IN_CHECK_TOKEN_INDEX = 1
 BOARD_TOKEN_OFFSET = 2
-HAND_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
+ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
+HAND_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
-SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative_in_check"
+SHOGI_POSITION_INPUT_ENCODING = "shogi_side_to_move_relative_in_check_attack_counts"
 
 EMPTY_SQUARE_TOKEN_ID = 0
 OWN_PIECE_OFFSET = 1
@@ -20,8 +22,11 @@ SIDE_TO_MOVE_BLACK_TOKEN_ID = 29
 SIDE_TO_MOVE_WHITE_TOKEN_ID = 30
 NOT_IN_CHECK_TOKEN_ID = 31
 IN_CHECK_TOKEN_ID = 32
+ATTACK_COUNT_TOKEN_MAX = 3
+OWN_ATTACK_OFFSET = 33
+OPPONENT_ATTACK_OFFSET = OWN_ATTACK_OFFSET + ATTACK_COUNT_TOKEN_MAX + 1
 HAND_COUNT_TOKEN_MAX = 18
-OWN_HAND_OFFSET = 33
+OWN_HAND_OFFSET = OPPONENT_ATTACK_OFFSET + ATTACK_COUNT_TOKEN_MAX + 1
 OPPONENT_HAND_OFFSET = OWN_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 SHOGI_POSITION_VOCAB_SIZE = OPPONENT_HAND_OFFSET + HAND_COUNT_TOKEN_MAX + 1
 
@@ -43,6 +48,7 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
         in_check_token_id(board.is_check()),
     ]
     token_ids.extend(relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT))
+    token_ids.extend(attack_token_ids(board))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
 
@@ -82,6 +88,23 @@ def hand_token_ids(board: shogi.Board) -> list[int]:
             count = pieces_in_hand[piece_type]
             token_ids.append(offset + min(count, HAND_COUNT_TOKEN_MAX))
     return token_ids
+
+
+def attack_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        token_ids.append(attack_count_token_id(board, board.turn, absolute_square, offset=OWN_ATTACK_OFFSET))
+    opponent = opponent_color(board.turn)
+    for relative_square in range(BOARD_TOKEN_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        token_ids.append(attack_count_token_id(board, opponent, absolute_square, offset=OPPONENT_ATTACK_OFFSET))
+    return token_ids
+
+
+def attack_count_token_id(board: shogi.Board, color: int, square: int, *, offset: int) -> int:
+    count = len(board.attackers(color, square))
+    return offset + min(count, ATTACK_COUNT_TOKEN_MAX)
 
 
 def absolute_to_relative_square(square: int, turn: int) -> int:
