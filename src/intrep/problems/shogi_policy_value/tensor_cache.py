@@ -31,7 +31,12 @@ from intrep.problems.shogi_policy_value.output_space import (
     validate_shogi_policy_value_output_space,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID, ShogiPositionFeatures
+from intrep.worlds.shogi.position_encoding import (
+    SHOGI_POSITION_FEATURE_MANIFEST,
+    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_POSITION_INPUT_SCHEMA_ID,
+    ShogiPositionFeatures,
+)
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
@@ -111,7 +116,7 @@ def build_shogi_policy_value_tensor_cache(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+        **_input_feature_identity(),
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -236,7 +241,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+        **_input_feature_identity(),
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -264,8 +269,7 @@ def load_shogi_policy_value_tensor_cache(
     manifest = _object_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
-    if manifest.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
-        raise ValueError("unsupported shogi policy/value tensor cache input schema")
+    _validate_input_feature_identity(manifest, artifact_name="tensor cache")
     output_space = _manifest_output_space(manifest)
     if expected_output_space is not None:
         validate_shogi_policy_value_output_space(expected_output_space)
@@ -315,6 +319,23 @@ def _data_selection_json_with_paths_relative_to(payload: dict[str, object], *, r
             sources.append(source_payload)
         result[key] = sources
     return result
+
+
+def _input_feature_identity() -> dict[str, object]:
+    return {
+        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+        "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
+        "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+    }
+
+
+def _validate_input_feature_identity(payload: dict[str, object], *, artifact_name: str) -> None:
+    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+        raise ValueError(f"unsupported shogi policy/value {artifact_name} input schema")
+    if payload.get("input_feature_manifest_hash") != SHOGI_POSITION_FEATURE_MANIFEST_HASH:
+        raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
+    if payload.get("input_feature_manifest") != SHOGI_POSITION_FEATURE_MANIFEST:
+        raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
 
 
 def _manifest_output_space(manifest: dict[str, object]) -> str:
@@ -663,7 +684,7 @@ def _shard_identity(
 ) -> dict[str, object]:
     return {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA,
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+        **_input_feature_identity(),
         "output_space": output_space,
         "split": split,
         "source_index": source_index,
@@ -714,8 +735,7 @@ def _load_shard_manifest_file(path: Path) -> dict[str, object]:
     payload = _object_dict(json.loads(path.read_text(encoding="utf-8")))
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
-    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
-        raise ValueError("unsupported shogi policy/value tensor cache shard input schema")
+    _validate_input_feature_identity(payload, artifact_name="tensor cache shard")
     return payload
 
 
@@ -727,8 +747,7 @@ def _load_shard(path: Path) -> dict[str, object]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard schema")
-    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
-        raise ValueError("unsupported shogi policy/value tensor cache shard input schema")
+    _validate_input_feature_identity(payload, artifact_name="tensor cache shard")
     return payload
 
 
@@ -736,6 +755,8 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
     keys = [
         "schema_version",
         "input_schema_id",
+        "input_feature_manifest",
+        "input_feature_manifest_hash",
         "output_space",
         "split",
         "source_index",

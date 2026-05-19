@@ -19,6 +19,7 @@ from intrep.problems.shogi_policy_value.model import (
     SHOGI_POLICY_VALUE_MODEL_SPEC,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
+from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
 
 
 class ShogiPolicyValueCheckpointTest(unittest.TestCase):
@@ -50,6 +51,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             payload = torch.load(path, weights_only=False)
             self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER)
             self.assertEqual(payload["config"]["model_spec"], SHOGI_POLICY_VALUE_MODEL_SPEC)
+            self.assertEqual(payload["config"]["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
+            self.assertEqual(payload["config"]["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -139,6 +142,55 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             torch.save(payload, path)
 
             with self.assertRaisesRegex(ValueError, "input schema"):
+                load_shogi_policy_value_checkpoint(path)
+
+    def test_load_rejects_missing_input_feature_manifest_hash(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shogi.pt"
+            save_shogi_policy_value_checkpoint(path, result)
+            payload = torch.load(path, weights_only=False)
+            payload["config"].pop("input_feature_manifest_hash")
+            torch.save(payload, path)
+
+            with self.assertRaisesRegex(ValueError, "input feature manifest"):
+                load_shogi_policy_value_checkpoint(path)
+
+    def test_load_rejects_changed_input_feature_manifest(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shogi.pt"
+            save_shogi_policy_value_checkpoint(path, result)
+            payload = torch.load(path, weights_only=False)
+            payload["config"]["input_feature_manifest"] = {
+                **payload["config"]["input_feature_manifest"],
+                "square_feature_count": 999,
+            }
+            torch.save(payload, path)
+
+            with self.assertRaisesRegex(ValueError, "input feature manifest"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_model_spec(self) -> None:

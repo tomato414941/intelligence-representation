@@ -234,6 +234,9 @@ the rest of the sequence.
   counts.
 - Changed shared-core and policy-plane position pooling from sequence mean to
   the state token hidden state.
+- Added a feature manifest and SHA-256 manifest hash for the shogi position
+  input. Checkpoints, tensor cache manifests, and tensor cache shard manifests
+  now store and validate both the human-readable manifest and its hash.
 - The current input identity is
   `shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence`.
 

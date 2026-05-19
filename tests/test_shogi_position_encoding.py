@@ -44,6 +44,8 @@ from intrep.worlds.shogi.position_encoding import (
     PAIR_RELATION_PIECE_ATTACKS_SQUARE,
     PAIR_RELATION_PIECE_ON_SQUARE,
     SQUARE_ATTACK_PIECE_TYPES,
+    SHOGI_POSITION_FEATURE_MANIFEST,
+    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_LINE_FEATURE_COUNT,
@@ -59,6 +61,7 @@ from intrep.worlds.shogi.position_encoding import (
     absolute_to_relative_square,
     king_relative_offset_bucket,
     move_count_bucket_token_id,
+    shogi_position_feature_manifest_hash,
     shogi_position_features_from_sfen,
 )
 
@@ -77,6 +80,15 @@ GIFT_FLOW_FEATURE_OFFSET = COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET + 3
 
 
 class ShogiPositionEncodingTest(unittest.TestCase):
+    def test_feature_manifest_hash_matches_current_manifest(self) -> None:
+        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST_HASH, shogi_position_feature_manifest_hash())
+        self.assertEqual(
+            SHOGI_POSITION_FEATURE_MANIFEST["feature_sequence_token_count"],
+            SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+        )
+        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST["square_feature_count"], SHOGI_POSITION_SQUARE_FEATURE_COUNT)
+        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST["piece_feature_count"], SHOGI_POSITION_PIECE_FEATURE_COUNT)
+
     def test_encodes_start_position_as_feature_groups(self) -> None:
         features = shogi_position_features_from_sfen(shogi.Board().sfen())
 

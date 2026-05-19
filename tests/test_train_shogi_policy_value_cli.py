@@ -36,7 +36,11 @@ from intrep.worlds.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.game_trace import trace_shogi_game_record
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
+from intrep.worlds.shogi.position_encoding import (
+    SHOGI_POSITION_FEATURE_MANIFEST,
+    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_POSITION_INPUT_SCHEMA_ID,
+)
 from intrep.train_shogi_policy_value import main
 
 
@@ -521,6 +525,47 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "input schema"):
                 load_shogi_policy_value_tensor_cache(tensor_cache_path)
 
+    def test_tensor_cache_rejects_missing_input_feature_manifest_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                shard_games=1,
+            )
+            manifest_path = tensor_cache_path / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest.pop("input_feature_manifest_hash")
+            manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "input feature manifest"):
+                load_shogi_policy_value_tensor_cache(tensor_cache_path)
+
     def test_tensor_cache_build_can_resume_existing_shards(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -622,6 +667,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
 
             self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
+            self.assertEqual(manifest["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
+            self.assertEqual(manifest["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
             self.assertEqual(manifest["train_count"], 2)
             self.assertEqual(manifest["eval_count"], 2)
             self.assertTrue((tensor_cache_path / "manifest.json").exists())

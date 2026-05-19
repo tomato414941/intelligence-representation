@@ -10,7 +10,11 @@ from intrep.problems.shogi_policy_value.model import (
     shogi_policy_value_model_spec,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_INPUT_SCHEMA_ID
+from intrep.worlds.shogi.position_encoding import (
+    SHOGI_POSITION_FEATURE_MANIFEST,
+    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_POSITION_INPUT_SCHEMA_ID,
+)
 
 
 SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v1"
@@ -30,6 +34,8 @@ def save_shogi_policy_value_state_checkpoint(path: str | Path, state_dict: objec
             "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
             "config": {
                 "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+                "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
+                "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
                 "model": config.model,
                 "model_spec": _checkpoint_model_spec(config),
                 "embedding_dim": config.embedding_dim,
@@ -108,6 +114,10 @@ def _validate_checkpoint_input_schema_id(payload: dict[str, object]) -> None:
         raise ValueError("shogi checkpoint config must be an object")
     if config.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
         raise ValueError("unsupported shogi checkpoint input schema")
+    if config.get("input_feature_manifest_hash") != SHOGI_POSITION_FEATURE_MANIFEST_HASH:
+        raise ValueError("unsupported shogi checkpoint input feature manifest")
+    if config.get("input_feature_manifest") != SHOGI_POSITION_FEATURE_MANIFEST:
+        raise ValueError("unsupported shogi checkpoint input feature manifest")
 
 
 def _validate_checkpoint_model_spec(payload: dict[str, object]) -> None:
