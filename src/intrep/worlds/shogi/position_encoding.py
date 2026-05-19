@@ -26,6 +26,8 @@ PIECE_FEATURE_TOKEN_COUNT = PIECE_SLOT_COUNT * PIECE_FEATURE_COUNT
 HAND_TOKEN_COUNT = 14
 GLOBAL_TOKEN_COUNT = 18
 LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
+LINE_FEATURE_COUNT = 6
+LINE_FEATURE_TOKEN_COUNT = LINE_TOKEN_COUNT * LINE_FEATURE_COUNT
 SIDE_TO_MOVE_TOKEN_INDEX = 0
 IN_CHECK_TOKEN_INDEX = 1
 MOVE_COUNT_TOKEN_INDEX = 2
@@ -34,11 +36,12 @@ ATTACK_TOKEN_OFFSET = BOARD_TOKEN_OFFSET + BOARD_TOKEN_COUNT
 SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET = ATTACK_TOKEN_OFFSET + ATTACK_TOKEN_COUNT
 KING_RELATIVE_SQUARE_TOKEN_OFFSET = SQUARE_PIECE_TYPE_ATTACK_TOKEN_OFFSET + SQUARE_PIECE_TYPE_ATTACK_TOKEN_COUNT
 DROP_SHADOW_TOKEN_OFFSET = KING_RELATIVE_SQUARE_TOKEN_OFFSET + KING_RELATIVE_SQUARE_TOKEN_COUNT
-PIECE_FEATURE_TOKEN_OFFSET = DROP_SHADOW_TOKEN_OFFSET + DROP_SHADOW_TOKEN_COUNT
+LINE_FEATURE_TOKEN_OFFSET = DROP_SHADOW_TOKEN_OFFSET + DROP_SHADOW_TOKEN_COUNT
+PIECE_FEATURE_TOKEN_OFFSET = LINE_FEATURE_TOKEN_OFFSET + LINE_FEATURE_TOKEN_COUNT
 HAND_TOKEN_OFFSET = PIECE_FEATURE_TOKEN_OFFSET + PIECE_FEATURE_TOKEN_COUNT
 SHOGI_POSITION_TOKEN_COUNT = HAND_TOKEN_OFFSET + HAND_TOKEN_COUNT
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_drop_shadow_all_piece_line_feature_sequence"
+SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_drop_shadow_all_piece_line_state_feature_sequence"
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -82,7 +85,14 @@ OWN_KING_RELATIVE_SQUARE_OFFSET = OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQU
 OPPONENT_KING_RELATIVE_SQUARE_OFFSET = OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
 OWN_DROP_SHADOW_OFFSET = OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_OFFSET_BUCKET_COUNT + 1
 OPPONENT_DROP_SHADOW_OFFSET = OWN_DROP_SHADOW_OFFSET + len(HAND_PIECE_TYPES) * 2
-PIECE_LOCATION_EMPTY_TOKEN_ID = OPPONENT_DROP_SHADOW_OFFSET + len(HAND_PIECE_TYPES) * 2
+LINE_KIND_OFFSET = OPPONENT_DROP_SHADOW_OFFSET + len(HAND_PIECE_TYPES) * 2
+LINE_OWN_KING_ON_LINE_OFFSET = LINE_KIND_OFFSET + 4
+LINE_OPPONENT_KING_ON_LINE_OFFSET = LINE_OWN_KING_ON_LINE_OFFSET + 2
+LINE_OWN_SLIDER_ON_LINE_OFFSET = LINE_OPPONENT_KING_ON_LINE_OFFSET + 2
+LINE_OPPONENT_SLIDER_ON_LINE_OFFSET = LINE_OWN_SLIDER_ON_LINE_OFFSET + 2
+LINE_OCCUPANCY_COUNT_MAX = 9
+LINE_OCCUPANCY_COUNT_OFFSET = LINE_OPPONENT_SLIDER_ON_LINE_OFFSET + 2
+PIECE_LOCATION_EMPTY_TOKEN_ID = LINE_OCCUPANCY_COUNT_OFFSET + LINE_OCCUPANCY_COUNT_MAX + 1
 PIECE_LOCATION_BOARD_TOKEN_ID = PIECE_LOCATION_EMPTY_TOKEN_ID + 1
 PIECE_LOCATION_HAND_TOKEN_ID = PIECE_LOCATION_BOARD_TOKEN_ID + 1
 PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_LOCATION_HAND_TOKEN_ID + 1
@@ -95,6 +105,7 @@ SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
 SHOGI_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
 SHOGI_POSITION_LINE_SLOT_COUNT = LINE_TOKEN_COUNT
+SHOGI_POSITION_LINE_FEATURE_COUNT = LINE_FEATURE_COUNT
 SHOGI_POSITION_STATE_TOKEN_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_TOKEN_ID + 1
 
@@ -111,6 +122,7 @@ def shogi_position_token_ids_from_sfen(position_sfen: str) -> torch.Tensor:
     token_ids.extend(square_piece_type_attack_token_ids(board))
     token_ids.extend(king_relative_square_token_ids(board))
     token_ids.extend(drop_shadow_token_ids(board))
+    token_ids.extend(line_feature_token_ids(board))
     token_ids.extend(piece_feature_token_ids(board))
     token_ids.extend(hand_token_ids(board))
     return torch.tensor(token_ids, dtype=torch.long)
@@ -273,6 +285,88 @@ def legal_drop_targets_by_piece_type(board: shogi.Board, color: int) -> dict[int
         if move.drop_piece_type in targets:
             targets[int(move.drop_piece_type)].add(int(move.to_square))
     return targets
+
+
+def line_feature_token_ids(board: shogi.Board) -> list[int]:
+    token_ids: list[int] = []
+    for line_index in range(LINE_TOKEN_COUNT):
+        token_ids.extend(line_slot_feature_token_ids(board, line_index))
+    return token_ids
+
+
+def line_slot_feature_token_ids(board: shogi.Board, line_index: int) -> list[int]:
+    line_kind = line_kind_index(line_index)
+    relative_squares = squares_for_line_index(line_index)
+    absolute_squares = {relative_to_absolute_square(square, board.turn) for square in relative_squares}
+    own_king_on_line = king_on_absolute_squares(board, board.turn, absolute_squares)
+    opponent_king_on_line = king_on_absolute_squares(board, opponent_color(board.turn), absolute_squares)
+    own_slider_on_line = slider_on_absolute_squares(board, board.turn, absolute_squares, line_kind=line_kind)
+    opponent_slider_on_line = slider_on_absolute_squares(
+        board,
+        opponent_color(board.turn),
+        absolute_squares,
+        line_kind=line_kind,
+    )
+    occupancy_count = sum(1 for square in absolute_squares if board.piece_at(square) is not None)
+    return [
+        LINE_KIND_OFFSET + line_kind,
+        LINE_OWN_KING_ON_LINE_OFFSET + int(own_king_on_line),
+        LINE_OPPONENT_KING_ON_LINE_OFFSET + int(opponent_king_on_line),
+        LINE_OWN_SLIDER_ON_LINE_OFFSET + int(own_slider_on_line),
+        LINE_OPPONENT_SLIDER_ON_LINE_OFFSET + int(opponent_slider_on_line),
+        LINE_OCCUPANCY_COUNT_OFFSET + min(occupancy_count, LINE_OCCUPANCY_COUNT_MAX),
+    ]
+
+
+def line_kind_index(line_index: int) -> int:
+    if line_index < 9:
+        return 0
+    if line_index < 18:
+        return 1
+    if line_index < 35:
+        return 2
+    return 3
+
+
+def squares_for_line_index(line_index: int) -> tuple[int, ...]:
+    if line_index < 9:
+        file_index = line_index
+        return tuple(rank * 9 + file_index for rank in range(9))
+    if line_index < 18:
+        rank = line_index - 9
+        return tuple(rank * 9 + file_index for file_index in range(9))
+    if line_index < 35:
+        diagonal = line_index - 18
+        return tuple(square for square in range(BOARD_TOKEN_COUNT) if square // 9 + square % 9 == diagonal)
+    diagonal = line_index - 35
+    return tuple(square for square in range(BOARD_TOKEN_COUNT) if square // 9 - square % 9 + 8 == diagonal)
+
+
+def king_on_absolute_squares(board: shogi.Board, color: int, absolute_squares: set[int]) -> bool:
+    king_square = board.king_squares[color]
+    return king_square is not None and int(king_square) in absolute_squares
+
+
+def slider_on_absolute_squares(
+    board: shogi.Board,
+    color: int,
+    absolute_squares: set[int],
+    *,
+    line_kind: int,
+) -> bool:
+    for square in absolute_squares:
+        piece = board.piece_at(square)
+        if piece is not None and piece.color == color and piece_slides_on_line(piece.piece_type, line_kind):
+            return True
+    return False
+
+
+def piece_slides_on_line(piece_type: int, line_kind: int) -> bool:
+    if line_kind == 0:
+        return piece_type in (shogi.LANCE, shogi.ROOK, shogi.PROM_ROOK)
+    if line_kind == 1:
+        return piece_type in (shogi.ROOK, shogi.PROM_ROOK)
+    return piece_type in (shogi.BISHOP, shogi.PROM_BISHOP)
 
 
 def piece_feature_token_ids(board: shogi.Board) -> list[int]:

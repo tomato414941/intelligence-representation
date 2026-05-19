@@ -14,6 +14,14 @@ from intrep.worlds.shogi.position_encoding import (
     IN_CHECK_TOKEN_ID,
     IN_CHECK_TOKEN_INDEX,
     KING_RELATIVE_SQUARE_TOKEN_OFFSET,
+    LINE_FEATURE_COUNT,
+    LINE_FEATURE_TOKEN_OFFSET,
+    LINE_KIND_OFFSET,
+    LINE_OCCUPANCY_COUNT_OFFSET,
+    LINE_OPPONENT_KING_ON_LINE_OFFSET,
+    LINE_OPPONENT_SLIDER_ON_LINE_OFFSET,
+    LINE_OWN_KING_ON_LINE_OFFSET,
+    LINE_OWN_SLIDER_ON_LINE_OFFSET,
     MOVE_COUNT_BUCKET_OFFSET,
     MOVE_COUNT_BUCKET_OVERFLOW,
     MOVE_COUNT_TOKEN_INDEX,
@@ -297,6 +305,19 @@ class ShogiPositionEncodingTest(unittest.TestCase):
             int(token_ids[opponent_drop_5e_index].item()),
             OPPONENT_DROP_SHADOW_OFFSET + bishop_feature * 2 + 1,
         )
+
+    def test_encodes_line_features(self) -> None:
+        board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        token_ids = shogi_position_token_ids_from_sfen(board.sfen())
+        file_5_line = 4
+        line_offset = LINE_FEATURE_TOKEN_OFFSET + file_5_line * LINE_FEATURE_COUNT
+
+        self.assertEqual(int(token_ids[line_offset].item()), LINE_KIND_OFFSET)
+        self.assertEqual(int(token_ids[line_offset + 1].item()), LINE_OWN_KING_ON_LINE_OFFSET + 1)
+        self.assertEqual(int(token_ids[line_offset + 2].item()), LINE_OPPONENT_KING_ON_LINE_OFFSET + 1)
+        self.assertEqual(int(token_ids[line_offset + 3].item()), LINE_OWN_SLIDER_ON_LINE_OFFSET + 1)
+        self.assertEqual(int(token_ids[line_offset + 4].item()), LINE_OPPONENT_SLIDER_ON_LINE_OFFSET)
+        self.assertEqual(int(token_ids[line_offset + 5].item()), LINE_OCCUPANCY_COUNT_OFFSET + 3)
 
     def test_piece_tokens_include_hand_pieces_after_board_pieces(self) -> None:
         board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b P2b 1")

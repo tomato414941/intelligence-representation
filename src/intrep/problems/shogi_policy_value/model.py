@@ -14,6 +14,7 @@ from intrep.worlds.shogi.position_encoding import (
     HAND_PIECE_TYPES,
     HAND_TOKEN_OFFSET,
     KING_RELATIVE_SQUARE_TOKEN_OFFSET,
+    LINE_FEATURE_TOKEN_OFFSET,
     LINE_TOKEN_OFFSET,
     PIECE_FEATURE_TOKEN_OFFSET,
     SQUARE_ATTACK_PIECE_TYPE_COUNT,
@@ -23,6 +24,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_PIECE_FEATURE_COUNT,
     SHOGI_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SHOGI_POSITION_LINE_FEATURE_COUNT,
     SHOGI_POSITION_LINE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
@@ -30,6 +32,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_STATE_TOKEN_ID,
     SHOGI_POSITION_VOCAB_SIZE,
     SQUARE_TOKEN_OFFSET,
+    squares_for_line_index,
 )
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.core.transformer_core import SharedTransformerCore
@@ -47,7 +50,7 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_feature_sequence_position_tokens"
+SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_drop_shadow_piece_line_state_feature_sequence_position_tokens"
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_position_geometry_bias"
 SHOGI_POSITION_POOLING_MODULE_ID = "mean_position_pooling"
@@ -226,6 +229,7 @@ class ShogiPositionInputLayer(nn.Module):
         self.square_slot_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_SLOT_COUNT, embedding_dim)
         self.square_feature_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
         self.piece_feature_embedding = nn.Embedding(SHOGI_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
+        self.line_feature_embedding = nn.Embedding(SHOGI_POSITION_LINE_FEATURE_COUNT, embedding_dim)
         self.line_slot_embedding = nn.Embedding(SHOGI_POSITION_LINE_SLOT_COUNT, embedding_dim)
 
     def forward(self, position_token_ids: torch.Tensor) -> torch.Tensor:
@@ -328,8 +332,19 @@ class ShogiPositionInputLayer(nn.Module):
         return piece_hidden
 
     def _line_embeddings(self, position_token_ids: torch.Tensor) -> torch.Tensor:
+        line_features = position_token_ids[
+            :,
+            LINE_FEATURE_TOKEN_OFFSET : LINE_FEATURE_TOKEN_OFFSET
+            + SHOGI_POSITION_LINE_SLOT_COUNT * SHOGI_POSITION_LINE_FEATURE_COUNT,
+        ].reshape(-1, SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT)
+        line_feature_embeddings = self.token_embedding(line_features)
+        feature_slots = torch.arange(SHOGI_POSITION_LINE_FEATURE_COUNT, device=position_token_ids.device)
+        line_hidden = (
+            line_feature_embeddings
+            + self.line_feature_embedding(feature_slots).view(1, 1, SHOGI_POSITION_LINE_FEATURE_COUNT, -1)
+        ).sum(dim=2)
         slots = torch.arange(SHOGI_POSITION_LINE_SLOT_COUNT, device=position_token_ids.device).unsqueeze(0)
-        return self.line_slot_embedding(slots).expand(position_token_ids.size(0), -1, -1)
+        return line_hidden + self.line_slot_embedding(slots)
 
 
 class ShogiPositionGeometryAttentionBias(nn.Module):
@@ -384,23 +399,9 @@ def _square_geometry_relation_ids() -> torch.Tensor:
 def _line_square_relation_ids() -> torch.Tensor:
     relation_ids = torch.zeros((SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_SQUARE_COUNT), dtype=torch.long)
     for line_index in range(SHOGI_POSITION_LINE_SLOT_COUNT):
-        for square in _squares_for_line(line_index):
+        for square in squares_for_line_index(line_index):
             relation_ids[line_index, square] = 1
     return relation_ids
-
-
-def _squares_for_line(line_index: int) -> tuple[int, ...]:
-    if line_index < 9:
-        file_index = line_index
-        return tuple(rank * 9 + file_index for rank in range(9))
-    if line_index < 18:
-        rank = line_index - 9
-        return tuple(rank * 9 + file_index for file_index in range(9))
-    if line_index < 35:
-        diagonal = line_index - 18
-        return tuple(square for square in range(81) if square // 9 + square % 9 == diagonal)
-    diagonal = line_index - 35
-    return tuple(square for square in range(81) if square // 9 - square % 9 + 8 == diagonal)
 
 
 class SharedCoreShogiPolicyValueModel(nn.Module):

@@ -37,7 +37,8 @@ Current represented information:
 - fixed 40 piece tokens for board and hand pieces, with board pieces ordered by
   side-to-move-relative square and remaining incomplete-position slots padded
   as empty
-- fixed 52 line tokens for files, ranks, and both diagonal families
+- fixed 52 line tokens for files, ranks, and both diagonal families, with
+  line-kind, king-on-line, slider-on-line, and occupancy features
 - own/opponent hand counts capped at 18
 - side-to-move-relative candidate move from/to squares
 - promotion and drop-piece candidate move fields
@@ -79,6 +80,10 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - 9 rank tokens
   - 17 rising diagonal tokens
   - 17 falling diagonal tokens
+  - line kind
+  - whether own/opponent king is on the line
+  - whether own/opponent sliding piece is on the line
+  - occupancy count
 
 This keeps the shogi board as 81 square subjects while still allowing global
 state to be represented without broadcasting it over every square. The piece
@@ -171,9 +176,11 @@ board-square tokens and between line tokens and their member squares.
   position-dependent tactical features.
 - Added own/opponent drop-shadow features so each square can see which held
   piece types can legally be dropped there by either side.
-- Added 52 line tokens for files, ranks, and both diagonal families. Line-square
-  attention bias marks which squares belong to each line, giving the Transformer
-  explicit long-range board subjects without replacing square tokens.
+- Added 52 line tokens for files, ranks, and both diagonal families. Each line
+  token carries line-kind, king-on-line, slider-on-line, and occupancy features.
+  Line-square attention bias marks which squares belong to each line, giving the
+  Transformer explicit long-range board subjects without replacing square
+  tokens.
 
 ## Follow-Ups
 
