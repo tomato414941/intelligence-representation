@@ -12,9 +12,11 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPositionValueExample,
     shogi_move_choice_example_from_board,
     tensorize_candidate_move_policy_value_example,
+    tensorize_policy_plane_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
+from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT, shogi_policy_plane_action_index
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_TOKEN_COUNT
 
 
@@ -159,6 +161,57 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(tuple(label_indexes.shape), (2,))
         self.assertEqual(tuple(policy_targets.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(value_targets.shape), (2,))
+
+    def test_policy_plane_sample_maps_chosen_move_to_fixed_action_target(self) -> None:
+        board = shogi.Board()
+        example = ShogiMovePolicyValueExample(
+            position_sfen=board.sfen(),
+            legal_moves=tuple(sorted(move.usi() for move in board.legal_moves)),
+            chosen_move="7g7f",
+            value_target=1.0,
+        )
+
+        sample = tensorize_policy_plane_value_example(example)
+        action_index = shogi_policy_plane_action_index("7g7f", turn=board.turn)
+
+        self.assertEqual(tuple(sample.position_token_ids.shape), (SHOGI_POSITION_TOKEN_COUNT,))
+        self.assertEqual(tuple(sample.policy_plane_targets.shape), (SHOGI_POLICY_PLANE_ACTION_COUNT,))
+        self.assertEqual(tuple(sample.policy_plane_legal_mask.shape), (SHOGI_POLICY_PLANE_ACTION_COUNT,))
+        self.assertEqual(int(sample.policy_plane_label.item()), action_index)
+        self.assertEqual(float(sample.policy_plane_targets[action_index].item()), 1.0)
+        self.assertEqual(float(sample.policy_plane_targets.sum().item()), 1.0)
+        self.assertTrue(bool(sample.policy_plane_legal_mask[action_index].item()))
+        self.assertEqual(float(sample.value_target.item()), 1.0)
+
+    def test_policy_plane_sample_maps_policy_targets_to_fixed_action_space(self) -> None:
+        board = shogi.Board()
+        legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
+        example = ShogiMovePolicyValueExample(
+            position_sfen=board.sfen(),
+            legal_moves=legal_moves,
+            chosen_move="7g7f",
+            policy_targets={"7g7f": 3.0, "2g2f": 1.0},
+        )
+
+        sample = tensorize_policy_plane_value_example(example)
+        first_index = shogi_policy_plane_action_index("7g7f", turn=board.turn)
+        second_index = shogi_policy_plane_action_index("2g2f", turn=board.turn)
+
+        self.assertEqual(float(sample.policy_plane_targets[first_index].item()), 0.75)
+        self.assertEqual(float(sample.policy_plane_targets[second_index].item()), 0.25)
+        self.assertEqual(float(sample.policy_plane_targets.sum().item()), 1.0)
+
+    def test_policy_plane_sample_rejects_missing_non_chosen_policy_targets(self) -> None:
+        board = shogi.Board()
+        example = ShogiMovePolicyValueExample(
+            position_sfen=board.sfen(),
+            legal_moves=tuple(sorted(move.usi() for move in board.legal_moves)),
+            chosen_move="7g7f",
+            policy_target_source="mcts_visit_counts",
+        )
+
+        with self.assertRaisesRegex(ValueError, "missing policy_targets"):
+            tensorize_policy_plane_value_example(example)
 
 
 if __name__ == "__main__":

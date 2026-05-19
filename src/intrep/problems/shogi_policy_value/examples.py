@@ -69,6 +69,15 @@ class CandidateMovePolicyValueTensorSample:
     value_target: torch.Tensor
 
 
+@dataclass(frozen=True)
+class PolicyPlaneValueTensorSample:
+    position_token_ids: torch.Tensor
+    policy_plane_targets: torch.Tensor
+    policy_plane_legal_mask: torch.Tensor
+    policy_plane_label: torch.Tensor
+    value_target: torch.Tensor
+
+
 ShogiPolicyValueDatasetItem = ShogiMovePolicyValueExample | CandidateMovePolicyValueTensorSample
 
 
@@ -227,6 +236,50 @@ def tensorize_candidate_move_policy_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
 ) -> list[CandidateMovePolicyValueTensorSample]:
     return [tensorize_candidate_move_policy_value_example(example) for example in examples]
+
+
+def tensorize_policy_plane_value_example(example: ShogiMovePolicyValueExample) -> PolicyPlaneValueTensorSample:
+    if torch is None:
+        raise RuntimeError("torch is required to materialize shogi policy-plane samples")
+    from intrep.worlds.shogi.policy_plane import (
+        SHOGI_POLICY_PLANE_ACTION_COUNT,
+        shogi_policy_plane_action_index,
+        shogi_policy_plane_legal_mask,
+    )
+    from intrep.worlds.shogi.position_encoding import shogi_position_token_ids_from_sfen
+
+    board = shogi.Board(example.position_sfen)
+    position_token_ids = shogi_position_token_ids_from_sfen(example.position_sfen)
+    policy_plane_label = torch.tensor(
+        shogi_policy_plane_action_index(example.chosen_move, turn=board.turn),
+        dtype=torch.long,
+    )
+    policy_plane_targets = torch.zeros(SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.float32)
+    if example.policy_targets is None:
+        if example.policy_target_source != "chosen_move":
+            raise ValueError(f"missing policy_targets for policy_target_source={example.policy_target_source}")
+        policy_plane_targets[int(policy_plane_label.item())] = 1.0
+    else:
+        total = sum(example.policy_targets.values())
+        for move, weight in example.policy_targets.items():
+            action_index = shogi_policy_plane_action_index(move, turn=board.turn)
+            policy_plane_targets[action_index] = float(weight) / total
+    return PolicyPlaneValueTensorSample(
+        position_token_ids=position_token_ids,
+        policy_plane_targets=policy_plane_targets,
+        policy_plane_legal_mask=shogi_policy_plane_legal_mask(board),
+        policy_plane_label=policy_plane_label,
+        value_target=torch.tensor(
+            float("nan") if example.value_target is None else example.value_target,
+            dtype=torch.float32,
+        ),
+    )
+
+
+def tensorize_policy_plane_value_examples(
+    examples: Sequence[ShogiMovePolicyValueExample],
+) -> list[PolicyPlaneValueTensorSample]:
+    return [tensorize_policy_plane_value_example(example) for example in examples]
 
 
 def _policy_sample(

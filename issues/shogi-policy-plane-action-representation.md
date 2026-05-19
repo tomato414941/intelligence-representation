@@ -57,12 +57,15 @@ and MCTS integration. It is a larger change than adding attack input features.
 - Tests cover fixed action size, normal moves, promotion, drops, long moves,
   knight moves, side-to-move-relative indexing, legal masks, and legal move
   round-tripping through an action index.
+- Added `PolicyPlaneValueTensorSample` and policy-plane tensorization from
+  `ShogiMovePolicyValueExample`.
+- Policy-plane tensorization maps chosen-move targets and weighted move-policy
+  targets into the fixed action space, and builds the legal action mask.
 
 Remaining work:
 
 - Decide whether policy-plane output should replace candidate scoring or coexist
   behind a separate model.
-- Add policy-plane target tensors.
 - Add a policy-plane model head.
 - Connect MCTS priors to policy-plane outputs.
 
