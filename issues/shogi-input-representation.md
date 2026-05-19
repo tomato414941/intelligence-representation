@@ -150,6 +150,6 @@ relation tokens.
 
 - Keep history/repetition features separate from basic position features because
   they interact with rule context and data generation.
-- Consider pin/discovered-attack features only after the v2 representation has
-  been exercised; they are more evaluation-function-like and harder to define
-  cleanly.
+- Consider pin/discovered-attack features only after the current representation
+  has been exercised; they are more evaluation-function-like and harder to
+  define cleanly.
