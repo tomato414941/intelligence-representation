@@ -25,6 +25,7 @@ from intrep.problems.shogi_policy_value.model import (
     SHOGI_POLICY_VALUE_MODEL_NAMES,
     SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
 )
+from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_model
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
@@ -75,11 +76,13 @@ def main() -> None:
         raw_eval_case_count = len(raw_eval_examples)
         train_policy_target_summary = _policy_target_summary(raw_train_examples)
         eval_policy_target_summary = _policy_target_summary(raw_eval_examples)
+        tensor_cache_output_space = None
     else:
         tensor_cache = load_shogi_policy_value_tensor_cache(
             args.tensor_cache,
             expected_data_selection=data_selection,
             expected_data_selection_root=args.data_selection.parent,
+            expected_output_space=shogi_policy_value_output_space_for_model(args.model),
         )
         train_examples = tensor_cache.train_samples
         eval_examples = tensor_cache.eval_samples
@@ -88,6 +91,7 @@ def main() -> None:
         raw_eval_case_count = len(eval_examples)
         train_policy_target_summary = tensor_cache.train_policy_target_summary
         eval_policy_target_summary = tensor_cache.eval_policy_target_summary
+        tensor_cache_output_space = tensor_cache.output_space
 
     config = ShogiPolicyValueTrainingConfig(
         max_steps=args.max_steps,
@@ -140,6 +144,7 @@ def main() -> None:
         "data_selection_path": str(args.data_selection),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection),
         "tensor_cache_path": tensor_cache_path,
+        "tensor_cache_output_space": tensor_cache_output_space,
         "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,

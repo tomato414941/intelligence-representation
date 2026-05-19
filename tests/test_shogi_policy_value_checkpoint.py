@@ -4,7 +4,12 @@ from pathlib import Path
 
 import torch
 
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyPlaneValueDataset, ShogiPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyPlaneValueDataset,
+    ShogiPolicyValueDataset,
+    collate_candidate_move_policy_value_samples,
+    collate_policy_plane_value_samples,
+)
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint, save_shogi_policy_value_checkpoint
 from intrep.problems.shogi_policy_value.model import (
@@ -29,8 +34,14 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 num_heads=2,
             ),
         )
-        position_token_ids, candidate_move_features, candidate_mask, _, _, _ = next(
-            iter(torch.utils.data.DataLoader(ShogiPolicyValueDataset(examples), batch_size=2))
+        batch = next(
+            iter(
+                torch.utils.data.DataLoader(
+                    ShogiPolicyValueDataset(examples),
+                    batch_size=2,
+                    collate_fn=collate_candidate_move_policy_value_samples,
+                )
+            )
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -42,8 +53,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(position_token_ids, candidate_move_features, candidate_mask)
-            actual = loaded(position_token_ids, candidate_move_features, candidate_mask)
+            expected = result.model(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
+            actual = loaded(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 
@@ -60,8 +71,14 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 model=SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
             ),
         )
-        position_token_ids, policy_plane_legal_mask, _, _, _ = next(
-            iter(torch.utils.data.DataLoader(ShogiPolicyPlaneValueDataset(examples), batch_size=2))
+        batch = next(
+            iter(
+                torch.utils.data.DataLoader(
+                    ShogiPolicyPlaneValueDataset(examples),
+                    batch_size=2,
+                    collate_fn=collate_policy_plane_value_samples,
+                )
+            )
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -73,8 +90,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(position_token_ids, policy_plane_legal_mask)
-            actual = loaded(position_token_ids, policy_plane_legal_mask)
+            expected = result.model(batch.position_token_ids, batch.legal_action_mask)
+            actual = loaded(batch.position_token_ids, batch.legal_action_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 

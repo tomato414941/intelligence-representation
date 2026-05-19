@@ -15,6 +15,12 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
+from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER
+from intrep.problems.shogi_policy_value.output_space import (
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+)
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
@@ -154,6 +160,125 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 2)
             self.assertEqual(metrics["eval_policy_target_summary"]["available_ratio"], 0.0)
 
+    def test_trains_policy_plane_model_from_policy_plane_tensor_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-plane-value-tensors"
+            checkpoint_path = root / "shogi-policy-plane.pt"
+            metrics_path = root / "metrics.json"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-plane-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+                shard_games=1,
+            )
+            manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
+            self.assertIn("max_legal_action_count", manifest)
+            self.assertIn("max_target_action_count", manifest)
+            cache = load_shogi_policy_value_tensor_cache(
+                tensor_cache_path,
+                expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+            )
+            self.assertIsInstance(cache.train_samples[0], CompactPolicyPlaneValueTensorSample)
+
+            with patch(
+                "sys.argv",
+                [
+                    "train_shogi_policy_value",
+                    "--data-selection",
+                    str(data_selection_path),
+                    "--tensor-cache",
+                    str(tensor_cache_path),
+                    "--checkpoint-path",
+                    str(checkpoint_path),
+                    "--metrics-path",
+                    str(metrics_path),
+                    "--max-steps",
+                    "1",
+                    "--batch-size",
+                    "2",
+                    "--embedding-dim",
+                    "8",
+                    "--hidden-dim",
+                    "16",
+                    "--num-heads",
+                    "2",
+                    "--model",
+                    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+                ],
+            ), patch("sys.stdout", new_callable=StringIO):
+                main()
+
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["config"]["model"], SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
+            self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
+            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
+
+    def test_tensor_cache_rejects_output_space_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            build_shogi_policy_value_tensor_cache(
+                data_selection_path=data_selection_path,
+                output_path=tensor_cache_path,
+                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+                shard_games=1,
+            )
+
+            with self.assertRaisesRegex(ValueError, "output_space"):
+                load_shogi_policy_value_tensor_cache(
+                    tensor_cache_path,
+                    expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+                )
     def test_writes_policy_target_summary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -291,6 +416,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
+            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE)
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)
 

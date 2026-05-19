@@ -18,6 +18,8 @@ VOLUME_ROOT = Path("/data")
 DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
 DEFAULT_CACHE_NAME = "shogi-policy-value-tensors"
+DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-policy-plane-value-tensors"
+DEFAULT_OUTPUT_SPACE = "candidate_move"
 
 
 if modal is not None:
@@ -37,8 +39,9 @@ if modal is not None:
         )
 
         remote_bundle = str(task["remote_bundle"])
+        cache_name = str(task["cache_name"])
         data_selection_path = VOLUME_ROOT / remote_bundle / "data-selection.json"
-        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / DEFAULT_CACHE_NAME
+        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / cache_name
         result = build_shogi_policy_value_tensor_cache_shard(
             data_selection_path=data_selection_path,
             cache_dir=cache_dir,
@@ -48,30 +51,32 @@ if modal is not None:
             source_example_end_index=int(task["source_example_end_index"]),
             shard_index=int(task["shard_index"]),
             resume=True,
+            output_space=str(task["output_space"]),
         )
         volume.commit()
         return result
 
     @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=60 * 60)
-    def reset_remote_cache(remote_bundle: str) -> dict[str, object]:
-        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / DEFAULT_CACHE_NAME
+    def reset_remote_cache(remote_bundle: str, cache_name: str) -> dict[str, object]:
+        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / cache_name
         if cache_dir.exists():
             shutil.rmtree(cache_dir)
         volume.commit()
-        return {"remote_cache": f"{remote_bundle}/cache/{DEFAULT_CACHE_NAME}", "removed": True}
+        return {"remote_cache": f"{remote_bundle}/cache/{cache_name}", "removed": True}
 
     @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=60 * 60)
-    def write_remote_manifest(remote_bundle: str, shard_examples: int) -> dict[str, object]:
+    def write_remote_manifest(remote_bundle: str, shard_examples: int, cache_name: str, output_space: str) -> dict[str, object]:
         from intrep.problems.shogi_policy_value.tensor_cache import (
             write_shogi_policy_value_tensor_cache_manifest,
         )
 
         data_selection_path = VOLUME_ROOT / remote_bundle / "data-selection.json"
-        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / DEFAULT_CACHE_NAME
+        cache_dir = VOLUME_ROOT / remote_bundle / "cache" / cache_name
         result = write_shogi_policy_value_tensor_cache_manifest(
             data_selection_path=data_selection_path,
             cache_dir=cache_dir,
             shard_examples=shard_examples,
+            output_space=output_space,
         )
         volume.commit()
         return result
@@ -85,6 +90,7 @@ if modal is not None:
         skip_upload: bool = False,
         limit_shards: int = 0,
         reset_cache: bool = False,
+        output_space: str = DEFAULT_OUTPUT_SPACE,
     ) -> None:
         run(
             local_bundle=Path(local_bundle),
@@ -94,6 +100,7 @@ if modal is not None:
             skip_upload=skip_upload,
             limit_shards=limit_shards or None,
             reset_cache=reset_cache,
+            output_space=output_space,
         )
 
 else:
@@ -109,6 +116,7 @@ def run(
     skip_upload: bool,
     limit_shards: int | None,
     reset_cache: bool,
+    output_space: str,
 ) -> None:
     if modal is None:
         raise RuntimeError("Modal is required. Run with: uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py")
@@ -118,8 +126,11 @@ def run(
         raise ValueError("split must be all, train, or eval")
     if limit_shards is not None and limit_shards <= 0:
         raise ValueError("limit_shards must be positive")
+    if output_space not in {"candidate_move", "policy_plane"}:
+        raise ValueError("output_space must be candidate_move or policy_plane")
 
     local_bundle = local_bundle.resolve()
+    cache_name = _cache_name_for_output_space(output_space)
     data_selection_path = local_bundle / "data-selection.json"
     if not data_selection_path.exists():
         raise FileNotFoundError(data_selection_path)
@@ -128,25 +139,28 @@ def run(
         _upload_bundle(local_bundle=local_bundle, remote_bundle=remote_bundle)
 
     if reset_cache:
-        print(json.dumps(reset_remote_cache.remote(remote_bundle), indent=2))
+        print(json.dumps(reset_remote_cache.remote(remote_bundle, cache_name), indent=2))
 
     tasks = _build_tasks(
         local_data_selection_path=data_selection_path,
         remote_bundle=remote_bundle,
         shard_examples=shard_examples,
         split=split,
+        output_space=output_space,
+        cache_name=cache_name,
     )
     if limit_shards is not None:
         tasks = tasks[:limit_shards]
 
     print(json.dumps({"volume": VOLUME_NAME, "remote_bundle": remote_bundle, "shard_count": len(tasks)}, indent=2))
     results = list(build_remote_shard.map(tasks))
-    manifest = write_remote_manifest.remote(remote_bundle, shard_examples)
+    manifest = write_remote_manifest.remote(remote_bundle, shard_examples, cache_name, output_space)
     print(
         json.dumps(
             {
                 "volume": VOLUME_NAME,
-                "remote_cache": f"{remote_bundle}/cache/{DEFAULT_CACHE_NAME}",
+                "remote_cache": f"{remote_bundle}/cache/{cache_name}",
+                "output_space": output_space,
                 "built_shards": len(results),
                 "train_count": manifest["train_count"],
                 "eval_count": manifest["eval_count"],
@@ -170,6 +184,8 @@ def _build_tasks(
     remote_bundle: str,
     shard_examples: int,
     split: str,
+    output_space: str,
+    cache_name: str,
 ) -> list[dict[str, object]]:
     payload = json.loads(local_data_selection_path.read_text(encoding="utf-8"))
     local_bundle = local_data_selection_path.parent
@@ -189,6 +205,8 @@ def _build_tasks(
                 tasks.append(
                     {
                         "remote_bundle": remote_bundle,
+                        "cache_name": cache_name,
+                        "output_space": output_space,
                         "split": split_name,
                         "source_index": source_index,
                         "source_example_start_index": start,
@@ -198,6 +216,12 @@ def _build_tasks(
                 )
                 shard_index += 1
     return tasks
+
+
+def _cache_name_for_output_space(output_space: str) -> str:
+    if output_space == "policy_plane":
+        return DEFAULT_POLICY_PLANE_CACHE_NAME
+    return DEFAULT_CACHE_NAME
 
 
 def _local_source_path(local_bundle: Path, source: dict[str, object]) -> Path:

@@ -21,6 +21,7 @@ VOLUME_SIZE=${VOLUME_SIZE:-0}
 LEARNING_RATE=${LEARNING_RATE:-0.0005}
 POLICY_LOSS_WEIGHT=${POLICY_LOSS_WEIGHT:-1.0}
 VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-0.0}
+MODEL=${MODEL:-shared_transformer}
 MAX_TRAIN_EVAL_EXAMPLES=${MAX_TRAIN_EVAL_EXAMPLES:-16384}
 MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-16384}
 CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-500}
@@ -37,6 +38,17 @@ if [[ -z "$TENSOR_CACHE" ]]; then
   echo "TENSOR_CACHE is required for DataLoader profiling" >&2
   exit 1
 fi
+
+.venv/bin/python - "$MODEL" <<'PY'
+import sys
+
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_NAMES
+
+model = sys.argv[1]
+if model not in SHOGI_POLICY_VALUE_MODEL_NAMES:
+    names = ", ".join(SHOGI_POLICY_VALUE_MODEL_NAMES)
+    raise SystemExit(f"unsupported MODEL={model!r}; expected one of: {names}")
+PY
 
 TRAINING_INPUT_ARGS=(--data-selection "$DATA_SELECTION" --tensor-cache "$TENSOR_CACHE")
 mapfile -t TRAINING_INPUT_FILES < <(
@@ -72,7 +84,7 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"profile_config worker_counts=$WORKER_COUNTS max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES tensor_cache=$TENSOR_CACHE\"
+echo \"profile_config worker_counts=$WORKER_COUNTS max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE policy_loss_weight=$POLICY_LOSS_WEIGHT value_loss_weight=$VALUE_LOSS_WEIGHT embedding_dim=$EMBEDDING_DIM hidden_dim=$HIDDEN_DIM num_heads=$NUM_HEADS num_layers=$NUM_LAYERS model=$MODEL max_train_eval_examples=$MAX_TRAIN_EVAL_EXAMPLES max_eval_examples=$MAX_EVAL_EXAMPLES tensor_cache=$TENSOR_CACHE\"
 for worker_count in $WORKER_COUNTS; do
   case_dir=\"$OUTPUT_DIR/workers-\$worker_count\"
   mkdir -p \"\$case_dir\"
@@ -91,6 +103,7 @@ for worker_count in $WORKER_COUNTS; do
     --hidden-dim \"$HIDDEN_DIM\" \
     --num-heads \"$NUM_HEADS\" \
     --num-layers \"$NUM_LAYERS\" \
+    --model \"$MODEL\" \
     --policy-loss-weight \"$POLICY_LOSS_WEIGHT\" \
     --value-loss-weight \"$VALUE_LOSS_WEIGHT\" \
     --device cuda \

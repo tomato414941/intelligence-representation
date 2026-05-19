@@ -10,8 +10,10 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueDataset,
     ShogiMovePolicyValueExample,
     ShogiPositionValueExample,
+    collate_candidate_move_policy_value_samples,
     shogi_move_choice_example_from_board,
     tensorize_candidate_move_policy_value_example,
+    tensorize_compact_policy_plane_value_example,
     tensorize_policy_plane_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_move_policy_value_examples_from_test_moves
@@ -127,9 +129,9 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         )
         dataset = ShogiPolicyValueDataset((example,))
 
-        *_, value_target = dataset[0]
+        sample = dataset[0]
 
-        self.assertEqual(float(value_target.item()), 1.0)
+        self.assertEqual(float(sample.value_target.item()), 1.0)
 
     def test_position_value_example_validates_value_target(self) -> None:
         with self.assertRaisesRegex(ValueError, "value_target"):
@@ -137,30 +139,38 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
     def test_dataset_can_be_batched(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-        loader = DataLoader(ShogiPolicyValueDataset(examples), batch_size=2)
+        loader = DataLoader(
+            ShogiPolicyValueDataset(examples),
+            batch_size=2,
+            collate_fn=collate_candidate_move_policy_value_samples,
+        )
 
-        position_token_ids, candidate_move_features, candidate_masks, label_indexes, policy_targets, value_targets = next(iter(loader))
+        batch = next(iter(loader))
 
-        self.assertEqual(tuple(position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
-        self.assertEqual(tuple(candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
-        self.assertEqual(tuple(candidate_masks.shape), (2, len(examples[0].legal_moves)))
-        self.assertEqual(tuple(label_indexes.shape), (2,))
-        self.assertEqual(tuple(policy_targets.shape), (2, len(examples[0].legal_moves)))
-        self.assertEqual(tuple(value_targets.shape), (2,))
+        self.assertEqual(tuple(batch.position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
+        self.assertEqual(tuple(batch.candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(tuple(batch.candidate_mask.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.labels.shape), (2,))
+        self.assertEqual(tuple(batch.policy_targets.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.value_targets.shape), (2,))
 
     def test_policy_value_dataset_accepts_tensorized_samples(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         samples = [tensorize_candidate_move_policy_value_example(example) for example in examples]
-        loader = DataLoader(ShogiPolicyValueDataset(samples), batch_size=2)
+        loader = DataLoader(
+            ShogiPolicyValueDataset(samples),
+            batch_size=2,
+            collate_fn=collate_candidate_move_policy_value_samples,
+        )
 
-        position_token_ids, candidate_move_features, candidate_masks, label_indexes, policy_targets, value_targets = next(iter(loader))
+        batch = next(iter(loader))
 
-        self.assertEqual(tuple(position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
-        self.assertEqual(tuple(candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
-        self.assertEqual(tuple(candidate_masks.shape), (2, len(examples[0].legal_moves)))
-        self.assertEqual(tuple(label_indexes.shape), (2,))
-        self.assertEqual(tuple(policy_targets.shape), (2, len(examples[0].legal_moves)))
-        self.assertEqual(tuple(value_targets.shape), (2,))
+        self.assertEqual(tuple(batch.position_token_ids.shape), (2, SHOGI_POSITION_TOKEN_COUNT))
+        self.assertEqual(tuple(batch.candidate_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(tuple(batch.candidate_mask.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.labels.shape), (2,))
+        self.assertEqual(tuple(batch.policy_targets.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.value_targets.shape), (2,))
 
     def test_policy_plane_sample_maps_chosen_move_to_fixed_action_target(self) -> None:
         board = shogi.Board()
@@ -182,6 +192,23 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(float(sample.policy_plane_targets.sum().item()), 1.0)
         self.assertTrue(bool(sample.policy_plane_legal_mask[action_index].item()))
         self.assertEqual(float(sample.value_target.item()), 1.0)
+
+    def test_compact_policy_plane_sample_uses_sparse_targets(self) -> None:
+        board = shogi.Board()
+        example = ShogiMovePolicyValueExample(
+            position_sfen=board.sfen(),
+            legal_moves=tuple(sorted(move.usi() for move in board.legal_moves)),
+            chosen_move="7g7f",
+            policy_targets={"7g7f": 3.0, "2g2f": 1.0},
+        )
+
+        sample = tensorize_compact_policy_plane_value_example(example)
+        first_index = shogi_policy_plane_action_index("7g7f", turn=board.turn)
+        second_index = shogi_policy_plane_action_index("2g2f", turn=board.turn)
+
+        self.assertIn(first_index, set(int(index.item()) for index in sample.legal_action_indices))
+        self.assertEqual(tuple(int(index.item()) for index in sample.target_action_indices), (first_index, second_index))
+        self.assertEqual(tuple(float(weight.item()) for weight in sample.target_weights), (0.75, 0.25))
 
     def test_policy_plane_sample_maps_policy_targets_to_fixed_action_space(self) -> None:
         board = shogi.Board()

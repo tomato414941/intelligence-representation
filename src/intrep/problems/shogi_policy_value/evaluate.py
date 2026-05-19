@@ -7,17 +7,24 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint,
+    load_shogi_policy_value_checkpoint_training_config,
+)
 from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import (
+    ShogiPolicyPlaneValueDataset,
     ShogiPolicyValueDataset,
     ShogiPolicyValueDatasetItem,
     ShogiMovePolicyValueExample,
+    collate_candidate_move_policy_value_samples,
+    collate_policy_plane_value_samples,
 )
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
@@ -68,14 +75,27 @@ def evaluate_shogi_policy_value_checkpoint(
     train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
     used_train_examples = _limit_examples(train_examples, max_train_examples, label="max train examples")
     used_eval_examples = _limit_examples(eval_examples, max_eval_examples, label="max eval examples")
+    checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
     model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
     train_metrics = evaluate_shogi_policy_value_metrics(
         model,
-        _loader(used_train_examples, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory),
+        _loader(
+            used_train_examples,
+            model_name=checkpoint_config.model,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+        ),
     )
     eval_metrics = evaluate_shogi_policy_value_metrics(
         model,
-        _loader(used_eval_examples, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory),
+        _loader(
+            used_eval_examples,
+            model_name=checkpoint_config.model,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+        ),
     )
     return {
         "raw_train_case_count": len(train_examples),
@@ -99,16 +119,24 @@ def evaluate_shogi_policy_value_checkpoint(
 def _loader(
     examples: list[ShogiPolicyValueDatasetItem],
     *,
+    model_name: str,
     batch_size: int,
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
+    if model_name == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
+        dataset = ShogiPolicyPlaneValueDataset(examples)
+        collate_fn = collate_policy_plane_value_samples
+    else:
+        dataset = ShogiPolicyValueDataset(examples)
+        collate_fn = collate_candidate_move_policy_value_samples
     return DataLoader(
-        ShogiPolicyValueDataset(examples),
+        dataset,
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        collate_fn=collate_fn,
     )
 
 

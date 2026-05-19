@@ -5,6 +5,7 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyValueDataset,
+    collate_candidate_move_policy_value_samples,
     tensorize_policy_plane_value_examples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
@@ -208,11 +209,18 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(model.core.forward.call_count, 1)
 
 
-def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+def _batch() -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
     dataset = ShogiPolicyValueDataset(examples)
-    rows = [dataset[index] for index in range(len(dataset))]
-    return tuple(torch.stack(values) for values in zip(*rows))  # type: ignore[return-value]
+    batch = collate_candidate_move_policy_value_samples([dataset[index] for index in range(len(dataset))])
+    return (
+        batch.position_token_ids,
+        batch.candidate_move_features,
+        batch.candidate_mask,
+        batch.labels,
+        batch.policy_targets,
+        batch.value_targets,
+    )
 
 
 def _policy_plane_batch() -> tuple[torch.Tensor, torch.Tensor]:

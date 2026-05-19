@@ -13,9 +13,13 @@ from torch.utils.data import DataLoader
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
 from intrep.problems.shogi_policy_value.examples import (
+    CandidateMovePolicyValueBatch,
+    PolicyPlaneValueBatch,
     ShogiPolicyPlaneValueDataset,
     ShogiPolicyValueDataset,
     ShogiPolicyValueDatasetItem,
+    collate_candidate_move_policy_value_samples,
+    collate_policy_plane_value_samples,
 )
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
@@ -207,31 +211,27 @@ def train_shogi_policy_value_model(
         for batch in loader:
             batch_ready = time.monotonic()
             interval_data_wait_seconds += batch_ready - last_batch_finished
-            position_token_ids, policy_args, _labels, policy_targets, value_targets = _batch_to_device(
-                batch,
-                device=device,
-            )
+            batch = _batch_to_device(batch, device=device)
             optimizer.zero_grad(set_to_none=True)
-            value_mask = torch.isfinite(value_targets)
+            value_mask = torch.isfinite(batch.value_targets)
             forward_backward_started = time.monotonic()
             if training_config.policy_loss_weight == 0.0 and training_config.value_loss_weight > 0.0 and value_mask.any():
-                value_predictions = model.predict_value(position_token_ids)
+                value_predictions = model.predict_value(batch.position_token_ids)
                 loss = torch.zeros((), dtype=value_predictions.dtype, device=device)
             elif training_config.value_loss_weight > 0.0 and value_mask.any():
-                logits, value_predictions = _forward_policy_value(
-                    model,
-                    position_token_ids,
-                    *policy_args,
-                )
-                policy_loss = _policy_target_loss(logits, policy_targets)
+                logits, value_predictions = _forward_batch_policy_value(model, batch)
+                policy_loss = _batch_policy_target_loss(logits, batch)
                 loss = training_config.policy_loss_weight * policy_loss
             else:
-                logits = model(position_token_ids, *policy_args)
+                logits = _forward_batch_policy(model, batch)
                 value_predictions = None
-                policy_loss = _policy_target_loss(logits, policy_targets)
+                policy_loss = _batch_policy_target_loss(logits, batch)
                 loss = training_config.policy_loss_weight * policy_loss
             if value_predictions is not None:
-                value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+                value_loss = torch.nn.functional.mse_loss(
+                    value_predictions[value_mask],
+                    batch.value_targets[value_mask],
+                )
                 loss = loss + training_config.value_loss_weight * value_loss
             loss.backward()
             forward_backward_finished = time.monotonic()
@@ -406,34 +406,30 @@ def evaluate_shogi_policy_value_metrics(
         print(f"{log_label} start batches={batch_count} device={device}", flush=True)
     with torch.no_grad():
         for batch_index, batch in enumerate(loader, start=1):
-            position_token_ids, policy_args, labels, policy_targets, value_targets = _batch_to_device(
-                batch,
-                device=device,
-            )
-            value_mask = torch.isfinite(value_targets)
+            batch = _batch_to_device(batch, device=device)
+            value_mask = torch.isfinite(batch.value_targets)
             if value_mask.any() and hasattr(model, "predict_value"):
-                logits, value_predictions = _forward_policy_value(
-                    model,
-                    position_token_ids,
-                    *policy_args,
-                )
+                logits, value_predictions = _forward_batch_policy_value(model, batch)
             else:
-                logits = model(position_token_ids, *policy_args)
+                logits = _forward_batch_policy(model, batch)
                 value_predictions = None
-            loss = _policy_target_loss(logits, policy_targets)
+            loss = _batch_policy_target_loss(logits, batch)
             losses.append(float(loss.item()))
             predictions = logits.argmax(dim=1)
-            correct += int((predictions == labels).sum().item())
+            correct += int((predictions == batch.labels).sum().item())
             sorted_indices = logits.argsort(dim=1, descending=True)
-            label_matches = sorted_indices.eq(labels[:, None])
+            label_matches = sorted_indices.eq(batch.labels[:, None])
             ranks = label_matches.float().argmax(dim=1) + 1
             top_3_correct += int((ranks <= 3).sum().item())
             top_5_correct += int((ranks <= 5).sum().item())
             reciprocal_rank_sum += float((1.0 / ranks.float()).sum().item())
             rank_sum += float(ranks.float().sum().item())
-            total += int(labels.numel())
+            total += int(batch.labels.numel())
             if value_predictions is not None:
-                value_loss = torch.nn.functional.mse_loss(value_predictions[value_mask], value_targets[value_mask])
+                value_loss = torch.nn.functional.mse_loss(
+                    value_predictions[value_mask],
+                    batch.value_targets[value_mask],
+                )
                 value_losses.append(float(value_loss.item()))
             if log_label is not None and log_every_batches is not None and batch_index % log_every_batches == 0:
                 elapsed = time.monotonic() - started
@@ -479,6 +475,7 @@ def _build_shogi_policy_value_loader(
         shuffle=effective_shuffle,
         num_workers=config.num_workers,
         pin_memory=config.pin_memory,
+        collate_fn=_collate_shogi_policy_value_batch(dataset),
     )
 
 
@@ -491,35 +488,69 @@ def _build_shogi_policy_value_dataset(
     return ShogiPolicyValueDataset(examples)
 
 
+ShogiPolicyValueBatch = CandidateMovePolicyValueBatch | PolicyPlaneValueBatch
+
+
+def _collate_shogi_policy_value_batch(
+    dataset: ShogiPolicyValueDataset | ShogiPolicyPlaneValueDataset,
+):
+    if isinstance(dataset, ShogiPolicyPlaneValueDataset):
+        return collate_policy_plane_value_samples
+    return collate_candidate_move_policy_value_samples
+
+
 def _batch_to_device(
-    batch: tuple[torch.Tensor, ...],
+    batch: ShogiPolicyValueBatch,
     *,
     device: torch.device,
-) -> tuple[torch.Tensor, tuple[torch.Tensor, ...], torch.Tensor, torch.Tensor, torch.Tensor]:
-    if len(batch) == 5:
-        position_token_ids, policy_plane_legal_mask, labels, policy_targets, value_targets = batch
-        return (
-            position_token_ids.to(device),
-            (policy_plane_legal_mask.to(device),),
-            labels.to(device),
-            policy_targets.to(device),
-            value_targets.to(device),
-        )
-    if len(batch) == 6:
-        position_token_ids, candidate_move_features, candidate_mask, labels, policy_targets, value_targets = batch
-        return (
-            position_token_ids.to(device),
-            (candidate_move_features.to(device), candidate_mask.to(device)),
-            labels.to(device),
-            policy_targets.to(device),
-            value_targets.to(device),
-        )
-    raise ValueError(f"unsupported shogi policy/value batch arity: {len(batch)}")
+) -> ShogiPolicyValueBatch:
+    if isinstance(batch, (CandidateMovePolicyValueBatch, PolicyPlaneValueBatch)):
+        return batch.to(device)
+    raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
 def _policy_target_loss(logits: torch.Tensor, policy_targets: torch.Tensor) -> torch.Tensor:
     log_probs = torch.nn.functional.log_softmax(logits, dim=1)
     return -(policy_targets * log_probs).sum(dim=1).mean()
+
+
+def _sparse_policy_target_loss(
+    logits: torch.Tensor,
+    target_action_indices: torch.Tensor,
+    target_weights: torch.Tensor,
+) -> torch.Tensor:
+    log_probs = torch.nn.functional.log_softmax(logits, dim=1)
+    target_log_probs = log_probs.gather(dim=1, index=target_action_indices.long())
+    return -(target_weights * target_log_probs).sum(dim=1).mean()
+
+
+def _batch_policy_target_loss(logits: torch.Tensor, batch: ShogiPolicyValueBatch) -> torch.Tensor:
+    if isinstance(batch, CandidateMovePolicyValueBatch):
+        return _policy_target_loss(logits, batch.policy_targets)
+    if isinstance(batch, PolicyPlaneValueBatch):
+        return _sparse_policy_target_loss(logits, batch.target_action_indices, batch.target_weights)
+    raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
+
+
+def _forward_batch_policy(model: nn.Module, batch: ShogiPolicyValueBatch) -> torch.Tensor:
+    if isinstance(batch, CandidateMovePolicyValueBatch):
+        return model(batch.position_token_ids, batch.candidate_move_features, batch.candidate_mask)
+    if isinstance(batch, PolicyPlaneValueBatch):
+        return model(batch.position_token_ids, batch.legal_action_mask)
+    raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
+
+
+def _forward_batch_policy_value(model: nn.Module, batch: ShogiPolicyValueBatch) -> tuple[torch.Tensor, torch.Tensor]:
+    if isinstance(batch, CandidateMovePolicyValueBatch):
+        return _forward_policy_value(
+            model,
+            batch.position_token_ids,
+            batch.candidate_move_features,
+            batch.candidate_mask,
+        )
+    if isinstance(batch, PolicyPlaneValueBatch):
+        return _forward_policy_value(model, batch.position_token_ids, batch.legal_action_mask)
+    raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
 def _forward_policy_value(

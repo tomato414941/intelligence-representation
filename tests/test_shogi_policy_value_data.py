@@ -207,13 +207,13 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                 value_target_construction="winner",
             )
 
-        _, _, candidate_mask, label_index, policy_targets, _ = ShogiPolicyValueDataset(examples)[0]
+        sample = ShogiPolicyValueDataset(examples)[0]
 
         legal_moves = examples[0].legal_moves
-        self.assertEqual(int(label_index.item()), legal_moves.index("7g7f"))
-        self.assertEqual(int(candidate_mask.sum().item()), len(legal_moves))
-        self.assertEqual(float(policy_targets[legal_moves.index("7g7f")].item()), 0.75)
-        self.assertEqual(float(policy_targets[legal_moves.index("2g2f")].item()), 0.25)
+        self.assertEqual(int(sample.label.item()), legal_moves.index("7g7f"))
+        self.assertEqual(int(sample.candidate_move_features.shape[0]), len(legal_moves))
+        self.assertEqual(float(sample.policy_targets[legal_moves.index("7g7f")].item()), 0.75)
+        self.assertEqual(float(sample.policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 
     def test_builds_policy_and_score_targets_from_engine_analysis(self) -> None:
         record = _record(("7g7f",), "black")

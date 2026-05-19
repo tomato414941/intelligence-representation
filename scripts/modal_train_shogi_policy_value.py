@@ -18,6 +18,8 @@ GPU_TYPE = os.environ.get("INTREP_MODAL_GPU", "L4")
 VOLUME_ROOT = Path("/data")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
 DEFAULT_CACHE_NAME = "shogi-policy-value-tensors"
+DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-policy-plane-value-tensors"
+DEFAULT_MODEL = "shared_transformer"
 DEFAULT_LOCAL_INIT_CHECKPOINT = Path("models/d256-h1024-heads8-l6-shogi/checkpoint.pt")
 DEFAULT_REMOTE_INIT_CHECKPOINT = "d256-h1024-heads8-l6-shogi"
 
@@ -40,18 +42,21 @@ if modal is not None:
 
         remote_bundle = str(config["remote_bundle"])
         run_name = str(config["run_name"])
+        model = str(config["model"])
+        cache_name = _cache_name_for_model(model)
         batch_size = int(config["batch_size"])
         max_steps = int(config["max_steps"])
         if max_steps <= 0:
-            manifest_path = VOLUME_ROOT / remote_bundle / "cache" / DEFAULT_CACHE_NAME / "manifest.json"
+            manifest_path = VOLUME_ROOT / remote_bundle / "cache" / cache_name / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             max_steps = math.ceil(int(manifest["train_count"]) / batch_size)
 
         output_dir = VOLUME_ROOT / remote_bundle / "training-runs" / run_name
         output_dir.mkdir(parents=True, exist_ok=True)
         data_selection_path = VOLUME_ROOT / remote_bundle / "data-selection.json"
-        tensor_cache_path = VOLUME_ROOT / remote_bundle / "cache" / DEFAULT_CACHE_NAME
-        init_checkpoint_path = VOLUME_ROOT / remote_bundle / "init-checkpoints" / str(config["remote_init_checkpoint"]) / "checkpoint.pt"
+        tensor_cache_path = VOLUME_ROOT / remote_bundle / "cache" / cache_name
+        remote_init_checkpoint = str(config["remote_init_checkpoint"])
+        init_checkpoint_path = VOLUME_ROOT / remote_bundle / "init-checkpoints" / remote_init_checkpoint / "checkpoint.pt"
         timing_path = output_dir / "timing.json"
 
         argv = [
@@ -60,8 +65,6 @@ if modal is not None:
             str(data_selection_path),
             "--tensor-cache",
             str(tensor_cache_path),
-            "--init-checkpoint-path",
-            str(init_checkpoint_path),
             "--checkpoint-path",
             str(output_dir / "checkpoint.pt"),
             "--best-checkpoint-path",
@@ -84,6 +87,8 @@ if modal is not None:
             str(config["num_heads"]),
             "--num-layers",
             str(config["num_layers"]),
+            "--model",
+            model,
             "--policy-loss-weight",
             str(config["policy_loss_weight"]),
             "--value-loss-weight",
@@ -102,6 +107,8 @@ if modal is not None:
             str(config["keep_last_n_checkpoints"]),
             "--pin-memory",
         ]
+        if remote_init_checkpoint:
+            argv.extend(["--init-checkpoint-path", str(init_checkpoint_path)])
         if int(config["max_train_eval_examples"]) > 0:
             argv.extend(["--max-train-eval-examples", str(config["max_train_eval_examples"])])
         if int(config["max_eval_examples"]) > 0:
@@ -126,6 +133,7 @@ if modal is not None:
             "schema_version": "intrep.shogi_policy_value_training_timing.v1",
             "elapsed_seconds": elapsed_seconds,
             "gpu_type": GPU_TYPE,
+            "model": model,
             "torch_version": torch.__version__,
             "cuda_available": torch.cuda.is_available(),
             "cuda_device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
@@ -157,6 +165,7 @@ if modal is not None:
         local_init_checkpoint: str = str(DEFAULT_LOCAL_INIT_CHECKPOINT),
         remote_init_checkpoint: str = DEFAULT_REMOTE_INIT_CHECKPOINT,
         skip_upload_init_checkpoint: bool = False,
+        model: str = DEFAULT_MODEL,
         max_steps: int = 0,
         batch_size: int = 512,
         learning_rate: float = 0.0005,
@@ -177,7 +186,7 @@ if modal is not None:
         max_train_eval_examples: int = 0,
         max_eval_examples: int = 0,
     ) -> None:
-        if not skip_upload_init_checkpoint:
+        if not skip_upload_init_checkpoint and remote_init_checkpoint:
             _upload_init_checkpoint(
                 local_checkpoint=Path(local_init_checkpoint),
                 remote_bundle=remote_bundle,
@@ -188,6 +197,7 @@ if modal is not None:
                 "remote_bundle": remote_bundle,
                 "run_name": run_name,
                 "remote_init_checkpoint": remote_init_checkpoint,
+                "model": model,
                 "max_steps": max_steps,
                 "batch_size": batch_size,
                 "learning_rate": learning_rate,
@@ -223,6 +233,12 @@ def _upload_init_checkpoint(*, local_checkpoint: Path, remote_bundle: str, remot
         raise FileNotFoundError(local_checkpoint)
     with volume.batch_upload() as batch:
         batch.put_directory(str(local_checkpoint.parent), f"/{remote_bundle}/init-checkpoints/{remote_init_checkpoint}")
+
+
+def _cache_name_for_model(model: str) -> str:
+    if model == "policy_plane_shared_transformer":
+        return DEFAULT_POLICY_PLANE_CACHE_NAME
+    return DEFAULT_CACHE_NAME
 
 
 if __name__ == "__main__":
