@@ -31,6 +31,9 @@ Current entrypoint:
 scripts/runpod_train_shogi_policy_value.sh
 ```
 
+Set `MODEL=policy_plane_shared_transformer` for policy-plane shogi training.
+The default remains `shared_transformer`.
+
 This script uses the shared `../runpod-job-runner/scripts/run_job.py` helper.
 The project-specific training entrypoint remains in this repository; generic
 RunPod pod lifecycle code lives outside the model repository.

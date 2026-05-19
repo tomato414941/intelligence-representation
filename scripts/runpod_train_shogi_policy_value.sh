@@ -43,6 +43,17 @@ MODEL=${MODEL:-shared_transformer}
 # Optional RunPod data-center pin. See docs/runpod.md before long baselines.
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
+.venv/bin/python - "$MODEL" <<'PY'
+import sys
+
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_NAMES
+
+model = sys.argv[1]
+if model not in SHOGI_POLICY_VALUE_MODEL_NAMES:
+    names = ", ".join(SHOGI_POLICY_VALUE_MODEL_NAMES)
+    raise SystemExit(f"unsupported MODEL={model!r}; expected one of: {names}")
+PY
+
 TRAINING_INPUT_ARGS=(--data-selection "$DATA_SELECTION")
 if [[ -n "$TENSOR_CACHE" ]]; then
   TRAINING_INPUT_ARGS+=(--tensor-cache "$TENSOR_CACHE")
