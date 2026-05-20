@@ -7,7 +7,7 @@ import unittest
 from io import StringIO
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import shogi
 
@@ -491,14 +491,14 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
         modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            local_cache = root / "bundle" / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
+            local_cache = root / "bundle" / "cache" / "legal-move"
             local_cache.mkdir(parents=True)
             (local_cache / "stale.txt").write_text("old\n", encoding="utf-8")
 
             with patch.object(modal_builder.subprocess, "run") as run:
                 result = modal_builder._release_remote_cache_to_local(
                     remote_bundle="qhapaq-full",
-                    cache_name="shogi-position-features-policy-value-legal-move-tensors",
+                    cache_name="legal-move",
                     local_cache=local_cache,
                 )
 
@@ -511,7 +511,7 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
                     "get",
                     "--force",
                     modal_builder.VOLUME_NAME,
-                    "/qhapaq-full/cache/shogi-position-features-policy-value-legal-move-tensors",
+                    "/qhapaq-full/cache/legal-move",
                     str(local_cache),
                 ],
                 check=True,
@@ -528,8 +528,24 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
                     output_space="policy_plane",
                     local_cache=None,
                 ),
-                local_bundle / "cache" / "shogi-position-features-policy-value-policy-plane-tensors",
+                local_bundle / "cache" / "policy-plane",
             )
+
+    def test_modal_tensor_cache_builder_upload_overwrites_remote_bundle_files(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+        with tempfile.TemporaryDirectory() as directory:
+            local_bundle = Path(directory) / "bundle"
+            local_bundle.mkdir()
+            upload_context = MagicMock()
+            batch = upload_context.__enter__.return_value
+            volume = MagicMock()
+            volume.batch_upload.return_value = upload_context
+
+            with patch.object(modal_builder, "volume", volume, create=True):
+                modal_builder._upload_bundle(local_bundle=local_bundle, remote_bundle="qhapaq-full")
+
+            volume.batch_upload.assert_called_once_with(force=True)
+            batch.put_directory.assert_called_once_with(str(local_bundle), "/qhapaq-full")
 
 
 def _load_script_module(name: str) -> ModuleType:

@@ -54,9 +54,10 @@ or problem artifacts, not source game records.
 
 ## Saved File Formats
 
-File names identify the saved file's role, not its format version. Do not put a
-schema version in names such as `checkpoint.pt`, `tokenizer.json`,
-`manifest.json`, `metrics.json`, or `shogi-position-features-policy-value-legal-move-tensors`.
+File and artifact directory names identify the artifact's role, not its format
+version. Do not put a schema version in names such as `checkpoint.pt`,
+`tokenizer.json`, `manifest.json`, `metrics.json`, or cache labels such as
+`legal-move`.
 
 Reusable or loadable saved files store their format identifier inside the
 payload as `schema_version`. Loaders should check `schema_version` before

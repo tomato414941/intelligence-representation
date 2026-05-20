@@ -24,10 +24,12 @@ VOLUME_NAME = os.environ.get("INTREP_MODAL_VOLUME_NAME", "intrep-shogi-tensor-ca
 VOLUME_ROOT = Path("/data")
 DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
-DEFAULT_CACHE_NAME = "shogi-position-features-policy-value-legal-move-tensors"
-DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-position-features-policy-value-policy-plane-tensors"
+DEFAULT_CACHE_NAME = "legal-move"
+DEFAULT_POLICY_PLANE_CACHE_NAME = "policy-plane"
 DEFAULT_OUTPUT_SPACE = "legal_move"
 DEFAULT_RELEASE = "local"
+DEFAULT_SHARD_EXAMPLES = 10_000
+WORKER_MEMORY_MB = int(os.environ.get("INTREP_MODAL_TENSOR_CACHE_WORKER_MEMORY_MB", "8192"))
 
 
 if modal is not None:
@@ -40,7 +42,7 @@ if modal is not None:
     )
     app = modal.App(APP_NAME)
 
-    @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=24 * 60 * 60)
+    @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=24 * 60 * 60, memory=WORKER_MEMORY_MB)
     def build_remote_shard(task: dict[str, Any]) -> dict[str, object]:
         from intrep.problems.shogi_policy_value.tensor_cache import (
             build_shogi_policy_value_tensor_cache_shard,
@@ -93,7 +95,7 @@ if modal is not None:
     def main(
         local_bundle: str = str(DEFAULT_LOCAL_BUNDLE),
         remote_bundle: str = DEFAULT_REMOTE_BUNDLE,
-        shard_examples: int = 100_000,
+        shard_examples: int = DEFAULT_SHARD_EXAMPLES,
         split: str = "all",
         skip_upload: bool = False,
         limit_shards: int = 0,
@@ -207,7 +209,7 @@ def run(
 
 def _upload_bundle(*, local_bundle: Path, remote_bundle: str) -> None:
     remote_path = f"/{remote_bundle}"
-    with volume.batch_upload() as batch:
+    with volume.batch_upload(force=True) as batch:
         batch.put_directory(str(local_bundle), remote_path)
 
 

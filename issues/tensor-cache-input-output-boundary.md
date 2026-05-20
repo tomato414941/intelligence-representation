@@ -43,7 +43,7 @@ silently corrupt.
 
 ## Trigger
 
-Revisit when the project repeatedly compares model tracks with different input
+Revisit when the project repeatedly compares model entries with different input
 representations or output spaces from the same Training Data Bundle and cache
 rebuild time becomes a meaningful constraint.
 

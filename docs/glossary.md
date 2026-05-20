@@ -607,19 +607,18 @@ An assembly spec identifies one concrete assembly design.
 
 Fixed assemblies may have exactly one assembly spec. Assemblies with selectable
 model-side components may have multiple assembly specs. An assembly spec is not
-a model track.
+a model entry.
 
-### Model Track
+### Model Entry
 
-A model track is a maintained comparison slot for a model configuration family.
-It may name the input representation, core/model design, output representation,
-training recipe, and artifact references that should be evaluated together over
-time.
+A model entry is one model configuration registered in an evaluation roster. It
+may name the input representation, core/model design, output representation,
+training recipe, and artifact references that should be evaluated together.
 
-Model tracks are peers, not a baseline plus disposable experiments. For example,
-`shogi-position-features-policy-value-policy-plane` and
-`shogi-position-features-policy-value-legal-move` can be separate shogi model
-tracks.
+Model entry names are human-facing labels and may be renamed when the roster
+needs more precision. For example, `shogi-policy-plane` and `shogi-legal-move`
+can be separate shogi model entries. Artifact identities, manifests, and hashes
+carry the exact machine-checkable details.
 
 ### Representation
 

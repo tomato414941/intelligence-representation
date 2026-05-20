@@ -12,7 +12,7 @@ class ShogiPolicyValueTrainingInputsTest(unittest.TestCase):
             root = Path(directory)
             train = root / "train-examples.jsonl"
             eval_ = root / "eval-examples.jsonl"
-            cache = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
+            cache = root / "cache" / "legal-move"
             selection = root / "data-selection.json"
             train.write_text("", encoding="utf-8")
             eval_.write_text("", encoding="utf-8")

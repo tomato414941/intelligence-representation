@@ -103,7 +103,7 @@ if [[ -n "$MIN_VCPU_PER_GPU" ]]; then
   RUNNER_ARGS+=(--min-vcpu-per-gpu "$MIN_VCPU_PER_GPU")
 fi
 if [[ "$SYNC_TENSOR_CACHE" == "1" ]]; then
-  CACHE_ROOT="data/shogi/training-data-bundles/qhapaq-full/cache/shogi-position-features-policy-value-legal-move-tensors"
+  CACHE_ROOT="data/shogi/training-data-bundles/qhapaq-full/cache/legal-move"
   RUNNER_ARGS+=(--sync "$PROJECT_REL/$CACHE_ROOT/manifest.json")
   while IFS= read -r cache_path; do
     RUNNER_ARGS+=(--sync "$PROJECT_REL/$CACHE_ROOT/$cache_path")
