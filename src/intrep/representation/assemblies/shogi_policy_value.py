@@ -21,8 +21,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    shogi_policy_value_components_for_assembly_spec_id,
-    validate_shogi_policy_value_components,
+    shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.worlds.shogi.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
@@ -155,24 +154,15 @@ def _state_element_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
     return position_hidden[:, STATE_ELEMENT_INDEX]
 
 
-def _build_shogi_policy_value_model_from_components(
+def _build_shogi_policy_value_model_from_policy_output(
     *,
-    input: str,
-    core: str,
     policy_output: str,
-    value_output: str,
     embedding_dim: int,
     num_heads: int,
     hidden_dim: int,
     num_layers: int,
     dropout: float = 0.0,
 ) -> nn.Module:
-    validate_shogi_policy_value_components(
-        input=input,
-        core=core,
-        policy_output=policy_output,
-        value_output=value_output,
-    )
     if policy_output in (
         SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
         SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
@@ -210,12 +200,9 @@ def build_shogi_policy_value_model_for_assembly_spec(
     num_layers: int,
     dropout: float = 0.0,
 ) -> nn.Module:
-    components = shogi_policy_value_components_for_assembly_spec_id(assembly_spec_id)
-    return _build_shogi_policy_value_model_from_components(
-        input=components["input"],
-        core=components["core"],
-        policy_output=components["policy_output"],
-        value_output=components["value_output"],
+    assembly_spec = shogi_policy_value_assembly_spec_for_id(assembly_spec_id)
+    return _build_shogi_policy_value_model_from_policy_output(
+        policy_output=str(assembly_spec["policy_output"]),
         embedding_dim=embedding_dim,
         num_heads=num_heads,
         hidden_dim=hidden_dim,
