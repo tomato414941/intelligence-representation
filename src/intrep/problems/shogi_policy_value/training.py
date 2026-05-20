@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
 from typing import Callable, Literal, Sequence
 import warnings
@@ -25,11 +25,9 @@ from intrep.representation.assemblies.shogi_policy_value import (
     build_shogi_policy_value_model as build_shogi_policy_value_model_from_components,
 )
 from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_POSITION_INPUT_MODULE_ID,
-    SHOGI_SHARED_CORE_MODULE_ID,
-    SHOGI_VALUE_OUTPUT_MODULE_ID,
+    shogi_policy_value_components_for_assembly_spec_id,
     validate_shogi_policy_value_components,
 )
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
@@ -46,10 +44,11 @@ class ShogiPolicyValueTrainingConfig:
     hidden_dim: int = 1024
     num_heads: int = 8
     num_layers: int = 6
-    input: str = SHOGI_POSITION_INPUT_MODULE_ID
-    core: str = SHOGI_SHARED_CORE_MODULE_ID
-    policy_output: str = SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID
-    value_output: str = SHOGI_VALUE_OUTPUT_MODULE_ID
+    assembly_spec_id: str = SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID
+    input: str = field(init=False)
+    core: str = field(init=False)
+    policy_output: str = field(init=False)
+    value_output: str = field(init=False)
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     allow_nonstandard_loss_weights: bool = False
@@ -62,6 +61,13 @@ class ShogiPolicyValueTrainingConfig:
     progress_every: int | None = None
     eval_every: int | None = None
     early_stopping_patience: int | None = None
+
+    def __post_init__(self) -> None:
+        components = shogi_policy_value_components_for_assembly_spec_id(self.assembly_spec_id)
+        object.__setattr__(self, "input", components["input"])
+        object.__setattr__(self, "core", components["core"])
+        object.__setattr__(self, "policy_output", components["policy_output"])
+        object.__setattr__(self, "value_output", components["value_output"])
 
 
 @dataclass(frozen=True)

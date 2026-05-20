@@ -24,11 +24,9 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_CORE_MODULE_IDS,
-    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_OUTPUT_MODULE_IDS,
-    SHOGI_POSITION_INPUT_MODULE_IDS,
-    SHOGI_VALUE_OUTPUT_MODULE_IDS,
+    SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
+    SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
+    shogi_policy_value_components_for_assembly_spec_id,
 )
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_policy_output
 from intrep.problems.shogi_policy_value.training import (
@@ -55,17 +53,10 @@ def main() -> None:
     parser.add_argument("--hidden-dim", type=int, default=1024)
     parser.add_argument("--num-heads", type=int, default=8)
     parser.add_argument("--num-layers", type=int, default=6)
-    parser.add_argument("--input", choices=SHOGI_POSITION_INPUT_MODULE_IDS, default=SHOGI_POSITION_INPUT_MODULE_IDS[0])
-    parser.add_argument("--core", choices=SHOGI_CORE_MODULE_IDS, default=SHOGI_CORE_MODULE_IDS[0])
     parser.add_argument(
-        "--policy-output",
-        choices=SHOGI_POLICY_OUTPUT_MODULE_IDS,
-        default=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    )
-    parser.add_argument(
-        "--value-output",
-        choices=SHOGI_VALUE_OUTPUT_MODULE_IDS,
-        default=SHOGI_VALUE_OUTPUT_MODULE_IDS[0],
+        "--assembly-spec",
+        choices=SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
+        default=SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
     )
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)
@@ -83,6 +74,7 @@ def main() -> None:
     parser.add_argument("--keep-last-n-checkpoints", type=int)
     args = parser.parse_args()
 
+    assembly_components = shogi_policy_value_components_for_assembly_spec_id(args.assembly_spec)
     data_selection = load_shogi_policy_value_data_selection(args.data_selection)
     if args.tensor_cache is None:
         raw_train_examples, raw_eval_examples = load_shogi_policy_value_data_selection_examples(data_selection)
@@ -99,7 +91,9 @@ def main() -> None:
             args.tensor_cache,
             expected_data_selection=data_selection,
             expected_data_selection_root=args.data_selection.parent,
-            expected_output_space=shogi_policy_value_output_space_for_policy_output(args.policy_output),
+            expected_output_space=shogi_policy_value_output_space_for_policy_output(
+                assembly_components["policy_output"]
+            ),
         )
         train_examples = tensor_cache.train_samples
         eval_examples = tensor_cache.eval_samples
@@ -119,10 +113,7 @@ def main() -> None:
         hidden_dim=args.hidden_dim,
         num_heads=args.num_heads,
         num_layers=args.num_layers,
-        input=args.input,
-        core=args.core,
-        policy_output=args.policy_output,
-        value_output=args.value_output,
+        assembly_spec_id=args.assembly_spec,
         policy_loss_weight=args.policy_loss_weight,
         value_loss_weight=args.value_loss_weight,
         allow_nonstandard_loss_weights=args.allow_nonstandard_loss_weights,

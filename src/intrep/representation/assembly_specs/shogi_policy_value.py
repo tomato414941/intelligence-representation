@@ -38,6 +38,37 @@ _SHOGI_POLICY_VALUE_SPEC_BY_POLICY_OUTPUT = {
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID: SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID: SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 }
+_SHOGI_POLICY_VALUE_COMPONENTS_BY_SPEC_ID = {
+    SHOGI_POLICY_VALUE_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID: {
+        "input": SHOGI_POSITION_INPUT_MODULE_ID,
+        "core": SHOGI_SHARED_CORE_MODULE_ID,
+        "policy_output": SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+        "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
+    },
+    SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID: {
+        "input": SHOGI_POSITION_INPUT_MODULE_ID,
+        "core": SHOGI_SHARED_CORE_MODULE_ID,
+        "policy_output": SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+        "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
+    },
+    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID: {
+        "input": SHOGI_POSITION_INPUT_MODULE_ID,
+        "core": SHOGI_SHARED_CORE_MODULE_ID,
+        "policy_output": SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+        "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
+    },
+}
+
+
+def shogi_policy_value_components_for_assembly_spec_id(assembly_spec_id: str) -> dict[str, str]:
+    if assembly_spec_id not in _SHOGI_POLICY_VALUE_COMPONENTS_BY_SPEC_ID:
+        raise ValueError(f"unsupported shogi policy/value assembly spec: {assembly_spec_id}")
+    return dict(_SHOGI_POLICY_VALUE_COMPONENTS_BY_SPEC_ID[assembly_spec_id])
+
+
+def shogi_policy_value_assembly_spec_for_id(assembly_spec_id: str) -> dict[str, object]:
+    components = shogi_policy_value_components_for_assembly_spec_id(assembly_spec_id)
+    return shogi_policy_value_assembly_spec(**components)
 
 
 def shogi_policy_value_assembly_spec(

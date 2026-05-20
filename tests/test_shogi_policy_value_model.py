@@ -12,10 +12,8 @@ from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_POSITION_INPUT_MODULE_ID,
-    SHOGI_SHARED_CORE_MODULE_ID,
-    SHOGI_VALUE_OUTPUT_MODULE_ID,
-    shogi_policy_value_assembly_spec,
+    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.representation.assemblies.shogi_policy_value import (
     PolicyPlaneShogiPolicyValueModel,
@@ -43,12 +41,7 @@ from intrep.worlds.shogi.position_encoding import (
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_policy_plane_assembly_spec_uses_fixed_policy_head(self) -> None:
-        spec = shogi_policy_value_assembly_spec(
-            input=SHOGI_POSITION_INPUT_MODULE_ID,
-            core=SHOGI_SHARED_CORE_MODULE_ID,
-            policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-            value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
-        )
+        spec = shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID)
 
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 

@@ -21,9 +21,9 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_ASSEMBLY_ID,
-    SHOGI_SHARED_CORE_MODULE_ID,
-    SHOGI_VALUE_OUTPUT_MODULE_ID,
-    shogi_policy_value_assembly_spec,
+    SHOGI_POLICY_VALUE_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
@@ -61,12 +61,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
             self.assertEqual(
                 payload["config"]["assembly_spec"],
-                shogi_policy_value_assembly_spec(
-                    input=payload["config"]["input"],
-                    core=SHOGI_SHARED_CORE_MODULE_ID,
-                    policy_output=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-                    value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
-                ),
+                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
             )
             self.assertEqual(payload["config"]["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
             self.assertEqual(payload["config"]["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
@@ -99,7 +94,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
             ),
         )
         batch = next(
@@ -121,12 +116,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
             self.assertEqual(
                 payload["config"]["assembly_spec"],
-                shogi_policy_value_assembly_spec(
-                    input=payload["config"]["input"],
-                    core=SHOGI_SHARED_CORE_MODULE_ID,
-                    policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-                    value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
-                ),
+                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID),
             )
             loaded = load_shogi_policy_value_checkpoint(path)
 
@@ -301,7 +291,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "assembly spec"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_missing_policy_output(self) -> None:
+    def test_load_rejects_changed_component_summary(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -321,7 +311,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             payload["config"].pop("policy_output")
             torch.save(payload, path)
 
-            with self.assertRaisesRegex(ValueError, "missing policy_output"):
+            with self.assertRaisesRegex(ValueError, "checkpoint identity"):
                 load_shogi_policy_value_checkpoint(path)
 
 

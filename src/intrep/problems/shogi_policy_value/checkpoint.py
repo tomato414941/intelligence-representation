@@ -10,8 +10,7 @@ from torch import nn
 
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_ID,
-    shogi_policy_value_assembly_spec,
-    validate_shogi_policy_value_components,
+    shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 from intrep.worlds.shogi.position_encoding import (
@@ -121,10 +120,7 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
         hidden_dim=int(config_payload["hidden_dim"]),
         num_heads=int(config_payload.get("num_heads", 4)),
         num_layers=int(config_payload.get("num_layers", 1)),
-        input=str(config_payload["input"]),
-        core=str(config_payload["core"]),
-        policy_output=str(config_payload["policy_output"]),
-        value_output=str(config_payload["value_output"]),
+        assembly_spec_id=str(config_payload["assembly_spec_id"]),
         policy_loss_weight=float(config_payload.get("policy_loss_weight", 1.0)),
         value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
         allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
@@ -147,10 +143,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
             hidden_dim=int(config_payload["hidden_dim"]),
             num_heads=int(config_payload.get("num_heads", 4)),
             num_layers=int(config_payload.get("num_layers", 1)),
-            input=str(config_payload["input"]),
-            core=str(config_payload["core"]),
-            policy_output=str(config_payload["policy_output"]),
-            value_output=str(config_payload["value_output"]),
+            assembly_spec_id=str(config_payload["assembly_spec_id"]),
             value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
             allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
         )
@@ -189,10 +182,10 @@ def _checkpoint_config_payload(config: object) -> dict[str, object]:
         "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
         "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
         "assembly_spec_id": assembly_spec["assembly_spec_id"],
-        "input": _config_str(config, "input"),
-        "core": _config_str(config, "core"),
-        "policy_output": _config_str(config, "policy_output"),
-        "value_output": _config_str(config, "value_output"),
+        "input": assembly_spec["input"],
+        "core": assembly_spec["core"],
+        "policy_output": assembly_spec["policy_output"],
+        "value_output": assembly_spec["value_output"],
         "assembly_spec": assembly_spec,
         "embedding_dim": _config_int(config, "embedding_dim"),
         "hidden_dim": _config_int(config, "hidden_dim"),
@@ -253,22 +246,7 @@ def _checkpoint_assembly_spec(config: object) -> dict[str, object]:
     )
     if assembly != SHOGI_POLICY_VALUE_ASSEMBLY_ID:
         raise ValueError(f"unsupported shogi policy/value assembly: {assembly}")
-    input_name = _config_str(config, "input")
-    core = _config_str(config, "core")
-    policy_output = _config_str(config, "policy_output")
-    value_output = _config_str(config, "value_output")
-    validate_shogi_policy_value_components(
-        input=input_name,
-        core=core,
-        policy_output=policy_output,
-        value_output=value_output,
-    )
-    return shogi_policy_value_assembly_spec(
-        input=input_name,
-        core=core,
-        policy_output=policy_output,
-        value_output=value_output,
-    )
+    return shogi_policy_value_assembly_spec_for_id(_config_str(config, "assembly_spec_id"))
 
 
 def _config_str(config: object, name: str) -> str:
