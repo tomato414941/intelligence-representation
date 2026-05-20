@@ -13,8 +13,7 @@ control path is covered by
 [`shogi-dataloader-throughput.md`](shogi-dataloader-throughput.md).
 This issue tracked memory stability and cache format before Training Data Bundle
 tensor cache became the active follow-up.
-RunPod region stability is tracked separately in
-[`../runpod-region-stability.md`](../runpod-region-stability.md).
+RunPod region stability was tracked separately while debugging this workstream.
 
 ## Evidence
 
@@ -38,9 +37,9 @@ The RunPod shogi training script defaults to:
 | Setting | Default | Reason |
 | --- | --- | --- |
 | `NUM_WORKERS` | `0` | Avoid private-copy RAM growth from DataLoader workers. |
-| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default; see [`../runpod-region-stability.md`](../runpod-region-stability.md) before longer baselines. |
+| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default unless a specific run needs a measured data-center pin. |
 
-For longer full-cache RunPod baselines, prefer:
+Historical successful full-cache baseline setting:
 
 ```sh
 DATA_CENTER_IDS=EU-RO-1

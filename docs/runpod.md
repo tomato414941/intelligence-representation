@@ -66,8 +66,8 @@ For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
 been measured on the target cache and Pod size. The JSONL cache is loaded as a
 large Python object list, and workers can increase RAM pressure.
 
-For longer baselines, prefer `DATA_CENTER_IDS=EU-RO-1`; `US-CA-2` has had SSH
-stability failures during shogi training.
+Use `DATA_CENTER_IDS` only when a run needs an explicit data-center pin. Leave
+it unset by default so scheduling can adapt to current RunPod availability.
 
 The script uses disposable compute and currently avoids RunPod network volumes.
 Network-volume use is tracked separately in

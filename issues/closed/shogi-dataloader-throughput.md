@@ -45,7 +45,7 @@ Current operational default for full-cache RunPod jobs:
 | Setting | Default | Reason |
 | --- | --- | --- |
 | `NUM_WORKERS` | `0` | Avoid private-copy RAM growth from the full Python-object cache until the memory issue is fixed. |
-| `DATA_CENTER_IDS` | unset, but use `EU-RO-1` for longer RunPod baselines | `EU-RO-1` completed the 2000-step workers0 baseline; a US-CA-2 host failed during this workstream. |
+| `DATA_CENTER_IDS` | unset | Leave scheduling flexible by default. Pin a data center only for a specific measured run. |
 
 Keep this issue closed unless worker-free throughput becomes the main bottleneck
 after the memory issue is handled.
