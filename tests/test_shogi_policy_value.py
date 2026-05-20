@@ -7,12 +7,12 @@ from torch.utils.data import DataLoader
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
-    ShogiLegalMoveTokenPolicyValueDataset,
+    ShogiLegalMovePolicyValueDataset,
     ShogiMovePolicyValueExample,
     ShogiPositionValueExample,
-    collate_legal_move_token_policy_value_samples,
+    collate_legal_move_policy_value_samples,
     shogi_move_choice_example_from_board,
-    tensorize_legal_move_token_policy_value_example,
+    tensorize_legal_move_policy_value_example,
     tensorize_compact_policy_plane_value_example,
     tensorize_policy_plane_value_example,
 )
@@ -61,20 +61,20 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(examples[0].value_target, 1.0)
         self.assertEqual(examples[1].value_target, -1.0)
 
-    def test_dataset_returns_legal_move_token_mask_and_label_index(self) -> None:
+    def test_dataset_returns_legal_move_mask_and_label_index(self) -> None:
         examples = shogi_move_choice_examples_from_test_moves(("7g7f", "3c3d"))
         dataset = ShogiMoveChoiceDataset(examples)
 
-        position_features, legal_move_token_features, legal_move_token_mask, label_index, policy_targets = dataset[0]
+        position_features, legal_move_features, legal_move_mask, label_index, policy_targets = dataset[0]
 
         self.assertEqual(tuple(position_features.global_feature_ids.shape), (SHOGI_POSITION_GLOBAL_SLOT_COUNT,))
         self.assertEqual(
             tuple(position_features.square_feature_ids.shape),
             (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
         )
-        self.assertEqual(tuple(legal_move_token_features.shape), (len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
-        self.assertEqual(legal_move_token_mask.dtype, torch.bool)
-        self.assertEqual(int(legal_move_token_mask.sum().item()), len(examples[0].legal_moves))
+        self.assertEqual(tuple(legal_move_features.shape), (len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(legal_move_mask.dtype, torch.bool)
+        self.assertEqual(int(legal_move_mask.sum().item()), len(examples[0].legal_moves))
         self.assertEqual(int(label_index.item()), examples[0].legal_moves.index("7g7f"))
         self.assertEqual(float(policy_targets[label_index].item()), 1.0)
 
@@ -109,12 +109,12 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         )
         dataset = ShogiMoveChoiceDataset((example,))
 
-        _, legal_move_token_features, legal_move_token_mask, label_index, policy_targets = dataset[0]
+        _, legal_move_features, legal_move_mask, label_index, policy_targets = dataset[0]
 
         self.assertEqual(int(label_index.item()), 3)
-        self.assertEqual(int(legal_move_token_mask.sum().item()), len(legal_moves))
-        self.assertTrue(torch.equal(legal_move_token_features[0], shogi_move_feature_ids("B*5e", turn=board.turn)))
-        self.assertTrue(torch.equal(legal_move_token_features[1], shogi_move_feature_ids("8h2b+", turn=board.turn)))
+        self.assertEqual(int(legal_move_mask.sum().item()), len(legal_moves))
+        self.assertTrue(torch.equal(legal_move_features[0], shogi_move_feature_ids("B*5e", turn=board.turn)))
+        self.assertTrue(torch.equal(legal_move_features[1], shogi_move_feature_ids("8h2b+", turn=board.turn)))
         self.assertEqual(float(policy_targets[0].item()), 0.25)
         self.assertEqual(float(policy_targets[3].item()), 0.75)
 
@@ -126,7 +126,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
             chosen_move="7g7f",
             policy_target_source="mcts_visit_counts",
         )
-        dataset = ShogiLegalMoveTokenPolicyValueDataset((example,))
+        dataset = ShogiLegalMovePolicyValueDataset((example,))
 
         with self.assertRaisesRegex(ValueError, "missing policy_targets"):
             dataset[0]
@@ -139,7 +139,7 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
             chosen_move="7g7f",
             value_target=1.0,
         )
-        dataset = ShogiLegalMoveTokenPolicyValueDataset((example,))
+        dataset = ShogiLegalMovePolicyValueDataset((example,))
 
         sample = dataset[0]
 
@@ -152,34 +152,34 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
     def test_dataset_can_be_batched(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         loader = DataLoader(
-            ShogiLegalMoveTokenPolicyValueDataset(examples),
+            ShogiLegalMovePolicyValueDataset(examples),
             batch_size=2,
-            collate_fn=collate_legal_move_token_policy_value_samples,
+            collate_fn=collate_legal_move_policy_value_samples,
         )
 
         batch = next(iter(loader))
 
         self.assertEqual(tuple(batch.position_features.global_feature_ids.shape), (2, SHOGI_POSITION_GLOBAL_SLOT_COUNT))
-        self.assertEqual(tuple(batch.legal_move_token_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
-        self.assertEqual(tuple(batch.legal_move_token_mask.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.legal_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(tuple(batch.legal_move_mask.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.labels.shape), (2,))
         self.assertEqual(tuple(batch.policy_targets.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.value_targets.shape), (2,))
 
     def test_policy_value_dataset_accepts_tensorized_samples(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-        samples = [tensorize_legal_move_token_policy_value_example(example) for example in examples]
+        samples = [tensorize_legal_move_policy_value_example(example) for example in examples]
         loader = DataLoader(
-            ShogiLegalMoveTokenPolicyValueDataset(samples),
+            ShogiLegalMovePolicyValueDataset(samples),
             batch_size=2,
-            collate_fn=collate_legal_move_token_policy_value_samples,
+            collate_fn=collate_legal_move_policy_value_samples,
         )
 
         batch = next(iter(loader))
 
         self.assertEqual(tuple(batch.position_features.global_feature_ids.shape), (2, SHOGI_POSITION_GLOBAL_SLOT_COUNT))
-        self.assertEqual(tuple(batch.legal_move_token_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
-        self.assertEqual(tuple(batch.legal_move_token_mask.shape), (2, len(examples[0].legal_moves)))
+        self.assertEqual(tuple(batch.legal_move_features.shape), (2, len(examples[0].legal_moves), SHOGI_MOVE_FEATURE_COUNT))
+        self.assertEqual(tuple(batch.legal_move_mask.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.labels.shape), (2,))
         self.assertEqual(tuple(batch.policy_targets.shape), (2, len(examples[0].legal_moves)))
         self.assertEqual(tuple(batch.value_targets.shape), (2,))

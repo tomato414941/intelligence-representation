@@ -4,9 +4,9 @@ import torch
 from torch import nn
 
 from intrep.worlds.shogi.position_encoding import (
-    LINE_TOKEN_OFFSET,
+    LINE_ELEMENT_OFFSET,
     PAIR_RELATION_COUNT,
-    SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SHOGI_POSITION_ELEMENT_COUNT,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_LINE_FEATURE_COUNT,
@@ -15,7 +15,7 @@ from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_SQUARE_COUNT,
     SHOGI_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_SQUARE_SLOT_COUNT,
-    SQUARE_TOKEN_OFFSET,
+    SQUARE_ELEMENT_OFFSET,
     ShogiPositionFeatures,
     squares_for_line_index,
 )
@@ -24,7 +24,7 @@ from intrep.worlds.shogi.position_encoding import (
 class ShogiPositionInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
-        self.token_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
+        self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
         self.global_slot_embedding = nn.Embedding(SHOGI_POSITION_GLOBAL_SLOT_COUNT, embedding_dim)
         self.square_slot_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_SLOT_COUNT, embedding_dim)
         self.square_feature_embedding = nn.Embedding(SHOGI_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
@@ -48,13 +48,13 @@ class ShogiPositionInputLayer(nn.Module):
         )
 
     def _global_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
-        global_token_ids = position_features.global_feature_ids
-        slots = torch.arange(SHOGI_POSITION_GLOBAL_SLOT_COUNT, device=global_token_ids.device).unsqueeze(0)
-        return self.global_norm(self.token_embedding(global_token_ids) + self.global_slot_embedding(slots))
+        global_feature_ids = position_features.global_feature_ids
+        slots = torch.arange(SHOGI_POSITION_GLOBAL_SLOT_COUNT, device=global_feature_ids.device).unsqueeze(0)
+        return self.global_norm(self.feature_embedding(global_feature_ids) + self.global_slot_embedding(slots))
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_features = position_features.square_feature_ids
-        square_feature_embeddings = self.token_embedding(square_features)
+        square_feature_embeddings = self.feature_embedding(square_features)
         feature_slots = torch.arange(SHOGI_POSITION_SQUARE_FEATURE_COUNT, device=square_features.device)
         square_hidden = (
             square_feature_embeddings
@@ -65,7 +65,7 @@ class ShogiPositionInputLayer(nn.Module):
 
     def _piece_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         piece_features = position_features.piece_feature_ids
-        piece_feature_embeddings = self.token_embedding(piece_features)
+        piece_feature_embeddings = self.feature_embedding(piece_features)
         feature_slots = torch.arange(SHOGI_POSITION_PIECE_FEATURE_COUNT, device=piece_features.device)
         piece_hidden = (
             piece_feature_embeddings
@@ -75,7 +75,7 @@ class ShogiPositionInputLayer(nn.Module):
 
     def _line_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         line_features = position_features.line_feature_ids
-        line_feature_embeddings = self.token_embedding(line_features)
+        line_feature_embeddings = self.feature_embedding(line_features)
         feature_slots = torch.arange(SHOGI_POSITION_LINE_FEATURE_COUNT, device=line_features.device)
         line_hidden = (
             line_feature_embeddings
@@ -100,19 +100,19 @@ class ShogiPositionGeometryAttentionBias(nn.Module):
     def forward(self, position_features: ShogiPositionFeatures, embeddings: torch.Tensor) -> torch.Tensor:
         if embeddings.ndim != 3:
             raise ValueError("embeddings must have shape [batch, sequence, hidden]")
-        if embeddings.size(1) != SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT:
+        if embeddings.size(1) != SHOGI_POSITION_ELEMENT_COUNT:
             raise ValueError("embeddings must use the shogi position feature sequence length")
         bias = torch.zeros(
-            (SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT),
+            (SHOGI_POSITION_ELEMENT_COUNT, SHOGI_POSITION_ELEMENT_COUNT),
             device=embeddings.device,
             dtype=embeddings.dtype,
         )
         square_bias = self.relation_bias(self.square_relation_ids.to(embeddings.device)).squeeze(-1)
-        square_start = SQUARE_TOKEN_OFFSET
-        square_end = SQUARE_TOKEN_OFFSET + SHOGI_POSITION_SQUARE_COUNT
+        square_start = SQUARE_ELEMENT_OFFSET
+        square_end = SQUARE_ELEMENT_OFFSET + SHOGI_POSITION_SQUARE_COUNT
         bias[square_start:square_end, square_start:square_end] = square_bias.to(dtype=embeddings.dtype)
-        line_start = LINE_TOKEN_OFFSET
-        line_end = LINE_TOKEN_OFFSET + SHOGI_POSITION_LINE_SLOT_COUNT
+        line_start = LINE_ELEMENT_OFFSET
+        line_end = LINE_ELEMENT_OFFSET + SHOGI_POSITION_LINE_SLOT_COUNT
         line_square_bias = self.line_square_relation_bias(self.line_square_relation_ids.to(embeddings.device)).squeeze(
             -1
         )
@@ -131,8 +131,8 @@ class ShogiPositionGeometryAttentionBias(nn.Module):
             bias.index_put_(
                 (
                     batch_indices.long(),
-                    pair_relation_edges.source_token_indices.long(),
-                    pair_relation_edges.target_token_indices.long(),
+                    pair_relation_edges.source_element_indices.long(),
+                    pair_relation_edges.target_element_indices.long(),
                 ),
                 pair_bias,
                 accumulate=True,

@@ -32,9 +32,9 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
-    LegalMoveTokenPolicyValueTensorSample,
+    LegalMovePolicyValueTensorSample,
     load_shogi_move_policy_value_examples_jsonl,
-    tensorize_legal_move_token_policy_value_examples,
+    tensorize_legal_move_policy_value_examples,
 )
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
@@ -201,7 +201,7 @@ class ShogiOnlineReplayIterationArtifacts:
 
 @dataclass(frozen=True)
 class _OnlineReplayResumeState:
-    generated_replay: ReplayBuffer[LegalMoveTokenPolicyValueTensorSample]
+    generated_replay: ReplayBuffer[LegalMovePolicyValueTensorSample]
     iteration_results: tuple[ShogiOnlineReplayIterationResult, ...]
     checkpoint: Path
     last_generator_checkpoint: Path
@@ -226,7 +226,7 @@ def run_shogi_online_replay(
         last_generator_checkpoint = resume_state.last_generator_checkpoint
         start_iteration_index = resume_state.next_iteration_index
     else:
-        generated_replay = ReplayBuffer[LegalMoveTokenPolicyValueTensorSample](capacity=config.replay_capacity)
+        generated_replay = ReplayBuffer[LegalMovePolicyValueTensorSample](capacity=config.replay_capacity)
         iteration_results = []
         checkpoint = config.checkpoint
         last_generator_checkpoint = checkpoint
@@ -268,11 +268,11 @@ def run_shogi_online_replay(
             time.perf_counter() - generated_train_extraction_start
         )
         generated_tensorize_start = time.perf_counter()
-        generated_replay.extend(tensorize_legal_move_token_policy_value_examples(new_examples))
+        generated_replay.extend(tensorize_legal_move_policy_value_examples(new_examples))
         phase_timings["generated_tensorize_wall_time_sec"] = time.perf_counter() - generated_tensorize_start
         replay_size = replay_seed_eligible_examples + len(generated_replay)
         if replay_size < config.min_replay_size:
-            sampled_examples: list[LegalMoveTokenPolicyValueTensorSample] = []
+            sampled_examples: list[LegalMovePolicyValueTensorSample] = []
             seed_sampled_examples = 0
             generated_sampled_examples = 0
             training_skipped = True
@@ -417,7 +417,7 @@ def _load_online_replay_resume_state(
     run_dir: Path,
     generator: torch.Generator,
 ) -> _OnlineReplayResumeState:
-    generated_replay = ReplayBuffer[LegalMoveTokenPolicyValueTensorSample](capacity=config.replay_capacity)
+    generated_replay = ReplayBuffer[LegalMovePolicyValueTensorSample](capacity=config.replay_capacity)
     iteration_results: list[ShogiOnlineReplayIterationResult] = []
     checkpoint = config.checkpoint
     last_generator_checkpoint = config.checkpoint
@@ -431,7 +431,7 @@ def _load_online_replay_resume_state(
             iteration_index=iteration_index,
         )
         new_examples = _load_online_replay_generated_examples(config=config, artifacts=artifacts)
-        generated_replay.extend(tensorize_legal_move_token_policy_value_examples(new_examples))
+        generated_replay.extend(tensorize_legal_move_policy_value_examples(new_examples))
         _advance_online_replay_resume_rng(
             generated_replay=generated_replay,
             metrics=metrics,
@@ -516,7 +516,7 @@ def _validate_online_replay_resume_metrics(
 
 def _advance_online_replay_resume_rng(
     *,
-    generated_replay: ReplayBuffer[LegalMoveTokenPolicyValueTensorSample],
+    generated_replay: ReplayBuffer[LegalMovePolicyValueTensorSample],
     metrics: dict[str, object],
     generator: torch.Generator,
 ) -> None:
@@ -798,8 +798,8 @@ def _train_online_replay_iteration(
     config: ShogiOnlineReplayConfig,
     iteration_index: int,
     checkpoint: Path,
-    sampled_examples: list[LegalMoveTokenPolicyValueTensorSample],
-    eval_examples: Sequence[LegalMoveTokenPolicyValueTensorSample],
+    sampled_examples: list[LegalMovePolicyValueTensorSample],
+    eval_examples: Sequence[LegalMovePolicyValueTensorSample],
     replay_size: int,
     training_eval_examples: int,
 ) -> ShogiPolicyValueTrainingResult:
@@ -1214,7 +1214,7 @@ def _sample_replay_seed_samples(
     *,
     sample_count: int,
     seed: int,
-) -> list[LegalMoveTokenPolicyValueTensorSample]:
+) -> list[LegalMovePolicyValueTensorSample]:
     if sample_count <= 0 or selection is None:
         return []
     cache_path = default_shogi_policy_value_tensor_cache_path(selection.path)
@@ -1225,7 +1225,7 @@ def _sample_replay_seed_samples(
             expected_data_selection_root=selection.path.parent,
         )
         return _sample_sequence(cache.train_samples, sample_count=sample_count, seed=seed)
-    return tensorize_legal_move_token_policy_value_examples(
+    return tensorize_legal_move_policy_value_examples(
         _sample_replay_seed_examples_from_selection(selection.data_selection, sample_count=sample_count, seed=seed)
     )
 
@@ -1235,7 +1235,7 @@ def _sample_sequence(
     *,
     sample_count: int,
     seed: int,
-) -> list[LegalMoveTokenPolicyValueTensorSample]:
+) -> list[LegalMovePolicyValueTensorSample]:
     if hasattr(samples, "shards") and hasattr(samples, "offsets"):
         return _sample_sharded_sequence(samples, sample_count=sample_count, seed=seed)
     sample_count = min(sample_count, len(samples))
@@ -1249,7 +1249,7 @@ def _sample_sharded_sequence(
     *,
     sample_count: int,
     seed: int,
-) -> list[LegalMoveTokenPolicyValueTensorSample]:
+) -> list[LegalMovePolicyValueTensorSample]:
     sample_count = min(sample_count, len(samples))
     if sample_count <= 0:
         return []
@@ -1325,7 +1325,7 @@ def _sample_replay_seed_examples_from_selection(
     return sampled
 
 
-def _load_training_eval_samples(data_selection_path: Path) -> Sequence[LegalMoveTokenPolicyValueTensorSample]:
+def _load_training_eval_samples(data_selection_path: Path) -> Sequence[LegalMovePolicyValueTensorSample]:
     selection_path = Path(data_selection_path)
     selection = load_shogi_policy_value_data_selection(selection_path)
     cache_path = default_shogi_policy_value_tensor_cache_path(selection_path)
@@ -1336,7 +1336,7 @@ def _load_training_eval_samples(data_selection_path: Path) -> Sequence[LegalMove
             expected_data_selection_root=selection_path.parent,
         ).eval_samples
     _train_examples, eval_examples = load_shogi_policy_value_data_selection_examples(selection)
-    return tensorize_legal_move_token_policy_value_examples(eval_examples)
+    return tensorize_legal_move_policy_value_examples(eval_examples)
 
 
 def _load_generated_policy_value_examples(

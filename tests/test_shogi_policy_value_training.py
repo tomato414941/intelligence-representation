@@ -8,7 +8,7 @@ import torch
 from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
 )
@@ -87,7 +87,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 core=SHOGI_SHARED_CORE_MODULE_ID,
-                policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+                policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
             ),
         )
 
@@ -307,7 +307,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 core=SHOGI_SHARED_CORE_MODULE_ID,
-                policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+                policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
                 value_loss_weight=0.2,
                 allow_nonstandard_loss_weights=True,
             ),
@@ -349,7 +349,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 core=SHOGI_SHARED_CORE_MODULE_ID,
-                policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+                policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,
@@ -380,7 +380,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 num_layers=1,
-                policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+                policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
             )
         )
         model.forward_policy_value = Mock(wraps=model.forward_policy_value)
@@ -397,7 +397,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 core=SHOGI_SHARED_CORE_MODULE_ID,
-                policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+                policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,

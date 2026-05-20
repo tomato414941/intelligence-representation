@@ -14,7 +14,7 @@ def line_feature_token_ids(board: shogi.Board) -> list[int]:
 
 
 def line_feature_id_rows(board: shogi.Board) -> list[list[int]]:
-    return [line_slot_feature_token_ids(board, line_index) for line_index in range(LINE_TOKEN_COUNT)]
+    return [line_slot_feature_token_ids(board, line_index) for line_index in range(LINE_ELEMENT_COUNT)]
 
 
 def line_slot_feature_token_ids(board: shogi.Board, line_index: int) -> list[int]:
@@ -60,9 +60,9 @@ def squares_for_line_index(line_index: int) -> tuple[int, ...]:
         return tuple(rank * 9 + file_index for file_index in range(9))
     if line_index < 35:
         diagonal = line_index - 18
-        return tuple(square for square in range(BOARD_TOKEN_COUNT) if square // 9 + square % 9 == diagonal)
+        return tuple(square for square in range(SQUARE_ELEMENT_COUNT) if square // 9 + square % 9 == diagonal)
     diagonal = line_index - 35
-    return tuple(square for square in range(BOARD_TOKEN_COUNT) if square // 9 - square % 9 + 8 == diagonal)
+    return tuple(square for square in range(SQUARE_ELEMENT_COUNT) if square // 9 - square % 9 + 8 == diagonal)
 
 
 def king_on_absolute_squares(board: shogi.Board, color: int, absolute_squares: set[int]) -> bool:

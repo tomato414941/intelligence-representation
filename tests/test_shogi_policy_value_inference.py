@@ -8,7 +8,7 @@ import torch
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.inference import ShogiPolicyValueCheckpointEvaluator
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
 )
@@ -22,7 +22,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
         config = ShogiPolicyValueTrainingConfig(
             core=SHOGI_SHARED_CORE_MODULE_ID,
-            policy_output=SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+            policy_output=SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
             embedding_dim=8,
             hidden_dim=16,
         )

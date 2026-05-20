@@ -12,12 +12,12 @@ from intrep.representation.inputs.shogi_position import (
     ShogiPositionInputLayer,
 )
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
-from intrep.representation.outputs.shogi_legal_move_token import (
-    ShogiLegalMoveTokenPolicyOutput,
-    ShogiStateTokenLegalMovePolicyOutput,
+from intrep.representation.outputs.shogi_legal_move import (
+    ShogiLegalMoveAttentionPolicyOutput,
+    ShogiStateSummaryLegalMovePolicyOutput,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
-from intrep.worlds.shogi.position_encoding import STATE_TOKEN_INDEX, ShogiPositionFeatures
+from intrep.worlds.shogi.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
@@ -25,16 +25,16 @@ SHOGI_POLICY_VALUE_MODEL_ID = "shogi_policy_value"
 SHOGI_POSITION_INPUT_MODULE_ID = (
     "shogi_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_input"
 )
-SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"
-SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_token_policy_output"
-SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_token_legal_move_policy_output"
+SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
+SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_attention_policy_output"
+SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_summary_legal_move_policy_output"
 SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID = "shogi_policy_plane_policy_output"
 SHOGI_VALUE_OUTPUT_MODULE_ID = "scalar_tanh_value_output"
 SHOGI_POSITION_INPUT_MODULE_IDS = (SHOGI_POSITION_INPUT_MODULE_ID,)
 SHOGI_CORE_MODULE_IDS = (SHOGI_SHARED_CORE_MODULE_ID,)
 SHOGI_POLICY_OUTPUT_MODULE_IDS = (
-    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
 )
 SHOGI_VALUE_OUTPUT_MODULE_IDS = (SHOGI_VALUE_OUTPUT_MODULE_ID,)
@@ -103,7 +103,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         config: SharedCoreShogiPolicyValueModelConfig | None = None,
         *,
         encoder: ShogiPositionEncoder | None = None,
-        policy_output: ShogiLegalMoveTokenPolicyOutput | ShogiStateTokenLegalMovePolicyOutput | None = None,
+        policy_output: ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput | None = None,
         value_output: ScalarTanhValueHead | None = None,
     ) -> None:
         super().__init__()
@@ -115,7 +115,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.policy_output = policy_output or _build_legal_move_token_policy_output(self.config)
+        self.policy_output = policy_output or _build_legal_move_policy_output(self.config)
         self.value_output = value_output or ScalarTanhValueHead(
             embedding_dim=self.config.embedding_dim,
             hidden_dim=self.config.hidden_dim,
@@ -124,34 +124,34 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
     def forward(
         self,
         position_features: ShogiPositionFeatures,
-        legal_move_token_features: torch.Tensor,
-        legal_move_token_mask: torch.Tensor,
+        legal_move_features: torch.Tensor,
+        legal_move_mask: torch.Tensor,
     ) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
         return self.policy_output(
             position_hidden=position_hidden,
-            legal_move_token_features=legal_move_token_features,
-            legal_move_token_mask=legal_move_token_mask,
+            legal_move_features=legal_move_features,
+            legal_move_mask=legal_move_mask,
         )
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        legal_move_token_features: torch.Tensor,
-        legal_move_token_mask: torch.Tensor,
+        legal_move_features: torch.Tensor,
+        legal_move_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
-        position_embedding = _state_token_hidden(position_hidden)
+        position_embedding = _state_element_hidden(position_hidden)
         logits = self.policy_output(
             position_hidden=position_hidden,
-            legal_move_token_features=legal_move_token_features,
-            legal_move_token_mask=legal_move_token_mask,
+            legal_move_features=legal_move_features,
+            legal_move_mask=legal_move_mask,
         )
         return logits, self.value_output(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
-        return self.value_output(_state_token_hidden(position_hidden))
+        return self.value_output(_state_element_hidden(position_hidden))
 
 
 class PolicyPlaneShogiPolicyValueModel(nn.Module):
@@ -184,7 +184,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
 
     def forward(self, position_features: ShogiPositionFeatures, policy_plane_legal_mask: torch.Tensor) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
-        position_embedding = _state_token_hidden(position_hidden)
+        position_embedding = _state_element_hidden(position_hidden)
         return self.policy_output(position_embedding, policy_plane_legal_mask)
 
     def forward_policy_value(
@@ -193,17 +193,17 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         policy_plane_legal_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
-        position_embedding = _state_token_hidden(position_hidden)
+        position_embedding = _state_element_hidden(position_hidden)
         logits = self.policy_output(position_embedding, policy_plane_legal_mask)
         return logits, self.value_output(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
-        return self.value_output(_state_token_hidden(position_hidden))
+        return self.value_output(_state_element_hidden(position_hidden))
 
 
-def _state_token_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
-    return position_hidden[:, STATE_TOKEN_INDEX]
+def _state_element_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
+    return position_hidden[:, STATE_ELEMENT_INDEX]
 
 
 def _build_shogi_position_encoder(
@@ -227,20 +227,20 @@ def _build_shogi_position_encoder(
     )
 
 
-def _build_legal_move_token_policy_output(
+def _build_legal_move_policy_output(
     config: SharedCoreShogiPolicyValueModelConfig,
-) -> ShogiLegalMoveTokenPolicyOutput:
-    return ShogiLegalMoveTokenPolicyOutput(
+) -> ShogiLegalMoveAttentionPolicyOutput:
+    return ShogiLegalMoveAttentionPolicyOutput(
         embedding_dim=config.embedding_dim,
         num_heads=config.num_heads,
         hidden_dim=config.hidden_dim,
     )
 
 
-def _build_state_token_legal_move_policy_output(
+def _build_state_summary_legal_move_policy_output(
     config: SharedCoreShogiPolicyValueModelConfig,
-) -> ShogiStateTokenLegalMovePolicyOutput:
-    return ShogiStateTokenLegalMovePolicyOutput(
+) -> ShogiStateSummaryLegalMovePolicyOutput:
+    return ShogiStateSummaryLegalMovePolicyOutput(
         embedding_dim=config.embedding_dim,
         hidden_dim=config.hidden_dim,
     )

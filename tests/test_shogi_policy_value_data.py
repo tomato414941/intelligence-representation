@@ -15,7 +15,7 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiLegalMoveTokenPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import ShogiLegalMovePolicyValueDataset
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -212,11 +212,11 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                 value_target_construction="winner",
             )
 
-        sample = ShogiLegalMoveTokenPolicyValueDataset(examples)[0]
+        sample = ShogiLegalMovePolicyValueDataset(examples)[0]
 
         legal_moves = examples[0].legal_moves
         self.assertEqual(int(sample.label.item()), legal_moves.index("7g7f"))
-        self.assertEqual(int(sample.legal_move_token_features.shape[0]), len(legal_moves))
+        self.assertEqual(int(sample.legal_move_features.shape[0]), len(legal_moves))
         self.assertEqual(float(sample.policy_targets[legal_moves.index("7g7f")].item()), 0.75)
         self.assertEqual(float(sample.policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 

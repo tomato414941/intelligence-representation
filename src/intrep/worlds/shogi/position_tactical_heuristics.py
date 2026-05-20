@@ -9,7 +9,7 @@ from intrep.worlds.shogi.position_schema import *
 
 def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
     rows: list[list[int]] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is None:
@@ -40,7 +40,7 @@ def drop_potential_token_id_rows(board: shogi.Board) -> list[list[int]]:
     own_king_zone = king_zone_absolute_squares(board, board.turn)
     opponent_king_zone = king_zone_absolute_squares(board, opponent_color(board.turn))
     rows: list[list[int]] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is None:
@@ -74,7 +74,7 @@ def king_is_attacked(board: shogi.Board, color: int) -> bool:
 
 
 def coarse_slider_line_blocker(board: shogi.Board, absolute_square: int) -> bool:
-    for line_index in range(LINE_TOKEN_COUNT):
+    for line_index in range(LINE_ELEMENT_COUNT):
         relative_squares = squares_for_line_index(line_index)
         absolute_line = [relative_to_absolute_square(square, board.turn) for square in relative_squares]
         if absolute_square not in absolute_line:

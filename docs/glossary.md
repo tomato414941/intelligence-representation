@@ -512,13 +512,39 @@ learned vector representation.
 Examples:
 
 - text token IDs
-- board token IDs
+- board feature IDs
 - move feature IDs or candidate feature matrices
 - normalized image tensors
 - grid tensors, masks, and offsets
 
 Cached token IDs or tensors are still encodings. They may have a file format on
 disk, but their role in the pipeline is encoded model input preparation.
+
+### Token
+
+A token is a discrete symbolic unit produced by tokenization or a comparable
+discrete segmentation process.
+
+Use this term for text tokens and token IDs. Do not use it as the generic name
+for every item a Transformer attends over.
+
+### Representation Element
+
+A representation element is one addressable item in a model representation.
+
+Examples:
+
+- text token
+- image patch
+- board square
+- board piece
+- board line
+- graph node
+- state summary element
+
+A token can be a representation element, but not every representation element
+is a token. Use this term when discussing non-text or domain-structured items
+that are processed as elements in a vector sequence or set.
 
 ### Input Interface
 
@@ -545,7 +571,7 @@ encoding before it enters the model core.
 
 Examples:
 
-- token embeddings
+- text token embeddings
 - square, piece, side-to-move, or move embeddings
 - image patch embeddings
 - action embeddings

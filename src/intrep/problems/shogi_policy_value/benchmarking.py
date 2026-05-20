@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_training_config,
 )
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
-from intrep.worlds.shogi.move_encoding import shogi_legal_move_token_features
+from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_legal_mask
 from intrep.worlds.shogi.position_encoding import (
     SHOGI_POSITION_FEATURE_MANIFEST_HASH,
@@ -243,9 +243,9 @@ def _run_policy_value_inference_batch(
     else:
         legal_moves_by_position = [tuple(move.usi() for move in board.legal_moves) for board in boards]
         max_legal_move_count = max(len(legal_moves) for legal_moves in legal_moves_by_position)
-        legal_move_token_features = torch.stack(
+        legal_move_features = torch.stack(
             [
-                shogi_legal_move_token_features(
+                shogi_legal_move_features(
                     legal_moves,
                     turn=board.turn,
                     max_legal_move_count=max_legal_move_count,
@@ -253,10 +253,10 @@ def _run_policy_value_inference_batch(
                 for board, legal_moves in zip(boards, legal_moves_by_position, strict=True)
             ]
         ).to(device)
-        legal_move_token_mask = torch.zeros((len(boards), max_legal_move_count), dtype=torch.bool, device=device)
+        legal_move_mask = torch.zeros((len(boards), max_legal_move_count), dtype=torch.bool, device=device)
         for index, legal_moves in enumerate(legal_moves_by_position):
-            legal_move_token_mask[index, : len(legal_moves)] = True
-        logits, values = model.forward_policy_value(position_features, legal_move_token_features, legal_move_token_mask)
+            legal_move_mask[index, : len(legal_moves)] = True
+        logits, values = model.forward_policy_value(position_features, legal_move_features, legal_move_mask)
     return int(logits.numel() + values.numel())
 
 

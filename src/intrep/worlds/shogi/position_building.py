@@ -8,13 +8,13 @@ from intrep.worlds.shogi.position_features import ShogiPositionFeatures
 from intrep.worlds.shogi.position_pair_relations import pair_relation_edges_from_board
 from intrep.worlds.shogi.position_piece_features import piece_feature_id_rows, piece_slot_relation_infos
 from intrep.worlds.shogi.position_line_features import line_feature_id_rows
-from intrep.worlds.shogi.position_schema import SHOGI_POSITION_STATE_TOKEN_ID
+from intrep.worlds.shogi.position_schema import SHOGI_POSITION_STATE_FEATURE_ID
 from intrep.worlds.shogi.position_square_features import (
     drop_shadow_token_id_rows,
     hand_token_ids,
     in_check_token_id,
     legal_drop_targets_by_piece_type,
-    move_count_bucket_token_id,
+    move_count_bucket_feature_id,
     side_to_move_token_id,
     square_feature_id_rows,
 )
@@ -30,10 +30,10 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
     derived = _shogi_position_derived_relations(board)
     global_feature_ids = torch.tensor(
         [
-            SHOGI_POSITION_STATE_TOKEN_ID,
+            SHOGI_POSITION_STATE_FEATURE_ID,
             side_to_move_token_id(board.turn),
             in_check_token_id(board.is_check()),
-            move_count_bucket_token_id(board.move_number),
+            move_count_bucket_feature_id(board.move_number),
             *hand_token_ids(board),
         ],
         dtype=torch.long,

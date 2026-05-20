@@ -21,7 +21,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
@@ -291,7 +291,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             build_shogi_policy_value_tensor_cache(
                 data_selection_path=data_selection_path,
                 output_path=tensor_cache_path,
-                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
+                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
                 shard_games=1,
             )
 
@@ -410,8 +410,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             position_payload = shard_payload["samples"][0]["position_features"]
             self.assertNotIn("pair_relation_ids", position_payload)
             pair_relation_edges = position_payload["pair_relation_edges"]
-            self.assertEqual(pair_relation_edges["source_token_indices"].dtype, torch.int16)
-            self.assertEqual(pair_relation_edges["target_token_indices"].dtype, torch.int16)
+            self.assertEqual(pair_relation_edges["source_element_indices"].dtype, torch.int16)
+            self.assertEqual(pair_relation_edges["target_element_indices"].dtype, torch.int16)
             self.assertEqual(pair_relation_edges["relation_ids"].dtype, torch.uint8)
 
             with patch(
@@ -445,7 +445,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
-            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN)
+            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE)
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)
 

@@ -25,7 +25,7 @@ from intrep.problems.shogi_policy_value.examples import (
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.model import (
     SHOGI_CORE_MODULE_IDS,
-    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_OUTPUT_MODULE_IDS,
     SHOGI_POSITION_INPUT_MODULE_IDS,
     SHOGI_VALUE_OUTPUT_MODULE_IDS,
@@ -60,7 +60,7 @@ def main() -> None:
     parser.add_argument(
         "--policy-output",
         choices=SHOGI_POLICY_OUTPUT_MODULE_IDS,
-        default=SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+        default=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     )
     parser.add_argument(
         "--value-output",

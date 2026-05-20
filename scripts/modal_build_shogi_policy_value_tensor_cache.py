@@ -19,7 +19,7 @@ DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
 DEFAULT_CACHE_NAME = "shogi-policy-value-tensors"
 DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-policy-plane-value-tensors"
-DEFAULT_OUTPUT_SPACE = "legal_move_token"
+DEFAULT_OUTPUT_SPACE = "legal_move"
 
 
 if modal is not None:
@@ -126,8 +126,8 @@ def run(
         raise ValueError("split must be all, train, or eval")
     if limit_shards is not None and limit_shards <= 0:
         raise ValueError("limit_shards must be positive")
-    if output_space not in {"legal_move_token", "policy_plane"}:
-        raise ValueError("output_space must be legal_move_token or policy_plane")
+    if output_space not in {"legal_move", "policy_plane"}:
+        raise ValueError("output_space must be legal_move or policy_plane")
 
     local_bundle = local_bundle.resolve()
     cache_name = _cache_name_for_output_space(output_space)

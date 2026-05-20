@@ -22,7 +22,7 @@ def piece_feature_id_rows(
         from intrep.worlds.shogi.position_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is not None:
@@ -49,7 +49,7 @@ def piece_feature_id_rows(
 
 def piece_slot_relation_infos(board: shogi.Board) -> list[PieceSlotRelationInfo]:
     infos: list[PieceSlotRelationInfo] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is not None:
@@ -80,7 +80,7 @@ def board_piece_slot_token_ids(
     drop_potential_tokens: list[int],
 ) -> list[int]:
     return [
-        PIECE_LOCATION_BOARD_TOKEN_ID,
+        PIECE_LOCATION_BOARD_FEATURE_ID,
         piece_token_id(piece, own_color=board.turn),
         PIECE_SQUARE_OFFSET + relative_square,
         king_relative_square_token_id(
@@ -116,9 +116,9 @@ def hand_piece_slot_token_ids(board: shogi.Board) -> list[int]:
 
 def hand_piece_token_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
     return [
-        PIECE_LOCATION_HAND_TOKEN_ID,
+        PIECE_LOCATION_HAND_FEATURE_ID,
         piece_token_id(piece, own_color=own_color),
-        PIECE_SQUARE_UNKNOWN_TOKEN_ID,
+        PIECE_SQUARE_UNKNOWN_FEATURE_ID,
         OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
@@ -131,9 +131,9 @@ def hand_piece_token_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
 
 def empty_piece_slot_token_ids() -> list[int]:
     return [
-        PIECE_LOCATION_EMPTY_TOKEN_ID,
-        EMPTY_SQUARE_TOKEN_ID,
-        PIECE_SQUARE_UNKNOWN_TOKEN_ID,
+        PIECE_LOCATION_EMPTY_FEATURE_ID,
+        EMPTY_SQUARE_FEATURE_ID,
+        PIECE_SQUARE_UNKNOWN_FEATURE_ID,
         OWN_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,

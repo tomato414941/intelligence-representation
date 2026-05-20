@@ -14,17 +14,17 @@ from intrep.worlds.shogi.position_schema import *
 
 def side_to_move_token_id(color: int) -> int:
     if color == shogi.BLACK:
-        return SIDE_TO_MOVE_BLACK_TOKEN_ID
+        return SIDE_TO_MOVE_BLACK_FEATURE_ID
     if color == shogi.WHITE:
-        return SIDE_TO_MOVE_WHITE_TOKEN_ID
+        return SIDE_TO_MOVE_WHITE_FEATURE_ID
     raise ValueError(f"unsupported shogi color: {color}")
 
 
 def in_check_token_id(in_check: bool) -> int:
-    return IN_CHECK_TOKEN_ID if in_check else NOT_IN_CHECK_TOKEN_ID
+    return IN_CHECK_FEATURE_ID if in_check else NOT_IN_CHECK_FEATURE_ID
 
 
-def move_count_bucket_token_id(move_number: int | None) -> int:
+def move_count_bucket_feature_id(move_number: int | None) -> int:
     if move_number is None or move_number <= 0:
         return MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_UNKNOWN
     for bucket_index, (start, end) in enumerate(MOVE_COUNT_BUCKETS, start=1):
@@ -40,7 +40,7 @@ def relative_square_token_id(board: shogi.Board, relative_square: int) -> int:
 
 def piece_token_id(piece: shogi.Piece | None, *, own_color: int) -> int:
     if piece is None:
-        return EMPTY_SQUARE_TOKEN_ID
+        return EMPTY_SQUARE_FEATURE_ID
     if piece.color == own_color:
         return OWN_PIECE_OFFSET + int(piece.piece_type) - 1
     if piece.color == opponent_color(own_color):
@@ -54,17 +54,17 @@ def hand_token_ids(board: shogi.Board) -> list[int]:
         pieces_in_hand = board.pieces_in_hand[color]
         for piece_type in HAND_PIECE_TYPES:
             count = pieces_in_hand[piece_type]
-            token_ids.append(offset + min(count, HAND_COUNT_TOKEN_MAX))
+            token_ids.append(offset + min(count, HAND_COUNT_BUCKET_MAX))
     return token_ids
 
 
 def attack_token_ids(board: shogi.Board) -> list[int]:
     token_ids: list[int] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         token_ids.append(attack_count_token_id(board, board.turn, absolute_square, offset=OWN_ATTACK_OFFSET))
     opponent = opponent_color(board.turn)
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         token_ids.append(attack_count_token_id(board, opponent, absolute_square, offset=OPPONENT_ATTACK_OFFSET))
     return token_ids
@@ -72,7 +72,7 @@ def attack_token_ids(board: shogi.Board) -> list[int]:
 
 def attack_count_token_id(board: shogi.Board, color: int, square: int, *, offset: int) -> int:
     count = len(board.attackers(color, square))
-    return offset + min(count, ATTACK_COUNT_TOKEN_MAX)
+    return offset + min(count, ATTACK_COUNT_BUCKET_MAX)
 
 
 def square_feature_id_rows(
@@ -80,7 +80,7 @@ def square_feature_id_rows(
     *,
     derived: _ShogiPositionDerivedRelations | None = None,
 ) -> list[list[int]]:
-    pieces = [relative_square_token_id(board, square) for square in range(BOARD_TOKEN_COUNT)]
+    pieces = [relative_square_token_id(board, square) for square in range(SQUARE_ELEMENT_COUNT)]
     attacks = attack_token_ids(board)
     own_square_piece_type_attacks, opponent_square_piece_type_attacks = square_piece_type_attack_token_id_rows(board)
     king_relative_squares = king_relative_square_token_ids(board)
@@ -89,16 +89,16 @@ def square_feature_id_rows(
 
         derived = _shogi_position_derived_relations(board)
     rows: list[list[int]] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         rows.append(
             [
                 pieces[relative_square],
                 attacks[relative_square],
-                attacks[BOARD_TOKEN_COUNT + relative_square],
+                attacks[SQUARE_ELEMENT_COUNT + relative_square],
                 *own_square_piece_type_attacks[relative_square],
                 *opponent_square_piece_type_attacks[relative_square],
                 king_relative_squares[relative_square],
-                king_relative_squares[BOARD_TOKEN_COUNT + relative_square],
+                king_relative_squares[SQUARE_ELEMENT_COUNT + relative_square],
                 *derived.drop_shadow_token_rows[relative_square],
                 *derived.counterfactual_removal_token_rows[relative_square],
                 *derived.drop_potential_token_rows[relative_square],
@@ -135,7 +135,7 @@ def square_piece_type_attack_token_id_rows(board: shogi.Board) -> tuple[list[lis
 def _square_piece_type_attack_token_id_rows_for_color(board: shogi.Board, color: int, *, offset: int) -> list[list[int]]:
     rows: list[list[int]] = []
     piece_type_to_index = {piece_type: index for index, piece_type in enumerate(SQUARE_ATTACK_PIECE_TYPES)}
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         attacked_piece_types: set[int] = set()
         for attacker_square in board.attackers(color, absolute_square):
@@ -172,7 +172,7 @@ def king_relative_square_token_ids(board: shogi.Board) -> list[int]:
 def _king_relative_square_token_ids_for_color(board: shogi.Board, color: int, *, offset: int) -> list[int]:
     return [
         king_relative_square_token_id(board, color, relative_square, offset=offset)
-        for relative_square in range(BOARD_TOKEN_COUNT)
+        for relative_square in range(SQUARE_ELEMENT_COUNT)
     ]
 
 
@@ -207,7 +207,7 @@ def drop_shadow_token_id_rows(
     own_legal_drop_targets = legal_drop_targets_by_color[board.turn]
     opponent_legal_drop_targets = legal_drop_targets_by_color[opponent_color(board.turn)]
     rows: list[list[int]] = []
-    for relative_square in range(BOARD_TOKEN_COUNT):
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         row: list[int] = []
         for piece_index, piece_type in enumerate(HAND_PIECE_TYPES):

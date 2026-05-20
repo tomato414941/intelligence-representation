@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
     SHOGI_POLICY_VALUE_OUTPUT_SPACES,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
@@ -18,7 +18,7 @@ def main() -> None:
     parser.add_argument(
         "--output-space",
         choices=SHOGI_POLICY_VALUE_OUTPUT_SPACES,
-        default=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
+        default=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
     )
     parser.add_argument("--shard-examples", type=int, default=100_000)
     parser.add_argument("--resume", action="store_true")

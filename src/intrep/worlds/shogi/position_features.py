@@ -6,7 +6,7 @@ import torch
 
 from intrep.worlds.shogi.position_schema import (
     PAIR_RELATION_COUNT,
-    SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+    SHOGI_POSITION_ELEMENT_COUNT,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_LINE_FEATURE_COUNT,
     SHOGI_POSITION_LINE_SLOT_COUNT,
@@ -19,15 +19,15 @@ from intrep.worlds.shogi.position_schema import (
 
 @dataclass(frozen=True)
 class ShogiPairRelationEdges:
-    source_token_indices: torch.Tensor
-    target_token_indices: torch.Tensor
+    source_element_indices: torch.Tensor
+    target_element_indices: torch.Tensor
     relation_ids: torch.Tensor
     batch_indices: torch.Tensor | None = None
 
     def to(self, device: torch.device) -> "ShogiPairRelationEdges":
         return ShogiPairRelationEdges(
-            source_token_indices=self.source_token_indices.to(device),
-            target_token_indices=self.target_token_indices.to(device),
+            source_element_indices=self.source_element_indices.to(device),
+            target_element_indices=self.target_element_indices.to(device),
             relation_ids=self.relation_ids.to(device),
             batch_indices=None if self.batch_indices is None else self.batch_indices.to(device),
         )
@@ -62,29 +62,29 @@ def stack_shogi_position_features(features: list[ShogiPositionFeatures]) -> Shog
 
 
 def stack_shogi_pair_relation_edges(edges: list[ShogiPairRelationEdges]) -> ShogiPairRelationEdges:
-    source_token_indices: list[torch.Tensor] = []
-    target_token_indices: list[torch.Tensor] = []
+    source_element_indices: list[torch.Tensor] = []
+    target_element_indices: list[torch.Tensor] = []
     relation_ids: list[torch.Tensor] = []
     batch_indices: list[torch.Tensor] = []
     for batch_index, edge_set in enumerate(edges):
         edge_count = int(edge_set.relation_ids.numel())
         if edge_count == 0:
             continue
-        source_token_indices.append(edge_set.source_token_indices)
-        target_token_indices.append(edge_set.target_token_indices)
+        source_element_indices.append(edge_set.source_element_indices)
+        target_element_indices.append(edge_set.target_element_indices)
         relation_ids.append(edge_set.relation_ids)
         batch_indices.append(torch.full((edge_count,), batch_index, dtype=torch.long))
     if not relation_ids:
         empty = torch.empty((0,), dtype=torch.long)
         return ShogiPairRelationEdges(
-            source_token_indices=empty,
-            target_token_indices=empty,
+            source_element_indices=empty,
+            target_element_indices=empty,
             relation_ids=empty,
             batch_indices=empty,
         )
     return ShogiPairRelationEdges(
-        source_token_indices=torch.cat(source_token_indices),
-        target_token_indices=torch.cat(target_token_indices),
+        source_element_indices=torch.cat(source_element_indices),
+        target_element_indices=torch.cat(target_element_indices),
         relation_ids=torch.cat(relation_ids),
         batch_indices=torch.cat(batch_indices),
     )
@@ -124,25 +124,25 @@ def _validate_integer_tensor_shape(name: str, tensor: object, expected_shape: tu
 
 
 def _validate_pair_relation_edge_structure(edges: ShogiPairRelationEdges) -> None:
-    _validate_integer_vector("pair_relation_edges.source_token_indices", edges.source_token_indices)
-    _validate_integer_vector("pair_relation_edges.target_token_indices", edges.target_token_indices)
+    _validate_integer_vector("pair_relation_edges.source_element_indices", edges.source_element_indices)
+    _validate_integer_vector("pair_relation_edges.target_element_indices", edges.target_element_indices)
     _validate_integer_vector("pair_relation_edges.relation_ids", edges.relation_ids)
     edge_count = int(edges.relation_ids.numel())
-    if int(edges.source_token_indices.numel()) != edge_count:
+    if int(edges.source_element_indices.numel()) != edge_count:
         raise ValueError("pair relation source and relation edge counts must match")
-    if int(edges.target_token_indices.numel()) != edge_count:
+    if int(edges.target_element_indices.numel()) != edge_count:
         raise ValueError("pair relation target and relation edge counts must match")
     _validate_integer_vector_range(
-        "pair_relation_edges.source_token_indices",
-        edges.source_token_indices,
+        "pair_relation_edges.source_element_indices",
+        edges.source_element_indices,
         minimum=0,
-        maximum_exclusive=SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+        maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
     )
     _validate_integer_vector_range(
-        "pair_relation_edges.target_token_indices",
-        edges.target_token_indices,
+        "pair_relation_edges.target_element_indices",
+        edges.target_element_indices,
         minimum=0,
-        maximum_exclusive=SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+        maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
     )
     _validate_integer_vector_range(
         "pair_relation_edges.relation_ids",

@@ -6,8 +6,8 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyPlaneValueDataset,
-    ShogiLegalMoveTokenPolicyValueDataset,
-    collate_legal_move_token_policy_value_samples,
+    ShogiLegalMovePolicyValueDataset,
+    collate_legal_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
@@ -18,7 +18,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     save_shogi_policy_value_checkpoint,
 )
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_MODEL_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
@@ -45,9 +45,9 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         batch = next(
             iter(
                 torch.utils.data.DataLoader(
-                    ShogiLegalMoveTokenPolicyValueDataset(examples),
+                    ShogiLegalMovePolicyValueDataset(examples),
                     batch_size=2,
-                    collate_fn=collate_legal_move_token_policy_value_samples,
+                    collate_fn=collate_legal_move_policy_value_samples,
                 )
             )
         )
@@ -57,13 +57,13 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
             self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_ID)
-            self.assertEqual(payload["config"]["policy_output"], SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID)
+            self.assertEqual(payload["config"]["policy_output"], SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID)
             self.assertEqual(
                 payload["config"]["model_spec"],
                 shogi_policy_value_model_spec(
                     input=payload["config"]["input"],
                     core=SHOGI_SHARED_CORE_MODULE_ID,
-                    policy_output=SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+                    policy_output=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
                     value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
                 ),
             )
@@ -81,8 +81,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(batch.position_features, batch.legal_move_token_features, batch.legal_move_token_mask)
-            actual = loaded(batch.position_features, batch.legal_move_token_features, batch.legal_move_token_mask)
+            expected = result.model(batch.position_features, batch.legal_move_features, batch.legal_move_mask)
+            actual = loaded(batch.position_features, batch.legal_move_features, batch.legal_move_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 

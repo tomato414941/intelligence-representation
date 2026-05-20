@@ -4,8 +4,8 @@ from unittest.mock import Mock
 import torch
 
 from intrep.problems.shogi_policy_value.examples import (
-    ShogiLegalMoveTokenPolicyValueDataset,
-    collate_legal_move_token_policy_value_samples,
+    ShogiLegalMovePolicyValueDataset,
+    collate_legal_move_policy_value_samples,
     tensorize_policy_plane_value_examples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
@@ -19,21 +19,21 @@ from intrep.problems.shogi_policy_value.model import (
     SHOGI_VALUE_OUTPUT_MODULE_ID,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
-    _state_token_hidden,
+    _state_element_hidden,
     shogi_policy_value_model_spec,
 )
 from intrep.representation.inputs.shogi_position import ShogiPositionGeometryAttentionBias, ShogiPositionInputLayer
-from intrep.representation.outputs.shogi_legal_move_token import (
-    ShogiStateTokenLegalMovePolicyOutput,
-    _legal_move_token_square_hidden,
+from intrep.representation.outputs.shogi_legal_move import (
+    ShogiStateSummaryLegalMovePolicyOutput,
+    _legal_move_square_hidden,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import (
-    LINE_TOKEN_OFFSET,
+    LINE_ELEMENT_OFFSET,
     PAIR_RELATION_PIECE_ON_SQUARE,
-    SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
-    SQUARE_TOKEN_OFFSET,
+    SHOGI_POSITION_ELEMENT_COUNT,
+    SQUARE_ELEMENT_OFFSET,
     ShogiPositionFeatures,
     stack_shogi_position_features,
 )
@@ -50,25 +50,25 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 
-    def test_state_token_policy_output_returns_legal_move_token_logits(self) -> None:
-        position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
-        model = _state_token_legal_move_model()
+    def test_state_summary_policy_output_returns_legal_move_logits(self) -> None:
+        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        model = _state_summary_legal_move_model()
 
-        logits = model(position_features, legal_move_token_features, legal_move_token_mask)
+        logits = model(position_features, legal_move_features, legal_move_mask)
 
-        self.assertEqual(tuple(logits.shape), tuple(legal_move_token_mask.shape))
+        self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
 
-    def test_state_token_policy_output_masks_invalid_legal_move_tokens(self) -> None:
-        position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
-        legal_move_token_mask[:, -1] = False
-        model = _state_token_legal_move_model()
+    def test_state_summary_policy_output_masks_invalid_legal_moves(self) -> None:
+        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        legal_move_mask[:, -1] = False
+        model = _state_summary_legal_move_model()
 
-        logits = model(position_features, legal_move_token_features, legal_move_token_mask)
+        logits = model(position_features, legal_move_features, legal_move_mask)
 
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
-    def test_shared_core_model_returns_legal_move_token_logits(self) -> None:
-        position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
+    def test_shared_core_model_returns_legal_move_logits(self) -> None:
+        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -78,9 +78,9 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_features, legal_move_token_features, legal_move_token_mask)
+        logits = model(position_features, legal_move_features, legal_move_mask)
 
-        self.assertEqual(tuple(logits.shape), tuple(legal_move_token_mask.shape))
+        self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
 
     def test_shared_core_model_returns_position_value(self) -> None:
         position_features, _, _, _, _, _ = _batch()
@@ -99,7 +99,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertLessEqual(float(values.abs().max().item()), 1.0)
 
     def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
+        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -110,13 +110,13 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
-        logits, values = model.forward_policy_value(position_features, legal_move_token_features, legal_move_token_mask)
+        logits, values = model.forward_policy_value(position_features, legal_move_features, legal_move_mask)
 
-        self.assertEqual(tuple(logits.shape), tuple(legal_move_token_mask.shape))
+        self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
         self.assertEqual(tuple(values.shape), (2,))
         self.assertEqual(model.encoder.core.forward.call_count, 1)
 
-    def test_shared_core_policy_head_scores_legal_move_tokens_after_cross_attention(self) -> None:
+    def test_shared_core_policy_head_scores_legal_moves_after_cross_attention(self) -> None:
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -128,24 +128,24 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(model.policy_output.policy_head.scorer[0].in_features, 8 * 2)
 
-    def test_legal_move_token_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
+    def test_legal_move_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
+        position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+            SHOGI_POSITION_ELEMENT_COUNT,
             3,
         )
         square_ids = torch.tensor([[0, 80], [NO_FROM_SQUARE_ID, 7]])
 
-        square_hidden = _legal_move_token_square_hidden(
+        square_hidden = _legal_move_square_hidden(
             position_hidden,
             square_ids,
             zero_square_id=NO_FROM_SQUARE_ID,
         )
 
-        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, SQUARE_TOKEN_OFFSET]))
-        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, SQUARE_TOKEN_OFFSET + 80]))
+        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, SQUARE_ELEMENT_OFFSET]))
+        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, SQUARE_ELEMENT_OFFSET + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
-        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_TOKEN_OFFSET + 7]))
+        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_ELEMENT_OFFSET + 7]))
 
     def test_position_input_layer_builds_global_square_piece_sequence(self) -> None:
         position_features, _, _, _, _, _ = _batch()
@@ -153,7 +153,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         embeddings = layer(position_features)
 
-        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_ELEMENT_COUNT, 8))
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
 
     def test_position_input_layer_normalizes_feature_groups(self) -> None:
@@ -165,20 +165,20 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         token_norms = embeddings.norm(dim=-1)
         self.assertLess(float(token_norms.max().item() - token_norms.min().item()), 1e-3)
 
-    def test_state_token_hidden_uses_first_position_token(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
+    def test_state_element_hidden_uses_first_position_token(self) -> None:
+        position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT,
+            SHOGI_POSITION_ELEMENT_COUNT,
             3,
         )
 
-        state_hidden = _state_token_hidden(position_hidden)
+        state_hidden = _state_element_hidden(position_hidden)
 
         self.assertTrue(torch.equal(state_hidden, position_hidden[:, 0]))
 
     def test_position_geometry_attention_bias_targets_square_and_line_pairs(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
         attention_bias = ShogiPositionGeometryAttentionBias()
         attention_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
         attention_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
@@ -189,22 +189,22 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(
             tuple(bias.shape),
-            (2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT),
+            (2, SHOGI_POSITION_ELEMENT_COUNT, SHOGI_POSITION_ELEMENT_COUNT),
         )
-        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), float(same_square_relation))
+        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET].item()), float(same_square_relation))
         self.assertEqual(
-            float(bias[0, SQUARE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()),
+            float(bias[0, SQUARE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET + 1].item()),
             float(one_file_right_relation),
         )
-        self.assertEqual(float(bias[0, 0, SQUARE_TOKEN_OFFSET].item()), 0.0)
-        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, 0].item()), 0.0)
-        self.assertEqual(float(bias[0, LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[0, SQUARE_TOKEN_OFFSET, LINE_TOKEN_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[0, LINE_TOKEN_OFFSET, SQUARE_TOKEN_OFFSET + 1].item()), 0.0)
+        self.assertEqual(float(bias[0, 0, SQUARE_ELEMENT_OFFSET].item()), 0.0)
+        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, 0].item()), 0.0)
+        self.assertEqual(float(bias[0, LINE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, LINE_ELEMENT_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, LINE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET + 1].item()), 0.0)
 
     def test_position_geometry_attention_bias_adds_dynamic_pair_relation_bias(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        embeddings = torch.zeros((2, SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT, 8))
+        embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
         attention_bias = ShogiPositionGeometryAttentionBias()
         attention_bias.pair_relation_bias.weight.data[:, 0] = 0.0
         attention_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
@@ -216,12 +216,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertGreater(int(relation_indices.size(0)), 0)
         edge_index = int(relation_indices[0].item())
         batch = int(pair_relation_edges.batch_indices[edge_index].item())
-        row = int(pair_relation_edges.source_token_indices[edge_index].item())
-        column = int(pair_relation_edges.target_token_indices[edge_index].item())
+        row = int(pair_relation_edges.source_element_indices[edge_index].item())
+        column = int(pair_relation_edges.target_element_indices[edge_index].item())
         self.assertEqual(float(bias[batch, row, column].item()), 700.0)
 
     def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
-        position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
+        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -232,7 +232,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
-        model(position_features, legal_move_token_features, legal_move_token_mask)
+        model(position_features, legal_move_features, legal_move_mask)
 
         self.assertIn("attention_bias", model.encoder.core.forward.call_args.kwargs)
 
@@ -316,19 +316,19 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
 def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-    dataset = ShogiLegalMoveTokenPolicyValueDataset(examples)
-    batch = collate_legal_move_token_policy_value_samples([dataset[index] for index in range(len(dataset))])
+    dataset = ShogiLegalMovePolicyValueDataset(examples)
+    batch = collate_legal_move_policy_value_samples([dataset[index] for index in range(len(dataset))])
     return (
         batch.position_features,
-        batch.legal_move_token_features,
-        batch.legal_move_token_mask,
+        batch.legal_move_features,
+        batch.legal_move_mask,
         batch.labels,
         batch.policy_targets,
         batch.value_targets,
     )
 
 
-def _state_token_legal_move_model() -> SharedCoreShogiPolicyValueModel:
+def _state_summary_legal_move_model() -> SharedCoreShogiPolicyValueModel:
     return SharedCoreShogiPolicyValueModel(
         SharedCoreShogiPolicyValueModelConfig(
             embedding_dim=8,
@@ -336,7 +336,7 @@ def _state_token_legal_move_model() -> SharedCoreShogiPolicyValueModel:
             hidden_dim=16,
             num_layers=1,
         ),
-        policy_output=ShogiStateTokenLegalMovePolicyOutput(
+        policy_output=ShogiStateSummaryLegalMovePolicyOutput(
             embedding_dim=8,
             hidden_dim=16,
         ),

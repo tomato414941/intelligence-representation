@@ -11,7 +11,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_training_config,
 )
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
-from intrep.worlds.shogi.move_encoding import shogi_legal_move_token_features
+from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
 from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen, stack_shogi_position_features
 
@@ -33,7 +33,7 @@ class ShogiPolicyValueCheckpointEvaluator:
         torch_device = torch.device(device)
         if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
             return cls(_policy_plane_evaluator(model, torch_device))
-        return cls(_legal_move_token_evaluator(model, torch_device))
+        return cls(_legal_move_evaluator(model, torch_device))
 
     def __init__(
         self,
@@ -45,7 +45,7 @@ class ShogiPolicyValueCheckpointEvaluator:
         return self.evaluate_positions(requests)
 
 
-def _legal_move_token_evaluator(model: torch.nn.Module, torch_device: torch.device):
+def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device):
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
         if not requests:
             return []
@@ -54,9 +54,9 @@ def _legal_move_token_evaluator(model: torch.nn.Module, torch_device: torch.devi
         position_features = stack_shogi_position_features(
             [shogi_position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
-        legal_move_token_features = torch.stack(
+        legal_move_features = torch.stack(
             [
-                shogi_legal_move_token_features(
+                shogi_legal_move_features(
                     legal_moves,
                     turn=board.turn,
                     max_legal_move_count=max_legal_move_count,
@@ -64,15 +64,15 @@ def _legal_move_token_evaluator(model: torch.nn.Module, torch_device: torch.devi
                 for board, (_position_sfen, legal_moves) in zip(boards, requests, strict=True)
             ]
         ).to(torch_device)
-        legal_move_token_mask = torch.zeros((len(requests), max_legal_move_count), dtype=torch.bool, device=torch_device)
+        legal_move_mask = torch.zeros((len(requests), max_legal_move_count), dtype=torch.bool, device=torch_device)
         for index, (_position_sfen, legal_moves) in enumerate(requests):
-            legal_move_token_mask[index, : len(legal_moves)] = True
+            legal_move_mask[index, : len(legal_moves)] = True
 
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
-                logits, values = model.forward_policy_value(position_features, legal_move_token_features, legal_move_token_mask)
+                logits, values = model.forward_policy_value(position_features, legal_move_features, legal_move_mask)
             else:
-                logits = model(position_features, legal_move_token_features, legal_move_token_mask)
+                logits = model(position_features, legal_move_features, legal_move_mask)
                 values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
 
         evaluations: list[PositionEvaluation] = []

@@ -25,7 +25,7 @@ from intrep.worlds.shogi.position_square_features import (
     king_relative_square_token_id,
     king_relative_square_token_ids,
     legal_drop_targets_by_piece_type,
-    move_count_bucket_token_id,
+    move_count_bucket_feature_id,
     piece_token_id,
     relative_square_token_id,
     side_to_move_token_id,

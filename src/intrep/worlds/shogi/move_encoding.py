@@ -27,7 +27,7 @@ def shogi_move_feature_ids(move_usi: str, *, turn: int) -> torch.Tensor:
     )
 
 
-def shogi_legal_move_token_features(
+def shogi_legal_move_features(
     move_usis: tuple[str, ...],
     *,
     turn: int,
