@@ -31,7 +31,6 @@ problem:
 - conversion from selected game traces to durable `ShogiMovePolicyValueExample` records
 - tensorized policy/value samples and tensor caches
 - policy/value model training and evaluation
-- generated-data training cycles
 - Online Replay orchestration
 
 Code belongs in `problems/shogi_policy_value` when it depends on the

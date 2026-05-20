@@ -44,11 +44,12 @@ Current state:
 - `intelligence-representation` can normalize that evidence through
   `policy_target_construction="mcts_visit_counts"`.
 - Online Replay generated games already use `mcts_visit_counts`.
-- The fixed generated-data training cycle still converts generated games into
+- The fixed generated-data training cycle converted generated games into
   `shogi_policy_value_examples_jsonl` with
-  `policy_target_construction="chosen_move"`.
+  `policy_target_construction="chosen_move"`. That cycle path was later
+  retired.
 
-The adoption gap is therefore narrow:
+The adoption gap was therefore narrow:
 
 ```text
 src/intrep/problems/shogi_policy_value/generated_data_cycle.py

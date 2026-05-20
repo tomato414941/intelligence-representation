@@ -34,8 +34,10 @@ Use `ReplayBuffer` for online RL only when there is a loop that:
 
 ## Current Shogi RL Cycle
 
-`scripts/run_shogi_generated_data_training_cycle.py` is currently a manual
-one-cycle pipeline, not an Online Experience Replay loop.
+At the time this issue was opened,
+`scripts/run_shogi_generated_data_training_cycle.py` was a manual one-cycle
+pipeline, not an Online Experience Replay loop. That generated-data cycle path
+has since been retired.
 
 The current flow is:
 
@@ -49,9 +51,9 @@ input checkpoint
   -> write checkpoint.pt, best-checkpoint.pt, metrics.json
 ```
 
-This is closer to Offline Experience Reuse: generated game records are fixed
-before training starts, converted through data selection, and then trained like
-an ordinary dataset.
+That flow was closer to Offline Experience Reuse: generated game records were
+fixed before training starts, converted through data selection, and then trained
+like an ordinary dataset.
 
 The current artifact boundary is:
 

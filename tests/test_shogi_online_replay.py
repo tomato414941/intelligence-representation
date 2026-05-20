@@ -10,12 +10,6 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from intrep.problems.shogi_policy_value.generated_data_cycle import (
-    ShogiGeneratedDataTrainingCycleConfig,
-    ShogiGeneratedDataTrainingLoopConfig,
-    run_shogi_generated_data_training_cycle,
-    run_shogi_generated_data_training_loop,
-)
 from intrep.problems.shogi_policy_value.online_replay import (
     ShogiGeneratedExperienceSource,
     ShogiOnlineReplayConfig,
@@ -169,7 +163,7 @@ def _write_training_eval_bundle(bundle_dir: Path) -> Path:
     return bundle_dir / "data-selection.json"
 
 
-class ShogiGeneratedDataCycleTest(unittest.TestCase):
+class ShogiOnlineReplayTest(unittest.TestCase):
     def test_replay_seed_examples_are_sampled_from_selection(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -200,25 +194,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         self.assertEqual(len(sampled), 1)
         self.assertIsInstance(sampled[0], CandidateMovePolicyValueTensorSample)
 
-    def test_rejects_invalid_loop_config(self) -> None:
-        with self.assertRaisesRegex(ValueError, "cycles"):
-            run_shogi_generated_data_training_loop(
-                ShogiGeneratedDataTrainingLoopConfig(
-                    checkpoint=Path("source.pt"),
-                    run_dir=Path("loop"),
-                    cycles=0,
-                )
-            )
-
-        with self.assertRaisesRegex(ValueError, "next_checkpoint"):
-            run_shogi_generated_data_training_loop(
-                ShogiGeneratedDataTrainingLoopConfig(
-                    checkpoint=Path("source.pt"),
-                    run_dir=Path("loop"),
-                    next_checkpoint="latest",
-                )
-            )
-
     def test_rejects_invalid_config_before_running_commands(self) -> None:
         with patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command") as run:
             with self.assertRaisesRegex(ValueError, "generator_gate_games"):
@@ -245,26 +220,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
 
             run.assert_not_called()
 
-            with self.assertRaisesRegex(ValueError, "games"):
-                run_shogi_generated_data_training_cycle(
-                    ShogiGeneratedDataTrainingCycleConfig(
-                        checkpoint=Path("source.pt"),
-                        run_dir=Path("cycle"),
-                        games=0,
-                    )
-                )
-
         run.assert_not_called()
-
-    def test_requires_usi_command_for_usi_engine_player(self) -> None:
-        with self.assertRaisesRegex(ValueError, "usi"):
-            run_shogi_generated_data_training_cycle(
-                ShogiGeneratedDataTrainingCycleConfig(
-                    checkpoint=Path("source.pt"),
-                    run_dir=Path("cycle"),
-                    white_player=usi_engine_generated_player(name="engine", command=""),
-                )
-            )
 
     def test_generation_command_streams_stdout_and_returns_summary(self) -> None:
         class FakeProcess:
@@ -297,283 +253,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         self.assertEqual(raised.exception.returncode, 3)
         self.assertEqual(raised.exception.output, "progress\npartial summary\n")
         self.assertEqual(stdout.getvalue(), "progress\npartial summary\n")
-
-    def test_runs_one_cycle_through_generation_split_and_training_command(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            _write_checkpoint(checkpoint_path)
-            run_dir = root / "cycle"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
-
-            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _mcts_record(("7g7f", "3c3d"), "black"),
-                            _mcts_record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-                _write_training_command_checkpoints(command)
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-            ):
-                result = run_shogi_generated_data_training_cycle(
-                    ShogiGeneratedDataTrainingCycleConfig(
-                        checkpoint=checkpoint_path,
-                        run_dir=run_dir,
-                        arena_repo=arena_repo,
-                        games=2,
-                        concurrent_games_per_process=2,
-                        max_plies=4,
-                        simulations=3,
-                        nn_leaf_eval_batch_limit=4,
-                        generation_worker_processes=3,
-                        seed=11,
-                        mcts_move_time_limit_sec=9.0,
-                        max_steps=5,
-                        batch_size=2,
-                        device="cuda",
-                    )
-                )
-
-            dataset = json.loads((run_dir / "data-selection.json").read_text(encoding="utf-8"))
-            self.assertNotIn("target_construction", dataset)
-            self.assertEqual(dataset["train_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
-            self.assertEqual(dataset["eval_sources"][0]["kind"], "shogi_policy_value_examples_jsonl")
-            train_example = json.loads((run_dir / "train-examples.jsonl").read_text(encoding="utf-8").splitlines()[0])
-            self.assertEqual(train_example["policy_target_source"], "mcts_visit_counts")
-            self.assertEqual(train_example["policy_targets"][train_example["chosen_move"]], 1.0)
-            self.assertTrue((run_dir / "train-examples.jsonl").exists())
-            self.assertTrue((run_dir / "eval-examples.jsonl").exists())
-            self.assertEqual(generation_run.call_count, 1)
-            self.assertEqual(run.call_count, 1)
-            generate_command = generation_run.call_args_list[0].args[0]
-            checkpoint_id = load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id
-            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-id") + 1], checkpoint_id)
-            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-id") + 1], checkpoint_id)
-            self.assertEqual(generate_command[generate_command.index("--concurrent-games-per-process") + 1], "2")
-            self.assertEqual(generate_command[generate_command.index("--generation-worker-processes") + 1], "3")
-            self.assertEqual(generate_command[generate_command.index("--seed") + 1], "11")
-            self.assertEqual(generate_command[generate_command.index("--progress-every-plies") + 1], "0")
-            self.assertEqual(generate_command[generate_command.index("--black-mcts-simulations") + 1], "3")
-            self.assertEqual(generate_command[generate_command.index("--white-mcts-simulations") + 1], "3")
-            self.assertEqual(
-                generate_command[generate_command.index("--black-move-selection-profile") + 1], "visit-sampling"
-            )
-            self.assertEqual(
-                generate_command[generate_command.index("--white-move-selection-profile") + 1], "visit-sampling"
-            )
-            self.assertEqual(generate_command[generate_command.index("--black-move-selection-temperature") + 1], "1.0")
-            self.assertEqual(generate_command[generate_command.index("--white-move-selection-temperature") + 1], "1.0")
-            self.assertEqual(generate_command[generate_command.index("--black-move-selection-temperature-plies") + 1], "40")
-            self.assertEqual(generate_command[generate_command.index("--white-move-selection-temperature-plies") + 1], "40")
-            self.assertEqual(generate_command[generate_command.index("--black-mcts-nn-leaf-eval-batch-limit") + 1], "4")
-            self.assertEqual(generate_command[generate_command.index("--white-mcts-nn-leaf-eval-batch-limit") + 1], "4")
-            self.assertEqual(generate_command[generate_command.index("--black-device") + 1], "cuda")
-            self.assertEqual(generate_command[generate_command.index("--white-device") + 1], "cuda")
-            self.assertEqual(generate_command[generate_command.index("--black-board-backend") + 1], "cshogi")
-            self.assertEqual(generate_command[generate_command.index("--white-board-backend") + 1], "cshogi")
-            self.assertEqual(generate_command[generate_command.index("--board-backend") + 1], "cshogi")
-            self.assertEqual(generate_command[generate_command.index("--black-mcts-move-time-limit-sec") + 1], "9.0")
-            self.assertEqual(generate_command[generate_command.index("--white-mcts-move-time-limit-sec") + 1], "9.0")
-            train_command = run.call_args_list[0].args[0]
-            self.assertIn("intrep.train_shogi_policy_value", train_command)
-            self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
-            self.assertIn("--value-loss-weight", train_command)
-            self.assertIn("1.0", train_command)
-            self.assertEqual(
-                result.generation,
-                {
-                    "black_player": {
-                        "kind": "checkpoint",
-                        "name": "black",
-                        "move_selection_profile": "visit-sampling",
-                        "move_selection_temperature": 1.0,
-                        "move_selection_temperature_plies": 40,
-                    },
-                    "white_player": {
-                        "kind": "checkpoint",
-                        "name": "white",
-                        "move_selection_profile": "visit-sampling",
-                        "move_selection_temperature": 1.0,
-                        "move_selection_temperature_plies": 40,
-                    },
-                    "games": 2,
-                    "concurrent_games_per_process": 2,
-                    "generation_progress_every_plies": 0,
-                    "board_backend": "cshogi",
-                    "max_plies": 4,
-                    "simulations": 3,
-                    "nn_leaf_eval_batch_limit": 4,
-                    "generation_worker_processes": 3,
-                    "seed": 11,
-                    "checkpoint_device": "cuda",
-                    "mcts_move_time_limit_sec": 9.0,
-                    "policy_target_construction": "mcts_visit_counts",
-                    "value_target_construction": "winner",
-                },
-            )
-
-    def test_passes_usi_generation_options(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            _write_checkpoint(checkpoint_path)
-            run_dir = root / "cycle"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
-
-            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _mcts_record(("7g7f", "3c3d"), "black"),
-                            _mcts_record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-                _write_training_command_checkpoints(command)
-                return None
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
-            ):
-                run_shogi_generated_data_training_cycle(
-                    ShogiGeneratedDataTrainingCycleConfig(
-                        checkpoint=checkpoint_path,
-                        run_dir=run_dir,
-                        arena_repo=arena_repo,
-                        white_player=usi_engine_generated_player(
-                            name="engine",
-                            command="engine-command",
-                            options=("Threads=2",),
-                            go_command="go nodes 2",
-                        ),
-                        games=2,
-                        device="cuda",
-                        policy_target_construction="chosen_move",
-                    )
-                )
-
-            generate_command = generation_run.call_args_list[0].args[0]
-            self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "usi_engine")
-            self.assertEqual(generate_command[generate_command.index("--white-usi-command") + 1], "engine-command")
-            self.assertEqual(generate_command[generate_command.index("--white-usi-option") + 1], "Threads=2")
-            self.assertEqual(generate_command[generate_command.index("--white-usi-go-command") + 1], "go nodes 2")
-            self.assertEqual(generate_command[generate_command.index("--black-device") + 1], "cuda")
-            self.assertEqual(generate_command[generate_command.index("--black-board-backend") + 1], "cshogi")
-            self.assertNotIn("--white-device", generate_command)
-            self.assertNotIn("--white-board-backend", generate_command)
-            self.assertNotIn("--black-mcts-move-time-limit-sec", generate_command)
-            self.assertNotIn("--white-mcts-move-time-limit-sec", generate_command)
-
-    def test_runs_multi_cycle_loop_using_best_checkpoint_as_next_input(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            _write_checkpoint(checkpoint_path)
-            run_dir = root / "loop"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
-
-            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _mcts_record(("7g7f", "3c3d"), "black"),
-                            _mcts_record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-                _write_training_command_checkpoints(command)
-                return None
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
-            ):
-                result = run_shogi_generated_data_training_loop(
-                    ShogiGeneratedDataTrainingLoopConfig(
-                        checkpoint=checkpoint_path,
-                        run_dir=run_dir,
-                        cycles=2,
-                        next_checkpoint="best",
-                        arena_repo=arena_repo,
-                        games=2,
-                        max_steps=1,
-                    )
-                )
-
-            self.assertEqual(len(result.cycles), 2)
-            self.assertEqual(result.next_checkpoint, "best")
-            self.assertEqual(result.cycles[0].run_dir, run_dir.resolve() / "cycle-0001")
-            self.assertEqual(result.cycles[1].run_dir, run_dir.resolve() / "cycle-0002")
-            self.assertEqual(result.final_checkpoint, result.cycles[1].best_checkpoint)
-            first_train_command = run.call_args_list[0].args[0]
-            second_generate_command = generation_run.call_args_list[1].args[0]
-            self.assertEqual(first_train_command[first_train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
-            self.assertEqual(
-                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
-                str(result.cycles[0].best_checkpoint.resolve()),
-            )
-
-    def test_multi_cycle_loop_can_promote_final_checkpoint(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            checkpoint_path = root / "source.pt"
-            _write_checkpoint(checkpoint_path)
-            run_dir = root / "loop"
-            arena_repo = root / "arena"
-            arena_repo.mkdir()
-
-            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
-                if any(item.endswith("generate_shogi_games.py") for item in command):
-                    out_path = Path(command[command.index("--out") + 1])
-                    write_shogi_game_records_jsonl(
-                        out_path,
-                        [
-                            _mcts_record(("7g7f", "3c3d"), "black"),
-                            _mcts_record(("2g2f", "8c8d"), "white"),
-                        ],
-                    )
-                _write_training_command_checkpoints(command)
-                return None
-
-            with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
-                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
-            ):
-                result = run_shogi_generated_data_training_loop(
-                    ShogiGeneratedDataTrainingLoopConfig(
-                        checkpoint=checkpoint_path,
-                        run_dir=run_dir,
-                        cycles=2,
-                        next_checkpoint="final",
-                        arena_repo=arena_repo,
-                        games=2,
-                        max_steps=1,
-                    )
-                )
-
-            second_generate_command = generation_run.call_args_list[1].args[0]
-            self.assertEqual(result.next_checkpoint, "final")
-            self.assertEqual(result.final_checkpoint, result.cycles[1].checkpoint)
-            self.assertEqual(
-                second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
-                str(result.cycles[0].checkpoint.resolve()),
-            )
 
     def test_online_replay_appends_generated_examples_and_trains_from_samples(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1562,14 +1241,6 @@ def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValue
 def _write_checkpoint(path: Path) -> None:
     config = ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2)
     save_shogi_policy_value_state_checkpoint(path, build_shogi_policy_value_model(config).state_dict(), config)
-
-
-def _write_training_command_checkpoints(command: list[str]) -> None:
-    if "intrep.train_shogi_policy_value" not in command:
-        return
-    _write_checkpoint(Path(command[command.index("--checkpoint-path") + 1]))
-    if "--best-checkpoint-path" in command:
-        _write_checkpoint(Path(command[command.index("--best-checkpoint-path") + 1]))
 
 
 if __name__ == "__main__":

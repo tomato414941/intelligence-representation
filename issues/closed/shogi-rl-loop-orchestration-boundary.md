@@ -73,11 +73,11 @@ that:
 
 The current boundary is explicit enough to close this issue.
 
-`intelligence-representation` owns the generated-data and Online Replay loops
-in `src/intrep/problems/shogi_policy_value/generated_data_cycle.py`. Those loops
-invoke `shogi-arena-agent` through `scripts/generate_shogi_games.py`, then read
-the produced game-record JSONL, split or append the records, update the model,
-write metrics, and promote the next checkpoint.
+`intelligence-representation` owns Online Replay in
+`src/intrep/problems/shogi_policy_value/online_replay.py`. The loop invokes
+`shogi-arena-agent` through `scripts/generate_shogi_games.py`, then reads the
+produced game-record JSONL, appends records to replay state, updates the model,
+writes metrics, and promotes the next checkpoint.
 
 `shogi-arena-agent` owns runtime game generation. It constructs checkpoint,
 YaneuraOu, or deterministic players; applies direct or MCTS move selection;

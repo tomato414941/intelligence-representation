@@ -28,7 +28,7 @@ such as `Actor`, `Learner`, `Evaluator`, or `Publisher` until a second concrete
 use case exists.
 
 The current shogi Online Replay implementation lives under
-`problems/shogi_policy_value/generated_data_cycle.py`. It uses the generic
+`problems/shogi_policy_value/online_replay.py`. It uses the generic
 `intrep.learning.ReplayBuffer` utility, but the orchestration itself remains
 shogi-specific.
 
@@ -53,7 +53,7 @@ Current local boundaries are:
 - `intrep.worlds.shogi`: shogi source-side records, Experience Store, and
   Training Data Bundle behavior
 - `intrep.problems.shogi_policy_value`: policy/value sample construction,
-  training, evaluation, generated-data cycles, and Online Replay orchestration
+  training, evaluation, and Online Replay orchestration
 - `intrep.learning`: small reusable learning-time utilities such as
   `ReplayBuffer`
 

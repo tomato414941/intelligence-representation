@@ -45,7 +45,7 @@ Met.
 
 ## Resolution
 
-The generated-data lifecycle is now split into shogi-local modules:
+The generated-data lifecycle was split into shogi-local modules:
 
 - `generated_game_production.py`: arena-agent generated-game invocation
 - `generated_data_artifacts.py`: generated-data result artifacts and checkpoint
@@ -54,8 +54,9 @@ The generated-data lifecycle is now split into shogi-local modules:
 - `online_replay.py`: Online Replay orchestration, replay sampling, Experience
   Store append, and Online Replay metrics
 
-`generated_data_cycle.py` still re-exports the existing public names so script
-entrypoints do not need to change.
+Generated-data cycle training was later retired; see
+`shogi-generated-data-cycle-retirement.md`. Online Replay remains the supported
+generated-experience training path.
 
 ## Non-Goals
 

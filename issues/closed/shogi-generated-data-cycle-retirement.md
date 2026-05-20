@@ -1,6 +1,6 @@
 # Shogi Generated-Data Cycle Retirement
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -51,3 +51,27 @@ Before changing code, check:
 - A decision is recorded.
 - If kept, generated-data cycle training no longer duplicates training-owned settings.
 - If retired, the generated-data cycle CLI/API/tests/docs are removed or replaced by online replay equivalents.
+
+## Resolution
+
+Generated-data cycle training is retired.
+
+The project keeps the useful independent pieces:
+
+- generated game production
+- generated record archive
+- Training Data Bundle / Data Selection construction
+- fixed-data policy/value training
+- Online Replay for generated-experience training
+
+The retired generated-data cycle path was only an orchestration wrapper around:
+
+```text
+generate games -> split generated train/eval -> build examples -> run training
+```
+
+That path duplicated generation settings and training settings, used generated
+data as its own eval split, and overlapped with Online Replay. No compatibility
+wrapper remains. Future generated-experience training should use Online Replay;
+no-replay fixed-data training should use generated records through Data
+Selection or a Training Data Bundle.
