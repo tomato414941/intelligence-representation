@@ -6,7 +6,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from intrep.core.transformer_core import SharedTransformerCore
+from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.text.input_layer import TextTokenInputLayer
 from intrep.text.output_layer import TokenOutputHead
 

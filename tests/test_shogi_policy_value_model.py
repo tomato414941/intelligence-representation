@@ -17,15 +17,14 @@ from intrep.problems.shogi_policy_value.model import (
     PolicyPlaneShogiPolicyValueModelConfig,
     SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
-    ShogiPositionInputLayer,
-    ShogiPolicyPlaneHead,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
-    ShogiPositionGeometryAttentionBias,
-    _candidate_square_hidden,
     _state_token_hidden,
     shogi_policy_value_model_spec,
 )
+from intrep.representation.inputs.shogi_position import ShogiPositionGeometryAttentionBias, ShogiPositionInputLayer
+from intrep.representation.outputs.shogi_legal_move_token import _candidate_square_hidden
+from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import (
     LINE_TOKEN_OFFSET,
@@ -42,7 +41,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         spec = shogi_policy_value_model_spec(SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
 
         self.assertEqual(spec, SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
-        self.assertIsNone(spec["candidate_move_input"])
+        self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 
     def test_model_returns_candidate_logits(self) -> None:
         position_features, candidate_move_features, candidate_mask, _, _, _ = _batch()
@@ -102,13 +101,13 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 num_layers=1,
             )
         )
-        model.core.forward = Mock(wraps=model.core.forward)
+        model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
         logits, values = model.forward_policy_value(position_features, candidate_move_features, candidate_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(candidate_mask.shape))
         self.assertEqual(tuple(values.shape), (2,))
-        self.assertEqual(model.core.forward.call_count, 1)
+        self.assertEqual(model.encoder.core.forward.call_count, 1)
 
     def test_shared_core_policy_head_scores_legal_move_tokens_after_cross_attention(self) -> None:
         model = SharedCoreShogiPolicyValueModel(
@@ -120,7 +119,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(model.policy_head.scorer[0].in_features, 8 * 2)
+        self.assertEqual(model.policy_output.policy_head.scorer[0].in_features, 8 * 2)
 
     def test_candidate_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
         position_hidden = torch.arange(2 * SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT * 3, dtype=torch.float32).reshape(
@@ -224,11 +223,11 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 num_layers=1,
             )
         )
-        model.core.forward = Mock(wraps=model.core.forward)
+        model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
         model(position_features, candidate_move_features, candidate_mask)
 
-        self.assertIn("attention_bias", model.core.forward.call_args.kwargs)
+        self.assertIn("attention_bias", model.encoder.core.forward.call_args.kwargs)
 
     def test_policy_plane_head_returns_fixed_action_logits(self) -> None:
         head = ShogiPolicyPlaneHead(
@@ -299,13 +298,13 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 num_layers=1,
             )
         )
-        model.core.forward = Mock(wraps=model.core.forward)
+        model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
         logits, values = model.forward_policy_value(position_features, legal_action_mask)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
         self.assertEqual(tuple(values.shape), (2,))
-        self.assertEqual(model.core.forward.call_count, 1)
+        self.assertEqual(model.encoder.core.forward.call_count, 1)
 
 
 def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

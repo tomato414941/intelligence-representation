@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from intrep.core.transformer_core import SharedTransformerCore
+from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.worlds.grid.layers import GridObservationInputLayer
 from intrep.worlds.grid.world import GRID_ACTIONS
 

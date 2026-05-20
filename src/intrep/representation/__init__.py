@@ -1,0 +1,1 @@
+"""Neural representation building blocks."""

@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from intrep.core.transformer_core import SharedTransformerCore
+from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.problems.language_modeling.model import LanguageModelingModel, build_language_modeling_config
 from intrep.text.output_layer import TokenOutputHead
 

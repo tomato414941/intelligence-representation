@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.core.transformer_core import SharedTransformerCore
+from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, GridStepTrainingArtifacts
 
