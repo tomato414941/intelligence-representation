@@ -6,8 +6,8 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyPlaneValueDataset,
-    ShogiPolicyValueDataset,
-    collate_candidate_move_policy_value_samples,
+    ShogiLegalMoveTokenPolicyValueDataset,
+    collate_legal_move_token_policy_value_samples,
     collate_policy_plane_value_samples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
@@ -45,9 +45,9 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         batch = next(
             iter(
                 torch.utils.data.DataLoader(
-                    ShogiPolicyValueDataset(examples),
+                    ShogiLegalMoveTokenPolicyValueDataset(examples),
                     batch_size=2,
-                    collate_fn=collate_candidate_move_policy_value_samples,
+                    collate_fn=collate_legal_move_token_policy_value_samples,
                 )
             )
         )
@@ -81,8 +81,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(batch.position_features, batch.candidate_move_features, batch.candidate_mask)
-            actual = loaded(batch.position_features, batch.candidate_move_features, batch.candidate_mask)
+            expected = result.model(batch.position_features, batch.legal_move_token_features, batch.legal_move_token_mask)
+            actual = loaded(batch.position_features, batch.legal_move_token_features, batch.legal_move_token_mask)
 
         self.assertTrue(torch.allclose(actual, expected))
 

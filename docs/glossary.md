@@ -669,7 +669,7 @@ training or evaluation.
 Examples:
 
 - next-token prediction
-- candidate move selection
+- legal move selection
 - image classification
 - next-state prediction
 - value prediction

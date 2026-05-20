@@ -13,7 +13,7 @@ PROMOTION_VOCAB_SIZE = 2
 DROP_PIECE_VOCAB_SIZE = 8
 
 
-class ShogiCandidateMoveInputLayer(nn.Module):
+class ShogiLegalMoveTokenInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
         self.from_square_embedding = nn.Embedding(FROM_SQUARE_VOCAB_SIZE, embedding_dim)
@@ -21,16 +21,16 @@ class ShogiCandidateMoveInputLayer(nn.Module):
         self.promotion_embedding = nn.Embedding(PROMOTION_VOCAB_SIZE, embedding_dim)
         self.drop_piece_embedding = nn.Embedding(DROP_PIECE_VOCAB_SIZE, embedding_dim)
 
-    def forward(self, candidate_move_features: torch.Tensor) -> torch.Tensor:
+    def forward(self, legal_move_token_features: torch.Tensor) -> torch.Tensor:
         return (
-            self.from_square_embedding(candidate_move_features[..., 0])
-            + self.to_square_embedding(candidate_move_features[..., 1])
-            + self.promotion_embedding(candidate_move_features[..., 2])
-            + self.drop_piece_embedding(candidate_move_features[..., 3])
+            self.from_square_embedding(legal_move_token_features[..., 0])
+            + self.to_square_embedding(legal_move_token_features[..., 1])
+            + self.promotion_embedding(legal_move_token_features[..., 2])
+            + self.drop_piece_embedding(legal_move_token_features[..., 3])
         )
 
 
-class ShogiCandidateMovePolicyHead(nn.Module):
+class ShogiDirectCandidateMovePolicyHead(nn.Module):
     def __init__(self, *, input_dim: int, hidden_dim: int) -> None:
         super().__init__()
         self.scorer = nn.Sequential(
@@ -39,9 +39,9 @@ class ShogiCandidateMovePolicyHead(nn.Module):
             nn.Linear(hidden_dim, 1),
         )
 
-    def forward(self, candidate_inputs: torch.Tensor, candidate_mask: torch.Tensor) -> torch.Tensor:
-        logits = self.scorer(candidate_inputs).squeeze(-1)
-        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+    def forward(self, direct_candidate_inputs: torch.Tensor, legal_move_token_mask: torch.Tensor) -> torch.Tensor:
+        logits = self.scorer(direct_candidate_inputs).squeeze(-1)
+        return logits.masked_fill(~legal_move_token_mask, torch.finfo(logits.dtype).min)
 
 
 class ShogiLegalMoveTokenPolicyHead(nn.Module):
@@ -63,17 +63,17 @@ class ShogiLegalMoveTokenPolicyHead(nn.Module):
         *,
         position_hidden: torch.Tensor,
         move_tokens: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> torch.Tensor:
         attended, _weights = self.cross_attention(move_tokens, position_hidden, position_hidden, need_weights=False)
         logits = self.scorer(torch.cat((move_tokens, attended), dim=-1)).squeeze(-1)
-        return logits.masked_fill(~candidate_mask, torch.finfo(logits.dtype).min)
+        return logits.masked_fill(~legal_move_token_mask, torch.finfo(logits.dtype).min)
 
 
 class ShogiLegalMoveTokenPolicyOutput(nn.Module):
     def __init__(self, *, embedding_dim: int, num_heads: int, hidden_dim: int) -> None:
         super().__init__()
-        self.move_input = ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
+        self.move_input = ShogiLegalMoveTokenInputLayer(embedding_dim=embedding_dim)
         self.policy_head = ShogiLegalMoveTokenPolicyHead(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
@@ -84,28 +84,28 @@ class ShogiLegalMoveTokenPolicyOutput(nn.Module):
         self,
         *,
         position_hidden: torch.Tensor,
-        candidate_move_features: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> torch.Tensor:
-        move_tokens = self.move_tokens(position_hidden, candidate_move_features)
+        move_tokens = self.move_tokens(position_hidden, legal_move_token_features)
         return self.policy_head(
             position_hidden=position_hidden,
             move_tokens=move_tokens,
-            candidate_mask=candidate_mask,
+            legal_move_token_mask=legal_move_token_mask,
         )
 
-    def move_tokens(self, position_hidden: torch.Tensor, candidate_move_features: torch.Tensor) -> torch.Tensor:
-        move_embedding = self.move_input(candidate_move_features)
-        from_square_hidden = _candidate_square_hidden(
+    def move_tokens(self, position_hidden: torch.Tensor, legal_move_token_features: torch.Tensor) -> torch.Tensor:
+        move_embedding = self.move_input(legal_move_token_features)
+        from_square_hidden = _legal_move_token_square_hidden(
             position_hidden,
-            candidate_move_features[..., 0],
+            legal_move_token_features[..., 0],
             zero_square_id=NO_FROM_SQUARE_ID,
         )
-        to_square_hidden = _candidate_square_hidden(position_hidden, candidate_move_features[..., 1])
+        to_square_hidden = _legal_move_token_square_hidden(position_hidden, legal_move_token_features[..., 1])
         return move_embedding + from_square_hidden + to_square_hidden
 
 
-def _candidate_square_hidden(
+def _legal_move_token_square_hidden(
     position_hidden: torch.Tensor,
     square_ids: torch.Tensor,
     *,

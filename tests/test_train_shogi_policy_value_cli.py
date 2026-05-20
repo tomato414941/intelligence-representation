@@ -21,7 +21,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
@@ -291,7 +291,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             build_shogi_policy_value_tensor_cache(
                 data_selection_path=data_selection_path,
                 output_path=tensor_cache_path,
-                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
                 shard_games=1,
             )
 
@@ -445,7 +445,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
-            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE)
+            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN)
             self.assertEqual(metrics["raw_train_case_count"], 2)
             self.assertEqual(metrics["raw_eval_case_count"], 2)
 

@@ -29,7 +29,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_identity,
     save_shogi_policy_value_state_checkpoint,
 )
-from intrep.problems.shogi_policy_value.examples import CandidateMovePolicyValueTensorSample
+from intrep.problems.shogi_policy_value.examples import LegalMoveTokenPolicyValueTensorSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,
@@ -192,7 +192,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
             )
 
         self.assertEqual(len(sampled), 1)
-        self.assertIsInstance(sampled[0], CandidateMovePolicyValueTensorSample)
+        self.assertIsInstance(sampled[0], LegalMoveTokenPolicyValueTensorSample)
 
     def test_rejects_invalid_config_before_running_commands(self) -> None:
         with patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command") as run:
@@ -326,8 +326,8 @@ class ShogiOnlineReplayTest(unittest.TestCase):
 
             def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
                 train_batches.append(len(examples))
-                self.assertIsInstance(examples[0], CandidateMovePolicyValueTensorSample)
-                self.assertIsInstance(eval_examples[0], CandidateMovePolicyValueTensorSample)
+                self.assertIsInstance(examples[0], LegalMoveTokenPolicyValueTensorSample)
+                self.assertIsInstance(eval_examples[0], LegalMoveTokenPolicyValueTensorSample)
                 return _training_result(config)
 
             with (

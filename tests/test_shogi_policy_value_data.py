@@ -15,7 +15,7 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiPolicyValueDataset
+from intrep.problems.shogi_policy_value.examples import ShogiLegalMoveTokenPolicyValueDataset
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -190,7 +190,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         self.assertEqual(examples[0].policy_target_source, "mcts_visit_counts")
         self.assertEqual(examples[0].value_target_source, "winner")
 
-    def test_mcts_visit_targets_tensorize_against_candidate_order(self) -> None:
+    def test_mcts_visit_targets_tensorize_against_legal_move_order(self) -> None:
         record = _record(("7g7f",), "black")
         record = replace(
             record,
@@ -212,11 +212,11 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
                 value_target_construction="winner",
             )
 
-        sample = ShogiPolicyValueDataset(examples)[0]
+        sample = ShogiLegalMoveTokenPolicyValueDataset(examples)[0]
 
         legal_moves = examples[0].legal_moves
         self.assertEqual(int(sample.label.item()), legal_moves.index("7g7f"))
-        self.assertEqual(int(sample.candidate_move_features.shape[0]), len(legal_moves))
+        self.assertEqual(int(sample.legal_move_token_features.shape[0]), len(legal_moves))
         self.assertEqual(float(sample.policy_targets[legal_moves.index("7g7f")].item()), 0.75)
         self.assertEqual(float(sample.policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 

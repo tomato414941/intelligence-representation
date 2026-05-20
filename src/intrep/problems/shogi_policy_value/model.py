@@ -13,8 +13,8 @@ from intrep.representation.inputs.shogi_position import (
 )
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
 from intrep.representation.outputs.shogi_legal_move_token import (
-    ShogiCandidateMoveInputLayer,
-    ShogiCandidateMovePolicyHead,
+    ShogiDirectCandidateMovePolicyHead,
+    ShogiLegalMoveTokenInputLayer,
     ShogiLegalMoveTokenPolicyOutput,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
@@ -86,27 +86,27 @@ def validate_shogi_policy_value_components(
 
 
 @dataclass(frozen=True)
-class DirectShogiPolicyValueModelConfig:
+class DirectCandidateMoveShogiPolicyValueModelConfig:
     embedding_dim: int = 256
     hidden_dim: int = 1024
 
 
-class DirectShogiPolicyValueModel(nn.Module):
+class DirectCandidateMoveShogiPolicyValueModel(nn.Module):
     def __init__(
         self,
-        config: DirectShogiPolicyValueModelConfig | None = None,
+        config: DirectCandidateMoveShogiPolicyValueModelConfig | None = None,
         *,
         input_layer: ShogiPositionInputLayer | None = None,
-        move_input: ShogiCandidateMoveInputLayer | None = None,
-        policy_output: ShogiCandidateMovePolicyHead | None = None,
+        move_input: ShogiLegalMoveTokenInputLayer | None = None,
+        policy_output: ShogiDirectCandidateMovePolicyHead | None = None,
         value_output: ScalarTanhValueHead | None = None,
     ) -> None:
         super().__init__()
-        self.config = config or DirectShogiPolicyValueModelConfig()
+        self.config = config or DirectCandidateMoveShogiPolicyValueModelConfig()
         embedding_dim = self.config.embedding_dim
         self.input = input_layer or ShogiPositionInputLayer(embedding_dim=embedding_dim)
-        self.move_input = move_input or ShogiCandidateMoveInputLayer(embedding_dim=embedding_dim)
-        self.policy_output = policy_output or ShogiCandidateMovePolicyHead(
+        self.move_input = move_input or ShogiLegalMoveTokenInputLayer(embedding_dim=embedding_dim)
+        self.policy_output = policy_output or ShogiDirectCandidateMovePolicyHead(
             input_dim=embedding_dim * 2,
             hidden_dim=self.config.hidden_dim,
         )
@@ -118,24 +118,24 @@ class DirectShogiPolicyValueModel(nn.Module):
     def forward(
         self,
         position_features: ShogiPositionFeatures,
-        candidate_move_features: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> torch.Tensor:
         position_embedding = self.input(position_features).mean(dim=1)
-        move_embedding = self.move_input(candidate_move_features)
+        move_embedding = self.move_input(legal_move_token_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        return self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
+        return self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), legal_move_token_mask)
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        candidate_move_features: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_embedding = self.input(position_features).mean(dim=1)
-        move_embedding = self.move_input(candidate_move_features)
+        move_embedding = self.move_input(legal_move_token_features)
         expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), candidate_mask)
+        logits = self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), legal_move_token_mask)
         return logits, self.value_output(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
@@ -192,28 +192,28 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
     def forward(
         self,
         position_features: ShogiPositionFeatures,
-        candidate_move_features: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
         return self.policy_output(
             position_hidden=position_hidden,
-            candidate_move_features=candidate_move_features,
-            candidate_mask=candidate_mask,
+            legal_move_token_features=legal_move_token_features,
+            legal_move_token_mask=legal_move_token_mask,
         )
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        candidate_move_features: torch.Tensor,
-        candidate_mask: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_token_hidden(position_hidden)
         logits = self.policy_output(
             position_hidden=position_hidden,
-            candidate_move_features=candidate_move_features,
-            candidate_mask=candidate_mask,
+            legal_move_token_features=legal_move_token_features,
+            legal_move_token_mask=legal_move_token_mask,
         )
         return logits, self.value_output(position_embedding)
 

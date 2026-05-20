@@ -17,7 +17,7 @@ from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index
 
 
 class ShogiPolicyValueInferenceTest(unittest.TestCase):
-    def test_candidate_checkpoint_returns_legal_move_priors(self) -> None:
+    def test_checkpoint_returns_legal_move_priors(self) -> None:
         board = shogi.Board()
         legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
         config = ShogiPolicyValueTrainingConfig(

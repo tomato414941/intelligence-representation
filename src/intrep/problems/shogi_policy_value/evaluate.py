@@ -18,10 +18,10 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiPolicyPlaneValueDataset,
-    ShogiPolicyValueDataset,
+    ShogiLegalMoveTokenPolicyValueDataset,
     ShogiPolicyValueDatasetItem,
     ShogiMovePolicyValueExample,
-    collate_candidate_move_policy_value_samples,
+    collate_legal_move_token_policy_value_samples,
     collate_policy_plane_value_samples,
 )
 from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
@@ -128,8 +128,8 @@ def _loader(
         dataset = ShogiPolicyPlaneValueDataset(examples)
         collate_fn = collate_policy_plane_value_samples
     else:
-        dataset = ShogiPolicyValueDataset(examples)
-        collate_fn = collate_candidate_move_policy_value_samples
+        dataset = ShogiLegalMoveTokenPolicyValueDataset(examples)
+        collate_fn = collate_legal_move_token_policy_value_samples
     return DataLoader(
         dataset,
         batch_size=batch_size,

@@ -18,15 +18,15 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import (
-    CandidateMovePolicyValueTensorSample,
+    LegalMoveTokenPolicyValueTensorSample,
     CompactPolicyPlaneValueTensorSample,
     ShogiMovePolicyValueExample,
     load_shogi_move_policy_value_examples_jsonl,
-    tensorize_candidate_move_policy_value_examples,
+    tensorize_legal_move_token_policy_value_examples,
     tensorize_compact_policy_plane_value_examples,
 )
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     validate_shogi_policy_value_output_space,
 )
@@ -44,7 +44,7 @@ SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors"
 DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "shogi-policy-plane-value-tensors"
-ShogiPolicyValueTensorCacheSample = CandidateMovePolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
+ShogiPolicyValueTensorCacheSample = LegalMoveTokenPolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class ShogiPolicyValueTensorCache:
 def default_shogi_policy_value_tensor_cache_path(
     data_selection_path: Path,
     *,
-    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
 ) -> Path:
     validate_shogi_policy_value_output_space(output_space)
     cache_name = (
@@ -77,7 +77,7 @@ def build_shogi_policy_value_tensor_cache(
     shard_examples: int = 100_000,
     shard_games: int | None = None,
     resume: bool = False,
-    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
     if shard_games is not None:
@@ -156,7 +156,7 @@ def build_shogi_policy_value_tensor_cache_shard(
     source_game_end_index: int | None = None,
     shard_index: int,
     resume: bool = False,
-    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
+    output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
     if source_example_start_index is None:
@@ -341,7 +341,7 @@ def _validate_input_feature_identity(payload: dict[str, object], *, artifact_nam
 
 
 def _manifest_output_space(manifest: dict[str, object]) -> str:
-    output_space = manifest.get("output_space", SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE)
+    output_space = manifest.get("output_space", SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN)
     if not isinstance(output_space, str):
         raise ValueError("tensor cache output_space must be a string")
     validate_shogi_policy_value_output_space(output_space)
@@ -349,7 +349,7 @@ def _manifest_output_space(manifest: dict[str, object]) -> str:
 
 
 def _shard_output_space(shard: dict[str, object]) -> str:
-    output_space = shard.get("output_space", SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE)
+    output_space = shard.get("output_space", SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN)
     if not isinstance(output_space, str):
         raise ValueError("tensor cache shard output_space must be a string")
     validate_shogi_policy_value_output_space(output_space)
@@ -358,21 +358,21 @@ def _shard_output_space(shard: dict[str, object]) -> str:
 
 def _empty_output_space_stats() -> dict[str, int]:
     return {
-        "max_choice_count": 0,
+        "max_legal_move_count": 0,
         "max_legal_action_count": 0,
         "max_target_action_count": 0,
     }
 
 
 def _merge_output_space_stats(target: dict[str, int], shard: dict[str, object]) -> None:
-    for key in ("max_choice_count", "max_legal_action_count", "max_target_action_count"):
+    for key in ("max_legal_move_count", "max_legal_action_count", "max_target_action_count"):
         if key in shard:
             target[key] = max(target[key], int(shard[key]))
 
 
 def _finalize_output_space_stats(output_space: str, stats: dict[str, int]) -> dict[str, int]:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE:
-        return {"max_choice_count": int(stats["max_choice_count"])}
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN:
+        return {"max_legal_move_count": int(stats["max_legal_move_count"])}
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         return {
             "max_legal_action_count": int(stats["max_legal_action_count"]),
@@ -392,11 +392,11 @@ def _split_sources(
     raise ValueError("split must be train or eval")
 
 
-class ShardedCandidateMovePolicyValueTensorSamples(Sequence[CandidateMovePolicyValueTensorSample]):
-    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, max_choice_count: int) -> None:
+class ShardedLegalMoveTokenPolicyValueTensorSamples(Sequence[LegalMoveTokenPolicyValueTensorSample]):
+    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, max_legal_move_count: int) -> None:
         self.cache_dir = cache_dir
         self.shards = tuple(shards)
-        self.max_choice_count = max_choice_count
+        self.max_legal_move_count = max_legal_move_count
         self.offsets: list[int] = []
         self.sequential_access_preferred = True
         offset = 0
@@ -405,20 +405,20 @@ class ShardedCandidateMovePolicyValueTensorSamples(Sequence[CandidateMovePolicyV
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_samples: list[CandidateMovePolicyValueTensorSample] = []
+        self._loaded_samples: list[LegalMoveTokenPolicyValueTensorSample] = []
 
     def __len__(self) -> int:
         return self.sample_count
 
     @overload
-    def __getitem__(self, index: int) -> CandidateMovePolicyValueTensorSample:
+    def __getitem__(self, index: int) -> LegalMoveTokenPolicyValueTensorSample:
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> list[CandidateMovePolicyValueTensorSample]:
+    def __getitem__(self, index: slice) -> list[LegalMoveTokenPolicyValueTensorSample]:
         ...
 
-    def __getitem__(self, index: int | slice) -> CandidateMovePolicyValueTensorSample | list[CandidateMovePolicyValueTensorSample]:
+    def __getitem__(self, index: int | slice) -> LegalMoveTokenPolicyValueTensorSample | list[LegalMoveTokenPolicyValueTensorSample]:
         if isinstance(index, slice):
             return [self[item] for item in range(*index.indices(len(self)))]
         if index < 0:
@@ -444,12 +444,12 @@ class ShardedCandidateMovePolicyValueTensorSamples(Sequence[CandidateMovePolicyV
                 return mid
         raise IndexError(index)
 
-    def _load_shard_samples(self, shard_index: int) -> list[CandidateMovePolicyValueTensorSample]:
+    def _load_shard_samples(self, shard_index: int) -> list[LegalMoveTokenPolicyValueTensorSample]:
         if self._loaded_shard_index == shard_index:
             return self._loaded_samples
         shard = self.shards[shard_index]
         payload = _load_shard(self.cache_dir / str(shard["path"]))
-        self._loaded_samples = [_candidate_sample_from_payload(item) for item in payload["samples"]]
+        self._loaded_samples = [_legal_move_token_sample_from_payload(item) for item in payload["samples"]]
         self._loaded_shard_index = shard_index
         return self._loaded_samples
 
@@ -525,11 +525,11 @@ def _load_tensor_cache_sequences(
     train_shards: Sequence[dict[str, object]],
     eval_shards: Sequence[dict[str, object]],
 ) -> tuple[Sequence[ShogiPolicyValueTensorCacheSample], Sequence[ShogiPolicyValueTensorCacheSample]]:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE:
-        max_choice_count = int(manifest["max_choice_count"])
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN:
+        max_legal_move_count = int(manifest["max_legal_move_count"])
         return (
-            ShardedCandidateMovePolicyValueTensorSamples(path, train_shards, max_choice_count=max_choice_count),
-            ShardedCandidateMovePolicyValueTensorSamples(path, eval_shards, max_choice_count=max_choice_count),
+            ShardedLegalMoveTokenPolicyValueTensorSamples(path, train_shards, max_legal_move_count=max_legal_move_count),
+            ShardedLegalMoveTokenPolicyValueTensorSamples(path, eval_shards, max_legal_move_count=max_legal_move_count),
         )
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         return (
@@ -770,7 +770,7 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
         "source_example_end_index",
         "data_selection_path",
         "sample_count",
-        "max_choice_count",
+        "max_legal_move_count",
         "max_legal_action_count",
         "max_target_action_count",
         "policy_target_summary",
@@ -785,8 +785,8 @@ def _tensorize_examples_for_output_space(
     examples: Sequence[ShogiMovePolicyValueExample],
     output_space: str,
 ) -> list[ShogiPolicyValueTensorCacheSample]:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE:
-        return tensorize_candidate_move_policy_value_examples(examples)
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN:
+        return tensorize_legal_move_token_policy_value_examples(examples)
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         return tensorize_compact_policy_plane_value_examples(examples)
     raise ValueError(f"unsupported shogi policy/value output space: {output_space}")
@@ -796,10 +796,10 @@ def _sample_output_space_stats(
     samples: Sequence[ShogiPolicyValueTensorCacheSample],
     output_space: str,
 ) -> dict[str, int]:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN:
         return {
-            "max_choice_count": max(
-                (int(sample.candidate_move_features.shape[0]) for sample in samples if isinstance(sample, CandidateMovePolicyValueTensorSample)),
+            "max_legal_move_count": max(
+                (int(sample.legal_move_token_features.shape[0]) for sample in samples if isinstance(sample, LegalMoveTokenPolicyValueTensorSample)),
                 default=0,
             )
         }
@@ -830,27 +830,27 @@ def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: 
         if not isinstance(sample, CompactPolicyPlaneValueTensorSample):
             raise TypeError("policy-plane tensor cache requires compact policy-plane samples")
         return _compact_policy_plane_sample_to_payload(sample)
-    if not isinstance(sample, CandidateMovePolicyValueTensorSample):
-        raise TypeError("candidate-move tensor cache requires candidate-move samples")
-    return _candidate_sample_to_payload(sample)
+    if not isinstance(sample, LegalMoveTokenPolicyValueTensorSample):
+        raise TypeError("legal-move-token tensor cache requires legal-move-token samples")
+    return _legal_move_token_sample_to_payload(sample)
 
 
-def _candidate_sample_to_payload(sample: CandidateMovePolicyValueTensorSample) -> dict[str, Any]:
+def _legal_move_token_sample_to_payload(sample: LegalMoveTokenPolicyValueTensorSample) -> dict[str, Any]:
     return {
         "position_features": _position_features_to_payload(sample.position_features),
-        "candidate_move_features": sample.candidate_move_features,
+        "legal_move_token_features": sample.legal_move_token_features,
         "label": sample.label,
         "policy_targets": sample.policy_targets,
         "value_target": sample.value_target,
     }
 
 
-def _candidate_sample_from_payload(payload: Any) -> CandidateMovePolicyValueTensorSample:
+def _legal_move_token_sample_from_payload(payload: Any) -> LegalMoveTokenPolicyValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
-    return CandidateMovePolicyValueTensorSample(
+    return LegalMoveTokenPolicyValueTensorSample(
         position_features=_position_features_from_payload(payload["position_features"]),
-        candidate_move_features=payload["candidate_move_features"],
+        legal_move_token_features=payload["legal_move_token_features"],
         label=payload["label"],
         policy_targets=payload["policy_targets"],
         value_target=payload["value_target"],
