@@ -130,19 +130,37 @@ def run_shogi_generated_games(
     ]
     if seed is not None:
         command.extend(["--seed", str(seed)])
-    completed = subprocess.run(
-        command,
-        cwd=arena_repo,
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-        env=_shogi_arena_env(arena_repo),
-    )
+    completed = _run_generation_command(command, cwd=arena_repo, env=_shogi_arena_env(arena_repo))
     stdout = completed.stdout if completed is not None else ""
     if stdout:
-        print(stdout, end="")
         if generation_summary_path is not None:
             generation_summary_path.write_text(stdout, encoding="utf-8")
+
+
+def _run_generation_command(
+    command: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=None,
+        text=True,
+        env=env,
+    )
+    stdout_parts: list[str] = []
+    assert process.stdout is not None
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        stdout_parts.append(line)
+    return_code = process.wait()
+    stdout = "".join(stdout_parts)
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, command, output=stdout)
+    return subprocess.CompletedProcess(command, return_code, stdout=stdout)
 
 
 def warn_short_max_plies(max_plies: int) -> None:

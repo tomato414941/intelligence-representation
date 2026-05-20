@@ -28,6 +28,7 @@ from intrep.problems.shogi_policy_value.online_replay import (
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.generated_game_production import (
     checkpoint_generated_player,
+    _run_generation_command,
     usi_engine_generated_player,
 )
 from intrep.problems.shogi_policy_value.examples import CandidateMovePolicyValueTensorSample
@@ -201,7 +202,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             )
 
     def test_rejects_invalid_config_before_running_commands(self) -> None:
-        with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run") as run:
+        with patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command") as run:
             with self.assertRaisesRegex(ValueError, "generator_gate_games"):
                 run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -247,6 +248,38 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
             )
 
+    def test_generation_command_streams_stdout_and_returns_summary(self) -> None:
+        class FakeProcess:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                self.stdout = iter(('{"game_count": ', "2}\n"))
+
+            def wait(self) -> int:
+                return 0
+
+        with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.Popen", FakeProcess):
+            with patch("sys.stdout", new_callable=io.StringIO) as stdout:
+                completed = _run_generation_command(["generate"], cwd=Path("."), env={})
+
+        self.assertEqual(completed.stdout, '{"game_count": 2}\n')
+        self.assertEqual(stdout.getvalue(), '{"game_count": 2}\n')
+
+    def test_generation_command_failure_keeps_streamed_stdout(self) -> None:
+        class FakeProcess:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                self.stdout = iter(("progress\n", "partial summary\n"))
+
+            def wait(self) -> int:
+                return 3
+
+        with patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.Popen", FakeProcess):
+            with patch("sys.stdout", new_callable=io.StringIO) as stdout:
+                with self.assertRaises(subprocess.CalledProcessError) as raised:
+                    _run_generation_command(["generate"], cwd=Path("."), env={})
+
+        self.assertEqual(raised.exception.returncode, 3)
+        self.assertEqual(raised.exception.output, "progress\npartial summary\n")
+        self.assertEqual(stdout.getvalue(), "progress\npartial summary\n")
+
     def test_runs_one_cycle_through_generation_split_and_training_command(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -267,7 +300,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                         ],
                     )
 
-            with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
+            ):
                 result = run_shogi_generated_data_training_cycle(
                     ShogiGeneratedDataTrainingCycleConfig(
                         checkpoint=checkpoint_path,
@@ -296,8 +332,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(train_example["policy_targets"][train_example["chosen_move"]], 1.0)
             self.assertTrue((run_dir / "train-examples.jsonl").exists())
             self.assertTrue((run_dir / "eval-examples.jsonl").exists())
-            self.assertEqual(run.call_count, 2)
-            generate_command = run.call_args_list[0].args[0]
+            self.assertEqual(generation_run.call_count, 1)
+            self.assertEqual(run.call_count, 1)
+            generate_command = generation_run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--black-checkpoint-id") + 1], "source")
@@ -327,7 +364,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generate_command[generate_command.index("--board-backend") + 1], "cshogi")
             self.assertEqual(generate_command[generate_command.index("--black-mcts-move-time-limit-sec") + 1], "9.0")
             self.assertEqual(generate_command[generate_command.index("--white-mcts-move-time-limit-sec") + 1], "9.0")
-            train_command = run.call_args_list[1].args[0]
+            train_command = run.call_args_list[0].args[0]
             self.assertIn("intrep.train_shogi_policy_value", train_command)
             self.assertEqual(train_command[train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
             self.assertIn("--value-loss-weight", train_command)
@@ -386,7 +423,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 return None
 
-            with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
+            ):
                 run_shogi_generated_data_training_cycle(
                     ShogiGeneratedDataTrainingCycleConfig(
                         checkpoint=checkpoint_path,
@@ -404,7 +444,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            generate_command = run.call_args_list[0].args[0]
+            generate_command = generation_run.call_args_list[0].args[0]
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "usi_engine")
             self.assertEqual(generate_command[generate_command.index("--white-usi-command") + 1], "engine-command")
@@ -438,7 +478,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 return None
 
-            with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run,
+            ):
                 result = run_shogi_generated_data_training_loop(
                     ShogiGeneratedDataTrainingLoopConfig(
                         checkpoint=checkpoint_path,
@@ -456,8 +499,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(result.cycles[0].run_dir, run_dir.resolve() / "cycle-0001")
             self.assertEqual(result.cycles[1].run_dir, run_dir.resolve() / "cycle-0002")
             self.assertEqual(result.final_checkpoint, result.cycles[1].best_checkpoint)
-            first_train_command = run.call_args_list[1].args[0]
-            second_generate_command = run.call_args_list[2].args[0]
+            first_train_command = run.call_args_list[0].args[0]
+            second_generate_command = generation_run.call_args_list[1].args[0]
             self.assertEqual(first_train_command[first_train_command.index("--init-checkpoint-path") + 1], str(checkpoint_path))
             self.assertEqual(
                 second_generate_command[second_generate_command.index("--black-checkpoint") + 1],
@@ -485,7 +528,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 return None
 
-            with patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run) as run:
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
+                patch("intrep.problems.shogi_policy_value.generated_data_cycle.subprocess.run", side_effect=fake_run),
+            ):
                 result = run_shogi_generated_data_training_loop(
                     ShogiGeneratedDataTrainingLoopConfig(
                         checkpoint=checkpoint_path,
@@ -498,7 +544,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     )
                 )
 
-            second_generate_command = run.call_args_list[2].args[0]
+            second_generate_command = generation_run.call_args_list[1].args[0]
             self.assertEqual(result.next_checkpoint, "final")
             self.assertEqual(result.final_checkpoint, result.cycles[1].checkpoint)
             self.assertEqual(
@@ -555,7 +601,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as run,
                 patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_run),
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
@@ -649,6 +695,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return None
 
             with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
                 patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_run) as run,
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
@@ -676,7 +723,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(len(result.iterations), 1)
             self.assertEqual(result.stop_reason, "generator_candidate_lost")
             self.assertEqual(result.stopped_iteration_index, 2)
-            self.assertEqual(run.call_count, 2)
+            self.assertEqual(generation_run.call_count, 1)
+            self.assertEqual(run.call_count, 1)
             self.assertFalse((run_dir / "iteration-0002" / "generated-games.jsonl").exists())
 
     def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
@@ -738,7 +786,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run),
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
@@ -832,7 +880,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return None
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as run,
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
@@ -921,7 +969,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run),
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
@@ -1020,7 +1068,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return result
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run),
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
@@ -1087,7 +1135,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 return _training_result(config)
 
             with (
-                patch("intrep.problems.shogi_policy_value.generated_game_production.subprocess.run", side_effect=fake_run) as run,
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as run,
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",

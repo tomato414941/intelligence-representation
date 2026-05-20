@@ -142,6 +142,7 @@ run_generation() {
   shift 2
   mkdir -p \"\$OUT/\$name\"
   echo \"generate_source name=\$name games=\$games\" | tee \"\$OUT/\$name/start.txt\"
+  echo \"generate_source_artifacts name=\$name final_games=\$OUT/\$name/games.jsonl final_summary=\$OUT/\$name/summary.json shard_games_glob=\$OUT/\$name/games.shard-*.jsonl shard_events_glob=\$OUT/\$name/games.shard-*.events.jsonl shard_progress_glob=\$OUT/\$name/games.shard-*.progress.json\" | tee -a \"\$OUT/\$name/start.txt\"
   \"\$PYTHON\" -u \"\$ARENA/scripts/generate_shogi_games.py\" \
     --out \"\$OUT/\$name/games.jsonl\" \
     --games \"\$games\" \
