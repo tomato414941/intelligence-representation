@@ -1,6 +1,6 @@
 # Online Replay Buffer Persistence
 
-Status: open. Priority: low.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -46,6 +46,28 @@ A future implementation may need to persist:
   incompatible replay capacity, checkpoint, or actor/search settings.
 - Short smoke runs can still run without persistence.
 - Experience Store remains independent from Online Replay Buffer persistence.
+
+## Resolution
+
+Online Replay now supports `resume=True` / `--resume`.
+
+The implementation does not serialize the generic `ReplayBuffer`. Instead, it
+reconstructs generated replay state from completed iteration artifacts in the
+run directory:
+
+- per-source `generated-games.jsonl`
+- `generation-summary.json`
+- iteration `metrics.json`
+- previous iteration checkpoints
+
+Resume validates the replay capacity, seed Data Selection, initial checkpoint
+identity, MCTS settings, max plies, and generated experience source metadata
+before continuing. It restores the next checkpoint from the last completed
+iteration according to the configured `next_checkpoint` policy, rebuilds the
+generated replay samples, and starts at the first incomplete iteration.
+
+Experience Store remains independent. It may durably store generated game
+records, but it is not the source of truth for Online Replay Buffer state.
 
 ## Related
 

@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--replay-capacity", type=int, default=DEFAULT_REPLAY_CAPACITY)
     parser.add_argument("--min-replay-size", type=int, default=DEFAULT_MIN_REPLAY_SIZE)
     parser.add_argument("--sampled-examples-per-iteration", type=int, default=DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION)
@@ -94,6 +95,7 @@ def main(argv: list[str] | None = None) -> None:
             checkpoint=args.checkpoint,
             run_dir=args.run_dir,
             iterations=args.iterations,
+            resume=args.resume,
             replay_capacity=args.replay_capacity,
             min_replay_size=args.min_replay_size,
             training_budget=ShogiOnlineReplayTrainingBudget(

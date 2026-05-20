@@ -55,6 +55,11 @@ Experience Store and Online Replay Buffer are independent. Experience Store is
 durable source storage for generated or collected shogi experience. Replay
 Buffer is dynamic learner state used by Online Replay.
 
+Online Replay resume reconstructs generated replay state from completed
+iteration artifacts in the run directory. It does not serialize the generic
+`ReplayBuffer` object and does not use Experience Store as replay-buffer
+persistence.
+
 ## Online Replay Eval
 
 Online Replay uses a fixed `training_eval_data_selection` for training-time

@@ -1397,6 +1397,121 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id,
             )
 
+    def test_online_replay_resume_reconstructs_generated_replay_from_completed_iterations(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            _write_checkpoint(checkpoint_path)
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
+            train_batches: list[int] = []
+
+            def fake_generation(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "game_count": 1,
+                                "average_plies": 2,
+                                "end_reasons": {"game_over": 1},
+                                "black_wins": 1,
+                                "white_wins": 0,
+                                "draws": 0,
+                                "generation_wall_time_sec": 1.0,
+                                "plies_per_sec": 2.0,
+                            }
+                        )
+                        + "\n",
+                    )
+                return None
+
+            def fake_gate(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+                out_path = Path(command[command.index("--out") + 1])
+                player_a = command[command.index("--player-a-checkpoint-id") + 1]
+                player_b = command[command.index("--player-b-checkpoint-id") + 1]
+                write_shogi_game_records_jsonl(
+                    out_path,
+                    [
+                        _mcts_record_with_actors(
+                            ("7g7f", "3c3d"),
+                            "black",
+                            black_actor=ShogiActorSpec(kind="checkpoint", name=player_a, settings={}),
+                            white_actor=ShogiActorSpec(kind="checkpoint", name=player_b, settings={}),
+                        )
+                    ],
+                )
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "game_count": 1,
+                            "player_a_wins": 1,
+                            "player_a_losses": 0,
+                            "draws": 0,
+                            "average_plies": 2,
+                            "illegal_move_count": 0,
+                        }
+                    )
+                    + "\n",
+                )
+
+            def fake_train(examples, *, eval_examples, config, initial_state_dict, progress_callback=None):
+                train_batches.append(len(examples))
+                return _training_result(config)
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_generation),
+                patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_gate),
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
+            ):
+                first_result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        iterations=1,
+                        replay_capacity=8,
+                        min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_iteration=8),
+                        training_eval_data_selection=training_eval_data_selection,
+                        arena_repo=arena_repo,
+                        experience_sources=(_self_play_source(games=1),),
+                    )
+                )
+                resumed_result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        iterations=2,
+                        resume=True,
+                        replay_capacity=8,
+                        min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_iteration=8),
+                        training_eval_data_selection=training_eval_data_selection,
+                        arena_repo=arena_repo,
+                        experience_sources=(_self_play_source(games=1),),
+                    )
+                )
+
+            self.assertEqual(train_batches, [2, 4])
+            self.assertEqual(len(first_result.iterations), 1)
+            self.assertEqual(len(resumed_result.iterations), 2)
+            self.assertEqual(resumed_result.iterations[1].iteration_index, 2)
+            second_metrics = json.loads((run_dir / "iteration-0002" / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(second_metrics["replay"]["generated_replay_size"], 4)
+            self.assertEqual(second_metrics["replay"]["generated_sampled_examples"], 4)
+
 
 def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:
     return ShogiPolicyValueTrainingResult(

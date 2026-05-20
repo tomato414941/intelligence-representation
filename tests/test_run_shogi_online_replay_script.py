@@ -84,6 +84,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "online",
                     "--iterations",
                     "2",
+                    "--resume",
                     "--replay-capacity",
                     "8",
                     "--sampled-examples-per-iteration",
@@ -159,6 +160,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.checkpoint, Path("source.pt"))
         self.assertEqual(config.run_dir, Path("online"))
         self.assertEqual(config.iterations, 2)
+        self.assertTrue(config.resume)
         self.assertEqual(config.replay_capacity, 8)
         self.assertEqual(config.min_replay_size, 2)
         self.assertEqual(config.training_budget.sampled_examples_per_iteration, 3)

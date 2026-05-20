@@ -99,6 +99,7 @@ class ShogiOnlineReplayConfig:
     run_dir: Path
     training_eval_data_selection: Path
     iterations: int = 1
+    resume: bool = False
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
     min_replay_size: int = DEFAULT_MIN_REPLAY_SIZE
     training_budget: ShogiOnlineReplayTrainingBudget = ShogiOnlineReplayTrainingBudget()
@@ -205,23 +206,41 @@ class ShogiOnlineReplayIterationArtifacts:
     metrics_path: Path
 
 
+@dataclass(frozen=True)
+class _OnlineReplayResumeState:
+    generated_replay: ReplayBuffer[CandidateMovePolicyValueTensorSample]
+    iteration_results: tuple[ShogiOnlineReplayIterationResult, ...]
+    checkpoint: Path
+    last_generator_checkpoint: Path
+    next_iteration_index: int
+
+
 def run_shogi_online_replay(
     config: ShogiOnlineReplayConfig,
 ) -> ShogiOnlineReplayResult:
     _validate_online_replay_config(config)
     run_dir = config.run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
-    checkpoint = config.checkpoint
-    generated_replay = ReplayBuffer[CandidateMovePolicyValueTensorSample](capacity=config.replay_capacity)
     replay_seed_selection = _load_replay_seed_selection(config.replay_seed_data_selection)
     replay_seed_eligible_examples = _count_replay_seed_examples(replay_seed_selection)
     training_eval_samples = _load_training_eval_samples(config.training_eval_data_selection)
     generator = torch.Generator().manual_seed(config.seed)
-    iteration_results: list[ShogiOnlineReplayIterationResult] = []
-    last_generator_checkpoint = checkpoint
+    if config.resume:
+        resume_state = _load_online_replay_resume_state(config=config, run_dir=run_dir, generator=generator)
+        generated_replay = resume_state.generated_replay
+        iteration_results = list(resume_state.iteration_results)
+        checkpoint = resume_state.checkpoint
+        last_generator_checkpoint = resume_state.last_generator_checkpoint
+        start_iteration_index = resume_state.next_iteration_index
+    else:
+        generated_replay = ReplayBuffer[CandidateMovePolicyValueTensorSample](capacity=config.replay_capacity)
+        iteration_results = []
+        checkpoint = config.checkpoint
+        last_generator_checkpoint = checkpoint
+        start_iteration_index = 1
     stop_reason: str | None = None
     stopped_iteration_index: int | None = None
-    for iteration_index in range(1, config.iterations + 1):
+    for iteration_index in range(start_iteration_index, config.iterations + 1):
         iteration_start = time.perf_counter()
         phase_timings: dict[str, float | None] = {
             "gate_wall_time_sec": None,
@@ -402,6 +421,150 @@ def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> S
         checkpoint_path=iteration_dir / "checkpoint.pt",
         best_checkpoint_path=iteration_dir / "best-checkpoint.pt",
         metrics_path=iteration_dir / "metrics.json",
+    )
+
+
+def _load_online_replay_resume_state(
+    *,
+    config: ShogiOnlineReplayConfig,
+    run_dir: Path,
+    generator: torch.Generator,
+) -> _OnlineReplayResumeState:
+    generated_replay = ReplayBuffer[CandidateMovePolicyValueTensorSample](capacity=config.replay_capacity)
+    iteration_results: list[ShogiOnlineReplayIterationResult] = []
+    checkpoint = config.checkpoint
+    last_generator_checkpoint = config.checkpoint
+    for iteration_index in range(1, config.iterations + 1):
+        artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
+        if not artifacts.metrics_path.exists():
+            break
+        metrics = _load_completed_online_replay_iteration_metrics(
+            config=config,
+            artifacts=artifacts,
+            iteration_index=iteration_index,
+        )
+        new_examples = _load_online_replay_iteration_examples(config=config, artifacts=artifacts)
+        generated_replay.extend(tensorize_candidate_move_policy_value_examples(new_examples))
+        _advance_online_replay_resume_rng(
+            generated_replay=generated_replay,
+            metrics=metrics,
+            generator=generator,
+        )
+        iteration_result = _online_replay_iteration_result_from_metrics(
+            artifacts=artifacts,
+            iteration_index=iteration_index,
+            metrics=metrics,
+        )
+        iteration_results.append(iteration_result)
+        checkpoint = promoted_online_replay_checkpoint(iteration_result, policy=config.next_checkpoint)
+        last_generator_checkpoint = Path(str(metrics["checkpoint"]["init_path"]))
+    return _OnlineReplayResumeState(
+        generated_replay=generated_replay,
+        iteration_results=tuple(iteration_results),
+        checkpoint=checkpoint,
+        last_generator_checkpoint=last_generator_checkpoint,
+        next_iteration_index=len(iteration_results) + 1,
+    )
+
+
+def _load_completed_online_replay_iteration_metrics(
+    *,
+    config: ShogiOnlineReplayConfig,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
+    iteration_index: int,
+) -> dict[str, object]:
+    metrics = _load_json_if_exists(artifacts.metrics_path)
+    if not isinstance(metrics, dict):
+        raise ValueError(f"cannot resume from invalid Online Replay metrics: {artifacts.metrics_path}")
+    if metrics.get("schema_version") != "intrep.shogi_online_replay_metrics.v1":
+        raise ValueError(f"cannot resume from unsupported Online Replay metrics: {artifacts.metrics_path}")
+    if int(metrics.get("iteration_index", 0)) != iteration_index:
+        raise ValueError(f"cannot resume from mismatched iteration metrics: {artifacts.metrics_path}")
+    _validate_online_replay_resume_metrics(config=config, metrics=metrics, iteration_index=iteration_index)
+    return metrics
+
+
+def _validate_online_replay_resume_metrics(
+    *,
+    config: ShogiOnlineReplayConfig,
+    metrics: dict[str, object],
+    iteration_index: int,
+) -> None:
+    replay = dict(metrics.get("replay", {}))
+    if int(replay.get("capacity", 0)) != config.replay_capacity:
+        raise ValueError("cannot resume Online Replay with a different replay_capacity")
+    expected_seed_selection = str(config.replay_seed_data_selection) if config.replay_seed_data_selection is not None else None
+    if replay.get("seed_data_selection") != expected_seed_selection:
+        raise ValueError("cannot resume Online Replay with a different replay_seed_data_selection")
+    checkpoint = dict(metrics.get("checkpoint", {}))
+    if iteration_index == 1 and checkpoint.get("init_id") != _checkpoint_actor_id(config.checkpoint):
+        raise ValueError("cannot resume Online Replay from a different initial checkpoint")
+    gate = dict(metrics.get("gate", {}))
+    gate_config = dict(gate.get("config", {}))
+    if int(gate_config.get("mcts_simulations", config.simulations)) != config.simulations:
+        raise ValueError("cannot resume Online Replay with different MCTS simulations")
+    if int(gate_config.get("nn_leaf_eval_batch_limit", config.nn_leaf_eval_batch_limit)) != config.nn_leaf_eval_batch_limit:
+        raise ValueError("cannot resume Online Replay with a different NN leaf eval batch limit")
+    if int(gate_config.get("max_plies", config.max_plies)) != config.max_plies:
+        raise ValueError("cannot resume Online Replay with a different max_plies")
+    generation = dict(metrics.get("generation", {}))
+    summary = generation.get("summary")
+    if not isinstance(summary, dict):
+        raise ValueError("cannot resume Online Replay without a generation summary")
+    source_payloads = summary.get("sources")
+    if not isinstance(source_payloads, list):
+        raise ValueError("cannot resume Online Replay without generation source metadata")
+    expected_sources = config.experience_sources
+    if len(source_payloads) != len(expected_sources):
+        raise ValueError("cannot resume Online Replay with different experience sources")
+    for source_payload, expected_source in zip(source_payloads, expected_sources):
+        source = dict(source_payload)
+        if source.get("name") != expected_source.name:
+            raise ValueError("cannot resume Online Replay with different experience sources")
+        if source.get("policy_target_construction") != expected_source.policy_target_construction:
+            raise ValueError("cannot resume Online Replay with different policy target construction")
+        if source.get("value_target_construction") != expected_source.value_target_construction:
+            raise ValueError("cannot resume Online Replay with different value target construction")
+
+
+def _advance_online_replay_resume_rng(
+    *,
+    generated_replay: ReplayBuffer[CandidateMovePolicyValueTensorSample],
+    metrics: dict[str, object],
+    generator: torch.Generator,
+) -> None:
+    training = dict(metrics.get("training", {}))
+    if bool(training.get("skipped", False)):
+        return
+    replay = dict(metrics.get("replay", {}))
+    generated_sampled_examples = int(replay.get("generated_sampled_examples", 0))
+    if generated_sampled_examples > 0:
+        generated_replay.sample(generated_sampled_examples, generator=generator)
+
+
+def _online_replay_iteration_result_from_metrics(
+    *,
+    artifacts: ShogiOnlineReplayIterationArtifacts,
+    iteration_index: int,
+    metrics: dict[str, object],
+) -> ShogiOnlineReplayIterationResult:
+    replay = dict(metrics.get("replay", {}))
+    generation = dict(metrics.get("generation", {}))
+    training = dict(metrics.get("training", {}))
+    checkpoint = dict(metrics.get("checkpoint", {}))
+    experience_store = dict(metrics.get("experience_store", {}))
+    return ShogiOnlineReplayIterationResult(
+        iteration_index=iteration_index,
+        run_dir=artifacts.iteration_dir,
+        generated_games_jsonl=artifacts.games_jsonl,
+        appended_examples=int(generation.get("appended_examples", 0)),
+        replay_size=int(replay.get("size", 0)),
+        sampled_examples=int(replay.get("sampled_examples", 0)),
+        training_skipped=bool(training.get("skipped", False)),
+        experience_store_append=experience_store.get("append") if isinstance(experience_store.get("append"), dict) else None,
+        checkpoint=Path(str(checkpoint["path"])),
+        best_checkpoint=Path(str(checkpoint["best_path"])),
+        metrics=artifacts.metrics_path,
     )
 
 
