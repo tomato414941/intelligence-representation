@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
 )
 
 SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN = "legal_move_token"
@@ -15,7 +15,10 @@ SHOGI_POLICY_VALUE_OUTPUT_SPACES = (
 
 
 def shogi_policy_value_output_space_for_policy_output(policy_output: str) -> str:
-    if policy_output in (SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID, SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID):
+    if policy_output in (
+        SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+        SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    ):
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE_TOKEN
     if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE

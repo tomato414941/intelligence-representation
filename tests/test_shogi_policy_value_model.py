@@ -11,8 +11,6 @@ from intrep.problems.shogi_policy_value.examples import (
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.problems.shogi_policy_value.model import (
-    DirectCandidateMoveShogiPolicyValueModel,
-    DirectCandidateMoveShogiPolicyValueModelConfig,
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
@@ -25,7 +23,10 @@ from intrep.problems.shogi_policy_value.model import (
     shogi_policy_value_model_spec,
 )
 from intrep.representation.inputs.shogi_position import ShogiPositionGeometryAttentionBias, ShogiPositionInputLayer
-from intrep.representation.outputs.shogi_legal_move_token import _legal_move_token_square_hidden
+from intrep.representation.outputs.shogi_legal_move_token import (
+    ShogiStateTokenLegalMovePolicyOutput,
+    _legal_move_token_square_hidden,
+)
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 from intrep.worlds.shogi.position_encoding import (
@@ -49,18 +50,18 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 
-    def test_model_returns_legal_move_token_logits(self) -> None:
+    def test_state_token_policy_output_returns_legal_move_token_logits(self) -> None:
         position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
-        model = DirectCandidateMoveShogiPolicyValueModel(DirectCandidateMoveShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
+        model = _state_token_legal_move_model()
 
         logits = model(position_features, legal_move_token_features, legal_move_token_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(legal_move_token_mask.shape))
 
-    def test_model_masks_invalid_legal_move_tokens(self) -> None:
+    def test_state_token_policy_output_masks_invalid_legal_move_tokens(self) -> None:
         position_features, legal_move_token_features, legal_move_token_mask, _, _, _ = _batch()
         legal_move_token_mask[:, -1] = False
-        model = DirectCandidateMoveShogiPolicyValueModel(DirectCandidateMoveShogiPolicyValueModelConfig(embedding_dim=8, hidden_dim=16))
+        model = _state_token_legal_move_model()
 
         logits = model(position_features, legal_move_token_features, legal_move_token_mask)
 
@@ -324,6 +325,21 @@ def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.T
         batch.labels,
         batch.policy_targets,
         batch.value_targets,
+    )
+
+
+def _state_token_legal_move_model() -> SharedCoreShogiPolicyValueModel:
+    return SharedCoreShogiPolicyValueModel(
+        SharedCoreShogiPolicyValueModelConfig(
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+        ),
+        policy_output=ShogiStateTokenLegalMovePolicyOutput(
+            embedding_dim=8,
+            hidden_dim=16,
+        ),
     )
 
 

@@ -22,21 +22,19 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_policy_plane_value_samples,
 )
 from intrep.problems.shogi_policy_value.model import (
-    DirectCandidateMoveShogiPolicyValueModel,
-    DirectCandidateMoveShogiPolicyValueModelConfig,
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
-    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_NO_CORE_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
+    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_VALUE_OUTPUT_MODULE_ID,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     validate_shogi_policy_value_components,
 )
+from intrep.representation.outputs.shogi_legal_move_token import ShogiStateTokenLegalMovePolicyOutput
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
 
@@ -626,23 +624,25 @@ def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn
         policy_output=config.policy_output,
         value_output=config.value_output,
     )
-    if config.policy_output == SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID:
-        return SharedCoreShogiPolicyValueModel(
-            SharedCoreShogiPolicyValueModelConfig(
-                embedding_dim=config.embedding_dim,
-                num_heads=config.num_heads,
-                hidden_dim=config.hidden_dim,
-                num_layers=config.num_layers,
-            )
+    if config.policy_output in (
+        SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+        SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    ):
+        shared_config = SharedCoreShogiPolicyValueModelConfig(
+            embedding_dim=config.embedding_dim,
+            num_heads=config.num_heads,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
         )
-    if config.policy_output == SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID:
-        if config.core != SHOGI_NO_CORE_MODULE_ID:
-            raise ValueError("direct candidate-move policy output requires core=none")
-        return DirectCandidateMoveShogiPolicyValueModel(
-            DirectCandidateMoveShogiPolicyValueModelConfig(
+        policy_output = None
+        if config.policy_output == SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID:
+            policy_output = ShogiStateTokenLegalMovePolicyOutput(
                 embedding_dim=config.embedding_dim,
                 hidden_dim=config.hidden_dim,
             )
+        return SharedCoreShogiPolicyValueModel(
+            shared_config,
+            policy_output=policy_output,
         )
     if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         return PolicyPlaneShogiPolicyValueModel(

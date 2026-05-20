@@ -30,7 +30,7 @@ class ShogiLegalMoveTokenInputLayer(nn.Module):
         )
 
 
-class ShogiDirectCandidateMovePolicyHead(nn.Module):
+class ShogiStateTokenLegalMovePolicyHead(nn.Module):
     def __init__(self, *, input_dim: int, hidden_dim: int) -> None:
         super().__init__()
         self.scorer = nn.Sequential(
@@ -39,9 +39,31 @@ class ShogiDirectCandidateMovePolicyHead(nn.Module):
             nn.Linear(hidden_dim, 1),
         )
 
-    def forward(self, direct_candidate_inputs: torch.Tensor, legal_move_token_mask: torch.Tensor) -> torch.Tensor:
-        logits = self.scorer(direct_candidate_inputs).squeeze(-1)
+    def forward(self, state_move_inputs: torch.Tensor, legal_move_token_mask: torch.Tensor) -> torch.Tensor:
+        logits = self.scorer(state_move_inputs).squeeze(-1)
         return logits.masked_fill(~legal_move_token_mask, torch.finfo(logits.dtype).min)
+
+
+class ShogiStateTokenLegalMovePolicyOutput(nn.Module):
+    def __init__(self, *, embedding_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.move_input = ShogiLegalMoveTokenInputLayer(embedding_dim=embedding_dim)
+        self.policy_head = ShogiStateTokenLegalMovePolicyHead(
+            input_dim=embedding_dim * 2,
+            hidden_dim=hidden_dim,
+        )
+
+    def forward(
+        self,
+        *,
+        position_hidden: torch.Tensor,
+        legal_move_token_features: torch.Tensor,
+        legal_move_token_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        state_hidden = position_hidden[:, 0]
+        move_embedding = self.move_input(legal_move_token_features)
+        expanded_state = state_hidden[:, None, :].expand(-1, move_embedding.size(1), -1)
+        return self.policy_head(torch.cat((expanded_state, move_embedding), dim=-1), legal_move_token_mask)
 
 
 class ShogiLegalMoveTokenPolicyHead(nn.Module):

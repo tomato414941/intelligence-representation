@@ -13,9 +13,8 @@ from intrep.representation.inputs.shogi_position import (
 )
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
 from intrep.representation.outputs.shogi_legal_move_token import (
-    ShogiDirectCandidateMovePolicyHead,
-    ShogiLegalMoveTokenInputLayer,
     ShogiLegalMoveTokenPolicyOutput,
+    ShogiStateTokenLegalMovePolicyOutput,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.worlds.shogi.position_encoding import STATE_TOKEN_INDEX, ShogiPositionFeatures
@@ -26,18 +25,17 @@ SHOGI_POLICY_VALUE_MODEL_ID = "shogi_policy_value"
 SHOGI_POSITION_INPUT_MODULE_ID = (
     "shogi_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_input"
 )
-SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID = "shogi_direct_candidate_move_policy_output"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"
-SHOGI_NO_CORE_MODULE_ID = "none"
 SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_token_policy_output"
+SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_token_legal_move_policy_output"
 SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID = "shogi_policy_plane_policy_output"
 SHOGI_VALUE_OUTPUT_MODULE_ID = "scalar_tanh_value_output"
 SHOGI_POSITION_INPUT_MODULE_IDS = (SHOGI_POSITION_INPUT_MODULE_ID,)
-SHOGI_CORE_MODULE_IDS = (SHOGI_SHARED_CORE_MODULE_ID, SHOGI_NO_CORE_MODULE_ID)
+SHOGI_CORE_MODULE_IDS = (SHOGI_SHARED_CORE_MODULE_ID,)
 SHOGI_POLICY_OUTPUT_MODULE_IDS = (
     SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_STATE_TOKEN_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
 )
 SHOGI_VALUE_OUTPUT_MODULE_IDS = (SHOGI_VALUE_OUTPUT_MODULE_ID,)
 
@@ -79,68 +77,6 @@ def validate_shogi_policy_value_components(
         raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
     if value_output not in SHOGI_VALUE_OUTPUT_MODULE_IDS:
         raise ValueError(f"unsupported shogi policy/value value output: {value_output}")
-    if policy_output == SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID and core != SHOGI_NO_CORE_MODULE_ID:
-        raise ValueError("direct candidate-move policy output requires core=none")
-    if policy_output != SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID and core == SHOGI_NO_CORE_MODULE_ID:
-        raise ValueError(f"{policy_output} requires a shared core")
-
-
-@dataclass(frozen=True)
-class DirectCandidateMoveShogiPolicyValueModelConfig:
-    embedding_dim: int = 256
-    hidden_dim: int = 1024
-
-
-class DirectCandidateMoveShogiPolicyValueModel(nn.Module):
-    def __init__(
-        self,
-        config: DirectCandidateMoveShogiPolicyValueModelConfig | None = None,
-        *,
-        input_layer: ShogiPositionInputLayer | None = None,
-        move_input: ShogiLegalMoveTokenInputLayer | None = None,
-        policy_output: ShogiDirectCandidateMovePolicyHead | None = None,
-        value_output: ScalarTanhValueHead | None = None,
-    ) -> None:
-        super().__init__()
-        self.config = config or DirectCandidateMoveShogiPolicyValueModelConfig()
-        embedding_dim = self.config.embedding_dim
-        self.input = input_layer or ShogiPositionInputLayer(embedding_dim=embedding_dim)
-        self.move_input = move_input or ShogiLegalMoveTokenInputLayer(embedding_dim=embedding_dim)
-        self.policy_output = policy_output or ShogiDirectCandidateMovePolicyHead(
-            input_dim=embedding_dim * 2,
-            hidden_dim=self.config.hidden_dim,
-        )
-        self.value_output = value_output or ScalarTanhValueHead(
-            embedding_dim=embedding_dim,
-            hidden_dim=self.config.hidden_dim,
-        )
-
-    def forward(
-        self,
-        position_features: ShogiPositionFeatures,
-        legal_move_token_features: torch.Tensor,
-        legal_move_token_mask: torch.Tensor,
-    ) -> torch.Tensor:
-        position_embedding = self.input(position_features).mean(dim=1)
-        move_embedding = self.move_input(legal_move_token_features)
-        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        return self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), legal_move_token_mask)
-
-    def forward_policy_value(
-        self,
-        position_features: ShogiPositionFeatures,
-        legal_move_token_features: torch.Tensor,
-        legal_move_token_mask: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        position_embedding = self.input(position_features).mean(dim=1)
-        move_embedding = self.move_input(legal_move_token_features)
-        expanded_position = position_embedding[:, None, :].expand(-1, move_embedding.size(1), -1)
-        logits = self.policy_output(torch.cat((expanded_position, move_embedding), dim=-1), legal_move_token_mask)
-        return logits, self.value_output(position_embedding)
-
-    def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
-        position_embedding = self.input(position_features).mean(dim=1)
-        return self.value_output(position_embedding)
 
 
 @dataclass(frozen=True)
@@ -167,7 +103,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         config: SharedCoreShogiPolicyValueModelConfig | None = None,
         *,
         encoder: ShogiPositionEncoder | None = None,
-        policy_output: ShogiLegalMoveTokenPolicyOutput | None = None,
+        policy_output: ShogiLegalMoveTokenPolicyOutput | ShogiStateTokenLegalMovePolicyOutput | None = None,
         value_output: ScalarTanhValueHead | None = None,
     ) -> None:
         super().__init__()
@@ -179,11 +115,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.policy_output = policy_output or ShogiLegalMoveTokenPolicyOutput(
-            embedding_dim=self.config.embedding_dim,
-            num_heads=self.config.num_heads,
-            hidden_dim=self.config.hidden_dim,
-        )
+        self.policy_output = policy_output or _build_legal_move_token_policy_output(self.config)
         self.value_output = value_output or ScalarTanhValueHead(
             embedding_dim=self.config.embedding_dim,
             hidden_dim=self.config.hidden_dim,
@@ -292,4 +224,23 @@ def _build_shogi_position_encoder(
             num_layers=num_layers,
             dropout=dropout,
         ),
+    )
+
+
+def _build_legal_move_token_policy_output(
+    config: SharedCoreShogiPolicyValueModelConfig,
+) -> ShogiLegalMoveTokenPolicyOutput:
+    return ShogiLegalMoveTokenPolicyOutput(
+        embedding_dim=config.embedding_dim,
+        num_heads=config.num_heads,
+        hidden_dim=config.hidden_dim,
+    )
+
+
+def _build_state_token_legal_move_policy_output(
+    config: SharedCoreShogiPolicyValueModelConfig,
+) -> ShogiStateTokenLegalMovePolicyOutput:
+    return ShogiStateTokenLegalMovePolicyOutput(
+        embedding_dim=config.embedding_dim,
+        hidden_dim=config.hidden_dim,
     )
