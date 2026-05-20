@@ -1,6 +1,6 @@
 # Shogi Pin And Threat Input Features
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -47,3 +47,18 @@ for the model to infer from existing square, piece, line, and pair features.
 - If added, define their schema and feature-generation cost.
 - If deferred, record the evidence that the current representation should be
   exercised further before adding more tactical hints.
+
+## Resolution
+
+Do not add deeper pin/threat input features before the next shogi training run.
+
+The current representation already includes tactical approximations such as
+drop-shadow, counterfactual removal, coarse slider blockers, drop potential,
+line tokens, and pair relation edges. Exact pins, discovered attacks,
+threat/response tokens, mate threats, and king-safety aggregates would move the
+feature generator closer to a handcrafted tactical evaluator.
+
+Exercise the current representation in training first. Revisit deeper tactical
+features only after measured failures show that the model needs a specific
+concept that is too expensive or unreliable to infer from the existing square,
+piece, line, and pair features.
