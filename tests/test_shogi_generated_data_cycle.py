@@ -1082,8 +1082,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     elif command[command.index("--black-kind") + 1] == "usi_engine":
                         records = [_mcts_record(("7g7f", "3c3d"), "black")]
                     else:
-                        records = [_mcts_record(("7g7f", "3c3d"), "black")]
+                        records = [replace(_mcts_record(("7g7f", "3c3d"), None), end_reason="max_plies")]
                     write_shogi_game_records_jsonl(out_path, records)
+                    end_reason = records[0].end_reason
                     return subprocess.CompletedProcess(
                         command,
                         0,
@@ -1091,10 +1092,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             {
                                 "game_count": len(records),
                                 "average_plies": 2,
-                                "end_reasons": {"game_over": len(records)},
+                                "end_reasons": {end_reason: len(records)},
                                 "black_wins": 1 if records[0].winner == "black" else 0,
                                 "white_wins": 1 if records[0].winner == "white" else 0,
-                                "draws": 0,
+                                "draws": 1 if records[0].winner is None else 0,
                                 "generation_wall_time_sec": 1.0,
                                 "plies_per_sec": 2.0,
                             }
@@ -1157,6 +1158,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(len(records), 3)
             summary = json.loads((run_dir / "iteration-0001" / "generation-summary.json").read_text(encoding="utf-8"))
             self.assertEqual(summary["game_count"], 3)
+            self.assertEqual(summary["max_plies_draw_count"], 1)
+            self.assertEqual(summary["max_plies_draw_rate"], 1 / 3)
+            self.assertEqual(summary["game_over_count"], 2)
+            self.assertEqual(summary["game_over_rate"], 2 / 3)
             self.assertEqual([source["name"] for source in summary["sources"]], ["self-play", "checkpoint-vs-usi", "usi-vs-checkpoint"])
             self.assertEqual(summary["sources"][1]["black_player"]["kind"], "checkpoint")
             self.assertEqual(summary["sources"][1]["white_player"]["kind"], "usi_engine")

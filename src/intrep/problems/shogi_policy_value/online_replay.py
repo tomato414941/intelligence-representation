@@ -1020,6 +1020,8 @@ def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> d
         draws += int(summary.get("draws", 0))
         for reason, count in dict(summary.get("end_reasons", {})).items():
             end_reasons[str(reason)] = end_reasons.get(str(reason), 0) + int(count)
+    max_plies_draw_count = end_reasons.get("max_plies", 0)
+    game_over_count = end_reasons.get("game_over", 0)
     return {
         "game_count": game_count,
         "end_reasons": end_reasons,
@@ -1027,6 +1029,10 @@ def _combined_generation_summary(source_summaries: list[dict[str, object]]) -> d
         "black_wins": black_wins,
         "white_wins": white_wins,
         "draws": draws,
+        "max_plies_draw_count": max_plies_draw_count,
+        "max_plies_draw_rate": max_plies_draw_count / game_count if game_count else 0.0,
+        "game_over_count": game_over_count,
+        "game_over_rate": game_over_count / game_count if game_count else 0.0,
         "generation_wall_time_sec": wall_time,
         "plies_per_sec": total_plies / wall_time if wall_time > 0.0 else 0.0,
         "sources": source_summaries,

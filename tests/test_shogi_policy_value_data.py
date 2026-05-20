@@ -53,6 +53,11 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
         self.assertEqual(shogi_return_targets_from_game_record(record), (None, None))
 
+    def test_max_plies_draw_has_unknown_winner_value_targets(self) -> None:
+        record = replace(_record(("7g7f", "3c3d"), None), end_reason="max_plies")
+
+        self.assertEqual(shogi_return_targets_from_game_record(record), (None, None))
+
     def test_loads_move_choice_examples_from_game_records_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "games.jsonl"

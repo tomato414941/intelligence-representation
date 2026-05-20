@@ -86,6 +86,20 @@ evaluation. `NN leaf eval batch limit` is the neural evaluator batch cap used by
 both single-game in-tree leaf batching and generated-game multi-position
 batching.
 
+## Online Replay Generated Data Quality
+
+Games that reach the `max_plies` cap are valid generated experience, but they
+are generation-quality evidence. They are kept in the generated game records and
+converted into policy/value examples. With winner-based value targets, a
+`max_plies` draw has no winner, so its value target is unknown and the value
+loss mask excludes it; its policy target remains usable.
+
+Generation summaries record `max_plies_draw_count`, `max_plies_draw_rate`,
+`game_over_count`, and `game_over_rate` separately from the raw `end_reasons`.
+Online Replay does not filter or downweight cap-draw records by default. A high
+cap-draw rate should be interpreted in run summaries as a generator-quality
+signal, not as an invalid source-record condition.
+
 ## Online Replay Gate Cost
 
 The generator gate is a training-control cost, not final playing-strength

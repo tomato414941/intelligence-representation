@@ -1,6 +1,6 @@
 # Shogi Self-Play Max-Plies Draw Quality
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -40,3 +40,15 @@ filtered, or treated as normal records for the current training target.
 - Self-play summaries make the `max_plies` draw rate visible.
 - The training data path has an explicit policy for cap-draw records.
 - Online replay experiment notes can state how cap-draw records were handled.
+
+## Resolution
+
+Generation summaries now expose `max_plies_draw_count`,
+`max_plies_draw_rate`, `game_over_count`, and `game_over_rate` as explicit
+quality facts. Online Replay preserves the same fields when it combines source
+summaries.
+
+Cap-draw records are kept as generated experience. For winner-based value
+targets, a `max_plies` draw has no winner, so value supervision is unknown and
+masked out by the value loss; policy supervision remains usable. The project
+does not filter or downweight cap-draw records by default.
