@@ -197,7 +197,6 @@ class ShogiOnlineReplayResult:
 class ShogiOnlineReplayIterationArtifacts:
     iteration_dir: Path
     games_jsonl: Path
-    generated_train_jsonl: Path
     generation_summary_path: Path
     generator_gate_games_jsonl: Path
     generator_gate_result_path: Path
@@ -252,7 +251,7 @@ def run_shogi_online_replay(
             "training_wall_time_sec": None,
             "checkpoint_save_wall_time_sec": None,
         }
-        artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
+        artifacts = _prepare_online_replay_iteration_artifacts(run_dir, iteration_index)
         if iteration_index > 1:
             gate_start = time.perf_counter()
             gate_result = _evaluate_generator_candidate(
@@ -277,7 +276,7 @@ def run_shogi_online_replay(
         )
         phase_timings["experience_store_append_wall_time_sec"] = time.perf_counter() - experience_store_start
         generated_train_extraction_start = time.perf_counter()
-        new_examples = _load_online_replay_iteration_examples(config=config, artifacts=artifacts)
+        new_examples = _load_online_replay_generated_examples(config=config, artifacts=artifacts)
         phase_timings["generated_train_extraction_wall_time_sec"] = (
             time.perf_counter() - generated_train_extraction_start
         )
@@ -410,11 +409,9 @@ def promoted_online_replay_checkpoint(result: ShogiOnlineReplayIterationResult, 
 
 def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> ShogiOnlineReplayIterationArtifacts:
     iteration_dir = run_dir / f"iteration-{iteration_index:04d}"
-    iteration_dir.mkdir(parents=True, exist_ok=True)
     return ShogiOnlineReplayIterationArtifacts(
         iteration_dir=iteration_dir,
         games_jsonl=iteration_dir / "generated-games.jsonl",
-        generated_train_jsonl=iteration_dir / "generated-train-games.jsonl",
         generation_summary_path=iteration_dir / "generation-summary.json",
         generator_gate_games_jsonl=iteration_dir / "generator-gate-games.jsonl",
         generator_gate_result_path=iteration_dir / "generator-gate-result.json",
@@ -422,6 +419,12 @@ def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> S
         best_checkpoint_path=iteration_dir / "best-checkpoint.pt",
         metrics_path=iteration_dir / "metrics.json",
     )
+
+
+def _prepare_online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> ShogiOnlineReplayIterationArtifacts:
+    artifacts = _online_replay_iteration_artifacts(run_dir, iteration_index)
+    artifacts.iteration_dir.mkdir(parents=True, exist_ok=True)
+    return artifacts
 
 
 def _load_online_replay_resume_state(
@@ -443,7 +446,7 @@ def _load_online_replay_resume_state(
             artifacts=artifacts,
             iteration_index=iteration_index,
         )
-        new_examples = _load_online_replay_iteration_examples(config=config, artifacts=artifacts)
+        new_examples = _load_online_replay_generated_examples(config=config, artifacts=artifacts)
         generated_replay.extend(tensorize_candidate_move_policy_value_examples(new_examples))
         _advance_online_replay_resume_rng(
             generated_replay=generated_replay,
@@ -790,12 +793,11 @@ def _player_a_side_key(record: ShogiGameRecord, *, player_a_name: str) -> str:
     return "player_a_side_unknown"
 
 
-def _load_online_replay_iteration_examples(
+def _load_online_replay_generated_examples(
     *,
     config: ShogiOnlineReplayConfig,
     artifacts: ShogiOnlineReplayIterationArtifacts,
 ) -> list[ShogiMovePolicyValueExample]:
-    artifacts.generated_train_jsonl.write_text(artifacts.games_jsonl.read_text(encoding="utf-8"), encoding="utf-8")
     examples: list[ShogiMovePolicyValueExample] = []
     for source_index, source in enumerate(config.experience_sources):
         source_path = artifacts.iteration_dir / f"source-{source_index:03d}-{source.name}" / "generated-games.jsonl"

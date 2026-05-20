@@ -11,7 +11,6 @@ records under `runs/`.
 During a run, those records are useful:
 
 - `iteration-*/generated-games.jsonl`
-- `iteration-*/generated-train-games.jsonl`
 - `experience-store/games.jsonl`
 
 However, `runs/` is disposable by project policy. That means generated records

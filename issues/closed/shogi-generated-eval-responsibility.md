@@ -34,7 +34,7 @@ The run metrics and docs should state which eval source was actually used.
 - Generated games are treated only as learner experience and are added to replay.
 - Online Replay no longer splits generated games into generated train/eval files.
 - `eval_ratio` was removed from the Online Replay CLI/config/RunPod wrapper.
-- Cycle artifacts now write `generated-train-games.jsonl` as the replay input copy.
+- Cycle artifacts keep generated replay input in `generated-games.jsonl`.
 - Metrics record `training_eval_source: fixed_data_selection`, `training_eval_examples`, and `generated_holdout_examples: 0`.
 - Shogi learning boundaries document that playing-strength evaluation is separate from training-time eval.
 

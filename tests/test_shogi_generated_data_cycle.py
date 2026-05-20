@@ -1508,6 +1508,8 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(len(first_result.iterations), 1)
             self.assertEqual(len(resumed_result.iterations), 2)
             self.assertEqual(resumed_result.iterations[1].iteration_index, 2)
+            self.assertFalse((run_dir / "iteration-0001" / "generated-train-games.jsonl").exists())
+            self.assertFalse((run_dir / "iteration-0002" / "generated-train-games.jsonl").exists())
             second_metrics = json.loads((run_dir / "iteration-0002" / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(second_metrics["replay"]["generated_replay_size"], 4)
             self.assertEqual(second_metrics["replay"]["generated_sampled_examples"], 4)
