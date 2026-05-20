@@ -1,5 +1,7 @@
 import unittest
+from io import StringIO
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import torch
 
@@ -188,6 +190,32 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         )
 
         self.assertEqual(reported_steps, [])
+
+    def test_phase_progress_callback_reports_evaluation_without_printing(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        phase_events: list[training.ShogiPolicyValuePhaseProgress] = []
+
+        with patch("sys.stdout", new_callable=StringIO) as stdout:
+            train_shogi_policy_value_model(
+                examples,
+                eval_examples=examples,
+                config=ShogiPolicyValueTrainingConfig(
+                    max_steps=1,
+                    batch_size=1,
+                    embedding_dim=8,
+                    hidden_dim=16,
+                    num_heads=2,
+                    log_every=1,
+                ),
+                phase_progress_callback=phase_events.append,
+            )
+
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn(("initial_train_eval", "start"), [(event.phase, event.event) for event in phase_events])
+        self.assertIn(("initial_train_eval", "progress"), [(event.phase, event.event) for event in phase_events])
+        self.assertIn(("initial_train_eval", "done"), [(event.phase, event.event) for event in phase_events])
+        self.assertIn(("initial_eval", "start"), [(event.phase, event.event) for event in phase_events])
+        self.assertTrue(all(event.elapsed_seconds >= 0.0 for event in phase_events))
 
     def test_early_stopping_stops_after_eval_patience(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))

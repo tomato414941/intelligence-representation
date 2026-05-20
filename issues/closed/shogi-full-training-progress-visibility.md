@@ -1,5 +1,7 @@
 # Shogi Full Training Progress Visibility
 
+Status: closed
+
 ## Problem
 
 Full shogi policy/value training can remain silent for a long time before the
@@ -42,3 +44,23 @@ At minimum:
 - A full-cache run emits progress before the first optimizer step.
 - Long evaluation phases emit periodic progress.
 - Existing short training tests still pass.
+
+## Resolution
+
+The shogi training core now exposes evaluation progress as structured
+`ShogiPolicyValuePhaseProgress` events instead of printing directly. The CLI
+renders those events to stdout when `--log-every` is set, preserving the visible
+`initial_train_eval` / `initial_eval` start, batch, and done lines while keeping
+RunPod/Modal-specific output concerns outside the training core.
+
+The CLI combines `--log-every`, checkpoint cadence, and metrics cadence into the
+training progress callback cadence, so step progress and periodic artifacts use
+one progress path. `scripts/runpod_train_shogi_policy_value.sh` defaults
+`LOG_EVERY=100`, passes `--log-every`, and reports `log_every` in the run
+configuration line.
+
+Tests cover both layers:
+
+- training core emits phase progress events without writing to stdout
+- CLI stdout includes initial train/eval start, batch progress, done, elapsed
+  seconds, and optimizer-step progress

@@ -4,6 +4,7 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Callable
 
 from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_state_dict,
@@ -27,6 +28,7 @@ from intrep.problems.shogi_policy_value.model import (
 )
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_model
 from intrep.problems.shogi_policy_value.training import (
+    ShogiPolicyValuePhaseProgress,
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
     train_shogi_policy_value_model,
@@ -114,7 +116,7 @@ def main() -> None:
         early_stopping_patience=args.early_stopping_patience,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
-        progress_every=_progress_every(args.checkpoint_every, args.metrics_every),
+        progress_every=_progress_every(args.log_every, args.checkpoint_every, args.metrics_every),
     )
     # Periodic artifacts keep long disposable-pod runs from losing all progress
     # when the process ends before final checkpoint and metrics are written.
@@ -128,7 +130,8 @@ def main() -> None:
             if args.init_checkpoint_path is not None
             else None
         ),
-        progress_callback=progress_writer.write,
+        progress_callback=_training_progress_callback(progress_writer, args.log_every),
+        phase_progress_callback=_render_phase_progress if args.log_every is not None else None,
     )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     save_shogi_policy_value_checkpoint(args.checkpoint_path, result)
@@ -177,6 +180,61 @@ def _progress_every(*values: int | None) -> int | None:
     return min(intervals) if intervals else None
 
 
+def _training_progress_callback(
+    artifact_writer: "_ProgressArtifactWriter",
+    log_every: int | None,
+) -> Callable[[ShogiPolicyValueTrainingProgress], None] | None:
+    if log_every is None and not artifact_writer.enabled:
+        return None
+
+    def report(progress: ShogiPolicyValueTrainingProgress) -> None:
+        if log_every is not None and progress.step % log_every == 0:
+            _render_training_progress(progress)
+        artifact_writer.write(progress)
+
+    return report
+
+
+def _render_phase_progress(progress: ShogiPolicyValuePhaseProgress) -> None:
+    if progress.event == "start":
+        print(f"{progress.phase} start batches={progress.total_batches} device={progress.device}", flush=True)
+        return
+    batches_per_second = (
+        progress.processed_batches / progress.elapsed_seconds if progress.elapsed_seconds > 0.0 else 0.0
+    )
+    if progress.event == "progress":
+        print(
+            f"{progress.phase} batch={progress.processed_batches}/{progress.total_batches}"
+            f" examples={progress.processed_examples}"
+            f" elapsed_seconds={progress.elapsed_seconds:.1f}"
+            f" batches_per_second={batches_per_second:.3f}",
+            flush=True,
+        )
+        return
+    print(
+        f"{progress.phase} done batches={progress.total_batches}"
+        f" examples={progress.processed_examples}"
+        f" elapsed_seconds={progress.elapsed_seconds:.1f}"
+        f" batches_per_second={batches_per_second:.3f}",
+        flush=True,
+    )
+
+
+def _render_training_progress(progress: ShogiPolicyValueTrainingProgress) -> None:
+    steps_per_second = progress.step / progress.elapsed_seconds if progress.elapsed_seconds > 0.0 else 0.0
+    parts = [
+        f"step={progress.step}/{progress.max_steps}",
+        f"elapsed_seconds={progress.elapsed_seconds:.1f}",
+        f"steps_per_second={steps_per_second:.3f}",
+        f"loss={progress.loss:.4f}",
+        f"data_wait_seconds={progress.data_wait_seconds:.3f}",
+        f"forward_backward_seconds={progress.forward_backward_seconds:.3f}",
+        f"optimizer_seconds={progress.optimizer_seconds:.3f}",
+        f"device={progress.config.device}",
+    ]
+    print(" ".join(parts), flush=True)
+
+
 class _ProgressArtifactWriter:
     def __init__(self, args: argparse.Namespace) -> None:
         self.checkpoint_every = args.checkpoint_every
@@ -191,6 +249,10 @@ class _ProgressArtifactWriter:
             raise ValueError("metrics_every must be positive")
         if self.keep_last_n_checkpoints is not None and self.keep_last_n_checkpoints <= 0:
             raise ValueError("keep_last_n_checkpoints must be positive")
+
+    @property
+    def enabled(self) -> bool:
+        return self.checkpoint_every is not None or self.metrics_every is not None
 
     def write(self, progress: ShogiPolicyValueTrainingProgress) -> None:
         if self.checkpoint_every is not None and progress.step % self.checkpoint_every == 0:

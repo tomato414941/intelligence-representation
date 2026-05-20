@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 import time
-from typing import Callable, Sequence
+from typing import Callable, Literal, Sequence
 import warnings
 
 import torch
@@ -126,6 +126,17 @@ class ShogiPolicyValueTrainingProgress:
     eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
 
 
+@dataclass(frozen=True)
+class ShogiPolicyValuePhaseProgress:
+    phase: str
+    event: Literal["start", "progress", "done"]
+    elapsed_seconds: float
+    processed_batches: int
+    total_batches: int
+    processed_examples: int
+    device: str
+
+
 def train_shogi_policy_value_model(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     *,
@@ -133,6 +144,7 @@ def train_shogi_policy_value_model(
     config: ShogiPolicyValueTrainingConfig | None = None,
     initial_state_dict: object | None = None,
     progress_callback: Callable[[ShogiPolicyValueTrainingProgress], None] | None = None,
+    phase_progress_callback: Callable[[ShogiPolicyValuePhaseProgress], None] | None = None,
 ) -> ShogiPolicyValueTrainingResult:
     training_config = config or ShogiPolicyValueTrainingConfig()
     if training_config.max_steps <= 0:
@@ -183,8 +195,9 @@ def train_shogi_policy_value_model(
     initial_metrics = evaluate_shogi_policy_value_metrics(
         model,
         train_eval_loader,
-        log_label="initial_train_eval" if training_config.log_every is not None else None,
-        log_every_batches=training_config.log_every,
+        phase="initial_train_eval",
+        progress_every_batches=training_config.log_every,
+        progress_callback=phase_progress_callback,
     )
     initial_eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     best_eval_tracker = BestMetricTracker(mode="min")
@@ -193,8 +206,9 @@ def train_shogi_policy_value_model(
         initial_eval_metrics = evaluate_shogi_policy_value_metrics(
             model,
             eval_loader,
-            log_label="initial_eval" if training_config.log_every is not None else None,
-            log_every_batches=training_config.log_every,
+            phase="initial_eval",
+            progress_every_batches=training_config.log_every,
+            progress_callback=phase_progress_callback,
         )
         best_eval_tracker.update(step=0, value=initial_eval_metrics.loss)
         best_model_state_dict = copy.deepcopy(model.state_dict())
@@ -241,24 +255,14 @@ def train_shogi_policy_value_model(
             optimizer_finished = time.monotonic()
             interval_optimizer_seconds += optimizer_finished - forward_backward_finished
             step += 1
-            if training_config.log_every is not None and step % training_config.log_every == 0:
-                _log_training_progress(
-                    step,
-                    training_config.max_steps,
-                    started,
-                    loss,
-                    device,
-                    data_wait_seconds=interval_data_wait_seconds,
-                    forward_backward_seconds=interval_forward_backward_seconds,
-                    optimizer_seconds=interval_optimizer_seconds,
-                )
             eval_step_metrics: ShogiPolicyValueEvaluationMetrics | None = None
             if training_config.eval_every is not None and step % training_config.eval_every == 0:
                 eval_step_metrics = evaluate_shogi_policy_value_metrics(
                     model,
                     eval_loader,
-                    log_label=f"step_{step}_eval" if training_config.log_every is not None else None,
-                    log_every_batches=training_config.log_every,
+                    phase=f"step_{step}_eval",
+                    progress_every_batches=training_config.log_every,
+                    progress_callback=phase_progress_callback,
                 )
                 if best_eval_tracker.update(step=step, value=eval_step_metrics.loss):
                     best_model_state_dict = copy.deepcopy(model.state_dict())
@@ -303,16 +307,18 @@ def train_shogi_policy_value_model(
     final_metrics = evaluate_shogi_policy_value_metrics(
         model,
         train_eval_loader,
-        log_label="final_train_eval" if training_config.log_every is not None else None,
-        log_every_batches=training_config.log_every,
+        phase="final_train_eval",
+        progress_every_batches=training_config.log_every,
+        progress_callback=phase_progress_callback,
     )
     eval_metrics: ShogiPolicyValueEvaluationMetrics | None = None
     if eval_loader is not None:
         eval_metrics = evaluate_shogi_policy_value_metrics(
             model,
             eval_loader,
-            log_label="final_eval" if training_config.log_every is not None else None,
-            log_every_batches=training_config.log_every,
+            phase="final_eval",
+            progress_every_batches=training_config.log_every,
+            progress_callback=phase_progress_callback,
         )
         if best_eval_tracker.update(step=step, value=eval_metrics.loss):
             best_model_state_dict = copy.deepcopy(model.state_dict())
@@ -388,8 +394,9 @@ def evaluate_shogi_policy_value_metrics(
     model: nn.Module,
     loader: DataLoader,
     *,
-    log_label: str | None = None,
-    log_every_batches: int | None = None,
+    phase: str | None = None,
+    progress_every_batches: int | None = None,
+    progress_callback: Callable[[ShogiPolicyValuePhaseProgress], None] | None = None,
 ) -> ShogiPolicyValueEvaluationMetrics:
     model.eval()
     losses: list[float] = []
@@ -403,8 +410,18 @@ def evaluate_shogi_policy_value_metrics(
     device = next(model.parameters()).device
     started = time.monotonic()
     batch_count = len(loader)
-    if log_label is not None:
-        print(f"{log_label} start batches={batch_count} device={device}", flush=True)
+    if phase is not None and progress_callback is not None:
+        progress_callback(
+            ShogiPolicyValuePhaseProgress(
+                phase=phase,
+                event="start",
+                elapsed_seconds=0.0,
+                processed_batches=0,
+                total_batches=batch_count,
+                processed_examples=0,
+                device=str(device),
+            )
+        )
     with torch.no_grad():
         for batch_index, batch in enumerate(loader, start=1):
             batch = _batch_to_device(batch, device=device)
@@ -432,25 +449,36 @@ def evaluate_shogi_policy_value_metrics(
                     batch.value_targets[value_mask],
                 )
                 value_losses.append(float(value_loss.item()))
-            if log_label is not None and log_every_batches is not None and batch_index % log_every_batches == 0:
+            if (
+                phase is not None
+                and progress_callback is not None
+                and progress_every_batches is not None
+                and batch_index % progress_every_batches == 0
+            ):
                 elapsed = time.monotonic() - started
-                batches_per_second = batch_index / elapsed if elapsed > 0.0 else 0.0
-                print(
-                    f"{log_label} batch={batch_index}/{batch_count}"
-                    f" examples={total}"
-                    f" elapsed_seconds={elapsed:.1f}"
-                    f" batches_per_second={batches_per_second:.3f}",
-                    flush=True,
+                progress_callback(
+                    ShogiPolicyValuePhaseProgress(
+                        phase=phase,
+                        event="progress",
+                        elapsed_seconds=elapsed,
+                        processed_batches=batch_index,
+                        total_batches=batch_count,
+                        processed_examples=total,
+                        device=str(device),
+                    )
                 )
-    if log_label is not None:
+    if phase is not None and progress_callback is not None:
         elapsed = time.monotonic() - started
-        batches_per_second = batch_count / elapsed if elapsed > 0.0 else 0.0
-        print(
-            f"{log_label} done batches={batch_count}"
-            f" examples={total}"
-            f" elapsed_seconds={elapsed:.1f}"
-            f" batches_per_second={batches_per_second:.3f}",
-            flush=True,
+        progress_callback(
+            ShogiPolicyValuePhaseProgress(
+                phase=phase,
+                event="done",
+                elapsed_seconds=elapsed,
+                processed_batches=batch_count,
+                total_batches=batch_count,
+                processed_examples=total,
+                device=str(device),
+            )
         )
     return ShogiPolicyValueEvaluationMetrics(
         loss=sum(losses) / len(losses),
@@ -575,35 +603,6 @@ def _limit_examples(
     if max_examples <= 0:
         raise ValueError("max eval examples must be positive")
     return examples[:max_examples]
-
-
-def _log_training_progress(
-    step: int,
-    max_steps: int,
-    started: float,
-    loss: torch.Tensor,
-    device: torch.device,
-    *,
-    data_wait_seconds: float,
-    forward_backward_seconds: float,
-    optimizer_seconds: float,
-) -> None:
-    elapsed = time.monotonic() - started
-    steps_per_second = step / elapsed if elapsed > 0.0 else 0.0
-    parts = [
-        f"step={step}/{max_steps}",
-        f"elapsed_seconds={elapsed:.1f}",
-        f"steps_per_second={steps_per_second:.3f}",
-        f"loss={float(loss.detach().item()):.4f}",
-        f"data_wait_seconds={data_wait_seconds:.3f}",
-        f"forward_backward_seconds={forward_backward_seconds:.3f}",
-        f"optimizer_seconds={optimizer_seconds:.3f}",
-        f"device={device}",
-    ]
-    if device.type == "cuda" and torch.cuda.is_available():
-        allocated_mb = torch.cuda.max_memory_allocated(device) / (1024 * 1024)
-        parts.append(f"cuda_max_memory_mb={allocated_mb:.1f}")
-    print(" ".join(parts), flush=True)
 
 
 def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
