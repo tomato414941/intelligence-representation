@@ -1,6 +1,6 @@
 # Shogi Checkpoint Immutable Identity
 
-Status: open
+Status: closed
 Priority: high
 
 ## Problem
@@ -42,3 +42,23 @@ experiment records.
   run-time path.
 - Promotion into `models/.../checkpoint.pt` does not make old experiment records
   ambiguous.
+
+## Resolution
+
+2026-05-20:
+
+- Shogi policy/value checkpoints now store a canonical content identity in the
+  checkpoint config:
+  - `checkpoint_id`
+  - `checkpoint_sha256`
+- The identity is computed from checkpoint schema, model/input config, and
+  model state dict contents, not from the mutable filesystem path.
+- Checkpoint load paths validate that the stored identity still matches the
+  checkpoint contents.
+- Game generation and online replay gate commands now pass the immutable
+  checkpoint identity as `--*-checkpoint-id`, while preserving the run-time
+  path as `--*-checkpoint`.
+- Training metrics and online replay metrics now record checkpoint identity
+  separately from checkpoint path.
+- Experience-store checkpoint actor counts now prefer `checkpoint_id` over
+  `checkpoint` path when grouping checkpoint actors.

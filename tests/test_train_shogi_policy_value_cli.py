@@ -9,7 +9,10 @@ from unittest.mock import patch
 
 import torch
 
-from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint
+from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint,
+    load_shogi_policy_value_checkpoint_identity,
+)
 from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
@@ -156,6 +159,12 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["data_selection"]["name"], "test-shogi-policy-value")
             self.assertEqual(metrics["best_checkpoint_path"], str(best_checkpoint_path))
+            checkpoint_identity = load_shogi_policy_value_checkpoint_identity(checkpoint_path)
+            best_checkpoint_identity = load_shogi_policy_value_checkpoint_identity(best_checkpoint_path)
+            self.assertEqual(metrics["checkpoint_id"], checkpoint_identity.checkpoint_id)
+            self.assertEqual(metrics["checkpoint_sha256"], checkpoint_identity.checkpoint_sha256)
+            self.assertEqual(metrics["best_checkpoint_id"], best_checkpoint_identity.checkpoint_id)
+            self.assertEqual(metrics["best_checkpoint_sha256"], best_checkpoint_identity.checkpoint_sha256)
             self.assertIn(metrics["metrics"]["best_eval_step"], {0, 1})
             self.assertIsNotNone(metrics["metrics"]["best_eval_loss"])
             self.assertEqual(metrics["config"]["num_workers"], 0)
@@ -813,6 +822,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
             self.assertEqual(metrics["init_checkpoint_path"], str(init_checkpoint_path))
+            self.assertEqual(
+                metrics["init_checkpoint_id"],
+                load_shogi_policy_value_checkpoint_identity(init_checkpoint_path).checkpoint_id,
+            )
+            self.assertEqual(
+                metrics["checkpoint_id"],
+                load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id,
+            )
             init_model = load_shogi_policy_value_checkpoint(init_checkpoint_path)
             trained_model = load_shogi_policy_value_checkpoint(checkpoint_path)
             for key, tensor in init_model.state_dict().items():

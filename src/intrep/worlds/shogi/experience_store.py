@@ -88,13 +88,14 @@ def _checkpoint_actor_counts(records: list[ShogiGameRecord]) -> dict[str, int]:
         for actor in (record.black_actor, record.white_actor):
             if actor.kind != "checkpoint":
                 continue
-            key = _checkpoint_actor_key(actor.settings)
+            key = _checkpoint_actor_key(actor)
             counts[key] = counts.get(key, 0) + 1
     return dict(sorted(counts.items()))
 
 
-def _checkpoint_actor_key(settings: dict[str, str | int | float | bool | None]) -> str:
-    checkpoint = settings.get("checkpoint", "unknown")
+def _checkpoint_actor_key(actor: ShogiActorSpec) -> str:
+    settings = actor.settings
+    checkpoint = settings.get("checkpoint_id") or settings.get("checkpoint_name") or actor.name
     move_selector = settings.get("move_selector", "unknown")
     simulations = settings.get("mcts_simulations_per_move", "unknown")
     return f"{checkpoint} | move_selector={move_selector} | mcts_simulations_per_move={simulations}"

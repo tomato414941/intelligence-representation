@@ -16,6 +16,7 @@ import torch
 
 from intrep.learning.replay_buffer import ReplayBuffer
 from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_identity,
     load_shogi_policy_value_checkpoint_training_config,
     load_shogi_policy_value_checkpoint_state_dict,
     save_shogi_policy_value_checkpoint,
@@ -464,11 +465,14 @@ def _evaluate_generator_candidate(
     last_generator_checkpoint: Path,
 ) -> dict[str, object]:
     if candidate_checkpoint.resolve() == last_generator_checkpoint.resolve():
+        checkpoint_identity = load_shogi_policy_value_checkpoint_identity(candidate_checkpoint)
         result = {
             "skipped": True,
             "reason": "same_checkpoint",
             "candidate_checkpoint": str(candidate_checkpoint),
+            "candidate_checkpoint_id": checkpoint_identity.checkpoint_id,
             "last_generator_checkpoint": str(last_generator_checkpoint),
+            "last_generator_checkpoint_id": checkpoint_identity.checkpoint_id,
             "player_a_wins": 0,
             "player_a_losses": 0,
             "draws": 0,
@@ -671,8 +675,11 @@ def _online_replay_iteration_metrics(
         },
         "checkpoint": {
             "init_path": str(init_checkpoint),
+            "init_id": _checkpoint_actor_id(init_checkpoint),
             "path": str(checkpoint),
+            "id": _checkpoint_actor_id(checkpoint),
             "best_path": str(best_checkpoint),
+            "best_id": _checkpoint_actor_id(best_checkpoint),
             "save_wall_time_sec": phase_timings.get("checkpoint_save_wall_time_sec"),
         },
         "replay": {
@@ -898,9 +905,7 @@ def _merge_jsonl(inputs: list[Path], output: Path) -> None:
 
 
 def _checkpoint_actor_id(checkpoint: Path) -> str:
-    if checkpoint.name in {"checkpoint.pt", "best-checkpoint.pt"}:
-        return checkpoint.parent.name
-    return checkpoint.stem
+    return load_shogi_policy_value_checkpoint_identity(checkpoint).checkpoint_id
 
 
 def _shogi_arena_env(arena_repo: Path) -> dict[str, str]:

@@ -31,6 +31,10 @@ from intrep.problems.shogi_policy_value.generated_game_production import (
     _run_generation_command,
     usi_engine_generated_player,
 )
+from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_identity,
+    save_shogi_policy_value_state_checkpoint,
+)
 from intrep.problems.shogi_policy_value.examples import CandidateMovePolicyValueTensorSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
@@ -284,7 +288,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "cycle"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -299,6 +303,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                _write_training_command_checkpoints(command)
 
             with (
                 patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
@@ -335,10 +340,11 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(generation_run.call_count, 1)
             self.assertEqual(run.call_count, 1)
             generate_command = generation_run.call_args_list[0].args[0]
+            checkpoint_id = load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id
             self.assertEqual(generate_command[generate_command.index("--black-kind") + 1], "checkpoint")
             self.assertEqual(generate_command[generate_command.index("--white-kind") + 1], "checkpoint")
-            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-id") + 1], "source")
-            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-id") + 1], "source")
+            self.assertEqual(generate_command[generate_command.index("--black-checkpoint-id") + 1], checkpoint_id)
+            self.assertEqual(generate_command[generate_command.index("--white-checkpoint-id") + 1], checkpoint_id)
             self.assertEqual(generate_command[generate_command.index("--concurrent-games-per-process") + 1], "2")
             self.assertEqual(generate_command[generate_command.index("--generation-worker-processes") + 1], "3")
             self.assertEqual(generate_command[generate_command.index("--seed") + 1], "11")
@@ -406,7 +412,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "cycle"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -421,6 +427,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                _write_training_command_checkpoints(command)
                 return None
 
             with (
@@ -461,7 +468,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "loop"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -476,6 +483,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                _write_training_command_checkpoints(command)
                 return None
 
             with (
@@ -511,7 +519,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "loop"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -526,6 +534,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                             _mcts_record(("2g2f", "8c8d"), "white"),
                         ],
                     )
+                _write_training_command_checkpoints(command)
                 return None
 
             with (
@@ -556,7 +565,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -609,8 +618,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -639,11 +646,22 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertIsNone(result.iterations[0].experience_store_append)
             self.assertEqual(result.stop_reason, None)
             self.assertEqual(len(gate_commands), 1)
+            source_checkpoint_id = load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id
             self.assertEqual(gate_commands[0][gate_commands[0].index("--match-worker-processes") + 1], "4")
+            self.assertEqual(
+                gate_commands[0][gate_commands[0].index("--player-b-checkpoint-id") + 1],
+                source_checkpoint_id,
+            )
             gate_result = json.loads((run_dir / "iteration-0002" / "generator-gate-result.json").read_text(encoding="utf-8"))
             self.assertEqual(gate_result["player_a_wins"], 2)
             self.assertEqual(gate_result["player_a_losses"], 0)
             metrics = json.loads(result.iterations[0].metrics.read_text(encoding="utf-8"))
+            self.assertEqual(metrics["checkpoint"]["init_id"], source_checkpoint_id)
+            self.assertEqual(metrics["checkpoint"]["id"], load_shogi_policy_value_checkpoint_identity(result.iterations[0].checkpoint).checkpoint_id)
+            self.assertEqual(
+                metrics["checkpoint"]["best_id"],
+                load_shogi_policy_value_checkpoint_identity(result.iterations[0].best_checkpoint).checkpoint_id,
+            )
             self.assertEqual(metrics["replay"]["sampled_examples"], 4)
             self.assertEqual(metrics["replay"]["sampled_examples_per_iteration"], 3)
             self.assertEqual(metrics["replay"]["max_seed_examples_per_iteration"], 50000)
@@ -665,7 +683,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -703,8 +721,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -731,7 +747,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             store_dir = root / "store"
             bundle_dir = root / "bundle"
@@ -793,8 +809,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -844,7 +858,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -887,8 +901,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -945,7 +957,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -976,8 +988,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -1037,7 +1047,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -1075,8 +1085,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 stdout = io.StringIO()
                 with redirect_stdout(stdout):
@@ -1112,7 +1120,7 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
-            checkpoint_path.write_bytes(b"checkpoint")
+            _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -1142,8 +1150,6 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_checkpoint"),
-                patch("intrep.problems.shogi_policy_value.online_replay.save_shogi_policy_value_state_checkpoint"),
             ):
                 result = run_shogi_online_replay(
                     ShogiOnlineReplayConfig(
@@ -1171,6 +1177,10 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertIsNone(first_metrics["replay"]["sampling_wall_time_sec"])
             self.assertIsNone(first_metrics["training"]["wall_time_sec"])
             self.assertIsNone(first_metrics["checkpoint"]["save_wall_time_sec"])
+            self.assertEqual(
+                first_metrics["checkpoint"]["id"],
+                load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id,
+            )
 
 
 def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:
@@ -1215,6 +1225,19 @@ def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValue
         ),
         best_model_state_dict=None,
     )
+
+
+def _write_checkpoint(path: Path) -> None:
+    config = ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2)
+    save_shogi_policy_value_state_checkpoint(path, build_shogi_policy_value_model(config).state_dict(), config)
+
+
+def _write_training_command_checkpoints(command: list[str]) -> None:
+    if "intrep.train_shogi_policy_value" not in command:
+        return
+    _write_checkpoint(Path(command[command.index("--checkpoint-path") + 1]))
+    if "--best-checkpoint-path" in command:
+        _write_checkpoint(Path(command[command.index("--best-checkpoint-path") + 1]))
 
 
 if __name__ == "__main__":

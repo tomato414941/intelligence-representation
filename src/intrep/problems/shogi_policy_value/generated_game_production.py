@@ -6,6 +6,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from intrep.problems.shogi_policy_value.checkpoint import load_shogi_policy_value_checkpoint_identity
+
 STANDARD_SHOGI_MAX_PLIES = 320
 DEFAULT_SHOGI_MAX_PLIES = 320
 DEFAULT_USI_READ_TIMEOUT_SECONDS = 30.0
@@ -258,6 +260,4 @@ def _shogi_arena_env(arena_repo: Path) -> dict[str, str]:
 
 
 def _checkpoint_actor_id(checkpoint: Path) -> str:
-    if checkpoint.name == "checkpoint.pt" or checkpoint.name == "best-checkpoint.pt":
-        return checkpoint.parent.name
-    return checkpoint.stem
+    return load_shogi_policy_value_checkpoint_identity(checkpoint).checkpoint_id

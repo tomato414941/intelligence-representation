@@ -97,7 +97,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:usi_engine": 3})
             self.assertEqual(
                 manifest["checkpoint_actor_counts"],
-                {"runs/shogi/model-a/checkpoint.pt | move_selector=mcts | mcts_simulations_per_move=8": 3},
+                {"black-model | move_selector=mcts | mcts_simulations_per_move=8": 3},
             )
             self.assertEqual(
                 manifest["checkpoint_actor_summaries"],
@@ -118,7 +118,7 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:usi_engine": 1})
             self.assertEqual(
                 second_history["added_checkpoint_actor_counts"],
-                {"runs/shogi/model-a/checkpoint.pt | move_selector=mcts | mcts_simulations_per_move=8": 1},
+                {"black-model | move_selector=mcts | mcts_simulations_per_move=8": 1},
             )
             self.assertEqual(second_history["added_checkpoint_actor_summaries"][0]["count"], 1)
             self.assertEqual(second_history["total_checkpoint_actor_summaries"][0]["count"], 3)

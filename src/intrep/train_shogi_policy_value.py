@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_identity,
     load_shogi_policy_value_checkpoint_state_dict,
     save_shogi_policy_value_checkpoint,
     save_shogi_policy_value_model_checkpoint,
@@ -135,9 +136,17 @@ def main() -> None:
     )
     args.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     save_shogi_policy_value_checkpoint(args.checkpoint_path, result)
+    checkpoint_identity = load_shogi_policy_value_checkpoint_identity(args.checkpoint_path, device=args.device)
+    best_checkpoint_identity = None
     if args.best_checkpoint_path is not None and result.best_model_state_dict is not None:
         args.best_checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         save_shogi_policy_value_state_checkpoint(args.best_checkpoint_path, result.best_model_state_dict, result.config)
+        best_checkpoint_identity = load_shogi_policy_value_checkpoint_identity(args.best_checkpoint_path, device=args.device)
+    init_checkpoint_identity = (
+        load_shogi_policy_value_checkpoint_identity(args.init_checkpoint_path, device=args.device)
+        if args.init_checkpoint_path is not None
+        else None
+    )
     metrics = {
         "raw_train_case_count": raw_train_case_count,
         "raw_eval_case_count": raw_eval_case_count,
@@ -149,8 +158,13 @@ def main() -> None:
         "tensor_cache_path": tensor_cache_path,
         "tensor_cache_output_space": tensor_cache_output_space,
         "init_checkpoint_path": str(args.init_checkpoint_path) if args.init_checkpoint_path is not None else None,
+        "init_checkpoint_id": init_checkpoint_identity.checkpoint_id if init_checkpoint_identity is not None else None,
         "checkpoint_path": str(args.checkpoint_path),
+        "checkpoint_id": checkpoint_identity.checkpoint_id,
+        "checkpoint_sha256": checkpoint_identity.checkpoint_sha256,
         "best_checkpoint_path": str(args.best_checkpoint_path) if args.best_checkpoint_path is not None else None,
+        "best_checkpoint_id": best_checkpoint_identity.checkpoint_id if best_checkpoint_identity is not None else None,
+        "best_checkpoint_sha256": best_checkpoint_identity.checkpoint_sha256 if best_checkpoint_identity is not None else None,
         "config": asdict(result.config),
         "metrics": asdict(result.metrics),
     }
