@@ -8,9 +8,9 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.representation.assemblies.shogi_policy_value import (
-    SHOGI_POLICY_VALUE_MODEL_ID,
-    shogi_policy_value_model_spec,
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_ASSEMBLY_ID,
+    shogi_policy_value_assembly_spec,
     validate_shogi_policy_value_components,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
@@ -21,7 +21,7 @@ from intrep.worlds.shogi.position_encoding import (
 )
 
 
-SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v1"
+SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v2"
 SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX = "shogi-policy-value:sha256:"
 
 
@@ -30,7 +30,8 @@ class ShogiPolicyValueCheckpointIdentity:
     checkpoint_id: str
     checkpoint_sha256: str
     schema_version: str
-    model: str
+    assembly: str
+    assembly_spec_id: str
     input: str
     core: str
     policy_output: str
@@ -76,7 +77,7 @@ def load_shogi_policy_value_checkpoint_identity(
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_schema_id(payload)
-    _validate_checkpoint_model_spec(payload)
+    _validate_checkpoint_assembly_spec(payload)
     _validate_checkpoint_identity(payload)
     config = payload["config"]
     if not isinstance(config, dict):
@@ -85,7 +86,8 @@ def load_shogi_policy_value_checkpoint_identity(
         checkpoint_id=str(config["checkpoint_id"]),
         checkpoint_sha256=str(config["checkpoint_sha256"]),
         schema_version=str(payload["schema_version"]),
-        model=str(config["model"]),
+        assembly=str(config["assembly"]),
+        assembly_spec_id=str(config["assembly_spec_id"]),
         input=str(config["input"]),
         core=str(config["core"]),
         policy_output=str(config["policy_output"]),
@@ -99,7 +101,7 @@ def load_shogi_policy_value_checkpoint_state_dict(path: str | Path, *, device: s
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_schema_id(payload)
-    _validate_checkpoint_model_spec(payload)
+    _validate_checkpoint_assembly_spec(payload)
     _validate_checkpoint_identity(payload)
     return payload["model_state_dict"]
 
@@ -109,7 +111,7 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_schema_id(payload)
-    _validate_checkpoint_model_spec(payload)
+    _validate_checkpoint_assembly_spec(payload)
     _validate_checkpoint_identity(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
@@ -134,7 +136,7 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
     _validate_checkpoint_input_schema_id(payload)
-    _validate_checkpoint_model_spec(payload)
+    _validate_checkpoint_assembly_spec(payload)
     _validate_checkpoint_identity(payload)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
@@ -180,16 +182,18 @@ def shogi_policy_value_checkpoint_content_sha256(
 
 
 def _checkpoint_config_payload(config: object) -> dict[str, object]:
+    assembly_spec = _checkpoint_assembly_spec(config)
     return {
         "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
         "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-        "model": SHOGI_POLICY_VALUE_MODEL_ID,
+        "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
+        "assembly_spec_id": assembly_spec["assembly_spec_id"],
         "input": _config_str(config, "input"),
         "core": _config_str(config, "core"),
         "policy_output": _config_str(config, "policy_output"),
         "value_output": _config_str(config, "value_output"),
-        "model_spec": _checkpoint_model_spec(config),
+        "assembly_spec": assembly_spec,
         "embedding_dim": _config_int(config, "embedding_dim"),
         "hidden_dim": _config_int(config, "hidden_dim"),
         "num_heads": _config_int(config, "num_heads"),
@@ -212,12 +216,15 @@ def _validate_checkpoint_input_schema_id(payload: dict[str, object]) -> None:
         raise ValueError("unsupported shogi checkpoint input feature manifest")
 
 
-def _validate_checkpoint_model_spec(payload: dict[str, object]) -> None:
+def _validate_checkpoint_assembly_spec(payload: dict[str, object]) -> None:
     config = payload.get("config")
     if not isinstance(config, dict):
         raise ValueError("shogi checkpoint config must be an object")
-    if config.get("model_spec") != _checkpoint_model_spec(config):
-        raise ValueError("unsupported shogi checkpoint model spec")
+    assembly_spec = _checkpoint_assembly_spec(config)
+    if config.get("assembly_spec") != assembly_spec:
+        raise ValueError("unsupported shogi checkpoint assembly spec")
+    if config.get("assembly_spec_id") != assembly_spec["assembly_spec_id"]:
+        raise ValueError("unsupported shogi checkpoint assembly spec")
 
 
 def _validate_checkpoint_identity(payload: dict[str, object]) -> None:
@@ -238,10 +245,14 @@ def _validate_checkpoint_identity(payload: dict[str, object]) -> None:
         raise ValueError("shogi checkpoint identity does not match checkpoint contents")
 
 
-def _checkpoint_model_spec(config: object) -> dict[str, object]:
-    model = str(config.get("model", SHOGI_POLICY_VALUE_MODEL_ID)) if isinstance(config, dict) else SHOGI_POLICY_VALUE_MODEL_ID
-    if model != SHOGI_POLICY_VALUE_MODEL_ID:
-        raise ValueError(f"unsupported shogi policy/value model: {model}")
+def _checkpoint_assembly_spec(config: object) -> dict[str, object]:
+    assembly = (
+        str(config.get("assembly", SHOGI_POLICY_VALUE_ASSEMBLY_ID))
+        if isinstance(config, dict)
+        else SHOGI_POLICY_VALUE_ASSEMBLY_ID
+    )
+    if assembly != SHOGI_POLICY_VALUE_ASSEMBLY_ID:
+        raise ValueError(f"unsupported shogi policy/value assembly: {assembly}")
     input_name = _config_str(config, "input")
     core = _config_str(config, "core")
     policy_output = _config_str(config, "policy_output")
@@ -252,7 +263,7 @@ def _checkpoint_model_spec(config: object) -> dict[str, object]:
         policy_output=policy_output,
         value_output=value_output,
     )
-    return shogi_policy_value_model_spec(
+    return shogi_policy_value_assembly_spec(
         input=input_name,
         core=core,
         policy_output=policy_output,

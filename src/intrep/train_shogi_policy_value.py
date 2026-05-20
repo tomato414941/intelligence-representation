@@ -23,7 +23,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
-from intrep.representation.assemblies.shogi_policy_value import (
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_CORE_MODULE_IDS,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_OUTPUT_MODULE_IDS,

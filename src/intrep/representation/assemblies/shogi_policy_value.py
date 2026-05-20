@@ -17,66 +17,14 @@ from intrep.representation.outputs.shogi_legal_move import (
     ShogiStateSummaryLegalMovePolicyOutput,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    validate_shogi_policy_value_components,
+)
 from intrep.worlds.shogi.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
-
-
-SHOGI_POLICY_VALUE_MODEL_ID = "shogi_policy_value"
-SHOGI_POSITION_INPUT_MODULE_ID = (
-    "shogi_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_input"
-)
-SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
-SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_attention_policy_output"
-SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_summary_legal_move_policy_output"
-SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID = "shogi_policy_plane_policy_output"
-SHOGI_VALUE_OUTPUT_MODULE_ID = "scalar_tanh_value_output"
-SHOGI_POSITION_INPUT_MODULE_IDS = (SHOGI_POSITION_INPUT_MODULE_ID,)
-SHOGI_CORE_MODULE_IDS = (SHOGI_SHARED_CORE_MODULE_ID,)
-SHOGI_POLICY_OUTPUT_MODULE_IDS = (
-    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-)
-SHOGI_VALUE_OUTPUT_MODULE_IDS = (SHOGI_VALUE_OUTPUT_MODULE_ID,)
-
-
-def shogi_policy_value_model_spec(
-    *,
-    input: str,
-    core: str,
-    policy_output: str,
-    value_output: str,
-) -> dict[str, object]:
-    validate_shogi_policy_value_components(
-        input=input,
-        core=core,
-        policy_output=policy_output,
-        value_output=value_output,
-    )
-    return {
-        "model": SHOGI_POLICY_VALUE_MODEL_ID,
-        "input": input,
-        "core": core,
-        "policy_output": policy_output,
-        "value_output": value_output,
-    }
-
-
-def validate_shogi_policy_value_components(
-    *,
-    input: str,
-    core: str,
-    policy_output: str,
-    value_output: str,
-) -> None:
-    if input not in SHOGI_POSITION_INPUT_MODULE_IDS:
-        raise ValueError(f"unsupported shogi policy/value input: {input}")
-    if core not in SHOGI_CORE_MODULE_IDS:
-        raise ValueError(f"unsupported shogi policy/value core: {core}")
-    if policy_output not in SHOGI_POLICY_OUTPUT_MODULE_IDS:
-        raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
-    if value_output not in SHOGI_VALUE_OUTPUT_MODULE_IDS:
-        raise ValueError(f"unsupported shogi policy/value value output: {value_output}")
 
 
 @dataclass(frozen=True)

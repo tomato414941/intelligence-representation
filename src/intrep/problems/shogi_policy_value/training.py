@@ -22,12 +22,14 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_policy_plane_value_samples,
 )
 from intrep.representation.assemblies.shogi_policy_value import (
+    build_shogi_policy_value_model as build_shogi_policy_value_model_from_components,
+)
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_VALUE_OUTPUT_MODULE_ID,
-    build_shogi_policy_value_model as build_shogi_policy_value_model_from_components,
     validate_shogi_policy_value_components,
 )
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures

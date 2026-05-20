@@ -7,7 +7,7 @@ import torch
 
 from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
-from intrep.representation.assemblies.shogi_policy_value import (
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,

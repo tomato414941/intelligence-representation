@@ -17,13 +17,13 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_identity,
     save_shogi_policy_value_checkpoint,
 )
-from intrep.representation.assemblies.shogi_policy_value import (
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_VALUE_MODEL_ID,
+    SHOGI_POLICY_VALUE_ASSEMBLY_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_VALUE_OUTPUT_MODULE_ID,
-    shogi_policy_value_model_spec,
+    shogi_policy_value_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
@@ -56,11 +56,12 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_ID)
+            self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
             self.assertEqual(payload["config"]["policy_output"], SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID)
+            self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
             self.assertEqual(
-                payload["config"]["model_spec"],
-                shogi_policy_value_model_spec(
+                payload["config"]["assembly_spec"],
+                shogi_policy_value_assembly_spec(
                     input=payload["config"]["input"],
                     core=SHOGI_SHARED_CORE_MODULE_ID,
                     policy_output=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
@@ -78,6 +79,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             identity = load_shogi_policy_value_checkpoint_identity(path)
             self.assertEqual(identity.checkpoint_id, payload["config"]["checkpoint_id"])
             self.assertEqual(identity.checkpoint_sha256, payload["config"]["checkpoint_sha256"])
+            self.assertEqual(identity.assembly, SHOGI_POLICY_VALUE_ASSEMBLY_ID)
+            self.assertEqual(identity.assembly_spec_id, payload["config"]["assembly_spec_id"])
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -113,11 +116,12 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi-policy-plane.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_ID)
+            self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
             self.assertEqual(payload["config"]["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
+            self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
             self.assertEqual(
-                payload["config"]["model_spec"],
-                shogi_policy_value_model_spec(
+                payload["config"]["assembly_spec"],
+                shogi_policy_value_assembly_spec(
                     input=payload["config"]["input"],
                     core=SHOGI_SHARED_CORE_MODULE_ID,
                     policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
@@ -274,7 +278,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "input feature manifest"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_missing_model_spec(self) -> None:
+    def test_load_rejects_missing_assembly_spec(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -291,10 +295,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            payload["config"].pop("model_spec")
+            payload["config"].pop("assembly_spec")
             torch.save(payload, path)
 
-            with self.assertRaisesRegex(ValueError, "model spec"):
+            with self.assertRaisesRegex(ValueError, "assembly spec"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_policy_output(self) -> None:

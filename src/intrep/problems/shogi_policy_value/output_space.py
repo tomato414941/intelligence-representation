@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from intrep.representation.assemblies.shogi_policy_value import (
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,

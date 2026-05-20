@@ -601,6 +601,15 @@ output heads into one runnable model.
 Assemblies own model-side wiring. They should not own dataset construction,
 training loops, evaluation policy, or checkpoint policy.
 
+### Assembly Spec
+
+An assembly spec identifies one concrete assembly design.
+
+Fixed assemblies may have exactly one assembly spec. Assemblies with selectable
+model-side components may have multiple assembly specs. An assembly spec is not
+an evaluation variant; a variant is a comparison label used by evaluation or
+experiment management.
+
 ### Representation
 
 Representation is the broadest term. It can refer to any information-carrying

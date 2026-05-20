@@ -10,17 +10,19 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.representation.assemblies.shogi_policy_value import (
-    PolicyPlaneShogiPolicyValueModel,
-    PolicyPlaneShogiPolicyValueModelConfig,
+from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
     SHOGI_VALUE_OUTPUT_MODULE_ID,
+    shogi_policy_value_assembly_spec,
+)
+from intrep.representation.assemblies.shogi_policy_value import (
+    PolicyPlaneShogiPolicyValueModel,
+    PolicyPlaneShogiPolicyValueModelConfig,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _state_element_hidden,
-    shogi_policy_value_model_spec,
 )
 from intrep.representation.inputs.shogi_position import ShogiPositionAttentionLogitBias, ShogiPositionInputLayer
 from intrep.representation.outputs.shogi_legal_move import (
@@ -40,8 +42,8 @@ from intrep.worlds.shogi.position_encoding import (
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
-    def test_policy_plane_model_spec_uses_fixed_policy_head(self) -> None:
-        spec = shogi_policy_value_model_spec(
+    def test_policy_plane_assembly_spec_uses_fixed_policy_head(self) -> None:
+        spec = shogi_policy_value_assembly_spec(
             input=SHOGI_POSITION_INPUT_MODULE_ID,
             core=SHOGI_SHARED_CORE_MODULE_ID,
             policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,

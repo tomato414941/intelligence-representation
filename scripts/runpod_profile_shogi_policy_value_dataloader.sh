@@ -42,7 +42,7 @@ fi
 .venv/bin/python - "$POLICY_OUTPUT" <<'PY'
 import sys
 
-from intrep.representation.assemblies.shogi_policy_value import SHOGI_POLICY_OUTPUT_MODULE_IDS
+from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_OUTPUT_MODULE_IDS
 
 policy_output = sys.argv[1]
 if policy_output not in SHOGI_POLICY_OUTPUT_MODULE_IDS:
