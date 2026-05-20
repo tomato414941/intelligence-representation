@@ -18,7 +18,7 @@ from intrep.problems.image_text_answer.training import (
     load_image_text_answer_examples_jsonl,
     train_image_text_answer_model,
 )
-from intrep.problems.image_text_answer.model import ImageTextAnswerModel
+from intrep.representation.models.image_text_answer import ImageTextAnswerModel
 
 
 class ImageTextAnswerTrainingTest(unittest.TestCase):

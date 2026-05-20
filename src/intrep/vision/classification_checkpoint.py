@@ -10,7 +10,7 @@ from intrep.vision.classification import (
     ImageClassificationTrainingResult,
 )
 from intrep.core.training_utils import TrainingDevice, resolve_training_device
-from intrep.problems.image_classification.model import ImageClassificationModel
+from intrep.representation.models.image_classification import ImageClassificationModel
 
 
 @dataclass(frozen=True)

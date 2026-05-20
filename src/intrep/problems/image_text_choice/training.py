@@ -24,7 +24,7 @@ from intrep.core.training_utils import (
 )
 from intrep.problems.language_modeling.training import LanguageModelingDataset
 from intrep.core.shared_state_loading import load_compatible_module_state
-from intrep.problems.image_text_choice.model import ImageTextChoiceModel
+from intrep.representation.models.image_text_choice import ImageTextChoiceModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 
 

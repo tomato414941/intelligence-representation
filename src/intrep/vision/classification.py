@@ -18,7 +18,7 @@ from intrep.vision.training_data import (
     image_tensor_from_path,
     seeded_data_loader,
 )
-from intrep.problems.image_classification.model import ClassificationHead, ImageClassificationModel
+from intrep.representation.models.image_classification import ClassificationHead, ImageClassificationModel
 from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
 
 

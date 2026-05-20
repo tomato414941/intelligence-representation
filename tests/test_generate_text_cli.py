@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.problems.language_modeling.model import LanguageModelingConfig, LanguageModelingModel
+from intrep.representation.models.language_modeling import LanguageModelingConfig, LanguageModelingModel
 from intrep.problems.language_modeling.generate import generate_text_from_checkpoint, main
 from intrep.text.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
 
