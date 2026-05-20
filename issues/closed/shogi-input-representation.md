@@ -1,6 +1,6 @@
 # Shogi Input Representation
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -37,15 +37,16 @@ Current represented information:
 - counterfactual removal features per square and board-piece token:
   whether removing the occupying piece exposes own king check, exposes opponent
   king check, or removes a sliding-line blocker
-- capture-to-hand flow features per square and board-piece token:
-  whether giving that piece to the opponent creates a near-king drop danger, and
-  whether capturing that opponent piece creates a near-king drop opportunity
+- drop-potential features per square and board-piece token:
+  whether losing that piece gives the opponent a near-king pseudo-drop
+  potential, and whether capturing that opponent piece gives own side a
+  near-king pseudo-drop potential
 - fixed 40 piece tokens for board and hand pieces, with board pieces ordered by
   side-to-move-relative square and remaining incomplete-position slots padded
   as empty
 - fixed 52 line tokens for files, ranks, and both diagonal families, with
   line-kind, king-on-line, slider-on-line, and occupancy features
-- dynamic pair relation ids over the full token sequence, currently covering
+- dynamic pair relation edges over the full token sequence, currently covering
   piece-on-square, piece-attacks-square, hand-piece-drops-to-square,
   piece-attacks-piece, piece-defends-piece, and same-side piece relations
 - own/opponent hand counts capped at 18
@@ -60,7 +61,7 @@ The canonical position input object is `ShogiPositionFeatures`:
 - `square_feature_ids`
 - `piece_feature_ids`
 - `line_feature_ids`
-- `pair_relation_ids`
+- `pair_relation_edges`
 
 There is no canonical flat position vector. Boundaries that consume positions
 must carry the grouped feature object.
@@ -92,7 +93,7 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own/opponent king-relative square features
   - own/opponent drop-shadow features by hand piece type
   - counterfactual removal features
-  - capture-to-hand flow features
+  - drop-potential features
 - piece tokens x40:
   - location kind: board, hand, or empty
   - own/opponent piece identity
@@ -100,7 +101,7 @@ The preferred direction is a Transformer-native shogi feature sequence:
   - own king-relative square feature for board pieces, or unknown
   - opponent king-relative square feature for board pieces, or unknown
   - counterfactual removal features for board pieces, or false for hand/empty
-  - capture-to-hand flow features for board pieces, or false for hand/empty
+  - drop-potential features for board pieces, or false for hand/empty
 - line tokens x52:
   - 9 file tokens
   - 9 rank tokens
@@ -118,9 +119,10 @@ relation tokens. Piece tokens are treated as a set-like sequence and do not use
 slot-position embeddings. Square tokens retain square identity and the shared
 shogi Transformer adds static position geometry attention bias over the 81
 board-square tokens and between line tokens and their member squares. Dynamic
-pair relation ids are added as learned attention bias so token-to-token shogi
+pair relation edges are added as learned attention bias so token-to-token shogi
 relations are represented on the attention pair, not only as token-local
-features. The model input layer normalizes global, square, piece, and line
+features. The pair relations are stored as an edge list rather than a dense
+matrix. The model input layer normalizes global, square, piece, and line
 token groups separately after feature composition so feature-rich token groups
 do not dominate attention by raw embedding scale. Shared-core models pool from
 the state token for global policy/value context; the direct model still uses
@@ -221,10 +223,10 @@ the rest of the sequence.
 - Added counterfactual removal features to square and board-piece tokens.
   These expose cheap causal roles such as "removing this piece exposes own
   king check" and "this piece is a sliding-line blocker."
-- Added capture-to-hand flow features to square and board-piece tokens. These
-  expose a cheap approximation of whether a captured piece would become a
-  dangerous or useful near-king drop resource.
-- Added dynamic `pair_relation_ids` to `ShogiPositionFeatures` and tensor
+- Added drop-potential features to square and board-piece tokens. These expose a
+  cheap approximation of whether a captured or lost piece would become a useful
+  near-king drop resource.
+- Added dynamic pair relation edges to `ShogiPositionFeatures` and tensor
   caches. The shared Transformer uses them as learned pair-relation attention
   bias.
 - Replaced shared-core candidate policy scoring with legal move tokens that
@@ -238,13 +240,31 @@ the rest of the sequence.
   input. Checkpoints, tensor cache manifests, and tensor cache shard manifests
   now store and validate both the human-readable manifest and its hash.
 - The current input identity is
-  `shogi_global_square_piece_line_pair_drop_counterfactual_flow_feature_sequence`.
+  `shogi_global_square_piece_line_pair_edge_drop_shadow_coarse_counterfactual_drop_potential_feature_sequence`.
 
 ## Follow-Ups
 
-- Keep history/repetition features separate from basic position features because
-  they interact with rule context and data generation.
+- Keep history/repetition features separate from basic position features. They
+  are tracked in
+  [`shogi-history-repetition-input-features.md`](../shogi-history-repetition-input-features.md).
 - Consider deeper pin/discovered-attack and threat-response features only after
-  the current representation has been exercised; the current schema now carries
-  a cheap counterfactual/blocker approximation but not full tactical threat
-  search.
+  the current representation has been exercised. They are tracked in
+  [`shogi-pin-threat-input-features.md`](../shogi-pin-threat-input-features.md).
+
+## Resolution
+
+2026-05-20:
+
+- The intended shogi position input representation is implemented as grouped
+  `ShogiPositionFeatures`: global, square, piece, line, and pair-relation edge
+  groups.
+- The schema is identified by
+  `shogi_global_square_piece_line_pair_edge_drop_shadow_coarse_counterfactual_drop_potential_feature_sequence`.
+- Checkpoints, tensor cache manifests, and tensor cache shard manifests store
+  and validate the input feature manifest hash.
+- Tests cover side-to-move-relative encoding, move-count buckets, hand counts,
+  attack features, drop-shadow features, counterfactual features, line features,
+  pair relation edges, grouped feature validation, tensor-cache payload shape,
+  and model attention bias use.
+- Deliberately omitted history/repetition and deeper tactical-threat features
+  were split into follow-up issues.
