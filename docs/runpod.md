@@ -37,8 +37,9 @@ repository sync, setup, output collection, and timing capture. It does not own
 training settings.
 
 Pass the actual workload through `REMOTE_COMMAND`. For shogi policy/value
-training, the canonical training interface is still
-`python -m intrep.train_shogi_policy_value`.
+training, the canonical training interface is
+`python -m intrep.train_shogi_policy_value`; select the model-side design with
+`--assembly-spec`.
 
 Example:
 
@@ -51,7 +52,7 @@ REMOTE_COMMAND='.venv/bin/python -u -m intrep.train_shogi_policy_value \
   --checkpoint-path runs/shogi/full-001/checkpoint.pt \
   --best-checkpoint-path runs/shogi/full-001/best_checkpoint.pt \
   --metrics-path runs/shogi/full-001/metrics.json \
-  --policy-output shogi_policy_plane_policy_output \
+  --assembly-spec shogi_policy_value_position_transformer_policy_plane \
   --max-steps 5000 \
   --batch-size 512 \
   --device cuda \
