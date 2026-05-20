@@ -19,7 +19,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
-from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
+from intrep.representation.models.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,

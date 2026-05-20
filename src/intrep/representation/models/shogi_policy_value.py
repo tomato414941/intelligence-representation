@@ -206,6 +206,52 @@ def _state_element_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
     return position_hidden[:, STATE_ELEMENT_INDEX]
 
 
+def build_shogi_policy_value_model(
+    *,
+    input: str,
+    core: str,
+    policy_output: str,
+    value_output: str,
+    embedding_dim: int,
+    num_heads: int,
+    hidden_dim: int,
+    num_layers: int,
+    dropout: float = 0.0,
+) -> nn.Module:
+    validate_shogi_policy_value_components(
+        input=input,
+        core=core,
+        policy_output=policy_output,
+        value_output=value_output,
+    )
+    if policy_output in (
+        SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+        SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    ):
+        shared_config = SharedCoreShogiPolicyValueModelConfig(
+            embedding_dim=embedding_dim,
+            num_heads=num_heads,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        return SharedCoreShogiPolicyValueModel(
+            shared_config,
+            policy_output=_build_legal_move_policy_output_from_id(policy_output, shared_config),
+        )
+    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+        return PolicyPlaneShogiPolicyValueModel(
+            PolicyPlaneShogiPolicyValueModelConfig(
+                embedding_dim=embedding_dim,
+                num_heads=num_heads,
+                hidden_dim=hidden_dim,
+                num_layers=num_layers,
+                dropout=dropout,
+            )
+        )
+    raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
+
+
 def _build_shogi_position_encoder(
     *,
     embedding_dim: int,
@@ -235,6 +281,17 @@ def _build_legal_move_policy_output(
         num_heads=config.num_heads,
         hidden_dim=config.hidden_dim,
     )
+
+
+def _build_legal_move_policy_output_from_id(
+    policy_output: str,
+    config: SharedCoreShogiPolicyValueModelConfig,
+) -> ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput:
+    if policy_output == SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID:
+        return _build_legal_move_policy_output(config)
+    if policy_output == SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID:
+        return _build_state_summary_legal_move_policy_output(config)
+    raise ValueError(f"unsupported shogi legal move policy output: {policy_output}")
 
 
 def _build_state_summary_legal_move_policy_output(

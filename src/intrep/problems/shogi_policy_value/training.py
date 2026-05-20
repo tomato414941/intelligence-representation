@@ -21,20 +21,15 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_legal_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )
-from intrep.problems.shogi_policy_value.model import (
-    PolicyPlaneShogiPolicyValueModel,
-    PolicyPlaneShogiPolicyValueModelConfig,
+from intrep.representation.models.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_SHARED_CORE_MODULE_ID,
-    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_VALUE_OUTPUT_MODULE_ID,
-    SharedCoreShogiPolicyValueModel,
-    SharedCoreShogiPolicyValueModelConfig,
+    build_shogi_policy_value_model as build_shogi_policy_value_model_from_components,
     validate_shogi_policy_value_components,
 )
-from intrep.representation.outputs.shogi_legal_move import ShogiStateSummaryLegalMovePolicyOutput
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
 
@@ -618,39 +613,13 @@ def _limit_examples(
 
 
 def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
-    validate_shogi_policy_value_components(
+    return build_shogi_policy_value_model_from_components(
         input=config.input,
         core=config.core,
         policy_output=config.policy_output,
         value_output=config.value_output,
+        embedding_dim=config.embedding_dim,
+        num_heads=config.num_heads,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
     )
-    if config.policy_output in (
-        SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-        SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    ):
-        shared_config = SharedCoreShogiPolicyValueModelConfig(
-            embedding_dim=config.embedding_dim,
-            num_heads=config.num_heads,
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers,
-        )
-        policy_output = None
-        if config.policy_output == SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID:
-            policy_output = ShogiStateSummaryLegalMovePolicyOutput(
-                embedding_dim=config.embedding_dim,
-                hidden_dim=config.hidden_dim,
-            )
-        return SharedCoreShogiPolicyValueModel(
-            shared_config,
-            policy_output=policy_output,
-        )
-    if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
-        return PolicyPlaneShogiPolicyValueModel(
-            PolicyPlaneShogiPolicyValueModelConfig(
-                embedding_dim=config.embedding_dim,
-                num_heads=config.num_heads,
-                hidden_dim=config.hidden_dim,
-                num_layers=config.num_layers,
-            )
-        )
-    raise ValueError(f"unsupported shogi policy/value policy output: {config.policy_output}")
