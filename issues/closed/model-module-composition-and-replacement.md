@@ -1,6 +1,6 @@
 # Model Module Composition And Replacement
 
-Status: open
+Status: closed
 Priority: high
 
 ## Problem
@@ -84,3 +84,18 @@ boundary.
   the chosen boundary.
 - Keep full checkpoint restore strict and make intentional partial reuse
   explicit by module identity.
+
+## Resolution
+
+2026-05-20:
+
+- `docs/model-boundaries.md` now defines model composition as named input
+  embedding modules, a shared core, and output heads.
+- The boundary does not require one universal model class.
+- Full checkpoint restore remains strict and validates the model identity needed
+  to restore the whole model safely.
+- Partial reuse is explicit by module name instead of accidental state-dict key
+  overlap.
+- Shogi policy/value already implements the concrete boundary through separate
+  position input, candidate move input, shared core, pooling, policy head, and
+  value head identities in its model spec.

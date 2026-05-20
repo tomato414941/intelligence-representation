@@ -30,28 +30,6 @@ source records
 
 Source records are source-level data items before tokenization or embedding.
 
-Examples:
-
-```text
-language modeling:
-  text
-
-image-text choice:
-  image_path
-  choices
-  answer_index
-
-image/text choice:
-  image_path
-  prompt_text when needed
-  choices
-  answer_index
-
-video or audio tasks:
-  media path or reference
-  problem-specific text, labels, or feedback when needed
-```
-
 The source record shape should be chosen for the task and source data. Do not
 add generic cross-task fields just to make unrelated tasks look uniform. Add
 structure only when a tokenizer, input embedding module, training objective, or
@@ -81,18 +59,6 @@ image
   -> input embedding sequence
 ```
 
-The current image-text choice path uses this concrete form:
-
-```text
-image-text-choice JSONL
-  -> local PGM image
-  -> ImagePatchInputLayer
-  -> candidate text tokenizer / embedding layer
-  -> input embedding sequence
-  -> SharedTransformerCore
-  -> candidate score
-```
-
 Other modalities can use their own input embedding modules. A full text, image,
 audio, or video encoder may include both input embedding modules and a
 Transformer or CNN body. This document names the boundary explicitly because
@@ -110,15 +76,6 @@ entering the Transformer core.
 
 ## Hidden States
 
-The shared Transformer core consumes input embedding sequences and produces
-hidden states.
-
-```text
-input embedding sequence
-  -> shared Transformer core
-  -> hidden states
-```
-
 Hidden states are also representations, but they are not the same boundary as
 input embeddings. The distinction matters:
 
@@ -130,29 +87,30 @@ hidden states:
   contextual vectors after the Transformer core
 ```
 
-## Current Base Transformer Core
+## Shared Transformer Core
 
-The current base model is the shared Transformer core plus problem-specific input
-embedding modules and output heads. Text, image, grid, and shogi routes can use
-different input embedding modules and heads while keeping the same core shape.
+The shared Transformer core is the model-side module that consumes input
+embedding sequences and produces hidden states.
 
-The project-wide training size is currently:
+```text
+input embedding sequence
+  -> shared Transformer core
+  -> hidden states
+```
 
-| Embedding dim | Heads | Feed-forward hidden dim | Layers | Dropout |
-| ---: | ---: | ---: | ---: | ---: |
-| 256 | 8 | 1024 | 6 | 0.0 |
+The core does not own tokenization, modality loading, output heads, objectives,
+or losses. Text, image, grid, and shogi routes can use different input embedding
+modules and output heads while keeping the same core boundary.
 
-Training configs should store these concrete values, not a shared preset name.
-Tests and smoke runs can use smaller explicit values when runtime is the reason.
+## Model Module Composition
 
-The core is implemented as a PyTorch `TransformerEncoder` with:
+A problem model may compose named input embedding modules, a shared core, and
+output heads. These are replacement boundaries, but they do not require one
+universal model class.
 
-- batch-first input shape `[batch, sequence, embedding_dim]`
-- GELU activation
-- optional causal mask
-- no tokenizer, modality loader, output head, or loss inside the core itself
-
-Small model shapes in tests are runtime settings, not project-wide defaults.
+Full checkpoint restore should validate the model identity needed to restore the
+whole model safely. Partial reuse should be explicit by module name, not by
+accidental state-dict key overlap.
 
 ## Token IDs and Loss Masks
 
@@ -175,17 +133,16 @@ the text tokenizer path. If a model intentionally uses a learned discrete
 visual or audio tokenizer, that should be treated as a specific modeling choice,
 not as the default common layer.
 
-## Output Heads and Objectives
+## Output Heads
 
-Output heads and objectives may remain problem-specific.
+Output heads read hidden states and produce problem-specific model outputs.
 
 ```text
 hidden states
   -> classification head / text decoder / candidate scoring / value head
-  -> loss or evaluation
+  -> model output
 ```
 
 Selection classification can be implemented with a classification head, a text
-decoder, candidate scoring, or another objective. The important boundary is that
-each input modality reaches the shared core through an appropriate input
-embedding module, not through a forced raw-data schema.
+decoder, candidate scoring, or another output head. Objectives, losses, and
+evaluation read model outputs outside the output-head boundary.
