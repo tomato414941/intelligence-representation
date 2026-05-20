@@ -39,7 +39,9 @@ SHOGI_POLICY_VALUE_MODEL_NAMES = (
     SHOGI_POLICY_VALUE_MODEL_DIRECT,
     SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
 )
-SHOGI_POSITION_INPUT_MODULE_ID = "shogi_global_square_piece_line_pair_drop_counterfactual_flow_position_features"
+SHOGI_POSITION_INPUT_MODULE_ID = (
+    "shogi_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_features"
+)
 SHOGI_CANDIDATE_MOVE_INPUT_MODULE_ID = "shogi_side_to_move_relative_candidate_moves"
 SHOGI_DIRECT_POLICY_HEAD_MODULE_ID = "candidate_move_policy_head"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"

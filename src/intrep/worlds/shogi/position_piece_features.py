@@ -32,7 +32,7 @@ def piece_feature_id_rows(
                     piece,
                     relative_square,
                     counterfactual_tokens=derived.counterfactual_removal_token_rows[relative_square],
-                    gift_flow_tokens=derived.gift_flow_token_rows[relative_square],
+                    drop_potential_tokens=derived.drop_potential_token_rows[relative_square],
                 )
             )
     piece_features.extend(hand_piece_slot_token_ids(board))
@@ -77,7 +77,7 @@ def board_piece_slot_token_ids(
     relative_square: int,
     *,
     counterfactual_tokens: list[int],
-    gift_flow_tokens: list[int],
+    drop_potential_tokens: list[int],
 ) -> list[int]:
     return [
         PIECE_LOCATION_BOARD_TOKEN_ID,
@@ -96,7 +96,7 @@ def board_piece_slot_token_ids(
             offset=OPPONENT_KING_RELATIVE_SQUARE_OFFSET,
         ),
         *counterfactual_tokens,
-        *gift_flow_tokens,
+        *drop_potential_tokens,
     ]
 
 
@@ -123,9 +123,9 @@ def hand_piece_token_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
         COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
-        COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
-        GIFT_DANGER_OFFSET,
-        CAPTURE_FLOW_OPPORTUNITY_OFFSET,
+        COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET,
+        OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET,
+        OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET,
     ]
 
 
@@ -138,7 +138,7 @@ def empty_piece_slot_token_ids() -> list[int]:
         OPPONENT_KING_RELATIVE_SQUARE_OFFSET + KING_RELATIVE_SQUARE_BUCKET_UNKNOWN,
         COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
         COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
-        COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
-        GIFT_DANGER_OFFSET,
-        CAPTURE_FLOW_OPPORTUNITY_OFFSET,
+        COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET,
+        OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET,
+        OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET,
     ]

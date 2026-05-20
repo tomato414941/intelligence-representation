@@ -20,13 +20,15 @@ SQUARE_ATTACK_PIECE_TYPES = tuple(shogi.PIECE_TYPES)
 SQUARE_ATTACK_PIECE_TYPE_COUNT = len(SQUARE_ATTACK_PIECE_TYPES)
 PIECE_SLOT_COUNT = 40
 COUNTERFACTUAL_FEATURE_COUNT = 3
-GIFT_FLOW_FEATURE_COUNT = 2
-PIECE_FEATURE_COUNT = 5 + COUNTERFACTUAL_FEATURE_COUNT + GIFT_FLOW_FEATURE_COUNT
+DROP_POTENTIAL_FEATURE_COUNT = 2
+PIECE_FEATURE_COUNT = 5 + COUNTERFACTUAL_FEATURE_COUNT + DROP_POTENTIAL_FEATURE_COUNT
 GLOBAL_TOKEN_COUNT = 18
 LINE_TOKEN_COUNT = 9 + 9 + 17 + 17
 LINE_FEATURE_COUNT = 6
 SHOGI_POSITION_FEATURE_SEQUENCE_TOKEN_COUNT = GLOBAL_TOKEN_COUNT + BOARD_TOKEN_COUNT + PIECE_SLOT_COUNT + LINE_TOKEN_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = "shogi_global_square_piece_line_pair_edge_drop_counterfactual_flow_feature_sequence"
+SHOGI_POSITION_INPUT_SCHEMA_ID = (
+    "shogi_global_square_piece_line_pair_edge_drop_shadow_coarse_counterfactual_drop_potential_feature_sequence"
+)
 
 STATE_TOKEN_INDEX = 0
 GLOBAL_SIDE_TO_MOVE_TOKEN_INDEX = 1
@@ -87,10 +89,10 @@ LINE_OCCUPANCY_COUNT_MAX = 9
 LINE_OCCUPANCY_COUNT_OFFSET = LINE_OPPONENT_SLIDER_ON_LINE_OFFSET + 2
 COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET = LINE_OCCUPANCY_COUNT_OFFSET + LINE_OCCUPANCY_COUNT_MAX + 1
 COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET = COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET + 2
-COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET = COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET + 2
-GIFT_DANGER_OFFSET = COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET + 2
-CAPTURE_FLOW_OPPORTUNITY_OFFSET = GIFT_DANGER_OFFSET + 2
-PIECE_LOCATION_EMPTY_TOKEN_ID = CAPTURE_FLOW_OPPORTUNITY_OFFSET + 2
+COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET = COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET + 2
+OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET = COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET + 2
+OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET = OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET + 2
+PIECE_LOCATION_EMPTY_TOKEN_ID = OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET + 2
 PIECE_LOCATION_BOARD_TOKEN_ID = PIECE_LOCATION_EMPTY_TOKEN_ID + 1
 PIECE_LOCATION_HAND_TOKEN_ID = PIECE_LOCATION_BOARD_TOKEN_ID + 1
 PIECE_SQUARE_UNKNOWN_TOKEN_ID = PIECE_LOCATION_HAND_TOKEN_ID + 1
@@ -104,7 +106,7 @@ SHOGI_POSITION_SQUARE_FEATURE_COUNT = (
     + 2
     + len(HAND_PIECE_TYPES) * 2
     + COUNTERFACTUAL_FEATURE_COUNT
-    + GIFT_FLOW_FEATURE_COUNT
+    + DROP_POTENTIAL_FEATURE_COUNT
 )
 SHOGI_POSITION_SQUARE_SLOT_COUNT = BOARD_TOKEN_COUNT
 SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
@@ -150,9 +152,9 @@ def shogi_position_feature_manifest() -> dict[str, object]:
             "opponent_drop_shadow",
             "counterfactual_removal_self_check",
             "counterfactual_removal_opponent_check",
-            "counterfactual_removal_slider_blocker",
-            "gift_danger",
-            "capture_flow_opportunity",
+            "counterfactual_removal_coarse_slider_blocker",
+            "opponent_drop_potential_after_losing_piece",
+            "own_drop_potential_after_capturing_piece",
         ],
         "piece_features": [
             "location_kind",
@@ -162,9 +164,9 @@ def shogi_position_feature_manifest() -> dict[str, object]:
             "opponent_king_relative_square",
             "counterfactual_removal_self_check",
             "counterfactual_removal_opponent_check",
-            "counterfactual_removal_slider_blocker",
-            "gift_danger",
-            "capture_flow_opportunity",
+            "counterfactual_removal_coarse_slider_blocker",
+            "opponent_drop_potential_after_losing_piece",
+            "own_drop_potential_after_capturing_piece",
         ],
         "line_features": [
             "line_kind",
@@ -234,9 +236,9 @@ def shogi_position_feature_manifest() -> dict[str, object]:
             "line_occupancy_count": LINE_OCCUPANCY_COUNT_OFFSET,
             "counterfactual_removal_self_check": COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
             "counterfactual_removal_opponent_check": COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
-            "counterfactual_removal_slider_blocker": COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
-            "gift_danger": GIFT_DANGER_OFFSET,
-            "capture_flow_opportunity": CAPTURE_FLOW_OPPORTUNITY_OFFSET,
+            "counterfactual_removal_coarse_slider_blocker": COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET,
+            "opponent_drop_potential_after_losing_piece": OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET,
+            "own_drop_potential_after_capturing_piece": OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET,
             "piece_location_empty": PIECE_LOCATION_EMPTY_TOKEN_ID,
             "piece_location_board": PIECE_LOCATION_BOARD_TOKEN_ID,
             "piece_location_hand": PIECE_LOCATION_HAND_TOKEN_ID,

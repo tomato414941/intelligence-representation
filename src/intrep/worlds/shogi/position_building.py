@@ -20,7 +20,7 @@ from intrep.worlds.shogi.position_square_features import (
 )
 from intrep.worlds.shogi.position_tactical_heuristics import (
     counterfactual_removal_token_id_rows,
-    gift_flow_token_id_rows,
+    drop_potential_token_id_rows,
 )
 from intrep.worlds.shogi.position_geometry import opponent_color
 
@@ -58,7 +58,7 @@ def _shogi_position_derived_relations(board: shogi.Board) -> _ShogiPositionDeriv
     }
     return _ShogiPositionDerivedRelations(
         counterfactual_removal_token_rows=counterfactual_removal_token_id_rows(board),
-        gift_flow_token_rows=gift_flow_token_id_rows(board),
+        drop_potential_token_rows=drop_potential_token_id_rows(board),
         drop_shadow_token_rows=drop_shadow_token_id_rows(board, legal_drop_targets_by_color=legal_drop_targets_by_color),
         legal_drop_targets_by_color=legal_drop_targets_by_color,
         piece_slot_relation_infos=piece_slot_relation_infos(board),

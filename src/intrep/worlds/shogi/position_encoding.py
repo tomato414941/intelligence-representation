@@ -35,7 +35,7 @@ from intrep.worlds.shogi.position_square_features import (
 )
 from intrep.worlds.shogi.position_tactical_heuristics import (
     counterfactual_removal_token_id_rows,
-    gift_flow_token_id_rows,
+    drop_potential_token_id_rows,
     hand_piece_type_after_capture,
     has_pseudo_drop_target,
     king_is_attacked,
@@ -43,7 +43,7 @@ from intrep.worlds.shogi.position_tactical_heuristics import (
     line_side_has_piece,
     line_side_has_slider,
     piece_type_can_drop_on_square,
-    slider_line_blocker,
+    coarse_slider_line_blocker,
 )
 from intrep.worlds.shogi.position_line_features import (
     king_on_absolute_squares,

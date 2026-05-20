@@ -101,7 +101,7 @@ def square_feature_id_rows(
                 king_relative_squares[BOARD_TOKEN_COUNT + relative_square],
                 *derived.drop_shadow_token_rows[relative_square],
                 *derived.counterfactual_removal_token_rows[relative_square],
-                *derived.gift_flow_token_rows[relative_square],
+                *derived.drop_potential_token_rows[relative_square],
             ]
         )
     return rows

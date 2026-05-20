@@ -17,7 +17,7 @@ def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
                 [
                     COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
                     COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET,
-                    COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET,
+                    COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET,
                 ]
             )
             continue
@@ -29,14 +29,14 @@ def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
                 + int(king_is_attacked(removed_board, board.turn)),
                 COUNTERFACTUAL_REMOVAL_OPPONENT_CHECK_OFFSET
                 + int(king_is_attacked(removed_board, opponent_color(board.turn))),
-                COUNTERFACTUAL_REMOVAL_SLIDER_BLOCKER_OFFSET
-                + int(slider_line_blocker(board, absolute_square)),
+                COUNTERFACTUAL_REMOVAL_COARSE_SLIDER_BLOCKER_OFFSET
+                + int(coarse_slider_line_blocker(board, absolute_square)),
             ]
         )
     return rows
 
 
-def gift_flow_token_id_rows(board: shogi.Board) -> list[list[int]]:
+def drop_potential_token_id_rows(board: shogi.Board) -> list[list[int]]:
     own_king_zone = king_zone_absolute_squares(board, board.turn)
     opponent_king_zone = king_zone_absolute_squares(board, opponent_color(board.turn))
     rows: list[list[int]] = []
@@ -44,16 +44,16 @@ def gift_flow_token_id_rows(board: shogi.Board) -> list[list[int]]:
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is None:
-            rows.append([GIFT_DANGER_OFFSET, CAPTURE_FLOW_OPPORTUNITY_OFFSET])
+            rows.append([OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET, OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET])
             continue
         hand_piece_type = hand_piece_type_after_capture(piece.piece_type)
-        gift_danger = piece.color == board.turn and has_pseudo_drop_target(
+        opponent_drop_potential_after_losing_piece = piece.color == board.turn and has_pseudo_drop_target(
             board,
             opponent_color(board.turn),
             hand_piece_type,
             own_king_zone,
         )
-        capture_opportunity = piece.color == opponent_color(board.turn) and has_pseudo_drop_target(
+        own_drop_potential_after_capturing_piece = piece.color == opponent_color(board.turn) and has_pseudo_drop_target(
             board,
             board.turn,
             hand_piece_type,
@@ -61,8 +61,8 @@ def gift_flow_token_id_rows(board: shogi.Board) -> list[list[int]]:
         )
         rows.append(
             [
-                GIFT_DANGER_OFFSET + int(gift_danger),
-                CAPTURE_FLOW_OPPORTUNITY_OFFSET + int(capture_opportunity),
+                OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET + int(opponent_drop_potential_after_losing_piece),
+                OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET + int(own_drop_potential_after_capturing_piece),
             ]
         )
     return rows
@@ -73,7 +73,7 @@ def king_is_attacked(board: shogi.Board, color: int) -> bool:
     return king_square is not None and bool(board.attackers(opponent_color(color), int(king_square)))
 
 
-def slider_line_blocker(board: shogi.Board, absolute_square: int) -> bool:
+def coarse_slider_line_blocker(board: shogi.Board, absolute_square: int) -> bool:
     for line_index in range(LINE_TOKEN_COUNT):
         relative_squares = squares_for_line_index(line_index)
         absolute_line = [relative_to_absolute_square(square, board.turn) for square in relative_squares]
