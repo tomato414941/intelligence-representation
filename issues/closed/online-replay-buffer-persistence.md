@@ -72,4 +72,4 @@ records, but it is not the source of truth for Online Replay Buffer state.
 ## Related
 
 - [`online-experience-replay-orchestration.md`](closed/online-experience-replay-orchestration.md)
-- [`experience-store-generalization-boundary.md`](experience-store-generalization-boundary.md)
+- [`mixed-source-store-continual-learning.md`](../mixed-source-store-continual-learning.md)

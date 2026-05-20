@@ -11,8 +11,8 @@ Current responsibilities include:
 
 - source / record representation: `game_record.py`, `game_replay.py`, `kif_io.py`
 - board and move encoding: `position_encoding.py`, `move_encoding.py`
-- learning-data lifecycle: `experience_store.py`, `training_data_bundle.py`,
-  `experience_stats.py`, `game_split.py`
+- learning-data lifecycle: `training_data_bundle.py`, `experience_stats.py`,
+  `game_split.py`
 - USI info inspection: `info_stats.py`, `inspect_usi_info.py`
 - a few package modules with CLI-style `main()` functions
 
@@ -30,7 +30,6 @@ Resolved concrete smells:
 
 - `worlds/shogi` no longer imports from `intrep.problems`.
 - `kif_io.py` stops at `ShogiGameRecord`.
-- `experience_store.py` no longer imports from `training_data_bundle.py`.
 - actor-pair counts live in `experience_stats.py`.
 
 ## Current Policy
@@ -43,8 +42,8 @@ lifecycle.
 
 ## Candidate Direction
 
-If this is revisited, first decide whether Experience Store and Training Data
-Bundle are intentionally shogi-world lifecycle code or should move to a shared
+If this is revisited, first decide whether Training Data Bundle behavior is
+intentionally shogi-world lifecycle code or should move to a shared
 learning-data boundary.
 
 ## Acceptance Criteria
@@ -60,4 +59,4 @@ This issue can close when the project either:
 
 - move files immediately
 - introduce generic world data lifecycle abstractions
-- redesign Experience Store, Training Data Bundle, or Replay Buffer
+- redesign Training Data Bundle or Replay Buffer

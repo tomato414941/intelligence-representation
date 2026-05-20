@@ -257,7 +257,6 @@ echo \"online_experience_replay_config iterations=$ITERATIONS experience_sources
   --target-sample-passes \"$TARGET_SAMPLE_PASSES\" \
   --generator-gate-games \"$GENERATOR_GATE_GAMES\" \
   --generator-gate-worker-processes \"$GENERATOR_GATE_WORKER_PROCESSES\" \
-  --experience-store-dir \"$OUTPUT_DIR/experience-store\" \
   --replay-seed-data-selection \"$REPLAY_SEED_DATA_SELECTION\" \
   --training-eval-data-selection \"$TRAINING_EVAL_DATA_SELECTION\" \
   --next-checkpoint \"$NEXT_CHECKPOINT\" \

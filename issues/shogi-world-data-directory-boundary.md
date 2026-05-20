@@ -63,5 +63,5 @@ This issue can close when one of the following is true:
 ## Non-Goals
 
 - move files immediately
-- redesign Experience Store or Training Data Bundle
+- redesign Training Data Bundle
 - introduce a generic generated-data directory framework

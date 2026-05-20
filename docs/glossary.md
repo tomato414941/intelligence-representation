@@ -369,21 +369,14 @@ Examples:
 Do not force static datasets to be experience. An image file and label row can
 be a source record without being experience.
 
-### Experience Store
+### Mixed Source Store
 
-An Experience Store is durable source storage for generated or collected
-experience.
+A Mixed Source Store is a possible future source-side store for records from
+multiple worlds, problems, teachers, actors, or generation methods.
 
-It is not a PyTorch Dataset. Training should use explicit Data Selection or a
-fixed Training Data Bundle built from a declared Data Selection.
-
-Experience Store records should remain close to the source experience and
-should not be reshaped around one objective, run, or model.
-
-Experience Store is a concept, not proof that a shared implementation exists.
-The current implementation is shogi-local. Whether Experience Store storage
-should remain world/source-specific or become a shared abstraction is an open
-design question.
+It is not implemented. It would not be a PyTorch Dataset, Training Data Bundle,
+Replay Buffer, tensor cache, or online learning loop. Training should still use
+an explicit selected dataset or bundle.
 
 ### Online Experience Replay
 
@@ -412,7 +405,7 @@ Offline Experience Reuse means using previously collected experience records to
 build a fixed training or evaluation set before training starts.
 
 This is closer to ordinary data selection than to a Replay Buffer. It may use
-self-play records, teacher records, run outputs, or an Experience Store as
+self-play records, teacher records, run outputs, or future source stores as
 sources, but the result is a fixed Training Data Bundle or PyTorch Dataset input.
 
 The training pipeline is not special: once fixed, it is learned from like an

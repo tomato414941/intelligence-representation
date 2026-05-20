@@ -132,8 +132,7 @@ uv run python -m intrep.train_image_text_choice \
 Shogi policy/value training consumes a fixed Training Data Bundle through its
 `data-selection.json`. A bundle's train/eval files are durable policy/value
 training examples. The normal durable input for creating a bundle should be a
-stable record set or Experience Store-derived game-record JSONL, not a long
-command line of run-local outputs.
+stable generated record set, not a long command line of run-local outputs.
 
 Repeated training can use a rebuildable tensor cache derived from the same
 `data-selection.json`:

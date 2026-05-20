@@ -68,13 +68,14 @@ A Dataset should not own source storage, split assignment, target construction,
 or learning intent. It should adapt a selected training or evaluation set into
 runtime samples.
 
-## Experience Storage
+## Source Storage
 
-Experience Stores are source storage for generated or collected experience.
-They are not PyTorch Datasets and should not be consumed directly by training.
+Generated or collected source records may need durable storage, but that store
+is not a PyTorch Dataset and should not be consumed directly by training.
 
 Training should consume a declared Data Selection, or a fixed Training Data
-Bundle built from one.
+Bundle built from one. A future mixed source store is tracked separately and
+should not be inferred from any retired shogi-local storage shape.
 
 ## Run Artifacts
 

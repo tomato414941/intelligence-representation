@@ -15,9 +15,9 @@ Examples include:
 - final game outcome
 - repeated appearances of the same position in different games
 
-The raw Experience Store should not collapse these records. However, a Training
-View or derived dataset may eventually need a policy for how to use multiple
-evidence records attached to the same position.
+Raw source records should not be collapsed while being stored. However, a
+Training View or derived dataset may eventually need a policy for how to use
+multiple evidence records attached to the same position.
 
 ## Why It Matters
 
@@ -36,7 +36,7 @@ useful higher-quality annotations.
 
 ## Initial Policy
 
-Do not merge evidence in the raw Experience Store.
+Do not merge evidence in raw source records.
 
 Current Training Data Bundles may keep repeated positions as repeated samples. This is
 acceptable while duplicate/evidence effects are visible through manifest stats

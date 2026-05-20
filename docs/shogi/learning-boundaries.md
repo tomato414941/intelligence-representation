@@ -13,7 +13,6 @@ generic world/problem framework for every future domain.
   side-to-move, next positions, rewards, and done flags
 - KIF / USI parsing and writing
 - legal shogi game records and source-derived game-record JSONL
-- Experience Store
 - Training Data Bundle creation
 - train/eval game-record splitting
 - engine-analysis source records
@@ -50,14 +49,9 @@ moves, next positions, rewards, or problem-derived targets. Those belong in
 `ShogiGameTrace` when computed in memory, or in a rebuildable cache when a run
 needs to avoid recomputing them.
 
-Experience Store and Online Replay Buffer are independent. Experience Store is
-durable source storage for generated or collected shogi experience. Replay
-Buffer is dynamic learner state used by Online Replay.
-
 Online Replay resume reconstructs generated replay state from completed
 iteration artifacts in the run directory. It does not serialize the generic
-`ReplayBuffer` object and does not use Experience Store as replay-buffer
-persistence.
+`ReplayBuffer` object.
 
 ## Online Replay Eval
 

@@ -43,7 +43,6 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-optimizer-steps-per-iteration", type=int)
     parser.add_argument("--generator-gate-games", type=int, default=DEFAULT_GENERATOR_GATE_GAMES)
     parser.add_argument("--generator-gate-worker-processes", type=int, default=DEFAULT_GENERATOR_GATE_WORKER_PROCESSES)
-    parser.add_argument("--experience-store-dir", type=Path)
     parser.add_argument("--replay-seed-data-selection", type=Path)
     parser.add_argument("--training-eval-data-selection", type=Path, required=True)
     parser.add_argument("--next-checkpoint", choices=("best", "final"), default="best")
@@ -107,7 +106,6 @@ def main(argv: list[str] | None = None) -> None:
             ),
             generator_gate_games=args.generator_gate_games,
             generator_gate_worker_processes=args.generator_gate_worker_processes,
-            experience_store_dir=args.experience_store_dir,
             replay_seed_data_selection=args.replay_seed_data_selection,
             training_eval_data_selection=args.training_eval_data_selection,
             next_checkpoint=args.next_checkpoint,

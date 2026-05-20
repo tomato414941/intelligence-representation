@@ -364,7 +364,6 @@ class ShogiOnlineReplayTest(unittest.TestCase):
             self.assertEqual(result.iterations[0].appended_examples, 4)
             self.assertEqual(result.iterations[0].replay_size, 4)
             self.assertEqual(result.iterations[0].sampled_examples, 4)
-            self.assertIsNone(result.iterations[0].experience_store_append)
             self.assertEqual(result.stop_reason, None)
             self.assertEqual(len(gate_commands), 1)
             source_checkpoint_id = load_shogi_policy_value_checkpoint_identity(checkpoint_path).checkpoint_id
@@ -632,13 +631,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 {"games": 1, "wins": 0, "losses": 1, "draws": 0, "unknown_results": 0},
             )
 
-    def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
+    def test_online_replay_seeds_replay_from_bundle_train_split(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
             _write_checkpoint(checkpoint_path)
             run_dir = root / "online"
-            store_dir = root / "store"
             bundle_dir = root / "bundle"
             arena_repo = root / "arena"
             arena_repo.mkdir()
@@ -707,7 +705,6 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                         replay_capacity=8,
                         min_replay_size=1,
                         training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_iteration=8),
-                        experience_store_dir=store_dir,
                         replay_seed_data_selection=bundle_dir / "data-selection.json",
                         training_eval_data_selection=bundle_dir / "data-selection.json",
                         arena_repo=arena_repo,
@@ -717,15 +714,11 @@ class ShogiOnlineReplayTest(unittest.TestCase):
 
             self.assertEqual(result.preloaded_examples, 0)
             self.assertEqual(result.training_eval_examples, 2)
-            self.assertEqual(result.experience_store_dir, store_dir)
             self.assertEqual(result.replay_seed_data_selection, bundle_dir / "data-selection.json")
             self.assertEqual(result.training_eval_data_selection, bundle_dir / "data-selection.json")
             self.assertEqual(train_batches, [6])
             self.assertEqual(eval_batches, [2])
             self.assertEqual(result.iterations[0].replay_size, 6)
-            self.assertIsNotNone(result.iterations[0].experience_store_append)
-            self.assertEqual(result.iterations[0].experience_store_append["added_games"], 2)
-            self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), generated_records)
             metrics = json.loads((run_dir / "iteration-0001" / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["replay"]["preloaded_examples"], 0)
             self.assertEqual(metrics["replay"]["seed_eligible_examples"], 2)
@@ -735,12 +728,9 @@ class ShogiOnlineReplayTest(unittest.TestCase):
             self.assertEqual(metrics["training"]["eval_examples"], 2)
             self.assertEqual(metrics["generation"]["generated_holdout_examples"], 0)
             self.assertEqual(metrics["training"]["eval_source"], "fixed_data_selection")
-            self.assertEqual(metrics["experience_store"]["dir"], str(store_dir))
             self.assertEqual(metrics["replay"]["seed_data_selection"], str(bundle_dir / "data-selection.json"))
             self.assertEqual(metrics["training"]["eval_data_selection"], str(bundle_dir / "data-selection.json"))
-            self.assertEqual(metrics["experience_store"]["append"]["total_games"], 2)
             self.assertEqual(metrics["generation"]["summary"]["game_count"], 2)
-            self.assertIsNotNone(metrics["experience_store"]["append_wall_time_sec"])
             self.assertTrue((run_dir / "iteration-0001" / "generation-summary.json").exists())
 
     def test_online_replay_generates_multiple_experience_sources_per_iteration(self) -> None:

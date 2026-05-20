@@ -35,9 +35,8 @@ same place without clear responsibility.
 
 - [`shogi-player-registry-boundary.md`](shogi-player-registry-boundary.md)
   later removed the player registry.
-- [`../experience-store-generalization-boundary.md`](../experience-store-generalization-boundary.md)
-  tracks whether Experience Store and its Training Data Bundle lifecycle should
-  generalize beyond shogi.
+- [`../mixed-source-store-continual-learning.md`](../mixed-source-store-continual-learning.md)
+  tracks whether a future mixed source store should exist beyond shogi.
 - [`shogi-training-data-bundle-tensor-cache.md`](shogi-training-data-bundle-tensor-cache.md)
   tracks shogi training cache performance.
 

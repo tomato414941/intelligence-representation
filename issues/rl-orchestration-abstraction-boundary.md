@@ -7,7 +7,7 @@ Status: open. Priority: low.
 Shogi Online Replay is starting to expose RL orchestration roles:
 
 - actor experience generation
-- durable Experience Store append
+- durable generated record publication
 - Training Data Bundle construction
 - replay-buffer seeding and sampling
 - learner updates
@@ -32,8 +32,8 @@ The current shogi Online Replay implementation lives under
 `intrep.learning.ReplayBuffer` utility, but the orchestration itself remains
 shogi-specific.
 
-Experience Store and Online Replay Buffer are intentionally independent:
-Experience Store is durable source storage, while Replay Buffer is
+Generated records and Online Replay Buffer are intentionally independent:
+generated records are durable source artifacts, while Replay Buffer is
 learner-facing dynamic sampling state. Training Data Bundle remains a fixed
 training/evaluation input artifact, not the replay buffer.
 
@@ -50,8 +50,8 @@ The near-term target is clear local boundaries, not shared framework code.
 Current local boundaries are:
 
 - `shogi-arena-agent`: game generation runtime and raw game record JSONL
-- `intrep.worlds.shogi`: shogi source-side records, Experience Store, and
-  Training Data Bundle behavior
+- `intrep.worlds.shogi`: shogi source-side records and Training Data Bundle
+  behavior
 - `intrep.problems.shogi_policy_value`: policy/value sample construction,
   training, evaluation, and Online Replay orchestration
 - `intrep.learning`: small reusable learning-time utilities such as
@@ -72,10 +72,10 @@ This issue can close when one of the following is true:
 
 - introduce generic RL base classes now
 - move shogi Online Replay into a shared framework now
-- redesign Experience Store, Training Data Bundle, or Replay Buffer
+- redesign Training Data Bundle or Replay Buffer
 
 ## Related
 
-- [`experience-store-generalization-boundary.md`](experience-store-generalization-boundary.md)
+- [`mixed-source-store-continual-learning.md`](mixed-source-store-continual-learning.md)
 - [`problem-learning-algorithm-boundary.md`](problem-learning-algorithm-boundary.md)
 - [`shogi-rl-loop-orchestration-boundary.md`](shogi-rl-loop-orchestration-boundary.md)

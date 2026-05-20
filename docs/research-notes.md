@@ -38,5 +38,5 @@ Each entry should include:
   source material, selecting Training Data Bundles from it, and considering future
   retrieval or memory-based use instead of forcing every experience directly
   into checkpoints.
-- Status: note only. Use as design context for Experience Store, Training Data Bundle,
+- Status: note only. Use as design context for source records, Training Data Bundle,
   and continual-learning boundaries.

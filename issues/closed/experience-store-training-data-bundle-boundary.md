@@ -55,13 +55,14 @@ This issue can close when one of the following is true:
 
 ## Resolution
 
-This issue was merged into
-[`../experience-store-generalization-boundary.md`](../experience-store-generalization-boundary.md).
+This issue was superseded by
+[`../mixed-source-store-continual-learning.md`](../mixed-source-store-continual-learning.md)
+after the shogi-local Experience Store was retired.
 
 The distinction between the two issues was too small to justify separate
 tracking:
 
 - this issue covered generalizing the Experience Store -> Training Data Bundle ->
   training lifecycle
-- the remaining issue covers generalizing Experience Store and, when needed,
-  its Training Data Bundle lifecycle together
+- the remaining issue covers a possible mixed source store for continual
+  learning, without carrying forward the retired shogi store design

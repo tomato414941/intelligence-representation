@@ -19,7 +19,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
             next_checkpoint="best",
             replay_capacity=8,
-            experience_store_dir=None,
             replay_seed_data_selection=None,
             training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
@@ -61,7 +60,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             final_checkpoint=Path("/tmp/online/iteration-0002/best-checkpoint.pt"),
             next_checkpoint="best",
             replay_capacity=8,
-            experience_store_dir=None,
             replay_seed_data_selection=None,
             training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,
@@ -103,8 +101,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
                     "6",
                     "--generator-gate-worker-processes",
                     "4",
-                    "--experience-store-dir",
-                    "data/shogi/experiences/online",
                     "--replay-seed-data-selection",
                     "data/shogi/training-data-bundles/online/data-selection.json",
                     "--training-eval-data-selection",
@@ -170,7 +166,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_budget.max_optimizer_steps, 5)
         self.assertEqual(config.generator_gate_games, 6)
         self.assertEqual(config.generator_gate_worker_processes, 4)
-        self.assertEqual(config.experience_store_dir, Path("data/shogi/experiences/online"))
         self.assertEqual(
             config.replay_seed_data_selection,
             Path("data/shogi/training-data-bundles/online/data-selection.json"),
@@ -217,7 +212,6 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
             next_checkpoint="final",
             replay_capacity=8,
-            experience_store_dir=None,
             replay_seed_data_selection=None,
             training_eval_data_selection=Path("eval/data-selection.json"),
             preloaded_examples=0,

@@ -14,7 +14,6 @@ import shogi
 from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
 from intrep.problems.shogi_policy_value.examples import load_shogi_move_policy_value_examples_jsonl
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
-from intrep.worlds.shogi.experience_store import append_shogi_experience_store
 from intrep.worlds.shogi.generated_record_archive import archive_shogi_generated_records
 from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
@@ -69,76 +68,7 @@ def _heldout_position_record() -> ShogiGameRecord:
     )
 
 
-class ShogiExperienceStoreScriptsTest(unittest.TestCase):
-    def test_appends_records_to_mutable_store(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            first_input = root / "run-1.jsonl"
-            second_input = root / "run-2.jsonl"
-            store_dir = root / "data" / "shogi" / "experiences" / "main"
-            first_records = [_record(("7g7f", "3c3d"), "black"), _record(("2g2f", "8c8d"), "white")]
-            second_records = [_record(("5g5f", "5c5d"), "black")]
-            write_shogi_game_records_jsonl(first_input, first_records)
-            write_shogi_game_records_jsonl(second_input, second_records)
-
-            first_result = append_shogi_experience_store(input_path=first_input, store_dir=store_dir)
-            second_result = append_shogi_experience_store(input_path=second_input, store_dir=store_dir)
-
-            self.assertEqual(first_result["added_games"], 2)
-            self.assertEqual(second_result["added_games"], 1)
-            self.assertEqual(load_shogi_game_records_jsonl(store_dir / "games.jsonl"), first_records + second_records)
-            manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["schema_version"], "intrep.shogi_experience_store.v1")
-            self.assertEqual(manifest["game_count"], 3)
-            self.assertEqual(manifest["position_stats"]["transition_count"], 6)
-            self.assertEqual(manifest["position_stats"]["unique_position_count"], 4)
-            self.assertEqual(manifest["position_stats"]["duplicate_position_count"], 2)
-            self.assertEqual(manifest["position_stats"]["max_position_repeat_count"], 3)
-            self.assertEqual(manifest["actor_pair_counts"], {"checkpoint:usi_engine": 3})
-            self.assertEqual(
-                manifest["checkpoint_actor_counts"],
-                {"black-model | move_selector=mcts | mcts_simulations_per_move=8": 3},
-            )
-            self.assertEqual(
-                manifest["checkpoint_actor_summaries"],
-                [
-                    {
-                        "count": 3,
-                        "actor_names": ["black-model"],
-                        "checkpoint_id": "black-model",
-                        "checkpoint_path": "runs/shogi/model-a/checkpoint.pt",
-                        "move_selector": "mcts",
-                        "mcts_simulations_per_move": 8,
-                    }
-                ],
-            )
-            history_lines = (store_dir / "history.jsonl").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(len(history_lines), 2)
-            second_history = json.loads(history_lines[1])
-            self.assertEqual(second_history["added_actor_pair_counts"], {"checkpoint:usi_engine": 1})
-            self.assertEqual(
-                second_history["added_checkpoint_actor_counts"],
-                {"black-model | move_selector=mcts | mcts_simulations_per_move=8": 1},
-            )
-            self.assertEqual(second_history["added_checkpoint_actor_summaries"][0]["count"], 1)
-            self.assertEqual(second_history["total_checkpoint_actor_summaries"][0]["count"], 3)
-            self.assertEqual(second_history["total_games"], 3)
-            self.assertEqual(second_history["total_position_stats"]["unique_position_count"], 4)
-
-    def test_append_experience_store_script_is_thin_cli_wrapper(self) -> None:
-        append_module = _load_script_module("append_shogi_experience_store")
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            input_path = root / "games.jsonl"
-            store_dir = root / "store"
-            write_shogi_game_records_jsonl(input_path, [_record(("7g7f", "3c3d"), "black")])
-
-            with patch("sys.stdout", new_callable=StringIO):
-                append_module.main(["--input", str(input_path), "--store", str(store_dir)])
-
-            self.assertTrue((store_dir / "games.jsonl").exists())
-            self.assertTrue((store_dir / "manifest.json").exists())
-
+class ShogiLearningDataScriptsTest(unittest.TestCase):
     def test_archives_generated_records_as_durable_record_set(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -218,53 +148,6 @@ class ShogiExperienceStoreScriptsTest(unittest.TestCase):
             self.assertTrue((output_root / "cli-archive" / "games.jsonl").exists())
             manifest = json.loads((output_root / "cli-archive" / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["source_run"], "runs/shogi/run-a")
-
-    def test_checkpoint_actor_summary_groups_same_checkpoint_settings_across_sides(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            input_path = root / "games.jsonl"
-            store_dir = root / "store"
-            black_actor = ShogiActorSpec(
-                kind="checkpoint",
-                name="black",
-                settings={
-                    "checkpoint_id": "model-a",
-                    "checkpoint_path": "models/model-a/checkpoint.pt",
-                    "move_selector": "mcts",
-                    "mcts_simulations_per_move": 16,
-                },
-            )
-            white_actor = ShogiActorSpec(
-                kind="checkpoint",
-                name="white",
-                settings={
-                    "checkpoint_id": "model-a",
-                    "checkpoint_path": "models/model-a/checkpoint.pt",
-                    "move_selector": "mcts",
-                    "mcts_simulations_per_move": 16,
-                },
-            )
-            write_shogi_game_records_jsonl(
-                input_path,
-                [_record(("7g7f", "3c3d"), "black", black_actor=black_actor, white_actor=white_actor)],
-            )
-
-            append_shogi_experience_store(input_path=input_path, store_dir=store_dir)
-
-            manifest = json.loads((store_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(
-                manifest["checkpoint_actor_summaries"],
-                [
-                    {
-                        "count": 2,
-                        "actor_names": ["black", "white"],
-                        "checkpoint_id": "model-a",
-                        "checkpoint_path": "models/model-a/checkpoint.pt",
-                        "move_selector": "mcts",
-                        "mcts_simulations_per_move": 16,
-                    }
-                ],
-            )
 
     def test_creates_fixed_training_data_bundle_from_explicit_train_eval_sources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

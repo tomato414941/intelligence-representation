@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
     if len(args.train_games) > 1:
         print(
             "warning: multiple --train-games inputs are intended for temporary experiments "
-            "or explicit source mixes. Prefer a stable record set or Experience Store-derived "
+            "or explicit source mixes. Prefer a stable generated record set "
             "input for durable Training Data Bundles.",
             file=sys.stderr,
         )
