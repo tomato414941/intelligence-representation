@@ -1,6 +1,6 @@
 # Shogi Modal Tensor Cache Progress Visibility
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -40,3 +40,13 @@ The output should remain line-oriented and easy to read in a terminal.
 - make cache construction depend on external observability infrastructure
 - change the tensor cache format
 
+## Resolution
+
+The Modal tensor-cache builder now emits line-oriented JSON events for upload,
+reset, build start, periodic shard progress, manifest writing, local release,
+and final completion.
+
+Shard progress is based on committed remote shard manifest files under the
+Modal Volume cache directory. This makes progress reporting independent of
+worker stdout and compatible with shard resume after worker restart or
+preemption.

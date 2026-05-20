@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ DEFAULT_OUTPUT_SPACE = "legal_move"
 DEFAULT_RELEASE = "local"
 DEFAULT_SHARD_EXAMPLES = 10_000
 WORKER_MEMORY_MB = int(os.environ.get("INTREP_MODAL_TENSOR_CACHE_WORKER_MEMORY_MB", "8192"))
+PROGRESS_INTERVAL_SECONDS = float(os.environ.get("INTREP_MODAL_TENSOR_CACHE_PROGRESS_SECONDS", "30"))
 
 
 if modal is not None:
@@ -71,6 +73,7 @@ if modal is not None:
         cache_dir = VOLUME_ROOT / remote_bundle / "cache" / cache_name
         if cache_dir.exists():
             shutil.rmtree(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         volume.commit()
         return {"remote_cache": f"{remote_bundle}/cache/{cache_name}", "removed": True}
 
@@ -159,10 +162,14 @@ def run(
         raise FileNotFoundError(data_selection_path)
 
     if not skip_upload:
+        _log_event("upload_start", local_bundle=str(local_bundle), remote_bundle=remote_bundle)
         _upload_bundle(local_bundle=local_bundle, remote_bundle=remote_bundle)
+        _log_event("upload_done", remote_bundle=remote_bundle)
 
     if reset_cache:
-        print(json.dumps(reset_remote_cache.remote(remote_bundle, cache_name), indent=2))
+        _log_event("reset_start", remote_bundle=remote_bundle, cache_name=cache_name)
+        reset_result = reset_remote_cache.remote(remote_bundle, cache_name)
+        _log_event("reset_done", **reset_result)
 
     tasks = _build_tasks(
         local_data_selection_path=data_selection_path,
@@ -175,35 +182,53 @@ def run(
     if limit_shards is not None:
         tasks = tasks[:limit_shards]
 
-    print(json.dumps({"volume": VOLUME_NAME, "remote_bundle": remote_bundle, "shard_count": len(tasks)}, indent=2))
-    results = list(build_remote_shard.map(tasks))
+    _log_event("build_start", volume=VOLUME_NAME, remote_bundle=remote_bundle, cache_name=cache_name, shard_count=len(tasks))
+    monitor = _RemoteShardProgressMonitor(
+        remote_bundle=remote_bundle,
+        cache_name=cache_name,
+        tasks=tasks,
+        interval_seconds=PROGRESS_INTERVAL_SECONDS,
+    )
+    monitor.start()
+    try:
+        results = list(build_remote_shard.map(tasks))
+    finally:
+        monitor.stop()
+    _log_event("build_done", built_shards=len(results), shard_count=len(tasks))
+
+    _log_event("manifest_start", remote_bundle=remote_bundle, cache_name=cache_name)
     manifest = write_remote_manifest.remote(remote_bundle, shard_examples, cache_name, output_space)
+    _log_event(
+        "manifest_done",
+        train_count=manifest["train_count"],
+        eval_count=manifest["eval_count"],
+        skipped_example_count=manifest["skipped_example_count"],
+        shard_count=len(manifest["shards"]),
+    )
     remote_cache = f"{remote_bundle}/cache/{cache_name}"
     release_result: dict[str, object] | None = None
     if release == "local":
+        _log_event("release_start", remote_cache=remote_cache, local_cache=str(local_cache_path))
         release_result = _release_remote_cache_to_local(
             remote_bundle=remote_bundle,
             cache_name=cache_name,
             local_cache=local_cache_path,
         )
+        _log_event("release_done", **release_result)
 
-    print(
-        json.dumps(
-            {
-                "volume": VOLUME_NAME,
-                "remote_cache": remote_cache,
-                "local_cache": str(local_cache_path) if release == "local" else None,
-                "release": release,
-                "output_space": output_space,
-                "built_shards": len(results),
-                "train_count": manifest["train_count"],
-                "eval_count": manifest["eval_count"],
-                "skipped_example_count": manifest["skipped_example_count"],
-                "shard_count": len(manifest["shards"]),
-                "release_result": release_result,
-            },
-            indent=2,
-        )
+    _log_event(
+        "complete",
+        volume=VOLUME_NAME,
+        remote_cache=remote_cache,
+        local_cache=str(local_cache_path) if release == "local" else None,
+        release=release,
+        output_space=output_space,
+        built_shards=len(results),
+        train_count=manifest["train_count"],
+        eval_count=manifest["eval_count"],
+        skipped_example_count=manifest["skipped_example_count"],
+        shard_count=len(manifest["shards"]),
+        release_result=release_result,
     )
 
 
@@ -251,6 +276,90 @@ def _build_tasks(
                 )
                 shard_index += 1
     return tasks
+
+
+class _RemoteShardProgressMonitor:
+    def __init__(
+        self,
+        *,
+        remote_bundle: str,
+        cache_name: str,
+        tasks: list[dict[str, object]],
+        interval_seconds: float,
+    ) -> None:
+        self.remote_bundle = remote_bundle
+        self.cache_name = cache_name
+        self.expected_paths = {_task_shard_manifest_relative_path(task) for task in tasks}
+        self.interval_seconds = max(1.0, interval_seconds)
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._last_completed_count = -1
+
+    def start(self) -> None:
+        if not self.expected_paths:
+            _log_event("shard_progress", completed_shards=0, shard_count=0)
+            return
+        self._thread = threading.Thread(target=self._run, name="modal-tensor-cache-progress", daemon=True)
+        self._thread.start()
+        self.report()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
+        self.report(force=True)
+
+    def _run(self) -> None:
+        while not self._stop_event.wait(self.interval_seconds):
+            self.report()
+
+    def report(self, *, force: bool = False) -> None:
+        try:
+            completed_paths = _completed_shard_manifest_paths(
+                remote_bundle=self.remote_bundle,
+                cache_name=self.cache_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log_event("shard_progress_error", error=str(exc))
+            return
+
+        completed_count = len(self.expected_paths & completed_paths)
+        if not force and completed_count == self._last_completed_count:
+            return
+        self._last_completed_count = completed_count
+        _log_event(
+            "shard_progress",
+            completed_shards=completed_count,
+            shard_count=len(self.expected_paths),
+            remaining_shards=len(self.expected_paths) - completed_count,
+        )
+
+
+def _completed_shard_manifest_paths(*, remote_bundle: str, cache_name: str) -> set[str]:
+    cache_prefix = f"{remote_bundle}/cache/{cache_name}/"
+    entries = volume.listdir(f"/{remote_bundle}/cache/{cache_name}", recursive=True)
+    paths: set[str] = set()
+    for entry in entries:
+        path = str(entry.path)
+        if not path.endswith(".json"):
+            continue
+        relative_path = path.removeprefix(cache_prefix)
+        if relative_path == "manifest.json":
+            continue
+        paths.add(relative_path)
+    return paths
+
+
+def _task_shard_manifest_relative_path(task: dict[str, object]) -> str:
+    split = str(task["split"])
+    source_index = int(task["source_index"])
+    start = int(task["source_example_start_index"])
+    end = int(task["source_example_end_index"])
+    return f"{split}/source-{source_index:04d}-examples-{start:08d}-{end:08d}.json"
+
+
+def _log_event(event: str, **fields: object) -> None:
+    print(json.dumps({"event": event, **fields}, sort_keys=True), flush=True)
 
 
 def _cache_name_for_output_space(output_space: str) -> str:

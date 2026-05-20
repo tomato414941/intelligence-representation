@@ -547,6 +547,53 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
             volume.batch_upload.assert_called_once_with(force=True)
             batch.put_directory.assert_called_once_with(str(local_bundle), "/qhapaq-full")
 
+    def test_modal_tensor_cache_builder_names_shard_manifest_path_from_task(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+
+        self.assertEqual(
+            modal_builder._task_shard_manifest_relative_path(
+                {
+                    "split": "train",
+                    "source_index": 2,
+                    "source_example_start_index": 10000,
+                    "source_example_end_index": 20000,
+                }
+            ),
+            "train/source-0002-examples-00010000-00020000.json",
+        )
+
+    def test_modal_tensor_cache_builder_reads_completed_shard_manifest_paths(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+        file_entry = type("FileEntry", (), {})
+        paths = [
+            "qhapaq-full/cache/policy-plane/train/source-0000-examples-00000000-00010000.json",
+            "qhapaq-full/cache/policy-plane/eval/source-0000-examples-00000000-00010000.json",
+            "qhapaq-full/cache/policy-plane/manifest.json",
+            "qhapaq-full/cache/policy-plane/train/source-0000-examples-00000000-00010000.pt",
+        ]
+        entries = []
+        for path in paths:
+            entry = file_entry()
+            entry.path = path
+            entries.append(entry)
+        volume = MagicMock()
+        volume.listdir.return_value = entries
+
+        with patch.object(modal_builder, "volume", volume, create=True):
+            completed = modal_builder._completed_shard_manifest_paths(
+                remote_bundle="qhapaq-full",
+                cache_name="policy-plane",
+            )
+
+        self.assertEqual(
+            completed,
+            {
+                "train/source-0000-examples-00000000-00010000.json",
+                "eval/source-0000-examples-00000000-00010000.json",
+            },
+        )
+        volume.listdir.assert_called_once_with("/qhapaq-full/cache/policy-plane", recursive=True)
+
 
 def _load_script_module(name: str) -> ModuleType:
     script_path = Path(__file__).resolve().parents[1] / "scripts" / f"{name}.py"
