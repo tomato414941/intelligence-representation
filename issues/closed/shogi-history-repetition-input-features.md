@@ -1,6 +1,6 @@
 # Shogi History And Repetition Input Features
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -39,3 +39,18 @@ runtime evaluation handle positions where the history context is unavailable.
 - If included, define the feature schema and unknown-context behavior.
 - If deferred, document why current-position input remains acceptable for the
   next training run.
+
+## Resolution
+
+Do not add history/repetition input features for the next shogi training run.
+
+History and repetition context cannot be recovered from a standalone current
+SFEN. Adding it now would require unknown-context handling across training
+examples, tensor caches, inference, and runtime evaluation. That complexity is
+not justified before the current-position model has completed a real training
+run.
+
+The current-position input remains acceptable for the next run. Repetition,
+illegal moves, terminal state, and draw-rule enforcement remain game/runtime
+responsibilities. This can be revisited later if value errors around repetition
+or no-progress positions become a measured weakness.
