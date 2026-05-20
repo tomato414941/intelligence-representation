@@ -42,8 +42,9 @@ Local RunPod credentials and SSH key paths are provided at runtime through CLI
 arguments or environment variables: `RUNPOD_API_KEY` or `RUNPOD_API_KEY_FILE`,
 `RUNPOD_SSH_KEY`, `RUNPOD_SSH_PUBLIC_KEY`, and optionally `RUNPODCTL`.
 
-This entrypoint is policy-value specific. Generalizing shogi RunPod training is
-tracked in `issues/runpod-shogi-training-entrypoint-generalization.md`.
+This entrypoint is intentionally policy-value specific. Its wrapper
+responsibility is tracked in
+`issues/runpod-shogi-training-wrapper-responsibility.md`.
 
 ## Shogi Checkpoint
 
