@@ -21,6 +21,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    shogi_policy_value_components_for_assembly_spec_id,
     validate_shogi_policy_value_components,
 )
 from intrep.worlds.shogi.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
@@ -154,7 +155,7 @@ def _state_element_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
     return position_hidden[:, STATE_ELEMENT_INDEX]
 
 
-def build_shogi_policy_value_model(
+def _build_shogi_policy_value_model_from_components(
     *,
     input: str,
     core: str,
@@ -198,6 +199,29 @@ def build_shogi_policy_value_model(
             )
         )
     raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
+
+
+def build_shogi_policy_value_model_for_assembly_spec(
+    *,
+    assembly_spec_id: str,
+    embedding_dim: int,
+    num_heads: int,
+    hidden_dim: int,
+    num_layers: int,
+    dropout: float = 0.0,
+) -> nn.Module:
+    components = shogi_policy_value_components_for_assembly_spec_id(assembly_spec_id)
+    return _build_shogi_policy_value_model_from_components(
+        input=components["input"],
+        core=components["core"],
+        policy_output=components["policy_output"],
+        value_output=components["value_output"],
+        embedding_dim=embedding_dim,
+        num_heads=num_heads,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        dropout=dropout,
+    )
 
 
 def _build_shogi_position_encoder(

@@ -24,7 +24,10 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_legal_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
+from intrep.problems.shogi_policy_value.output_space import (
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    shogi_policy_value_output_space_for_assembly_spec,
+)
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
@@ -76,12 +79,13 @@ def evaluate_shogi_policy_value_checkpoint(
     used_train_examples = _limit_examples(train_examples, max_train_examples, label="max train examples")
     used_eval_examples = _limit_examples(eval_examples, max_eval_examples, label="max eval examples")
     checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
+    output_space = shogi_policy_value_output_space_for_assembly_spec(checkpoint_config.assembly_spec_id)
     model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
     train_metrics = evaluate_shogi_policy_value_metrics(
         model,
         _loader(
             used_train_examples,
-            policy_output=checkpoint_config.policy_output,
+            output_space=output_space,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -91,7 +95,7 @@ def evaluate_shogi_policy_value_checkpoint(
         model,
         _loader(
             used_eval_examples,
-            policy_output=checkpoint_config.policy_output,
+            output_space=output_space,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -119,12 +123,12 @@ def evaluate_shogi_policy_value_checkpoint(
 def _loader(
     examples: list[ShogiPolicyValueDatasetItem],
     *,
-    policy_output: str,
+    output_space: str,
     batch_size: int,
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
-    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         dataset = ShogiPolicyPlaneValueDataset(examples)
         collate_fn = collate_policy_plane_value_samples
     else:

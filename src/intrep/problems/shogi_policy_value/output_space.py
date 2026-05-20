@@ -4,6 +4,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+    shogi_policy_value_policy_output_for_assembly_spec_id,
 )
 
 SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE = "legal_move"
@@ -23,6 +24,12 @@ def shogi_policy_value_output_space_for_policy_output(policy_output: str) -> str
     if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
     raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
+
+
+def shogi_policy_value_output_space_for_assembly_spec(assembly_spec_id: str) -> str:
+    return shogi_policy_value_output_space_for_policy_output(
+        shogi_policy_value_policy_output_for_assembly_spec_id(assembly_spec_id)
+    )
 
 
 def validate_shogi_policy_value_output_space(output_space: str) -> None:

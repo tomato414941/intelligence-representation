@@ -71,6 +71,10 @@ def shogi_policy_value_assembly_spec_for_id(assembly_spec_id: str) -> dict[str, 
     return shogi_policy_value_assembly_spec(**components)
 
 
+def shogi_policy_value_policy_output_for_assembly_spec_id(assembly_spec_id: str) -> str:
+    return shogi_policy_value_components_for_assembly_spec_id(assembly_spec_id)["policy_output"]
+
+
 def shogi_policy_value_assembly_spec(
     *,
     input: str,

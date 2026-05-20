@@ -13,7 +13,10 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint,
     load_shogi_policy_value_checkpoint_training_config,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
+from intrep.problems.shogi_policy_value.output_space import (
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    shogi_policy_value_output_space_for_assembly_spec,
+)
 from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_legal_mask
 from intrep.worlds.shogi.position_encoding import (
@@ -146,7 +149,7 @@ def benchmark_shogi_policy_value_inference_batching(
         model = model.to(dtype=torch_dtype)
     model.eval()
     config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
-    policy_output = str(config.policy_output)
+    output_space = shogi_policy_value_output_space_for_assembly_spec(config.assembly_spec_id)
     positions = tuple(position_sfens)
 
     batch_results: list[dict[str, object]] = []
@@ -156,7 +159,7 @@ def benchmark_shogi_policy_value_inference_batching(
                 batch_positions = _cycled_batch(positions, batch_size, batch_index)
                 _run_policy_value_inference_batch(
                     model,
-                    policy_output=policy_output,
+                    output_space=output_space,
                     position_sfens=batch_positions,
                     device=torch_device,
                 )
@@ -171,7 +174,7 @@ def benchmark_shogi_policy_value_inference_batching(
                 started = time.perf_counter()
                 output_count = _run_policy_value_inference_batch(
                     model,
-                    policy_output=policy_output,
+                    output_space=output_space,
                     position_sfens=batch_positions,
                     device=torch_device,
                 )
@@ -200,7 +203,8 @@ def benchmark_shogi_policy_value_inference_batching(
         "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
         "checkpoint_path": str(checkpoint_path),
-        "policy_output": policy_output,
+        "assembly_spec_id": config.assembly_spec_id,
+        "output_space": output_space,
         "device": str(torch_device),
         "dtype": dtype,
         "position_count": len(positions),
@@ -229,7 +233,7 @@ def write_json_result(result: dict[str, object], path: str | Path | None) -> Non
 def _run_policy_value_inference_batch(
     model: torch.nn.Module,
     *,
-    policy_output: str,
+    output_space: str,
     position_sfens: Sequence[str],
     device: torch.device,
 ) -> int:
@@ -237,7 +241,7 @@ def _run_policy_value_inference_batch(
     position_features = stack_shogi_position_features(
         [shogi_position_features_from_sfen(position_sfen) for position_sfen in position_sfens]
     ).to(device)
-    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(device)
         logits, values = model.forward_policy_value(position_features, legal_action_mask)
     else:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import time
 from typing import Callable, Literal, Sequence
 import warnings
@@ -22,13 +22,14 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_policy_plane_value_samples,
 )
 from intrep.representation.assemblies.shogi_policy_value import (
-    build_shogi_policy_value_model as build_shogi_policy_value_model_from_components,
+    build_shogi_policy_value_model_for_assembly_spec,
 )
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    shogi_policy_value_components_for_assembly_spec_id,
-    validate_shogi_policy_value_components,
+)
+from intrep.problems.shogi_policy_value.output_space import (
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    shogi_policy_value_output_space_for_assembly_spec,
 )
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
@@ -45,10 +46,6 @@ class ShogiPolicyValueTrainingConfig:
     num_heads: int = 8
     num_layers: int = 6
     assembly_spec_id: str = SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID
-    input: str = field(init=False)
-    core: str = field(init=False)
-    policy_output: str = field(init=False)
-    value_output: str = field(init=False)
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     allow_nonstandard_loss_weights: bool = False
@@ -61,13 +58,6 @@ class ShogiPolicyValueTrainingConfig:
     progress_every: int | None = None
     eval_every: int | None = None
     early_stopping_patience: int | None = None
-
-    def __post_init__(self) -> None:
-        components = shogi_policy_value_components_for_assembly_spec_id(self.assembly_spec_id)
-        object.__setattr__(self, "input", components["input"])
-        object.__setattr__(self, "core", components["core"])
-        object.__setattr__(self, "policy_output", components["policy_output"])
-        object.__setattr__(self, "value_output", components["value_output"])
 
 
 @dataclass(frozen=True)
@@ -170,12 +160,7 @@ def train_shogi_policy_value_model(
         raise ValueError("eval_every is required when early_stopping_patience is set")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
-    validate_shogi_policy_value_components(
-        input=training_config.input,
-        core=training_config.core,
-        policy_output=training_config.policy_output,
-        value_output=training_config.value_output,
-    )
+    shogi_policy_value_output_space_for_assembly_spec(training_config.assembly_spec_id)
     validate_shogi_policy_value_loss_weights(training_config)
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
@@ -527,7 +512,9 @@ def _build_shogi_policy_value_dataset(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     config: ShogiPolicyValueTrainingConfig,
 ) -> ShogiLegalMovePolicyValueDataset | ShogiPolicyPlaneValueDataset:
-    if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+    if shogi_policy_value_output_space_for_assembly_spec(
+        config.assembly_spec_id
+    ) == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         return ShogiPolicyPlaneValueDataset(examples)
     return ShogiLegalMovePolicyValueDataset(examples)
 
@@ -621,11 +608,8 @@ def _limit_examples(
 
 
 def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
-    return build_shogi_policy_value_model_from_components(
-        input=config.input,
-        core=config.core,
-        policy_output=config.policy_output,
-        value_output=config.value_output,
+    return build_shogi_policy_value_model_for_assembly_spec(
+        assembly_spec_id=config.assembly_spec_id,
         embedding_dim=config.embedding_dim,
         num_heads=config.num_heads,
         hidden_dim=config.hidden_dim,

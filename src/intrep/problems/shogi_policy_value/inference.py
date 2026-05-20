@@ -10,7 +10,10 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint,
     load_shogi_policy_value_checkpoint_training_config,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
+from intrep.problems.shogi_policy_value.output_space import (
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    shogi_policy_value_output_space_for_assembly_spec,
+)
 from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
 from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen, stack_shogi_position_features
@@ -31,7 +34,10 @@ class ShogiPolicyValueCheckpointEvaluator:
         model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
         config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
         torch_device = torch.device(device)
-        if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+        if (
+            shogi_policy_value_output_space_for_assembly_spec(config.assembly_spec_id)
+            == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
+        ):
             return cls(_policy_plane_evaluator(model, torch_device))
         return cls(_legal_move_evaluator(model, torch_device))
 
