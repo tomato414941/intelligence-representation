@@ -10,17 +10,17 @@ from intrep.worlds.shogi.position_piece_features import piece_feature_id_rows, p
 from intrep.worlds.shogi.position_line_features import line_feature_id_rows
 from intrep.worlds.shogi.position_schema import SHOGI_POSITION_STATE_FEATURE_ID
 from intrep.worlds.shogi.position_square_features import (
-    drop_shadow_token_id_rows,
-    hand_token_ids,
-    in_check_token_id,
+    drop_shadow_feature_id_rows,
+    hand_feature_ids,
+    in_check_feature_id,
     legal_drop_targets_by_piece_type,
     move_count_bucket_feature_id,
-    side_to_move_token_id,
+    side_to_move_feature_id,
     square_feature_id_rows,
 )
 from intrep.worlds.shogi.position_tactical_heuristics import (
-    counterfactual_removal_token_id_rows,
-    drop_potential_token_id_rows,
+    counterfactual_removal_feature_id_rows,
+    drop_potential_feature_id_rows,
 )
 from intrep.worlds.shogi.position_geometry import opponent_color
 
@@ -31,10 +31,10 @@ def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatur
     global_feature_ids = torch.tensor(
         [
             SHOGI_POSITION_STATE_FEATURE_ID,
-            side_to_move_token_id(board.turn),
-            in_check_token_id(board.is_check()),
+            side_to_move_feature_id(board.turn),
+            in_check_feature_id(board.is_check()),
             move_count_bucket_feature_id(board.move_number),
-            *hand_token_ids(board),
+            *hand_feature_ids(board),
         ],
         dtype=torch.long,
     )
@@ -57,9 +57,9 @@ def _shogi_position_derived_relations(board: shogi.Board) -> _ShogiPositionDeriv
         opponent_color(board.turn): legal_drop_targets_by_piece_type(board, opponent_color(board.turn)),
     }
     return _ShogiPositionDerivedRelations(
-        counterfactual_removal_token_rows=counterfactual_removal_token_id_rows(board),
-        drop_potential_token_rows=drop_potential_token_id_rows(board),
-        drop_shadow_token_rows=drop_shadow_token_id_rows(board, legal_drop_targets_by_color=legal_drop_targets_by_color),
+        counterfactual_removal_feature_rows=counterfactual_removal_feature_id_rows(board),
+        drop_potential_feature_rows=drop_potential_feature_id_rows(board),
+        drop_shadow_feature_rows=drop_shadow_feature_id_rows(board, legal_drop_targets_by_color=legal_drop_targets_by_color),
         legal_drop_targets_by_color=legal_drop_targets_by_color,
         piece_slot_relation_infos=piece_slot_relation_infos(board),
     )

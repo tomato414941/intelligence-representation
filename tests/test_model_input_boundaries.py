@@ -73,7 +73,7 @@ class ModelInputBoundariesTest(unittest.TestCase):
 
         self.assertEqual(hidden.shape, torch.Size([1, 4, 8]))
 
-    def test_shared_core_accepts_additive_attention_bias(self) -> None:
+    def test_shared_core_accepts_additive_attention_logit_bias(self) -> None:
         core = SharedTransformerCore(
             embedding_dim=8,
             num_heads=2,
@@ -81,13 +81,13 @@ class ModelInputBoundariesTest(unittest.TestCase):
             num_layers=1,
         )
         embeddings = torch.zeros((1, 4, 8), dtype=torch.float32)
-        attention_bias = torch.zeros((4, 4), dtype=torch.float32)
+        attention_logit_bias = torch.zeros((4, 4), dtype=torch.float32)
 
-        hidden = core(embeddings, attention_bias=attention_bias)
+        hidden = core(embeddings, attention_logit_bias=attention_logit_bias)
 
         self.assertEqual(hidden.shape, torch.Size([1, 4, 8]))
 
-    def test_shared_core_rejects_attention_bias_with_wrong_shape(self) -> None:
+    def test_shared_core_rejects_attention_logit_bias_with_wrong_shape(self) -> None:
         core = SharedTransformerCore(
             embedding_dim=8,
             num_heads=2,
@@ -96,8 +96,8 @@ class ModelInputBoundariesTest(unittest.TestCase):
         )
         embeddings = torch.zeros((1, 4, 8), dtype=torch.float32)
 
-        with self.assertRaisesRegex(ValueError, "attention_bias"):
-            core(embeddings, attention_bias=torch.zeros((3, 3), dtype=torch.float32))
+        with self.assertRaisesRegex(ValueError, "attention_logit_bias"):
+            core(embeddings, attention_logit_bias=torch.zeros((3, 3), dtype=torch.float32))
 
     def test_image_and_text_embeddings_can_be_concatenated_for_one_core_pass(self) -> None:
         embedding_dim = 8

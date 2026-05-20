@@ -85,7 +85,7 @@ class ShogiPositionInputLayer(nn.Module):
         return self.line_norm(line_hidden + self.line_slot_embedding(slots))
 
 
-class ShogiPositionGeometryAttentionBias(nn.Module):
+class ShogiPositionAttentionLogitBias(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.relation_bias = nn.Embedding(17 * 17, 1)
@@ -146,19 +146,19 @@ class ShogiPositionEncoder(nn.Module):
         *,
         input_layer: nn.Module,
         core: nn.Module,
-        attention_bias: nn.Module,
+        attention_logit_bias: nn.Module,
     ) -> None:
         super().__init__()
         self.input = input_layer
         self.core = core
-        self.attention_bias = attention_bias
+        self.attention_logit_bias = attention_logit_bias
 
     def forward(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         position_embeddings = self.input(position_features)
         return self.core(
             position_embeddings,
             causal=False,
-            attention_bias=self.attention_bias(position_features, position_embeddings),
+            attention_logit_bias=self.attention_logit_bias(position_features, position_embeddings),
         )
 
 

@@ -8,7 +8,7 @@ from torch import nn
 from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.representation.inputs.shogi_position import (
     ShogiPositionEncoder,
-    ShogiPositionGeometryAttentionBias,
+    ShogiPositionAttentionLogitBias,
     ShogiPositionInputLayer,
 )
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
@@ -216,7 +216,7 @@ def _build_shogi_position_encoder(
 ) -> ShogiPositionEncoder:
     return ShogiPositionEncoder(
         input_layer=ShogiPositionInputLayer(embedding_dim=embedding_dim),
-        attention_bias=ShogiPositionGeometryAttentionBias(),
+        attention_logit_bias=ShogiPositionAttentionLogitBias(),
         core=SharedTransformerCore(
             embedding_dim=embedding_dim,
             num_heads=num_heads,

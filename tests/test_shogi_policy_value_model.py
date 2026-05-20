@@ -22,7 +22,7 @@ from intrep.problems.shogi_policy_value.model import (
     _state_element_hidden,
     shogi_policy_value_model_spec,
 )
-from intrep.representation.inputs.shogi_position import ShogiPositionGeometryAttentionBias, ShogiPositionInputLayer
+from intrep.representation.inputs.shogi_position import ShogiPositionAttentionLogitBias, ShogiPositionInputLayer
 from intrep.representation.outputs.shogi_legal_move import (
     ShogiStateSummaryLegalMovePolicyOutput,
     _legal_move_square_hidden,
@@ -128,7 +128,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(model.policy_output.policy_head.scorer[0].in_features, 8 * 2)
 
-    def test_legal_move_square_hidden_maps_square_ids_to_board_tokens(self) -> None:
+    def test_legal_move_square_hidden_maps_square_ids_to_board_features(self) -> None:
         position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
             SHOGI_POSITION_ELEMENT_COUNT,
@@ -162,10 +162,10 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         embeddings = layer(position_features)
 
-        token_norms = embeddings.norm(dim=-1)
-        self.assertLess(float(token_norms.max().item() - token_norms.min().item()), 1e-3)
+        element_norms = embeddings.norm(dim=-1)
+        self.assertLess(float(element_norms.max().item() - element_norms.min().item()), 1e-3)
 
-    def test_state_element_hidden_uses_first_position_token(self) -> None:
+    def test_state_element_hidden_uses_first_position_element(self) -> None:
         position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
             SHOGI_POSITION_ELEMENT_COUNT,
@@ -176,14 +176,14 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertTrue(torch.equal(state_hidden, position_hidden[:, 0]))
 
-    def test_position_geometry_attention_bias_targets_square_and_line_pairs(self) -> None:
+    def test_position_geometry_attention_logit_bias_targets_square_and_line_pairs(self) -> None:
         position_features, _, _, _, _, _ = _batch()
         embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
-        attention_bias = ShogiPositionGeometryAttentionBias()
-        attention_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
-        attention_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
+        attention_logit_bias = ShogiPositionAttentionLogitBias()
+        attention_logit_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
+        attention_logit_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
 
-        bias = attention_bias(position_features, embeddings)
+        bias = attention_logit_bias(position_features, embeddings)
         same_square_relation = 8 * 17 + 8
         one_file_right_relation = 8 * 17 + 9
 
@@ -202,14 +202,14 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, LINE_ELEMENT_OFFSET].item()), 500.0)
         self.assertEqual(float(bias[0, LINE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET + 1].item()), 0.0)
 
-    def test_position_geometry_attention_bias_adds_dynamic_pair_relation_bias(self) -> None:
+    def test_position_geometry_attention_logit_bias_adds_dynamic_pair_relation_bias(self) -> None:
         position_features, _, _, _, _, _ = _batch()
         embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
-        attention_bias = ShogiPositionGeometryAttentionBias()
-        attention_bias.pair_relation_bias.weight.data[:, 0] = 0.0
-        attention_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
+        attention_logit_bias = ShogiPositionAttentionLogitBias()
+        attention_logit_bias.pair_relation_bias.weight.data[:, 0] = 0.0
+        attention_logit_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
 
-        bias = attention_bias(position_features, embeddings)
+        bias = attention_logit_bias(position_features, embeddings)
         pair_relation_edges = position_features.pair_relation_edges
         relation_indices = pair_relation_edges.relation_ids.eq(PAIR_RELATION_PIECE_ON_SQUARE).nonzero()
 
@@ -220,7 +220,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         column = int(pair_relation_edges.target_element_indices[edge_index].item())
         self.assertEqual(float(bias[batch, row, column].item()), 700.0)
 
-    def test_shared_models_pass_position_geometry_attention_bias_to_core(self) -> None:
+    def test_shared_models_pass_position_geometry_attention_logit_bias_to_core(self) -> None:
         position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
@@ -234,7 +234,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         model(position_features, legal_move_features, legal_move_mask)
 
-        self.assertIn("attention_bias", model.encoder.core.forward.call_args.kwargs)
+        self.assertIn("attention_logit_bias", model.encoder.core.forward.call_args.kwargs)
 
     def test_policy_plane_head_returns_fixed_action_logits(self) -> None:
         head = ShogiPolicyPlaneHead(

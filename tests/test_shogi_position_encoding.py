@@ -258,7 +258,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
             OWN_KING_RELATIVE_SQUARE_OFFSET + 1 + expected_bucket,
         )
 
-    def test_encodes_fixed_piece_tokens_in_relative_square_order(self) -> None:
+    def test_encodes_fixed_piece_features_in_relative_square_order(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
@@ -274,7 +274,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.piece_feature_ids[3, 0].item()), PIECE_LOCATION_EMPTY_FEATURE_ID)
         self.assertEqual(int(features.piece_feature_ids[3, 2].item()), PIECE_SQUARE_UNKNOWN_FEATURE_ID)
 
-    def test_piece_tokens_include_king_relative_square_features(self) -> None:
+    def test_piece_features_include_king_relative_square_features(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
@@ -348,8 +348,8 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
-        white_king_token = PIECE_ELEMENT_OFFSET
-        rook_token = PIECE_ELEMENT_OFFSET + 1
+        white_king_element = PIECE_ELEMENT_OFFSET
+        rook_element = PIECE_ELEMENT_OFFSET + 1
 
         relation_edges = {
             (int(source.item()), int(target.item()), int(relation.item()))
@@ -362,14 +362,14 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         }
 
         self.assertIn(
-            (rook_token, SQUARE_ELEMENT_OFFSET + relative_5e, PAIR_RELATION_PIECE_ON_SQUARE),
+            (rook_element, SQUARE_ELEMENT_OFFSET + relative_5e, PAIR_RELATION_PIECE_ON_SQUARE),
             relation_edges,
         )
         self.assertIn(
-            (rook_token, SQUARE_ELEMENT_OFFSET + relative_5a, PAIR_RELATION_PIECE_ATTACKS_SQUARE),
+            (rook_element, SQUARE_ELEMENT_OFFSET + relative_5a, PAIR_RELATION_PIECE_ATTACKS_SQUARE),
             relation_edges,
         )
-        self.assertIn((rook_token, white_king_token, PAIR_RELATION_PIECE_ATTACKS_PIECE), relation_edges)
+        self.assertIn((rook_element, white_king_element, PAIR_RELATION_PIECE_ATTACKS_PIECE), relation_edges)
 
     def test_encodes_line_features(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
@@ -382,7 +382,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.line_feature_ids[file_5_line, 4].item()), LINE_OPPONENT_SLIDER_ON_LINE_OFFSET)
         self.assertEqual(int(features.line_feature_ids[file_5_line, 5].item()), LINE_OCCUPANCY_COUNT_OFFSET + 3)
 
-    def test_piece_tokens_include_hand_pieces_after_board_pieces(self) -> None:
+    def test_piece_features_include_hand_pieces_after_board_pieces(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b P2b 1")
 
         self.assertEqual(int(features.piece_feature_ids[3, 0].item()), PIECE_LOCATION_HAND_FEATURE_ID)
@@ -398,7 +398,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(PIECE_SLOT_COUNT, 40)
         self.assertNotEqual(int(features.piece_feature_ids[PIECE_SLOT_COUNT - 1, 0].item()), PIECE_LOCATION_EMPTY_FEATURE_ID)
 
-    def test_incomplete_piece_tokens_are_padded_to_forty_slots(self) -> None:
+    def test_incomplete_piece_features_are_padded_to_forty_slots(self) -> None:
         features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
 
         self.assertEqual(PIECE_SLOT_COUNT, 40)

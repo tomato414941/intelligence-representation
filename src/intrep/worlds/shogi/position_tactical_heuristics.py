@@ -7,7 +7,7 @@ from intrep.worlds.shogi.position_line_features import line_kind_index, piece_sl
 from intrep.worlds.shogi.position_schema import *
 
 
-def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
+def counterfactual_removal_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     rows: list[list[int]] = []
     for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
@@ -36,7 +36,7 @@ def counterfactual_removal_token_id_rows(board: shogi.Board) -> list[list[int]]:
     return rows
 
 
-def drop_potential_token_id_rows(board: shogi.Board) -> list[list[int]]:
+def drop_potential_feature_id_rows(board: shogi.Board) -> list[list[int]]:
     own_king_zone = king_zone_absolute_squares(board, board.turn)
     opponent_king_zone = king_zone_absolute_squares(board, opponent_color(board.turn))
     rows: list[list[int]] = []
