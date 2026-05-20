@@ -21,8 +21,8 @@ Modal-specific issue.
 - `qhapaq-full` tensor cache:
   - train samples: 4,951,012
   - eval samples: 262,133
-- `scripts/modal_train_shogi_policy_value.py` full run can stay silent during
-  the initial full evaluation phase.
+- A former Modal full-training wrapper could stay silent during the initial
+  full evaluation phase.
 - Short smoke runs are visible once the step loop starts, so the missing signal
   is specifically before or inside long evaluation phases.
 
@@ -37,7 +37,7 @@ At minimum:
 - print periodic batch/sample progress inside long evaluation loops
 - include elapsed seconds in those messages
 - keep the mechanism inside the shogi training/evaluation code, not in the
-  Modal runner
+  remote runner
 
 ## Close Conditions
 
