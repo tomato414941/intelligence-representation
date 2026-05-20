@@ -36,47 +36,11 @@ This script is a thin transport wrapper around the shared
 repository sync, setup, output collection, and timing capture. It does not own
 training settings.
 
-Pass the actual workload through `REMOTE_COMMAND`. For shogi policy/value
-training, the canonical training interface is
-`python -m intrep.train_shogi_policy_value`; select the model-side design with
-`--assembly-spec`.
-
-Example:
-
-```sh
-SYNC_PATHS="data/shogi/training-data-bundles/qhapaq-full/data-selection.json data/shogi/tensor-caches/qhapaq-full/cache.pt" \
-OUTPUT_DIR="runs/shogi/full-001" \
-REMOTE_COMMAND='.venv/bin/python -u -m intrep.train_shogi_policy_value \
-  --data-selection data/shogi/training-data-bundles/qhapaq-full/data-selection.json \
-  --tensor-cache data/shogi/tensor-caches/qhapaq-full/cache.pt \
-  --checkpoint-path runs/shogi/full-001/checkpoint.pt \
-  --best-checkpoint-path runs/shogi/full-001/best_checkpoint.pt \
-  --metrics-path runs/shogi/full-001/metrics.json \
-  --assembly-spec shogi_policy_value_position_transformer_policy_plane \
-  --max-steps 5000 \
-  --batch-size 512 \
-  --device cuda \
-  --num-workers 0' \
-scripts/runpod/run_command.sh
-```
+Pass the actual workload through `REMOTE_COMMAND`.
 
 Local RunPod credentials and SSH key paths are provided at runtime through CLI
 arguments or environment variables: `RUNPOD_API_KEY` or `RUNPOD_API_KEY_FILE`,
 `RUNPOD_SSH_KEY`, `RUNPOD_SSH_PUBLIC_KEY`, and optionally `RUNPODCTL`.
-
-## Shogi Checkpoint
-
-RunPod shogi runs use the promoted d256 checkpoint by default:
-
-```text
-models/d256-h1024-heads8-l6-shogi/checkpoint.pt
-```
-
-The d32 checkpoint is for local smoke tests. Do not use it for RunPod training
-or arena evaluation unless the run is explicitly a d32 smoke.
-
-RunPod shogi self-play generation uses the `cshogi` board backend by default.
-The `python-shogi` backend is kept as a compatibility option.
 
 ## Runtime Choices
 
