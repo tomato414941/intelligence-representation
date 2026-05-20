@@ -1,6 +1,6 @@
 # RunPod Shogi Training Wrapper Responsibility
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -72,3 +72,20 @@ This issue can close when one of the following is true:
   training surface, with docs aligned to its defaults, or
 - the wrapper is thinned so RunPod-specific settings remain in the wrapper and
   training-specific settings are delegated to the canonical training CLI/config.
+
+## Resolution
+
+The shogi-specific RunPod training wrapper was removed.
+
+RunPod execution now goes through `scripts/runpod/run_command.sh`, which only
+owns remote execution mechanics:
+
+- RunPod runner/template/GPU/runtime settings
+- repository and artifact sync
+- remote setup
+- output and timing collection
+
+Training configuration is passed explicitly through `REMOTE_COMMAND` to the
+canonical training CLI, for example `python -m intrep.train_shogi_policy_value`.
+This removes the second shell-level policy/value training interface and avoids
+default drift between the wrapper and the training CLI.

@@ -23,28 +23,45 @@ and installs non-torch runtime dependencies explicitly.
 For torchvision jobs, run `./scripts/setup_runpod_vision.sh` after
 `setup_runpod.sh` and provide a torchvision wheel matching the selected image.
 
-## Shogi Training
+## RunPod Command Runner
 
 Current entrypoint:
 
 ```sh
-scripts/runpod_train_shogi_policy_value.sh
+scripts/runpod/run_command.sh
 ```
 
-Set `MODEL=policy_plane_shared_transformer` for policy-plane shogi training.
-The default remains `shared_transformer`.
+This script is a thin transport wrapper around the shared
+`../runpod-job-runner/scripts/run_job.py` helper. It owns RunPod pod lifecycle,
+repository sync, setup, output collection, and timing capture. It does not own
+training settings.
 
-This script uses the shared `../runpod-job-runner/scripts/run_job.py` helper.
-The project-specific training entrypoint remains in this repository; generic
-RunPod pod lifecycle code lives outside the model repository.
+Pass the actual workload through `REMOTE_COMMAND`. For shogi policy/value
+training, the canonical training interface is still
+`python -m intrep.train_shogi_policy_value`.
+
+Example:
+
+```sh
+SYNC_PATHS="data/shogi/training-data-bundles/qhapaq-full/data-selection.json data/shogi/tensor-caches/qhapaq-full/cache.pt" \
+OUTPUT_DIR="runs/shogi/full-001" \
+REMOTE_COMMAND='.venv/bin/python -u -m intrep.train_shogi_policy_value \
+  --data-selection data/shogi/training-data-bundles/qhapaq-full/data-selection.json \
+  --tensor-cache data/shogi/tensor-caches/qhapaq-full/cache.pt \
+  --checkpoint-path runs/shogi/full-001/checkpoint.pt \
+  --best-checkpoint-path runs/shogi/full-001/best_checkpoint.pt \
+  --metrics-path runs/shogi/full-001/metrics.json \
+  --model policy_plane_shared_transformer \
+  --max-steps 5000 \
+  --batch-size 512 \
+  --device cuda \
+  --num-workers 0' \
+scripts/runpod/run_command.sh
+```
 
 Local RunPod credentials and SSH key paths are provided at runtime through CLI
 arguments or environment variables: `RUNPOD_API_KEY` or `RUNPOD_API_KEY_FILE`,
 `RUNPOD_SSH_KEY`, `RUNPOD_SSH_PUBLIC_KEY`, and optionally `RUNPODCTL`.
-
-This entrypoint is intentionally policy-value specific. Its wrapper
-responsibility is tracked in
-`issues/runpod-shogi-training-wrapper-responsibility.md`.
 
 ## Shogi Checkpoint
 
@@ -62,7 +79,7 @@ The `python-shogi` backend is kept as a compatibility option.
 
 ## Runtime Choices
 
-For full-cache shogi runs, keep `NUM_WORKERS=0` unless CPU RAM behavior has
+For full-cache shogi runs, pass `--num-workers 0` unless CPU RAM behavior has
 been measured on the target cache and Pod size. The JSONL cache is loaded as a
 large Python object list, and workers can increase RAM pressure.
 
