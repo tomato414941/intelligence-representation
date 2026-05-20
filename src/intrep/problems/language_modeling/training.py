@@ -9,7 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.representation.models.language_modeling import (
+from intrep.representation.assemblies.language_modeling import (
     LanguageModelingConfig,
     LanguageModelingModel,
     language_modeling_config_to_dict,

@@ -10,7 +10,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint,
     load_shogi_policy_value_checkpoint_training_config,
 )
-from intrep.representation.models.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
+from intrep.representation.assemblies.shogi_policy_value import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
 from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
 from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen, stack_shogi_position_features

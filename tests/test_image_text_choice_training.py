@@ -16,7 +16,7 @@ from intrep.problems.image_text_choice.training import (
     evaluate_image_text_choice_model,
     train_image_text_choice_model,
 )
-from intrep.representation.models.image_text_choice import ImageTextChoiceModel
+from intrep.representation.assemblies.image_text_choice import ImageTextChoiceModel
 
 
 class ImageTextChoiceTrainingTest(unittest.TestCase):

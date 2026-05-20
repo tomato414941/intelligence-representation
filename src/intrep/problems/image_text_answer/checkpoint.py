@@ -7,7 +7,7 @@ import torch
 
 from intrep.core.training_utils import TrainingDevice, resolve_training_device
 from intrep.problems.image_text_answer.training import ImageTextAnswerTrainingConfig, ImageTextAnswerTrainingResult
-from intrep.representation.models.image_text_answer import ImageTextAnswerModel
+from intrep.representation.assemblies.image_text_answer import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload, text_tokenizer_to_payload
 
 

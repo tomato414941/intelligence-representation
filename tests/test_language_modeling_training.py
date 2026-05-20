@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.representation.models.language_modeling import LanguageModelingModel, LanguageModelingConfig
+from intrep.representation.assemblies.language_modeling import LanguageModelingModel, LanguageModelingConfig
 from intrep.problems.language_modeling.training import (
     LanguageModelingDataset,
     LanguageModelingTrainingArtifacts,

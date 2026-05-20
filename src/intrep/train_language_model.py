@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.representation.models.language_modeling import build_language_modeling_config
+from intrep.representation.assemblies.language_modeling import build_language_modeling_config
 from intrep.problems.language_modeling.metrics import language_modeling_metrics_from_training_result
 from intrep.problems.language_modeling.training import (
     LanguageModelingTrainingConfig,

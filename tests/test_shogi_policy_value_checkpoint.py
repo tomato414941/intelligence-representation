@@ -17,7 +17,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_identity,
     save_shogi_policy_value_checkpoint,
 )
-from intrep.representation.models.shogi_policy_value import (
+from intrep.representation.assemblies.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_MODEL_ID,

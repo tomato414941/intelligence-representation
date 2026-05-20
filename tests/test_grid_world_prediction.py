@@ -7,7 +7,7 @@ from intrep.problems.grid_step_prediction.training import (
     GridStepPredictionConfig,
     train_grid_step_predictor,
 )
-from intrep.representation.models.grid_step_prediction import GridStepPredictionModel
+from intrep.representation.assemblies.grid_step_prediction import GridStepPredictionModel
 from intrep.problems.grid_step_prediction.dataset import GridStepPredictionDataset
 from intrep.representation.cores.transformer import SharedTransformerCore
 

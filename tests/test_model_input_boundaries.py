@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from intrep.vision.classification import ImagePatchInputLayer
-from intrep.representation.models.language_modeling import LanguageModelingModel, build_language_modeling_config
+from intrep.representation.assemblies.language_modeling import LanguageModelingModel, build_language_modeling_config
 from intrep.core.model_input import concatenate_input_embedding_sequences
 from intrep.text.token_scoring import next_token_loss
 from intrep.representation.cores.transformer import SharedTransformerCore

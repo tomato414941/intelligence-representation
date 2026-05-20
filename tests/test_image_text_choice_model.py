@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import torch
 
-from intrep.representation.models.image_text_choice import ImageTextChoiceModel
+from intrep.representation.assemblies.image_text_choice import ImageTextChoiceModel
 
 
 class ImageTextChoiceModelTest(unittest.TestCase):

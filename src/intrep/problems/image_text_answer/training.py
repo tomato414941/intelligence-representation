@@ -25,7 +25,7 @@ from intrep.core.training_utils import (
     trainable_parameter_count,
 )
 from intrep.core.shared_state_loading import load_compatible_module_state
-from intrep.representation.models.image_text_answer import ImageTextAnswerModel
+from intrep.representation.assemblies.image_text_answer import ImageTextAnswerModel
 from intrep.text.tokenizer import TextTokenizer, build_text_tokenizer
 from intrep.text.token_scoring import next_token_loss
 

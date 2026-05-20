@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from intrep.representation.models.shogi_policy_value import (
+from intrep.representation.assemblies.shogi_policy_value import (
     SHOGI_POLICY_VALUE_MODEL_ID,
     shogi_policy_value_model_spec,
     validate_shogi_policy_value_components,

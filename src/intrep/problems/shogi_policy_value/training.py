@@ -21,7 +21,7 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_legal_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )
-from intrep.representation.models.shogi_policy_value import (
+from intrep.representation.assemblies.shogi_policy_value import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,

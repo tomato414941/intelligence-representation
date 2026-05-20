@@ -10,7 +10,7 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.representation.models.shogi_policy_value import (
+from intrep.representation.assemblies.shogi_policy_value import (
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,

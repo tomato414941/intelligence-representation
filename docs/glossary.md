@@ -593,6 +593,14 @@ Hidden states are learned representations, but this glossary keeps the term
 `hidden state` for the concrete model boundary and reserves `representation` for
 broader discussion.
 
+### Assembly
+
+An assembly is an `nn.Module` that wires input embedding modules, cores, and
+output heads into one runnable model.
+
+Assemblies own model-side wiring. They should not own dataset construction,
+training loops, evaluation policy, or checkpoint policy.
+
 ### Representation
 
 Representation is the broadest term. It can refer to any information-carrying
