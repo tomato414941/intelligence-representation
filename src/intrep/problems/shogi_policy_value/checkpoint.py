@@ -20,7 +20,7 @@ from intrep.worlds.shogi.position_encoding import (
 )
 
 
-SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v2"
+SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v3"
 SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX = "shogi-policy-value:sha256:"
 
 
@@ -31,10 +31,6 @@ class ShogiPolicyValueCheckpointIdentity:
     schema_version: str
     assembly: str
     assembly_spec_id: str
-    input: str
-    core: str
-    policy_output: str
-    value_output: str
     input_feature_manifest_hash: str
 
 
@@ -87,10 +83,6 @@ def load_shogi_policy_value_checkpoint_identity(
         schema_version=str(payload["schema_version"]),
         assembly=str(config["assembly"]),
         assembly_spec_id=str(config["assembly_spec_id"]),
-        input=str(config["input"]),
-        core=str(config["core"]),
-        policy_output=str(config["policy_output"]),
-        value_output=str(config["value_output"]),
         input_feature_manifest_hash=str(config["input_feature_manifest_hash"]),
     )
 
@@ -182,10 +174,6 @@ def _checkpoint_config_payload(config: object) -> dict[str, object]:
         "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
         "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
         "assembly_spec_id": assembly_spec["assembly_spec_id"],
-        "input": assembly_spec["input"],
-        "core": assembly_spec["core"],
-        "policy_output": assembly_spec["policy_output"],
-        "value_output": assembly_spec["value_output"],
         "assembly_spec": assembly_spec,
         "embedding_dim": _config_int(config, "embedding_dim"),
         "hidden_dim": _config_int(config, "hidden_dim"),
