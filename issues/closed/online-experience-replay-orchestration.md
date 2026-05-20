@@ -190,6 +190,5 @@ Observed metrics:
 ## Related
 
 - [`shogi-rl-loop-orchestration-boundary.md`](shogi-rl-loop-orchestration-boundary.md)
-- [`rl-target-network.md`](rl-target-network.md)
 - [`closed/replay-buffer-boundary.md`](closed/replay-buffer-boundary.md)
 - [`../docs/glossary.md`](../docs/glossary.md)
