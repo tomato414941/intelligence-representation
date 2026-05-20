@@ -42,8 +42,8 @@ from intrep.worlds.shogi.position_encoding import (
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
-DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-policy-value-tensors"
-DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "shogi-policy-plane-value-tensors"
+DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "shogi-position-features-policy-value-legal-move-tensors"
+DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "shogi-position-features-policy-value-policy-plane-tensors"
 ShogiPolicyValueTensorCacheSample = LegalMovePolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
 
 

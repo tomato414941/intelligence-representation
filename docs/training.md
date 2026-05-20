@@ -147,7 +147,7 @@ uv run python scripts/build_shogi_policy_value_tensor_cache.py \
 ```sh
 uv run python -m intrep.train_shogi_policy_value \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
-  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi-policy-value-tensors \
+  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi-position-features-policy-value-legal-move-tensors \
   --checkpoint-path runs/shogi/checkpoint.pt \
   --metrics-path runs/shogi/metrics.json
 ```
@@ -175,7 +175,7 @@ Volume, builds one tensor shard per worker task, and writes the final
 cache back to the local bundle path:
 
 ```text
-data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors
+data/shogi/training-data-bundles/qhapaq-full/cache/shogi-position-features-policy-value-legal-move-tensors
 ```
 
 Use `--release volume` only when intentionally leaving the completed cache in

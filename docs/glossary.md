@@ -607,8 +607,19 @@ An assembly spec identifies one concrete assembly design.
 
 Fixed assemblies may have exactly one assembly spec. Assemblies with selectable
 model-side components may have multiple assembly specs. An assembly spec is not
-an evaluation variant; a variant is a comparison label used by evaluation or
-experiment management.
+a model track.
+
+### Model Track
+
+A model track is a maintained comparison slot for a model configuration family.
+It may name the input representation, core/model design, output representation,
+training recipe, and artifact references that should be evaluated together over
+time.
+
+Model tracks are peers, not a baseline plus disposable experiments. For example,
+`shogi-position-features-policy-value-policy-plane` and
+`shogi-position-features-policy-value-legal-move` can be separate shogi model
+tracks.
 
 ### Representation
 

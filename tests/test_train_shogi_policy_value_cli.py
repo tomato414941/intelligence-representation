@@ -187,7 +187,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-plane-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-policy-plane-tensors"
             checkpoint_path = root / "shogi-policy-plane.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
@@ -266,7 +266,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -370,7 +370,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             checkpoint_path = root / "shogi.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
@@ -459,7 +459,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = source_root / "train-games.jsonl"
             eval_games_path = source_root / "eval-games.jsonl"
             data_selection_path = source_root / "data-selection.json"
-            tensor_cache_path = source_root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = source_root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -493,7 +493,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
             manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
 
-            shutil.copytree(tensor_cache_path, moved_root / "cache" / "shogi-policy-value-tensors")
+            shutil.copytree(tensor_cache_path, moved_root / "cache" / "shogi-position-features-policy-value-legal-move-tensors")
             shutil.copy2(train_games_path, moved_root / "train-games.jsonl")
             shutil.copy2(eval_games_path, moved_root / "eval-games.jsonl")
             shutil.copy2(data_selection_path, moved_root / "data-selection.json")
@@ -501,7 +501,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             moved_selection = load_shogi_policy_value_data_selection(moved_selection_path)
 
             cache = load_shogi_policy_value_tensor_cache(
-                moved_root / "cache" / "shogi-policy-value-tensors",
+                moved_root / "cache" / "shogi-position-features-policy-value-legal-move-tensors",
                 expected_data_selection=moved_selection,
                 expected_data_selection_root=moved_selection_path.parent,
             )
@@ -515,7 +515,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -556,7 +556,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -597,7 +597,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -644,7 +644,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
@@ -704,7 +704,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "shogi-policy-value-tensors"
+            tensor_cache_path = root / "cache" / "shogi-position-features-policy-value-legal-move-tensors"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "8d8e"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(

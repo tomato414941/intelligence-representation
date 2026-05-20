@@ -24,8 +24,8 @@ VOLUME_NAME = os.environ.get("INTREP_MODAL_VOLUME_NAME", "intrep-shogi-tensor-ca
 VOLUME_ROOT = Path("/data")
 DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
-DEFAULT_CACHE_NAME = "shogi-policy-value-tensors"
-DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-policy-plane-value-tensors"
+DEFAULT_CACHE_NAME = "shogi-position-features-policy-value-legal-move-tensors"
+DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-position-features-policy-value-policy-plane-tensors"
 DEFAULT_OUTPUT_SPACE = "legal_move"
 DEFAULT_RELEASE = "local"
 
