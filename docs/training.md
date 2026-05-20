@@ -157,8 +157,10 @@ It is an acceleration artifact, not a source of truth. The training command
 rejects a cache whose embedded data selection does not match the requested
 `data-selection.json`.
 
-For large shogi bundles, build the same cache with Modal workers instead of a
-single local Python process:
+For large shogi bundles, build the same cache with Modal CPU workers instead of
+a single local Python process. This is tensor-cache construction, not training;
+the GPU training path still consumes the released cache through
+`intrep.train_shogi_policy_value`.
 
 ```sh
 uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py \
@@ -169,8 +171,16 @@ uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cach
 
 The Modal job uploads the Training Data Bundle to the `intrep-shogi-tensor-cache`
 Volume, builds one tensor shard per worker task, and writes the final
-`manifest.json` from shard manifests. The output remains a rebuildable cache
-derived from `data-selection.json`, not a source of truth.
+`manifest.json` from shard manifests. By default it then releases the completed
+cache back to the local bundle path:
+
+```text
+data/shogi/training-data-bundles/qhapaq-full/cache/shogi-policy-value-tensors
+```
+
+Use `--release volume` only when intentionally leaving the completed cache in
+the Modal Volume. The output remains a rebuildable cache derived from
+`data-selection.json`, not a source of truth.
 
 `scripts/create_shogi_training_data_bundle.py` still accepts repeated
 `--train-games` inputs for temporary experiments and explicit source mixes. When

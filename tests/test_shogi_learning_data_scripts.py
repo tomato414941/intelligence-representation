@@ -487,6 +487,50 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
                     output_root=output_root,
                 )
 
+    def test_modal_tensor_cache_builder_releases_remote_cache_to_local_path(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            local_cache = root / "bundle" / "cache" / "shogi-policy-value-tensors"
+            local_cache.mkdir(parents=True)
+            (local_cache / "stale.txt").write_text("old\n", encoding="utf-8")
+
+            with patch.object(modal_builder.subprocess, "run") as run:
+                result = modal_builder._release_remote_cache_to_local(
+                    remote_bundle="qhapaq-full",
+                    cache_name="shogi-policy-value-tensors",
+                    local_cache=local_cache,
+                )
+
+            self.assertFalse((local_cache / "stale.txt").exists())
+            self.assertEqual(result["local_cache"], str(local_cache))
+            run.assert_called_once_with(
+                [
+                    "modal",
+                    "volume",
+                    "get",
+                    "--force",
+                    modal_builder.VOLUME_NAME,
+                    "/qhapaq-full/cache/shogi-policy-value-tensors",
+                    str(local_cache),
+                ],
+                check=True,
+            )
+
+    def test_modal_tensor_cache_builder_defaults_local_release_path_to_bundle_cache(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+        with tempfile.TemporaryDirectory() as directory:
+            local_bundle = Path(directory) / "bundle"
+
+            self.assertEqual(
+                modal_builder._local_cache_path(
+                    local_bundle=local_bundle,
+                    output_space="policy_plane",
+                    local_cache=None,
+                ),
+                local_bundle / "cache" / "shogi-policy-plane-value-tensors",
+            )
+
 
 def _load_script_module(name: str) -> ModuleType:
     script_path = Path(__file__).resolve().parents[1] / "scripts" / f"{name}.py"

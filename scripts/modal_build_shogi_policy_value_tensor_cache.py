@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+"""Build shogi policy/value tensor caches on Modal CPU workers.
+
+The durable artifact is the released local tensor-cache directory. The Modal
+Volume is the remote build workspace, not the training input of record.
+"""
+
 import json
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +27,7 @@ DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
 DEFAULT_CACHE_NAME = "shogi-policy-value-tensors"
 DEFAULT_POLICY_PLANE_CACHE_NAME = "shogi-policy-plane-value-tensors"
 DEFAULT_OUTPUT_SPACE = "legal_move"
+DEFAULT_RELEASE = "local"
 
 
 if modal is not None:
@@ -91,6 +99,8 @@ if modal is not None:
         limit_shards: int = 0,
         reset_cache: bool = False,
         output_space: str = DEFAULT_OUTPUT_SPACE,
+        release: str = DEFAULT_RELEASE,
+        local_cache: str = "",
     ) -> None:
         run(
             local_bundle=Path(local_bundle),
@@ -101,6 +111,8 @@ if modal is not None:
             limit_shards=limit_shards or None,
             reset_cache=reset_cache,
             output_space=output_space,
+            release=release,
+            local_cache=Path(local_cache) if local_cache else None,
         )
 
 else:
@@ -117,6 +129,8 @@ def run(
     limit_shards: int | None,
     reset_cache: bool,
     output_space: str,
+    release: str,
+    local_cache: Path | None,
 ) -> None:
     if modal is None:
         raise RuntimeError("Modal is required. Run with: uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py")
@@ -128,9 +142,16 @@ def run(
         raise ValueError("limit_shards must be positive")
     if output_space not in {"legal_move", "policy_plane"}:
         raise ValueError("output_space must be legal_move or policy_plane")
+    if release not in {"local", "volume"}:
+        raise ValueError("release must be local or volume")
 
     local_bundle = local_bundle.resolve()
     cache_name = _cache_name_for_output_space(output_space)
+    local_cache_path = _local_cache_path(
+        local_bundle=local_bundle,
+        output_space=output_space,
+        local_cache=local_cache,
+    )
     data_selection_path = local_bundle / "data-selection.json"
     if not data_selection_path.exists():
         raise FileNotFoundError(data_selection_path)
@@ -155,17 +176,29 @@ def run(
     print(json.dumps({"volume": VOLUME_NAME, "remote_bundle": remote_bundle, "shard_count": len(tasks)}, indent=2))
     results = list(build_remote_shard.map(tasks))
     manifest = write_remote_manifest.remote(remote_bundle, shard_examples, cache_name, output_space)
+    remote_cache = f"{remote_bundle}/cache/{cache_name}"
+    release_result: dict[str, object] | None = None
+    if release == "local":
+        release_result = _release_remote_cache_to_local(
+            remote_bundle=remote_bundle,
+            cache_name=cache_name,
+            local_cache=local_cache_path,
+        )
+
     print(
         json.dumps(
             {
                 "volume": VOLUME_NAME,
-                "remote_cache": f"{remote_bundle}/cache/{cache_name}",
+                "remote_cache": remote_cache,
+                "local_cache": str(local_cache_path) if release == "local" else None,
+                "release": release,
                 "output_space": output_space,
                 "built_shards": len(results),
                 "train_count": manifest["train_count"],
                 "eval_count": manifest["eval_count"],
                 "skipped_example_count": manifest["skipped_example_count"],
                 "shard_count": len(manifest["shards"]),
+                "release_result": release_result,
             },
             indent=2,
         )
@@ -222,6 +255,44 @@ def _cache_name_for_output_space(output_space: str) -> str:
     if output_space == "policy_plane":
         return DEFAULT_POLICY_PLANE_CACHE_NAME
     return DEFAULT_CACHE_NAME
+
+
+def _local_cache_path(*, local_bundle: Path, output_space: str, local_cache: Path | None) -> Path:
+    if local_cache is not None:
+        return local_cache.resolve()
+    return local_bundle / "cache" / _cache_name_for_output_space(output_space)
+
+
+def _release_remote_cache_to_local(
+    *,
+    remote_bundle: str,
+    cache_name: str,
+    local_cache: Path,
+) -> dict[str, object]:
+    remote_cache = f"/{remote_bundle}/cache/{cache_name}"
+    if local_cache.exists():
+        if local_cache.is_dir():
+            shutil.rmtree(local_cache)
+        else:
+            local_cache.unlink()
+    local_cache.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "modal",
+            "volume",
+            "get",
+            "--force",
+            VOLUME_NAME,
+            remote_cache,
+            str(local_cache),
+        ],
+        check=True,
+    )
+    return {
+        "volume": VOLUME_NAME,
+        "remote_cache": remote_cache,
+        "local_cache": str(local_cache),
+    }
 
 
 def _local_source_path(local_bundle: Path, source: dict[str, object]) -> Path:
