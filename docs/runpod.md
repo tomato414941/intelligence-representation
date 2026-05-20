@@ -51,7 +51,7 @@ REMOTE_COMMAND='.venv/bin/python -u -m intrep.train_shogi_policy_value \
   --checkpoint-path runs/shogi/full-001/checkpoint.pt \
   --best-checkpoint-path runs/shogi/full-001/best_checkpoint.pt \
   --metrics-path runs/shogi/full-001/metrics.json \
-  --model policy_plane_shared_transformer \
+  --policy-output shogi_policy_plane_policy_output \
   --max-steps 5000 \
   --batch-size 512 \
   --device cuda \

@@ -19,7 +19,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
-from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_CANDIDATE_MOVE,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
@@ -249,14 +249,14 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     "16",
                     "--num-heads",
                     "2",
-                    "--model",
-                    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+                    "--policy-output",
+                    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
                 ],
             ), patch("sys.stdout", new_callable=StringIO):
                 main()
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["config"]["model"], SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
+            self.assertEqual(metrics["config"]["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
             self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
 

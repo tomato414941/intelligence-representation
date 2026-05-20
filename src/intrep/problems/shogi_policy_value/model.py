@@ -22,52 +22,67 @@ from intrep.worlds.shogi.position_encoding import STATE_TOKEN_INDEX, ShogiPositi
 from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
-SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER = "shared_transformer"
-SHOGI_POLICY_VALUE_MODEL_DIRECT = "direct"
-SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER = "policy_plane_shared_transformer"
-SHOGI_POLICY_VALUE_MODEL_NAMES = (
-    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
-    SHOGI_POLICY_VALUE_MODEL_DIRECT,
-    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
-)
-
+SHOGI_POLICY_VALUE_MODEL_ID = "shogi_policy_value"
 SHOGI_POSITION_INPUT_MODULE_ID = (
     "shogi_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_input"
 )
 SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID = "shogi_direct_candidate_move_policy_output"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core_with_shogi_pair_relation_bias"
+SHOGI_NO_CORE_MODULE_ID = "none"
 SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_token_policy_output"
 SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID = "shogi_policy_plane_policy_output"
 SHOGI_VALUE_OUTPUT_MODULE_ID = "scalar_tanh_value_output"
-
-SHOGI_POLICY_VALUE_MODEL_SPEC = {
-    "input": SHOGI_POSITION_INPUT_MODULE_ID,
-    "core": SHOGI_SHARED_CORE_MODULE_ID,
-    "policy_output": SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
-    "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
-}
-SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC = {
-    "input": SHOGI_POSITION_INPUT_MODULE_ID,
-    "core": None,
-    "policy_output": SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
-    "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
-}
-SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC = {
-    "input": SHOGI_POSITION_INPUT_MODULE_ID,
-    "core": SHOGI_SHARED_CORE_MODULE_ID,
-    "policy_output": SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    "value_output": SHOGI_VALUE_OUTPUT_MODULE_ID,
-}
+SHOGI_POSITION_INPUT_MODULE_IDS = (SHOGI_POSITION_INPUT_MODULE_ID,)
+SHOGI_CORE_MODULE_IDS = (SHOGI_SHARED_CORE_MODULE_ID, SHOGI_NO_CORE_MODULE_ID)
+SHOGI_POLICY_OUTPUT_MODULE_IDS = (
+    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
+)
+SHOGI_VALUE_OUTPUT_MODULE_IDS = (SHOGI_VALUE_OUTPUT_MODULE_ID,)
 
 
-def shogi_policy_value_model_spec(model: str) -> dict[str, object]:
-    if model == SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER:
-        return dict(SHOGI_POLICY_VALUE_MODEL_SPEC)
-    if model == SHOGI_POLICY_VALUE_MODEL_DIRECT:
-        return dict(SHOGI_DIRECT_POLICY_VALUE_MODEL_SPEC)
-    if model == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
-        return dict(SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
-    raise ValueError(f"unsupported shogi policy/value model: {model}")
+def shogi_policy_value_model_spec(
+    *,
+    input: str,
+    core: str,
+    policy_output: str,
+    value_output: str,
+) -> dict[str, object]:
+    validate_shogi_policy_value_components(
+        input=input,
+        core=core,
+        policy_output=policy_output,
+        value_output=value_output,
+    )
+    return {
+        "model": SHOGI_POLICY_VALUE_MODEL_ID,
+        "input": input,
+        "core": core,
+        "policy_output": policy_output,
+        "value_output": value_output,
+    }
+
+
+def validate_shogi_policy_value_components(
+    *,
+    input: str,
+    core: str,
+    policy_output: str,
+    value_output: str,
+) -> None:
+    if input not in SHOGI_POSITION_INPUT_MODULE_IDS:
+        raise ValueError(f"unsupported shogi policy/value input: {input}")
+    if core not in SHOGI_CORE_MODULE_IDS:
+        raise ValueError(f"unsupported shogi policy/value core: {core}")
+    if policy_output not in SHOGI_POLICY_OUTPUT_MODULE_IDS:
+        raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
+    if value_output not in SHOGI_VALUE_OUTPUT_MODULE_IDS:
+        raise ValueError(f"unsupported shogi policy/value value output: {value_output}")
+    if policy_output == SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID and core != SHOGI_NO_CORE_MODULE_ID:
+        raise ValueError("direct candidate-move policy output requires core=none")
+    if policy_output != SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID and core == SHOGI_NO_CORE_MODULE_ID:
+        raise ValueError(f"{policy_output} requires a shared core")
 
 
 @dataclass(frozen=True)

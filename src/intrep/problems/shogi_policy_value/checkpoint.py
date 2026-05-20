@@ -9,8 +9,9 @@ import torch
 from torch import nn
 
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_POLICY_VALUE_MODEL_NAMES,
+    SHOGI_POLICY_VALUE_MODEL_ID,
     shogi_policy_value_model_spec,
+    validate_shogi_policy_value_components,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 from intrep.worlds.shogi.position_encoding import (
@@ -30,6 +31,10 @@ class ShogiPolicyValueCheckpointIdentity:
     checkpoint_sha256: str
     schema_version: str
     model: str
+    input: str
+    core: str
+    policy_output: str
+    value_output: str
     input_feature_manifest_hash: str
 
 
@@ -81,6 +86,10 @@ def load_shogi_policy_value_checkpoint_identity(
         checkpoint_sha256=str(config["checkpoint_sha256"]),
         schema_version=str(payload["schema_version"]),
         model=str(config["model"]),
+        input=str(config["input"]),
+        core=str(config["core"]),
+        policy_output=str(config["policy_output"]),
+        value_output=str(config["value_output"]),
         input_feature_manifest_hash=str(config["input_feature_manifest_hash"]),
     )
 
@@ -110,7 +119,10 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
         hidden_dim=int(config_payload["hidden_dim"]),
         num_heads=int(config_payload.get("num_heads", 4)),
         num_layers=int(config_payload.get("num_layers", 1)),
-        model=str(config_payload["model"]),
+        input=str(config_payload["input"]),
+        core=str(config_payload["core"]),
+        policy_output=str(config_payload["policy_output"]),
+        value_output=str(config_payload["value_output"]),
         policy_loss_weight=float(config_payload.get("policy_loss_weight", 1.0)),
         value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
         allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
@@ -133,7 +145,10 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
             hidden_dim=int(config_payload["hidden_dim"]),
             num_heads=int(config_payload.get("num_heads", 4)),
             num_layers=int(config_payload.get("num_layers", 1)),
-            model=str(config_payload["model"]),
+            input=str(config_payload["input"]),
+            core=str(config_payload["core"]),
+            policy_output=str(config_payload["policy_output"]),
+            value_output=str(config_payload["value_output"]),
             value_loss_weight=float(config_payload.get("value_loss_weight", 1.0)),
             allow_nonstandard_loss_weights=bool(config_payload.get("allow_nonstandard_loss_weights", False)),
         )
@@ -169,7 +184,11 @@ def _checkpoint_config_payload(config: object) -> dict[str, object]:
         "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
         "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
         "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-        "model": _config_str(config, "model"),
+        "model": SHOGI_POLICY_VALUE_MODEL_ID,
+        "input": _config_str(config, "input"),
+        "core": _config_str(config, "core"),
+        "policy_output": _config_str(config, "policy_output"),
+        "value_output": _config_str(config, "value_output"),
         "model_spec": _checkpoint_model_spec(config),
         "embedding_dim": _config_int(config, "embedding_dim"),
         "hidden_dim": _config_int(config, "hidden_dim"),
@@ -220,10 +239,25 @@ def _validate_checkpoint_identity(payload: dict[str, object]) -> None:
 
 
 def _checkpoint_model_spec(config: object) -> dict[str, object]:
-    model = _config_str(config, "model")
-    if model not in SHOGI_POLICY_VALUE_MODEL_NAMES:
+    model = str(config.get("model", SHOGI_POLICY_VALUE_MODEL_ID)) if isinstance(config, dict) else SHOGI_POLICY_VALUE_MODEL_ID
+    if model != SHOGI_POLICY_VALUE_MODEL_ID:
         raise ValueError(f"unsupported shogi policy/value model: {model}")
-    return shogi_policy_value_model_spec(model)
+    input_name = _config_str(config, "input")
+    core = _config_str(config, "core")
+    policy_output = _config_str(config, "policy_output")
+    value_output = _config_str(config, "value_output")
+    validate_shogi_policy_value_components(
+        input=input_name,
+        core=core,
+        policy_output=policy_output,
+        value_output=value_output,
+    )
+    return shogi_policy_value_model_spec(
+        input=input_name,
+        core=core,
+        policy_output=policy_output,
+        value_output=value_output,
+    )
 
 
 def _config_str(config: object, name: str) -> str:

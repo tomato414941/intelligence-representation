@@ -15,8 +15,10 @@ from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModelConfig,
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
-    SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC,
-    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_POSITION_INPUT_MODULE_ID,
+    SHOGI_SHARED_CORE_MODULE_ID,
+    SHOGI_VALUE_OUTPUT_MODULE_ID,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _state_token_hidden,
@@ -38,9 +40,13 @@ from intrep.worlds.shogi.position_encoding import (
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_policy_plane_model_spec_uses_fixed_policy_head(self) -> None:
-        spec = shogi_policy_value_model_spec(SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
+        spec = shogi_policy_value_model_spec(
+            input=SHOGI_POSITION_INPUT_MODULE_ID,
+            core=SHOGI_SHARED_CORE_MODULE_ID,
+            policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+            value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
+        )
 
-        self.assertEqual(spec, SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 
     def test_model_returns_candidate_logits(self) -> None:

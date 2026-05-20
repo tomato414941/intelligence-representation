@@ -10,8 +10,9 @@ from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_
 from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModel,
     DirectShogiPolicyValueModelConfig,
-    SHOGI_POLICY_VALUE_MODEL_DIRECT,
-    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_NO_CORE_MODULE_ID,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
 )
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
@@ -66,7 +67,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                model=SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+                policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
             ),
         )
 
@@ -87,7 +88,8 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 learning_rate=0.02,
                 embedding_dim=8,
                 hidden_dim=16,
-                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
+                core=SHOGI_NO_CORE_MODULE_ID,
+                policy_output=SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
             ),
         )
 
@@ -306,7 +308,8 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
+                core=SHOGI_NO_CORE_MODULE_ID,
+                policy_output=SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
                 value_loss_weight=0.2,
                 allow_nonstandard_loss_weights=True,
             ),
@@ -347,7 +350,8 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
+                core=SHOGI_NO_CORE_MODULE_ID,
+                policy_output=SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,
@@ -380,14 +384,15 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
             train_shogi_policy_value_model(
                 examples,
                 config=ShogiPolicyValueTrainingConfig(
-                    max_steps=1,
-                    batch_size=2,
-                    embedding_dim=8,
-                    hidden_dim=16,
-                    model=SHOGI_POLICY_VALUE_MODEL_DIRECT,
-                    policy_loss_weight=0.0,
-                    value_loss_weight=1.0,
-                    allow_nonstandard_loss_weights=True,
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                core=SHOGI_NO_CORE_MODULE_ID,
+                policy_output=SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
+                policy_loss_weight=0.0,
+                value_loss_weight=1.0,
+                allow_nonstandard_loss_weights=True,
                     max_train_eval_examples=1,
                 ),
             )

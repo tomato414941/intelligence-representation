@@ -24,7 +24,7 @@ from intrep.problems.shogi_policy_value.examples import (
     collate_candidate_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )
-from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER
+from intrep.problems.shogi_policy_value.model import SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
@@ -81,7 +81,7 @@ def evaluate_shogi_policy_value_checkpoint(
         model,
         _loader(
             used_train_examples,
-            model_name=checkpoint_config.model,
+            policy_output=checkpoint_config.policy_output,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -91,7 +91,7 @@ def evaluate_shogi_policy_value_checkpoint(
         model,
         _loader(
             used_eval_examples,
-            model_name=checkpoint_config.model,
+            policy_output=checkpoint_config.policy_output,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -119,12 +119,12 @@ def evaluate_shogi_policy_value_checkpoint(
 def _loader(
     examples: list[ShogiPolicyValueDatasetItem],
     *,
-    model_name: str,
+    policy_output: str,
     batch_size: int,
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
-    if model_name == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
+    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         dataset = ShogiPolicyPlaneValueDataset(examples)
         collate_fn = collate_policy_plane_value_samples
     else:

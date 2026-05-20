@@ -26,11 +26,16 @@ from intrep.problems.shogi_policy_value.model import (
     DirectShogiPolicyValueModelConfig,
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
-    SHOGI_POLICY_VALUE_MODEL_DIRECT,
-    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
-    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
+    SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_NO_CORE_MODULE_ID,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_POSITION_INPUT_MODULE_ID,
+    SHOGI_SHARED_CORE_MODULE_ID,
+    SHOGI_VALUE_OUTPUT_MODULE_ID,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
+    validate_shogi_policy_value_components,
 )
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
@@ -46,7 +51,10 @@ class ShogiPolicyValueTrainingConfig:
     hidden_dim: int = 1024
     num_heads: int = 8
     num_layers: int = 6
-    model: str = SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER
+    input: str = SHOGI_POSITION_INPUT_MODULE_ID
+    core: str = SHOGI_SHARED_CORE_MODULE_ID
+    policy_output: str = SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID
+    value_output: str = SHOGI_VALUE_OUTPUT_MODULE_ID
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     allow_nonstandard_loss_weights: bool = False
@@ -161,6 +169,12 @@ def train_shogi_policy_value_model(
         raise ValueError("eval_every is required when early_stopping_patience is set")
     if training_config.num_workers < 0:
         raise ValueError("num_workers must be non-negative")
+    validate_shogi_policy_value_components(
+        input=training_config.input,
+        core=training_config.core,
+        policy_output=training_config.policy_output,
+        value_output=training_config.value_output,
+    )
     validate_shogi_policy_value_loss_weights(training_config)
     torch.manual_seed(training_config.seed)
     device = torch.device(training_config.device)
@@ -512,7 +526,7 @@ def _build_shogi_policy_value_dataset(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     config: ShogiPolicyValueTrainingConfig,
 ) -> ShogiPolicyValueDataset | ShogiPolicyPlaneValueDataset:
-    if config.model == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
+    if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         return ShogiPolicyPlaneValueDataset(examples)
     return ShogiPolicyValueDataset(examples)
 
@@ -606,7 +620,13 @@ def _limit_examples(
 
 
 def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn.Module:
-    if config.model == SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER:
+    validate_shogi_policy_value_components(
+        input=config.input,
+        core=config.core,
+        policy_output=config.policy_output,
+        value_output=config.value_output,
+    )
+    if config.policy_output == SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID:
         return SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=config.embedding_dim,
@@ -615,14 +635,16 @@ def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn
                 num_layers=config.num_layers,
             )
         )
-    if config.model == SHOGI_POLICY_VALUE_MODEL_DIRECT:
+    if config.policy_output == SHOGI_DIRECT_POLICY_OUTPUT_MODULE_ID:
+        if config.core != SHOGI_NO_CORE_MODULE_ID:
+            raise ValueError("direct candidate-move policy output requires core=none")
         return DirectShogiPolicyValueModel(
             DirectShogiPolicyValueModelConfig(
                 embedding_dim=config.embedding_dim,
                 hidden_dim=config.hidden_dim,
             )
         )
-    if config.model == SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER:
+    if config.policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
         return PolicyPlaneShogiPolicyValueModel(
             PolicyPlaneShogiPolicyValueModelConfig(
                 embedding_dim=config.embedding_dim,
@@ -631,4 +653,4 @@ def build_shogi_policy_value_model(config: ShogiPolicyValueTrainingConfig) -> nn
                 num_layers=config.num_layers,
             )
         )
-    raise ValueError(f"unsupported shogi policy/value model: {config.model}")
+    raise ValueError(f"unsupported shogi policy/value policy output: {config.policy_output}")

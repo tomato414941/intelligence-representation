@@ -18,10 +18,12 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     save_shogi_policy_value_checkpoint,
 )
 from intrep.problems.shogi_policy_value.model import (
-    SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC,
-    SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
-    SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER,
-    SHOGI_POLICY_VALUE_MODEL_SPEC,
+    SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_POLICY_VALUE_MODEL_ID,
+    SHOGI_SHARED_CORE_MODULE_ID,
+    SHOGI_VALUE_OUTPUT_MODULE_ID,
+    shogi_policy_value_model_spec,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
 from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
@@ -54,8 +56,17 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_SHARED_TRANSFORMER)
-            self.assertEqual(payload["config"]["model_spec"], SHOGI_POLICY_VALUE_MODEL_SPEC)
+            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_ID)
+            self.assertEqual(payload["config"]["policy_output"], SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID)
+            self.assertEqual(
+                payload["config"]["model_spec"],
+                shogi_policy_value_model_spec(
+                    input=payload["config"]["input"],
+                    core=SHOGI_SHARED_CORE_MODULE_ID,
+                    policy_output=SHOGI_LEGAL_MOVE_TOKEN_POLICY_OUTPUT_MODULE_ID,
+                    value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
+                ),
+            )
             self.assertEqual(payload["config"]["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
             self.assertEqual(payload["config"]["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
             self.assertTrue(payload["config"]["checkpoint_id"].startswith(SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX))
@@ -85,7 +96,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                model=SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER,
+                policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
             ),
         )
         batch = next(
@@ -102,8 +113,17 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi-policy-plane.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_POLICY_PLANE_SHARED_TRANSFORMER)
-            self.assertEqual(payload["config"]["model_spec"], SHOGI_POLICY_PLANE_POLICY_VALUE_MODEL_SPEC)
+            self.assertEqual(payload["config"]["model"], SHOGI_POLICY_VALUE_MODEL_ID)
+            self.assertEqual(payload["config"]["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
+            self.assertEqual(
+                payload["config"]["model_spec"],
+                shogi_policy_value_model_spec(
+                    input=payload["config"]["input"],
+                    core=SHOGI_SHARED_CORE_MODULE_ID,
+                    policy_output=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+                    value_output=SHOGI_VALUE_OUTPUT_MODULE_ID,
+                ),
+            )
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -277,7 +297,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "model spec"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_missing_model(self) -> None:
+    def test_load_rejects_missing_policy_output(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -294,10 +314,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            payload["config"].pop("model")
+            payload["config"].pop("policy_output")
             torch.save(payload, path)
 
-            with self.assertRaisesRegex(ValueError, "missing model"):
+            with self.assertRaisesRegex(ValueError, "missing policy_output"):
                 load_shogi_policy_value_checkpoint(path)
 
 
