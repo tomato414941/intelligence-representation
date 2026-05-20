@@ -1,6 +1,6 @@
 # Shogi Online Replay Gate Side Bias
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -39,3 +39,17 @@ Do not add a complex rating system before the bias is measured across more runs.
   results.
 - A future experiment can say whether side bias was ignored, tolerated, or used
   in the decision.
+
+## Resolution
+
+2026-05-20:
+
+- Online replay gate results now include `side_breakdown` computed from the
+  durable `generator-gate-games.jsonl` game records.
+- The breakdown records candidate results as black, as white, and unknown-side
+  records if actor identity cannot be matched.
+- Side skew is recorded for interpretation but is not currently used as a stop
+  condition. The gate remains a degradation guard based on the overall
+  `decision`.
+- Future experiment summaries can state that side bias was recorded and
+  tolerated, not ignored or used for stopping.

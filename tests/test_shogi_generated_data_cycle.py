@@ -83,6 +83,20 @@ def _mcts_record(moves: tuple[str, ...], winner: str | None) -> ShogiGameRecord:
     )
 
 
+def _mcts_record_with_actors(
+    moves: tuple[str, ...],
+    winner: str | None,
+    *,
+    black_actor: ShogiActorSpec,
+    white_actor: ShogiActorSpec,
+) -> ShogiGameRecord:
+    return replace(
+        _mcts_record(moves, winner),
+        black_actor=black_actor,
+        white_actor=white_actor,
+    )
+
+
 def _self_play_source(*, games: int, name: str = "self-play") -> ShogiGeneratedExperienceSource:
     return ShogiGeneratedExperienceSource(
         name=name,
@@ -586,6 +600,34 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     return None
                 if any(item.endswith("evaluate_shogi_players.py") for item in command):
                     gate_commands.append(command)
+                    out_path = Path(command[command.index("--out") + 1])
+                    player_a = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-a-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    player_b = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-b-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _mcts_record_with_actors(
+                                ("7g7f", "3c3d"),
+                                "black",
+                                black_actor=player_a,
+                                white_actor=player_b,
+                            ),
+                            _mcts_record_with_actors(
+                                ("2g2f", "8c8d"),
+                                "white",
+                                black_actor=player_b,
+                                white_actor=player_a,
+                            ),
+                        ],
+                    )
                     return subprocess.CompletedProcess(
                         command,
                         0,
@@ -658,6 +700,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(gate_result["decision"], "favorable")
             self.assertFalse(gate_result["should_stop"])
             self.assertEqual(gate_result["margin"], 2)
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_black"],
+                {"games": 1, "wins": 1, "losses": 0, "draws": 0, "unknown_results": 0},
+            )
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_white"],
+                {"games": 1, "wins": 1, "losses": 0, "draws": 0, "unknown_results": 0},
+            )
             metrics = json.loads(result.iterations[0].metrics.read_text(encoding="utf-8"))
             self.assertEqual(metrics["checkpoint"]["init_id"], source_checkpoint_id)
             self.assertEqual(metrics["checkpoint"]["id"], load_shogi_policy_value_checkpoint_identity(result.iterations[0].checkpoint).checkpoint_id)
@@ -698,6 +748,40 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
                     return None
                 if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    player_a = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-a-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    player_b = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-b-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _mcts_record_with_actors(
+                                ("7g7f", "3c3d"),
+                                "black",
+                                black_actor=player_a,
+                                white_actor=player_b,
+                            ),
+                            _mcts_record_with_actors(
+                                ("2g2f", "8c8d"),
+                                "black",
+                                black_actor=player_b,
+                                white_actor=player_a,
+                            ),
+                            _mcts_record_with_actors(
+                                ("7g7f", "8c8d"),
+                                "white",
+                                black_actor=player_a,
+                                white_actor=player_b,
+                            ),
+                        ],
+                    )
                     return subprocess.CompletedProcess(
                         command,
                         0,
@@ -746,6 +830,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(gate_result["decision"], "unclear")
             self.assertFalse(gate_result["should_stop"])
             self.assertEqual(gate_result["margin"], -1)
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_black"],
+                {"games": 2, "wins": 1, "losses": 1, "draws": 0, "unknown_results": 0},
+            )
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_white"],
+                {"games": 1, "wins": 0, "losses": 1, "draws": 0, "unknown_results": 0},
+            )
 
     def test_online_replay_stops_when_generator_candidate_is_clearly_worse(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -763,6 +855,34 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                     write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
                     return None
                 if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    player_a = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-a-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    player_b = ShogiActorSpec(
+                        kind="checkpoint",
+                        name=command[command.index("--player-b-checkpoint-id") + 1],
+                        settings={},
+                    )
+                    write_shogi_game_records_jsonl(
+                        out_path,
+                        [
+                            _mcts_record_with_actors(
+                                ("7g7f", "3c3d"),
+                                "white",
+                                black_actor=player_a,
+                                white_actor=player_b,
+                            ),
+                            _mcts_record_with_actors(
+                                ("2g2f", "8c8d"),
+                                "black",
+                                black_actor=player_b,
+                                white_actor=player_a,
+                            ),
+                        ],
+                    )
                     return subprocess.CompletedProcess(
                         command,
                         0,
@@ -814,6 +934,14 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(gate_result["decision"], "clearly_worse")
             self.assertTrue(gate_result["should_stop"])
             self.assertEqual(gate_result["margin"], -2)
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_black"],
+                {"games": 1, "wins": 0, "losses": 1, "draws": 0, "unknown_results": 0},
+            )
+            self.assertEqual(
+                gate_result["side_breakdown"]["player_a_as_white"],
+                {"games": 1, "wins": 0, "losses": 1, "draws": 0, "unknown_results": 0},
+            )
 
     def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

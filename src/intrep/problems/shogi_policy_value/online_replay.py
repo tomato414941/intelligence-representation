@@ -55,6 +55,7 @@ from intrep.problems.shogi_policy_value.training import (
     validate_shogi_policy_value_loss_weights,
 )
 from intrep.worlds.shogi.experience_store import append_shogi_experience_store
+from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 2_097_152
 DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288
@@ -479,6 +480,7 @@ def _evaluate_generator_candidate(
             "match_worker_processes": config.generator_gate_worker_processes,
         }
         result.update(_generator_gate_decision(result))
+        result["side_breakdown"] = _empty_generator_gate_side_breakdown()
         artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return result
     command = [
@@ -545,6 +547,10 @@ def _evaluate_generator_candidate(
         }
     )
     result.update(_generator_gate_decision(result))
+    result["side_breakdown"] = _generator_gate_side_breakdown(
+        artifacts.generator_gate_games_jsonl,
+        player_a_name=_checkpoint_actor_id(candidate_checkpoint),
+    )
     artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     return result
 
@@ -572,6 +578,53 @@ def _generator_gate_decision(result: dict[str, object]) -> dict[str, object]:
 
 def _generator_gate_should_stop(result: dict[str, object]) -> bool:
     return bool(result.get("should_stop", False))
+
+
+def _empty_generator_gate_side_breakdown() -> dict[str, object]:
+    return {
+        "policy": "recorded_not_used_for_stopping",
+        "player_a_as_black": _empty_gate_side_result(),
+        "player_a_as_white": _empty_gate_side_result(),
+        "player_a_side_unknown": _empty_gate_side_result(),
+    }
+
+
+def _generator_gate_side_breakdown(games_jsonl: Path, *, player_a_name: str) -> dict[str, object]:
+    breakdown = _empty_generator_gate_side_breakdown()
+    for record in load_shogi_game_records_jsonl(games_jsonl):
+        side_key = _player_a_side_key(record, player_a_name=player_a_name)
+        side_result = dict(breakdown[side_key])
+        side_result["games"] = int(side_result["games"]) + 1
+        if record.winner is None:
+            side_result["draws"] = int(side_result["draws"]) + 1
+        elif (side_key == "player_a_as_black" and record.winner == "black") or (
+            side_key == "player_a_as_white" and record.winner == "white"
+        ):
+            side_result["wins"] = int(side_result["wins"]) + 1
+        elif side_key == "player_a_side_unknown":
+            side_result["unknown_results"] = int(side_result["unknown_results"]) + 1
+        else:
+            side_result["losses"] = int(side_result["losses"]) + 1
+        breakdown[side_key] = side_result
+    return breakdown
+
+
+def _empty_gate_side_result() -> dict[str, int]:
+    return {
+        "games": 0,
+        "wins": 0,
+        "losses": 0,
+        "draws": 0,
+        "unknown_results": 0,
+    }
+
+
+def _player_a_side_key(record: ShogiGameRecord, *, player_a_name: str) -> str:
+    if record.black_actor.name == player_a_name:
+        return "player_a_as_black"
+    if record.white_actor.name == player_a_name:
+        return "player_a_as_white"
+    return "player_a_side_unknown"
 
 
 def _load_online_replay_iteration_examples(

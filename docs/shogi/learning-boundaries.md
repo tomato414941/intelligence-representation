@@ -76,6 +76,10 @@ that the candidate is stronger. Clearly worse candidates stop the loop; close
 results may continue but should be interpreted as unclear rather than as
 strength improvement.
 
+Gate results record the candidate's side-specific result split for
+interpretation. Side skew is not currently a stop condition; it is preserved so
+future experiment summaries can say whether side bias was present.
+
 Generation uses game-level worker processes for produced experience, and the
 generator gate uses match-level worker processes for checkpoint-vs-checkpoint
 evaluation. `NN leaf eval batch limit` is the neural evaluator batch cap used by
