@@ -242,8 +242,8 @@ def run_shogi_online_replay(
                 last_generator_checkpoint=last_generator_checkpoint,
             )
             phase_timings["gate_wall_time_sec"] = time.perf_counter() - gate_start
-            if _generator_candidate_lost(gate_result):
-                stop_reason = "generator_candidate_lost"
+            if _generator_gate_should_stop(gate_result):
+                stop_reason = "generator_candidate_clearly_worse"
                 stopped_iteration_index = iteration_index
                 break
         generation_start = time.perf_counter()
@@ -478,6 +478,7 @@ def _evaluate_generator_candidate(
             "draws": 0,
             "match_worker_processes": config.generator_gate_worker_processes,
         }
+        result.update(_generator_gate_decision(result))
         artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return result
     command = [
@@ -543,12 +544,34 @@ def _evaluate_generator_candidate(
             "last_generator_checkpoint": str(last_generator_checkpoint),
         }
     )
+    result.update(_generator_gate_decision(result))
     artifacts.generator_gate_result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     return result
 
 
-def _generator_candidate_lost(result: dict[str, object]) -> bool:
-    return int(result.get("player_a_losses", 0)) > int(result.get("player_a_wins", 0))
+def _generator_gate_decision(result: dict[str, object]) -> dict[str, object]:
+    wins = int(result.get("player_a_wins", 0))
+    losses = int(result.get("player_a_losses", 0))
+    draws = int(result.get("draws", 0))
+    margin = wins - losses
+    if margin <= -2:
+        decision = "clearly_worse"
+    elif margin >= 2:
+        decision = "favorable"
+    else:
+        decision = "unclear"
+    return {
+        "decision": decision,
+        "should_stop": decision == "clearly_worse",
+        "margin": margin,
+        "decisive_games": wins + losses,
+        "draws": draws,
+        "interpretation": "degradation_guard",
+    }
+
+
+def _generator_gate_should_stop(result: dict[str, object]) -> bool:
+    return bool(result.get("should_stop", False))
 
 
 def _load_online_replay_iteration_examples(

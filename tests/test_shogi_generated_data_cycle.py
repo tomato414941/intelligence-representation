@@ -655,6 +655,9 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             gate_result = json.loads((run_dir / "iteration-0002" / "generator-gate-result.json").read_text(encoding="utf-8"))
             self.assertEqual(gate_result["player_a_wins"], 2)
             self.assertEqual(gate_result["player_a_losses"], 0)
+            self.assertEqual(gate_result["decision"], "favorable")
+            self.assertFalse(gate_result["should_stop"])
+            self.assertEqual(gate_result["margin"], 2)
             metrics = json.loads(result.iterations[0].metrics.read_text(encoding="utf-8"))
             self.assertEqual(metrics["checkpoint"]["init_id"], source_checkpoint_id)
             self.assertEqual(metrics["checkpoint"]["id"], load_shogi_policy_value_checkpoint_identity(result.iterations[0].checkpoint).checkpoint_id)
@@ -679,7 +682,72 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertIsNotNone(metrics["training"]["wall_time_sec"])
             self.assertIsNotNone(metrics["checkpoint"]["save_wall_time_sec"])
 
-    def test_online_replay_stops_when_generator_candidate_loses(self) -> None:
+    def test_online_replay_continues_when_generator_gate_is_unclear(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint_path = root / "source.pt"
+            _write_checkpoint(checkpoint_path)
+            run_dir = root / "online"
+            arena_repo = root / "arena"
+            arena_repo.mkdir()
+            training_eval_data_selection = _write_training_eval_bundle(root / "training-eval")
+
+            def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
+                if any(item.endswith("generate_shogi_games.py") for item in command):
+                    out_path = Path(command[command.index("--out") + 1])
+                    write_shogi_game_records_jsonl(out_path, [_mcts_record(("7g7f", "3c3d"), "black")])
+                    return None
+                if any(item.endswith("evaluate_shogi_players.py") for item in command):
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "game_count": 3,
+                                "player_a_wins": 1,
+                                "player_a_losses": 2,
+                                "draws": 0,
+                                "average_plies": 2,
+                                "illegal_move_count": 0,
+                            }
+                        )
+                        + "\n",
+                    )
+                return None
+
+            with (
+                patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command", side_effect=fake_run) as generation_run,
+                patch("intrep.problems.shogi_policy_value.online_replay.subprocess.run", side_effect=fake_run),
+                patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
+                patch(
+                    "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
+                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                ),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+            ):
+                result = run_shogi_online_replay(
+                    ShogiOnlineReplayConfig(
+                        checkpoint=checkpoint_path,
+                        run_dir=run_dir,
+                        iterations=2,
+                        replay_capacity=8,
+                        min_replay_size=1,
+                        training_budget=ShogiOnlineReplayTrainingBudget(sampled_examples_per_iteration=2),
+                        training_eval_data_selection=training_eval_data_selection,
+                        arena_repo=arena_repo,
+                        experience_sources=(_self_play_source(games=1),),
+                    )
+                )
+
+            self.assertEqual(len(result.iterations), 2)
+            self.assertEqual(result.stop_reason, None)
+            self.assertEqual(generation_run.call_count, 2)
+            gate_result = json.loads((run_dir / "iteration-0002" / "generator-gate-result.json").read_text(encoding="utf-8"))
+            self.assertEqual(gate_result["decision"], "unclear")
+            self.assertFalse(gate_result["should_stop"])
+            self.assertEqual(gate_result["margin"], -1)
+
+    def test_online_replay_stops_when_generator_candidate_is_clearly_worse(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkpoint_path = root / "source.pt"
@@ -737,11 +805,15 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
                 )
 
             self.assertEqual(len(result.iterations), 1)
-            self.assertEqual(result.stop_reason, "generator_candidate_lost")
+            self.assertEqual(result.stop_reason, "generator_candidate_clearly_worse")
             self.assertEqual(result.stopped_iteration_index, 2)
             self.assertEqual(generation_run.call_count, 1)
             self.assertEqual(run.call_count, 1)
             self.assertFalse((run_dir / "iteration-0002" / "generated-games.jsonl").exists())
+            gate_result = json.loads((run_dir / "iteration-0002" / "generator-gate-result.json").read_text(encoding="utf-8"))
+            self.assertEqual(gate_result["decision"], "clearly_worse")
+            self.assertTrue(gate_result["should_stop"])
+            self.assertEqual(gate_result["margin"], -2)
 
     def test_online_replay_seeds_replay_from_bundle_train_split_and_appends_store_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

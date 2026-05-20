@@ -71,9 +71,10 @@ experience should be treated as an experience generator, not merely as a base
 checkpoint.
 
 A newly trained candidate checkpoint must be evaluated before it is used to
-generate more replay experience. If the candidate loses that evaluation, the
-learning workflow should stop at that candidate instead of generating more
-experience from the losing checkpoint.
+generate more replay experience. This gate is a degradation guard, not proof
+that the candidate is stronger. Clearly worse candidates stop the loop; close
+results may continue but should be interpreted as unclear rather than as
+strength improvement.
 
 Generation uses game-level worker processes for produced experience, and the
 generator gate uses match-level worker processes for checkpoint-vs-checkpoint

@@ -1,6 +1,6 @@
 # Shogi Online Replay Gate Statistical Confidence
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -40,3 +40,16 @@ strength improvement.
 - Gate pass/fail semantics are explicit for close results.
 - Metrics preserve enough match detail to revisit the decision.
 - Online replay can avoid over-interpreting narrow gate wins.
+
+## Resolution
+
+2026-05-20:
+
+- Online replay gate semantics are now explicitly a degradation guard, not proof
+  that the candidate checkpoint is stronger.
+- Gate results record `decision`, `should_stop`, `margin`, `decisive_games`,
+  and `interpretation`.
+- A one-game margin is classified as `unclear` and does not stop the loop.
+- A margin of -2 or worse is classified as `clearly_worse` and stops the loop.
+- A margin of +2 or better is classified as `favorable`, but this is still only
+  a gate interpretation rather than a standalone strength claim.
