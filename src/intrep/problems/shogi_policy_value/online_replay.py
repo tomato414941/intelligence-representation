@@ -787,6 +787,13 @@ def _online_replay_iteration_metrics(
         },
         "gate": {
             "wall_time_sec": phase_timings.get("gate_wall_time_sec"),
+            "config": {
+                "games": config.generator_gate_games,
+                "worker_processes": config.generator_gate_worker_processes,
+                "mcts_simulations": config.simulations,
+                "nn_leaf_eval_batch_limit": config.nn_leaf_eval_batch_limit,
+                "max_plies": config.max_plies,
+            },
             "result_path": str(artifacts.generator_gate_result_path),
             "result": _load_json_if_exists(artifacts.generator_gate_result_path),
         },

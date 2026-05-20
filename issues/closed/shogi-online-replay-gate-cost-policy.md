@@ -1,6 +1,6 @@
 # Shogi Online Replay Gate Cost Policy
 
-Status: open
+Status: closed
 Priority: medium
 
 ## Problem
@@ -42,3 +42,20 @@ full-strength evaluation.
   training-control choice.
 - Gate cost is visible in run metrics.
 - The project can explain why the chosen gate cost is worth paying.
+
+## Resolution
+
+2026-05-20:
+
+- `docs/shogi/learning-boundaries.md` now defines the generator gate as a
+  training-control cost, not final playing-strength evaluation.
+- The gate's purpose is to stop clearly worse candidate generators before they
+  produce more replay experience.
+- Online Replay iteration metrics now record the gate config:
+  - games
+  - worker processes
+  - MCTS simulations
+  - NN leaf eval batch limit
+  - max plies
+- Metrics already record gate wall time and the gate result, so run summaries can
+  judge whether the guard cost was worth paying.

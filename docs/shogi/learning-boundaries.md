@@ -86,6 +86,18 @@ evaluation. `NN leaf eval batch limit` is the neural evaluator batch cap used by
 both single-game in-tree leaf batching and generated-game multi-position
 batching.
 
+## Online Replay Gate Cost
+
+The generator gate is a training-control cost, not final playing-strength
+evaluation. Its job is to stop clearly worse candidate generators before they
+produce more replay experience.
+
+The default gate is intentionally smaller than a full strength evaluation. Gate
+settings are part of the Online Replay configuration: gate games, gate worker
+processes, MCTS simulations, NN leaf eval batch limit, and max plies. Iteration
+metrics record those settings, gate wall time, and the gate result so run
+summaries can judge whether the guard cost was worth paying.
+
 ## Playing Strength Evaluation
 
 Playing-strength evaluation is a player-vs-player match. The project-facing

@@ -725,6 +725,16 @@ class ShogiGeneratedDataCycleTest(unittest.TestCase):
             self.assertEqual(metrics["training"]["effective_sample_passes"], 1.5)
             self.assertIsNotNone(metrics["iteration"]["wall_time_sec"])
             self.assertIsNone(metrics["gate"]["wall_time_sec"])
+            self.assertEqual(
+                metrics["gate"]["config"],
+                {
+                    "games": 32,
+                    "worker_processes": 4,
+                    "mcts_simulations": 128,
+                    "nn_leaf_eval_batch_limit": 64,
+                    "max_plies": 320,
+                },
+            )
             self.assertIsNotNone(metrics["generation"]["wall_time_sec"])
             self.assertIsNotNone(metrics["generation"]["train_extraction_wall_time_sec"])
             self.assertIsNotNone(metrics["replay"]["generated_tensorize_wall_time_sec"])
