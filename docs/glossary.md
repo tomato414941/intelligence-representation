@@ -528,9 +528,9 @@ discrete segmentation process.
 Use this term for text tokens and token IDs. Do not use it as the generic name
 for every item a Transformer attends over.
 
-### Representation Element
+### Element
 
-A representation element is one addressable item in a model representation.
+An element is one addressable item in a model representation.
 
 Examples:
 
@@ -542,17 +542,17 @@ Examples:
 - graph node
 - state summary element
 
-A token can be a representation element, but not every representation element
-is a token. Use this term when discussing non-text or domain-structured items
-that are processed as elements in a vector sequence or set.
+A token can be an element, but not every element is a token. Use this term when
+discussing non-text or domain-structured items that are processed as elements
+in a vector sequence or set.
 
-### Feature Slot
+### Feature Field
 
-A feature slot is a typed feature field inside one representation element.
+A feature field is a typed attribute field inside one element.
 
 It is not an addressable sequence element by itself. It is one attribute
 position within an element such as a square, piece, line, or state summary
-element. Multiple feature slots may be embedded and combined to form one
+element. Multiple feature fields may be embedded and combined to form one
 element embedding.
 
 Examples:
