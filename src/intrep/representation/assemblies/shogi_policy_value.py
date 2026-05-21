@@ -16,10 +16,15 @@ from intrep.representation.inputs.shogi_alpha_zero_like_position import (
     ShogiAlphaZeroLikePositionEncoder,
     ShogiAlphaZeroLikePositionInputLayer,
 )
-from intrep.representation.inputs.shogi_minimal_global_position import (
-    ShogiMinimalGlobalPositionAttentionLogitBias,
-    ShogiMinimalGlobalPositionEncoder,
-    ShogiMinimalGlobalPositionInputLayer,
+from intrep.representation.inputs.shogi_minimal_split_global_position import (
+    ShogiMinimalSplitGlobalPositionAttentionLogitBias,
+    ShogiMinimalSplitGlobalPositionEncoder,
+    ShogiMinimalSplitGlobalPositionInputLayer,
+)
+from intrep.representation.inputs.shogi_minimal_single_global_position import (
+    ShogiMinimalSingleGlobalPositionAttentionLogitBias,
+    ShogiMinimalSingleGlobalPositionEncoder,
+    ShogiMinimalSingleGlobalPositionInputLayer,
 )
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
 from intrep.representation.outputs.shogi_legal_move import (
@@ -30,7 +35,8 @@ from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHea
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
@@ -252,7 +258,12 @@ def _build_shogi_position_encoder(
     hidden_dim: int,
     num_layers: int,
     dropout: float,
-) -> ShogiRichPositionEncoder | ShogiAlphaZeroLikePositionEncoder | ShogiMinimalGlobalPositionEncoder:
+) -> (
+    ShogiRichPositionEncoder
+    | ShogiAlphaZeroLikePositionEncoder
+    | ShogiMinimalSingleGlobalPositionEncoder
+    | ShogiMinimalSplitGlobalPositionEncoder
+):
     core = SharedTransformerCore(
         embedding_dim=embedding_dim,
         num_heads=num_heads,
@@ -272,10 +283,16 @@ def _build_shogi_position_encoder(
             attention_logit_bias=ShogiAlphaZeroLikePositionAttentionLogitBias(),
             core=core,
         )
-    if input_module_id == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
-        return ShogiMinimalGlobalPositionEncoder(
-            input_layer=ShogiMinimalGlobalPositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiMinimalGlobalPositionAttentionLogitBias(),
+    if input_module_id == SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID:
+        return ShogiMinimalSingleGlobalPositionEncoder(
+            input_layer=ShogiMinimalSingleGlobalPositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiMinimalSingleGlobalPositionAttentionLogitBias(),
+            core=core,
+        )
+    if input_module_id == SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID:
+        return ShogiMinimalSplitGlobalPositionEncoder(
+            input_layer=ShogiMinimalSplitGlobalPositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiMinimalSplitGlobalPositionAttentionLogitBias(),
             core=core,
         )
     raise ValueError(f"unsupported shogi position input module: {input_module_id}")

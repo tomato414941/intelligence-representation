@@ -20,27 +20,27 @@ from intrep.representation.inputs.shogi_position_features.position_square_featur
 )
 
 
-SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_SCHEMA_ID = "shogi_minimal_global_position_features"
-SHOGI_MINIMAL_GLOBAL_GLOBAL_ELEMENT_COUNT = 1
-SHOGI_MINIMAL_GLOBAL_GLOBAL_FEATURE_COUNT = 17
-SHOGI_MINIMAL_GLOBAL_SQUARE_ELEMENT_COUNT = 81
-SHOGI_MINIMAL_GLOBAL_SQUARE_FEATURE_COUNT = 1
-SHOGI_MINIMAL_GLOBAL_ELEMENT_COUNT = (
-    SHOGI_MINIMAL_GLOBAL_GLOBAL_ELEMENT_COUNT + SHOGI_MINIMAL_GLOBAL_SQUARE_ELEMENT_COUNT
+SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_SCHEMA_ID = "shogi_minimal_single_global_position_features"
+SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_ELEMENT_COUNT = 1
+SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT = 17
+SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT = 81
+SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_FEATURE_COUNT = 1
+SHOGI_MINIMAL_SINGLE_GLOBAL_ELEMENT_COUNT = (
+    SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_ELEMENT_COUNT + SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT
 )
-SHOGI_MINIMAL_GLOBAL_STATE_ELEMENT_INDEX = 0
-SHOGI_MINIMAL_GLOBAL_SQUARE_ELEMENT_OFFSET = SHOGI_MINIMAL_GLOBAL_GLOBAL_ELEMENT_COUNT
+SHOGI_MINIMAL_SINGLE_GLOBAL_STATE_ELEMENT_INDEX = 0
+SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_OFFSET = SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_ELEMENT_COUNT
 
 
-def shogi_minimal_global_position_feature_manifest() -> dict[str, object]:
+def shogi_minimal_single_global_position_feature_manifest() -> dict[str, object]:
     return {
-        "input_schema_id": SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_SCHEMA_ID,
+        "input_schema_id": SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_SCHEMA_ID,
         "coordinate_system": "side_to_move_relative_180_rotation",
-        "representation_element_count": SHOGI_MINIMAL_GLOBAL_ELEMENT_COUNT,
-        "global_element_count": SHOGI_MINIMAL_GLOBAL_GLOBAL_ELEMENT_COUNT,
-        "global_feature_count": SHOGI_MINIMAL_GLOBAL_GLOBAL_FEATURE_COUNT,
-        "square_element_count": SHOGI_MINIMAL_GLOBAL_SQUARE_ELEMENT_COUNT,
-        "square_feature_count": SHOGI_MINIMAL_GLOBAL_SQUARE_FEATURE_COUNT,
+        "representation_element_count": SHOGI_MINIMAL_SINGLE_GLOBAL_ELEMENT_COUNT,
+        "global_element_count": SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_ELEMENT_COUNT,
+        "global_feature_count": SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT,
+        "square_element_count": SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT,
+        "square_feature_count": SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square"],
         "global_features": [
@@ -55,16 +55,16 @@ def shogi_minimal_global_position_feature_manifest() -> dict[str, object]:
     }
 
 
-def shogi_minimal_global_position_feature_manifest_hash() -> str:
-    payload = json.dumps(shogi_minimal_global_position_feature_manifest(), sort_keys=True).encode("utf-8")
+def shogi_minimal_single_global_position_feature_manifest_hash() -> str:
+    payload = json.dumps(shogi_minimal_single_global_position_feature_manifest(), sort_keys=True).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
-SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST = shogi_minimal_global_position_feature_manifest()
-SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST_HASH = shogi_minimal_global_position_feature_manifest_hash()
+SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_FEATURE_MANIFEST = shogi_minimal_single_global_position_feature_manifest()
+SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_FEATURE_MANIFEST_HASH = shogi_minimal_single_global_position_feature_manifest_hash()
 
 
-def shogi_minimal_global_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
+def shogi_minimal_single_global_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
     board = shogi.Board(position_sfen)
     global_feature_ids = torch.tensor(
         [
@@ -94,21 +94,21 @@ def shogi_minimal_global_position_features_from_sfen(position_sfen: str) -> Shog
     )
 
 
-def validate_shogi_minimal_global_position_feature_structure(features: ShogiPositionFeatures) -> None:
+def validate_shogi_minimal_single_global_position_feature_structure(features: ShogiPositionFeatures) -> None:
     _validate_integer_tensor_shape(
         "global_feature_ids",
         features.global_feature_ids,
-        (SHOGI_MINIMAL_GLOBAL_GLOBAL_ELEMENT_COUNT, SHOGI_MINIMAL_GLOBAL_GLOBAL_FEATURE_COUNT),
+        (SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_ELEMENT_COUNT, SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT),
     )
     _validate_integer_tensor_shape(
         "square_feature_ids",
         features.square_feature_ids,
-        (SHOGI_MINIMAL_GLOBAL_SQUARE_ELEMENT_COUNT, SHOGI_MINIMAL_GLOBAL_SQUARE_FEATURE_COUNT),
+        (SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_FEATURE_COUNT),
     )
     _validate_integer_tensor_shape("piece_feature_ids", features.piece_feature_ids, (0, 0))
     _validate_integer_tensor_shape("line_feature_ids", features.line_feature_ids, (0, 0))
     if int(features.pair_relation_edges.relation_ids.numel()) != 0:
-        raise ValueError("minimal-global position features must not contain pair relation edges")
+        raise ValueError("minimal-single-global position features must not contain pair relation edges")
 
 
 def _validate_integer_tensor_shape(name: str, tensor: object, expected_shape: tuple[int, ...]) -> None:

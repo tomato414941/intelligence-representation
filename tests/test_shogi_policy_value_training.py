@@ -9,7 +9,8 @@ from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExam
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_MINIMAL_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 )
@@ -95,7 +96,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.initial_loss, 0.0)
         self.assertGreater(result.metrics.final_loss, 0.0)
 
-    def test_trains_minimal_global_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_minimal_split_global_policy_plane_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -106,7 +107,26 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+            ),
+        )
+
+        self.assertEqual(result.metrics.train_case_count, 3)
+        self.assertGreater(result.metrics.initial_loss, 0.0)
+        self.assertGreater(result.metrics.final_loss, 0.0)
+
+    def test_trains_minimal_single_global_policy_plane_model_for_one_step(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
+
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
             ),
         )
 
