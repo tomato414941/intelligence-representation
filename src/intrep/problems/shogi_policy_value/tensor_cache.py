@@ -86,12 +86,15 @@ SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES: dict[str, str] = {
     "position_features.pair_relation_edges.source_element_indices": "uint16",
     "position_features.pair_relation_edges.target_element_indices": "uint16",
     "position_features.pair_relation_edges.relation_ids": "uint8",
+    "position_features.pair_relation_edges.offsets": "uint32",
     "legal_move.legal_move_feature_ids": "uint16",
     "legal_move.label": "uint16",
     "legal_move.policy_targets": "float32",
     "legal_move.value_target": "float32",
     "action_plane_policy.legal_action_indices": "uint16",
+    "action_plane_policy.legal_action_offsets": "uint32",
     "action_plane_policy.target_action_indices": "uint16",
+    "action_plane_policy.target_action_offsets": "uint32",
     "action_plane_policy.target_weights": "float32",
     "action_plane_policy.action_plane_policy_label": "uint16",
     "action_plane_policy.value_target": "float32",
@@ -567,7 +570,7 @@ class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPl
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_payload_samples: list[Any] = []
+        self._loaded_sample_storage: dict[str, Any] | None = None
         self._loaded_samples: dict[int, CompactActionPlanePolicyValueTensorSample] = {}
 
     def __len__(self) -> int:
@@ -611,20 +614,23 @@ class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPl
         raise IndexError(index)
 
     def _load_shard_sample(self, shard_index: int, sample_index: int) -> CompactActionPlanePolicyValueTensorSample:
-        self._load_shard_payload_samples(shard_index)
+        self._load_shard_sample_storage(shard_index)
         if sample_index not in self._loaded_samples:
-            self._loaded_samples[sample_index] = _compact_action_plane_policy_sample_from_payload(
-                self._loaded_payload_samples[sample_index],
+            if self._loaded_sample_storage is None:
+                raise RuntimeError("action-plane policy tensor cache shard storage is not loaded")
+            self._loaded_samples[sample_index] = _compact_action_plane_policy_sample_from_storage(
+                self._loaded_sample_storage,
+                sample_index,
                 input_module=self.input_module,
             )
         return self._loaded_samples[sample_index]
 
-    def _load_shard_payload_samples(self, shard_index: int) -> None:
+    def _load_shard_sample_storage(self, shard_index: int) -> None:
         if self._loaded_shard_index == shard_index:
             return
         shard = self.shards[shard_index]
         payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
-        self._loaded_payload_samples = list(payload["samples"])
+        self._loaded_sample_storage = _object_dict(payload["sample_storage"])
         self._loaded_samples = {}
         self._loaded_shard_index = shard_index
 
@@ -837,15 +843,25 @@ def _build_shard(
     samples = _tensorize_examples_for_output_space(shard_examples, output_space, input_module=input_module)
     summary = _policy_target_summary(shard_examples)
     output_stats = _sample_output_space_stats(samples, output_space)
-    payload = {
+    payload: dict[str, Any] = {
         **expected,
         "sample_count": len(samples),
         **output_stats,
         "policy_target_summary": summary,
         "skipped_example_count": 0,
         "failures": [],
-        "samples": [_sample_to_payload(sample, output_space) for sample in samples],
     }
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        compact_samples = [
+            sample
+            for sample in samples
+            if isinstance(sample, CompactActionPlanePolicyValueTensorSample)
+        ]
+        if len(compact_samples) != len(samples):
+            raise TypeError("action-plane policy tensor cache requires compact action-plane policy samples")
+        payload["sample_storage"] = _compact_action_plane_policy_samples_to_payload(compact_samples)
+    else:
+        payload["samples"] = [_sample_to_payload(sample, output_space) for sample in samples]
     torch.save(payload, shard_path)
     _write_shard_manifest_file(_shard_manifest_path(shard_path), _shard_manifest(payload))
     return _shard_manifest(payload)
@@ -1078,6 +1094,36 @@ def _compact_action_plane_policy_sample_to_payload(sample: CompactActionPlanePol
     }
 
 
+def _compact_action_plane_policy_samples_to_payload(
+    samples: Sequence[CompactActionPlanePolicyValueTensorSample],
+) -> dict[str, Any]:
+    legal_action_indices, legal_action_offsets = _pack_variable_length_integer_tensors(
+        "legal_action_indices",
+        [sample.legal_action_indices for sample in samples],
+        maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+    )
+    target_action_indices, target_action_offsets = _pack_variable_length_integer_tensors(
+        "target_action_indices",
+        [sample.target_action_indices for sample in samples],
+        maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+    )
+    target_weights = torch.cat([sample.target_weights.to(dtype=torch.float32) for sample in samples])
+    return {
+        "position_features": _position_features_batch_to_payload([sample.position_features for sample in samples]),
+        "legal_action_indices": legal_action_indices,
+        "legal_action_offsets": legal_action_offsets,
+        "target_action_indices": target_action_indices,
+        "target_action_offsets": target_action_offsets,
+        "target_weights": target_weights,
+        "action_plane_policy_label": _uint16_tensor(
+            "action_plane_policy_label",
+            torch.stack([sample.action_plane_policy_label for sample in samples]),
+            maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+        ),
+        "value_target": torch.stack([sample.value_target for sample in samples]).to(dtype=torch.float32),
+    }
+
+
 def _compact_action_plane_policy_sample_from_payload(payload: Any, *, input_module: str) -> CompactActionPlanePolicyValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
@@ -1088,6 +1134,28 @@ def _compact_action_plane_policy_sample_from_payload(payload: Any, *, input_modu
         target_weights=payload["target_weights"].to(dtype=torch.float32),
         action_plane_policy_label=payload["action_plane_policy_label"].to(dtype=torch.long),
         value_target=payload["value_target"].to(dtype=torch.float32),
+    )
+
+
+def _compact_action_plane_policy_sample_from_storage(
+    storage: dict[str, Any],
+    sample_index: int,
+    *,
+    input_module: str,
+) -> CompactActionPlanePolicyValueTensorSample:
+    legal_start, legal_end = _packed_range(storage["legal_action_offsets"], sample_index)
+    target_start, target_end = _packed_range(storage["target_action_offsets"], sample_index)
+    return CompactActionPlanePolicyValueTensorSample(
+        position_features=_position_features_from_batch_payload(
+            storage["position_features"],
+            sample_index,
+            input_module=input_module,
+        ),
+        legal_action_indices=storage["legal_action_indices"][legal_start:legal_end].to(dtype=torch.long),
+        target_action_indices=storage["target_action_indices"][target_start:target_end].to(dtype=torch.long),
+        target_weights=storage["target_weights"][target_start:target_end].to(dtype=torch.float32),
+        action_plane_policy_label=storage["action_plane_policy_label"][sample_index].to(dtype=torch.long),
+        value_target=storage["value_target"][sample_index].to(dtype=torch.float32),
     )
 
 
@@ -1117,6 +1185,50 @@ def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, 
     }
 
 
+def _position_features_batch_to_payload(features: Sequence[ShogiPositionFeatures]) -> dict[str, Any]:
+    pair_relation_edges = [feature.pair_relation_edges for feature in features]
+    source_indices, edge_offsets = _pack_variable_length_integer_tensors(
+        "pair_relation_edges.source_element_indices",
+        [edges.source_element_indices for edges in pair_relation_edges],
+        maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
+    )
+    target_indices, _target_offsets = _pack_variable_length_integer_tensors(
+        "pair_relation_edges.target_element_indices",
+        [edges.target_element_indices for edges in pair_relation_edges],
+        maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
+    )
+    relation_ids, _relation_offsets = _pack_variable_length_integer_tensors(
+        "pair_relation_edges.relation_ids",
+        [edges.relation_ids for edges in pair_relation_edges],
+        maximum_exclusive=PAIR_RELATION_COUNT,
+        storage_dtype="uint8",
+    )
+    return {
+        "global_feature_ids": _position_feature_tensor(
+            "global_feature_ids",
+            torch.stack([feature.global_feature_ids for feature in features]),
+        ),
+        "square_feature_ids": _position_feature_tensor(
+            "square_feature_ids",
+            torch.stack([feature.square_feature_ids for feature in features]),
+        ),
+        "piece_feature_ids": _position_feature_tensor(
+            "piece_feature_ids",
+            torch.stack([feature.piece_feature_ids for feature in features]),
+        ),
+        "line_feature_ids": _position_feature_tensor(
+            "line_feature_ids",
+            torch.stack([feature.line_feature_ids for feature in features]),
+        ),
+        "pair_relation_edges": {
+            "source_element_indices": source_indices,
+            "target_element_indices": target_indices,
+            "relation_ids": relation_ids,
+            "offsets": edge_offsets,
+        },
+    }
+
+
 def _position_features_from_payload(payload: Any, *, input_module: str) -> ShogiPositionFeatures:
     if not isinstance(payload, dict):
         raise ValueError("position features payload must be a mapping")
@@ -1126,6 +1238,31 @@ def _position_features_from_payload(payload: Any, *, input_module: str) -> Shogi
         piece_feature_ids=payload["piece_feature_ids"].to(dtype=torch.long),
         line_feature_ids=payload["line_feature_ids"].to(dtype=torch.long),
         pair_relation_edges=_pair_relation_edges_from_payload(payload["pair_relation_edges"]),
+    )
+    _validate_position_feature_structure_for_input_module(features, input_module=input_module)
+    return features
+
+
+def _position_features_from_batch_payload(
+    payload: Any,
+    sample_index: int,
+    *,
+    input_module: str,
+) -> ShogiPositionFeatures:
+    if not isinstance(payload, dict):
+        raise ValueError("position features payload must be a mapping")
+    pair_payload = _object_dict(payload["pair_relation_edges"])
+    edge_start, edge_end = _packed_range(pair_payload["offsets"], sample_index)
+    features = ShogiPositionFeatures(
+        global_feature_ids=payload["global_feature_ids"][sample_index].to(dtype=torch.long),
+        square_feature_ids=payload["square_feature_ids"][sample_index].to(dtype=torch.long),
+        piece_feature_ids=payload["piece_feature_ids"][sample_index].to(dtype=torch.long),
+        line_feature_ids=payload["line_feature_ids"][sample_index].to(dtype=torch.long),
+        pair_relation_edges=ShogiPairRelationEdges(
+            source_element_indices=pair_payload["source_element_indices"][edge_start:edge_end].to(dtype=torch.long),
+            target_element_indices=pair_payload["target_element_indices"][edge_start:edge_end].to(dtype=torch.long),
+            relation_ids=pair_payload["relation_ids"][edge_start:edge_end].to(dtype=torch.long),
+        ),
     )
     _validate_position_feature_structure_for_input_module(features, input_module=input_module)
     return features
@@ -1188,6 +1325,40 @@ def _uint8_tensor(name: str, tensor: torch.Tensor, *, maximum_exclusive: int | N
     return tensor.to(dtype=torch.uint8)
 
 
+def _uint32_tensor(name: str, tensor: torch.Tensor, *, maximum_exclusive: int | None = None) -> torch.Tensor:
+    _validate_non_negative_integer_tensor(
+        name,
+        tensor,
+        maximum_exclusive=maximum_exclusive,
+        storage_maximum_inclusive=4_294_967_295,
+    )
+    return tensor.to(dtype=torch.uint32)
+
+
+def _pack_variable_length_integer_tensors(
+    name: str,
+    tensors: Sequence[torch.Tensor],
+    *,
+    maximum_exclusive: int | None,
+    storage_dtype: str = "uint16",
+) -> tuple[torch.Tensor, torch.Tensor]:
+    offsets = [0]
+    for tensor in tensors:
+        offsets.append(offsets[-1] + int(tensor.numel()))
+    flat = torch.cat([tensor.reshape(-1) for tensor in tensors]) if offsets[-1] else torch.empty((0,), dtype=torch.long)
+    if storage_dtype == "uint8":
+        packed = _uint8_tensor(name, flat, maximum_exclusive=maximum_exclusive)
+    elif storage_dtype == "uint16":
+        packed = _uint16_tensor(name, flat, maximum_exclusive=maximum_exclusive)
+    else:
+        raise ValueError(f"unsupported packed storage dtype: {storage_dtype}")
+    return packed, _uint32_tensor(f"{name}.offsets", torch.tensor(offsets, dtype=torch.long))
+
+
+def _packed_range(offsets: torch.Tensor, sample_index: int) -> tuple[int, int]:
+    return int(offsets[sample_index].item()), int(offsets[sample_index + 1].item())
+
+
 def _validate_non_negative_integer_tensor(
     name: str,
     tensor: torch.Tensor,
@@ -1197,7 +1368,7 @@ def _validate_non_negative_integer_tensor(
 ) -> None:
     if not isinstance(tensor, torch.Tensor):
         raise ValueError(f"{name} must be a tensor")
-    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8, torch.uint16):
+    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8, torch.uint16, torch.uint32):
         raise ValueError(f"{name} must use an integer dtype")
     if tensor.numel() == 0:
         return

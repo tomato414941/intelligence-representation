@@ -231,8 +231,8 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
             self.assertGreater(len(cache.train_samples), 2)
 
-            original = tensor_cache_module._compact_action_plane_policy_sample_from_payload
-            with patch.object(tensor_cache_module, "_compact_action_plane_policy_sample_from_payload", wraps=original) as convert:
+            original = tensor_cache_module._compact_action_plane_policy_sample_from_storage
+            with patch.object(tensor_cache_module, "_compact_action_plane_policy_sample_from_storage", wraps=original) as convert:
                 loaded = cache.train_samples[:2]
 
             self.assertEqual(len(loaded), 2)
@@ -282,17 +282,21 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             shard_path = next((tensor_cache_path / "train").glob("*.pt"))
             shard_payload = torch.load(shard_path, weights_only=False)
             self.assertEqual(shard_payload["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
-            sample_payload = shard_payload["samples"][0]
-            position_payload = sample_payload["position_features"]
+            self.assertNotIn("samples", shard_payload)
+            sample_storage = shard_payload["sample_storage"]
+            position_payload = sample_storage["position_features"]
             self.assertEqual(position_payload["global_feature_ids"].dtype, torch.uint16)
             self.assertEqual(position_payload["square_feature_ids"].dtype, torch.uint16)
             self.assertEqual(position_payload["piece_feature_ids"].dtype, torch.uint16)
             self.assertEqual(position_payload["line_feature_ids"].dtype, torch.uint16)
-            self.assertEqual(sample_payload["legal_action_indices"].dtype, torch.uint16)
-            self.assertEqual(sample_payload["target_action_indices"].dtype, torch.uint16)
-            self.assertEqual(sample_payload["target_weights"].dtype, torch.float32)
-            self.assertEqual(sample_payload["action_plane_policy_label"].dtype, torch.uint16)
-            self.assertEqual(sample_payload["value_target"].dtype, torch.float32)
+            self.assertEqual(position_payload["pair_relation_edges"]["offsets"].dtype, torch.uint32)
+            self.assertEqual(sample_storage["legal_action_indices"].dtype, torch.uint16)
+            self.assertEqual(sample_storage["legal_action_offsets"].dtype, torch.uint32)
+            self.assertEqual(sample_storage["target_action_indices"].dtype, torch.uint16)
+            self.assertEqual(sample_storage["target_action_offsets"].dtype, torch.uint32)
+            self.assertEqual(sample_storage["target_weights"].dtype, torch.float32)
+            self.assertEqual(sample_storage["action_plane_policy_label"].dtype, torch.uint16)
+            self.assertEqual(sample_storage["value_target"].dtype, torch.float32)
             cache = load_shogi_policy_value_tensor_cache(
                 tensor_cache_path,
                 expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
