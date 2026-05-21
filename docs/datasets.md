@@ -45,7 +45,7 @@ Large Hugging Face text datasets can be sampled into a local text corpus before
 training:
 
 ```sh
-python -m intrep.text.prepare_hf_text_slice \
+python -m intrep.domains.language.prepare_hf_text_slice \
   --dataset-name HuggingFaceFW/fineweb-edu \
   --output-path data/external/fineweb_edu_sample.txt \
   --max-bytes 1000000
@@ -55,6 +55,6 @@ CIFAR-10 python batches and IDX image datasets can be converted into local JSONL
 records with:
 
 ```text
-intrep.vision.cifar10_corpus
-intrep.vision.idx_corpus
+intrep.domains.vision.cifar10_corpus
+intrep.domains.vision.idx_corpus
 ```

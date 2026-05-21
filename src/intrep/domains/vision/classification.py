@@ -10,10 +10,10 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.vision.input_layer import ImagePatchInputLayer
+from intrep.domains.vision.input_layer import ImagePatchInputLayer
 from intrep.core.training_utils import resolve_training_device
-from intrep.vision.io import read_portable_image
-from intrep.vision.training_data import (
+from intrep.domains.vision.io import read_portable_image
+from intrep.domains.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
     seeded_data_loader,

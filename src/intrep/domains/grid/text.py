@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from intrep.worlds.grid.world import GridExperienceTransition, GridObservation
-from intrep.text.examples import LanguageModelingExample
+from intrep.domains.grid.world import GridExperienceTransition, GridObservation
+from intrep.domains.language.examples import LanguageModelingExample
 
 
 # TODO: Revisit whether grid-to-text adapters belong in grid or a problem-specific text package.

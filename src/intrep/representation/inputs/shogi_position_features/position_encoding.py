@@ -9,7 +9,7 @@ from intrep.representation.inputs.shogi_position_features.position_features impo
     validate_shogi_position_feature_structure,
 )
 from intrep.representation.inputs.shogi_position_features.position_building import shogi_position_features_from_sfen
-from intrep.worlds.shogi.coordinates import (
+from intrep.domains.shogi.coordinates import (
     absolute_to_relative_square,
     king_relative_offset_bucket,
     opponent_color,

@@ -4,13 +4,13 @@ from pathlib import Path
 
 import shogi
 
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,
     shogi_game_record_from_usi_moves,
 )
-from intrep.worlds.shogi.kif_io import (
+from intrep.domains.shogi.kif_io import (
     convert_kif_files_to_game_records_jsonl,
     load_kif_game,
     load_kif_game_record,

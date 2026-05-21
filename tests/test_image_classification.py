@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import torch
 from PIL import Image
 
-from intrep.vision.classification import (
+from intrep.domains.vision.classification import (
     CIFAR10_LABELS,
     ClassificationHead,
     FASHION_MNIST_LABELS,

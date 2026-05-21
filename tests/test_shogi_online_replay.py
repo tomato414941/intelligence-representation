@@ -37,7 +37,7 @@ from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingResult,
     build_shogi_policy_value_model,
 )
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiDecisionTelemetry,
     ShogiGameRecord,

@@ -8,14 +8,14 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
-from intrep.vision.cifar10_corpus import (
+from intrep.domains.vision.cifar10_corpus import (
     main,
     read_cifar10_batch,
     write_cifar10_image_classification_jsonl,
     write_cifar10_image_text_answer_jsonl,
     write_cifar10_image_text_choice_jsonl,
 )
-from intrep.vision.io import read_portable_image
+from intrep.domains.vision.io import read_portable_image
 
 
 class CIFAR10ImageCorpusTest(unittest.TestCase):

@@ -2,14 +2,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     load_shogi_game_records_jsonl,
     shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.game_split import split_shogi_game_records_jsonl
+from intrep.domains.shogi.game_split import split_shogi_game_records_jsonl
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})

@@ -10,7 +10,7 @@ from unittest.mock import patch
 from intrep.problems.shogi_policy_value.evaluate import main
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     shogi_game_record_from_usi_moves,

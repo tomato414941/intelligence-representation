@@ -5,9 +5,9 @@ from torch import nn
 
 from intrep.core.model_input import concatenate_input_embedding_sequences
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.text.input_layer import TextTokenInputLayer
-from intrep.text.output_layer import TokenOutputHead
-from intrep.vision.input_layer import ImagePatchInputLayer
+from intrep.domains.language.input_layer import TextTokenInputLayer
+from intrep.domains.language.output_layer import TokenOutputHead
+from intrep.domains.vision.input_layer import ImagePatchInputLayer
 
 
 class ImageTextAnswerModel(nn.Module):

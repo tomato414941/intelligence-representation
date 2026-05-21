@@ -11,7 +11,7 @@ schema. It should support many ways to represent the same object or world.
 Examples:
 
 - shogi as board tokens, move candidates, game records, text, or rendered images
-- grid worlds as tensors, transitions, text, or rendered images
+- grid domains as tensors, transitions, text, or rendered images
 - images as pixels, patches, labels, captions, or text answers
 - text as raw text, bytes, token IDs, or rendered layout when needed
 
@@ -26,19 +26,17 @@ Use [Glossary](glossary.md) for the current boundary terms.
 ## Package Responsibilities
 
 - `core/`: domain-agnostic representation computation and shared utilities.
-- `vision/`, `text/`: source-side packages for form/input-oriented external
-  forms, encodings, IO, and conversions.
-- `worlds/`: source-side packages for world-oriented records, replay,
-  observations, actions, transitions, encodings, and world-like utilities.
-  Current packages include `worlds/shogi/` and `worlds/grid/`.
+- `domains/`: source-side packages for domain-specific records, forms, IO,
+  encodings, conversions, replay, observations, actions, transitions, and
+  world-like utilities. Current packages include `domains/shogi/`,
+  `domains/grid/`, `domains/vision/`, and `domains/language/`.
 - `problems/`: problem-oriented model surfaces that bind model input
   construction, shared cores, output heads, losses, metrics, and evaluation when
   those pieces are tightly tied to one input/target/output shape.
 - `transfer/`: reuse of learned state across problem models.
 
-Do not introduce `domains/` as an umbrella package. The source-side packages
-are not all the same kind of category. `forms/` remains deferred until a
-concrete form/input-oriented boundary problem needs it.
+`domains/` is the package for source families. Some domains are rule-oriented
+such as shogi and grid; others are form-oriented such as vision and language.
 
 ## Problem Layer
 

@@ -14,10 +14,10 @@ from intrep.core.training_utils import (
     clip_gradients,
     resolve_training_device,
 )
-from intrep.worlds.grid.world import GridExperienceTransition
+from intrep.domains.grid.world import GridExperienceTransition
 from intrep.problems.grid_step_prediction.dataset import GridStepPredictionDataset
 from intrep.representation.assemblies.grid_step_prediction import GridStepPredictionModel
-from intrep.vision.training_data import seeded_data_loader
+from intrep.domains.vision.training_data import seeded_data_loader
 
 
 @dataclass(frozen=True)

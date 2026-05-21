@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 
 from intrep.representation.assemblies.language_modeling import LanguageModelingConfig, LanguageModelingModel
-from intrep.text.tokenizer import TextTokenizer, text_tokenizer_from_payload
+from intrep.domains.language.tokenizer import TextTokenizer, text_tokenizer_from_payload
 
 
 def build_parser() -> argparse.ArgumentParser:

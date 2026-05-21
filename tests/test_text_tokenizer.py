@@ -2,8 +2,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.text.byte_tokenizer import ByteTokenizer
-from intrep.text.tokenizer import (
+from intrep.domains.language.byte_tokenizer import ByteTokenizer
+from intrep.domains.language.tokenizer import (
     BytePairTokenizer,
     build_text_tokenizer,
     load_text_tokenizer,

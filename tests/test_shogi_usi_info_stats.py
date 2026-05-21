@@ -7,9 +7,9 @@ from io import StringIO
 
 import shogi
 
-from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, ShogiMoveRecord, write_shogi_game_records_jsonl
-from intrep.worlds.shogi.info_stats import inspect_shogi_usi_info_jsonl
-from intrep.worlds.shogi.inspect_usi_info import main
+from intrep.domains.shogi.game_record import ShogiActorSpec, ShogiGameRecord, ShogiMoveRecord, write_shogi_game_records_jsonl
+from intrep.domains.shogi.info_stats import inspect_shogi_usi_info_jsonl
+from intrep.domains.shogi.inspect_usi_info import main
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="baseline", name="black", settings={})

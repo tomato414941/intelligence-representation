@@ -33,13 +33,13 @@ A source-side package holds source records, forms, IO, encodings, conversions,
 input preparation utilities, or world-like utilities for a source family or
 representation family.
 
-Current source-side packages remain intentionally narrow:
+Current domain packages remain intentionally narrow:
 
-- `vision/` and `text/` are form/input-oriented.
-- `worlds/shogi/` and `worlds/grid/` are world-oriented.
+- `domains/vision/` and `domains/language/` are form/input-oriented.
+- `domains/shogi/` and `domains/grid/` are rule-domain-oriented.
 
-Do not use `domain` as the umbrella term for these packages. They are not all
-the same kind of category.
+Use `domain` for source families. A domain does not have to be an interactable
+world. It can be a rule system, a form family, or a recorded source family.
 
 ### Problem Package
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import shogi
 import torch
 
-from intrep.worlds.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
+from intrep.domains.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
 
 
 SHOGI_MOVE_FEATURE_COUNT = 4

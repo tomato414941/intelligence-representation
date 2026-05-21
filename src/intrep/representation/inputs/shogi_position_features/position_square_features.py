@@ -3,7 +3,7 @@ from __future__ import annotations
 import shogi
 
 from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
-from intrep.worlds.shogi.coordinates import (
+from intrep.domains.shogi.coordinates import (
     absolute_to_relative_square,
     king_relative_offset_bucket,
     opponent_color,

@@ -12,7 +12,7 @@ from intrep.problems.image_text_choice.training import (
     train_image_text_choice_model,
 )
 from intrep.transfer.shared_core import load_shared_core_initialization
-from intrep.text.tokenizer import load_text_tokenizer
+from intrep.domains.language.tokenizer import load_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:

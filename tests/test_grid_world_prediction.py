@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from intrep.worlds.grid.world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
+from intrep.domains.grid.world import GridWorldState, Position, generate_grid_world_experience, generate_grid_world_transition_table
 from intrep.problems.grid_step_prediction.training import (
     GridStepPredictionConfig,
     train_grid_step_predictor,

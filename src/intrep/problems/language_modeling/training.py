@@ -8,14 +8,14 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.text.byte_tokenizer import ByteTokenizer
+from intrep.domains.language.byte_tokenizer import ByteTokenizer
 from intrep.representation.assemblies.language_modeling import (
     LanguageModelingConfig,
     LanguageModelingModel,
     language_modeling_config_to_dict,
 )
-from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
-from intrep.text.tokenizer import (
+from intrep.domains.language.examples import LanguageModelingExample, language_modeling_corpus_from_examples
+from intrep.domains.language.tokenizer import (
     TextTokenizer,
     TextTokenizerKind,
     build_text_tokenizer,

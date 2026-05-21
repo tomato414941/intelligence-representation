@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 from PIL import Image
 
-from intrep.vision import inspect_folder
+from intrep.domains.vision import inspect_folder
 
 
 class InspectImageFolderCLITest(unittest.TestCase):

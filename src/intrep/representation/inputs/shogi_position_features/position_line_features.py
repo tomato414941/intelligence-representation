@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shogi
 
-from intrep.worlds.shogi.coordinates import opponent_color, relative_to_absolute_square
+from intrep.domains.shogi.coordinates import opponent_color, relative_to_absolute_square
 from intrep.representation.inputs.shogi_position_features.position_schema import *
 
 

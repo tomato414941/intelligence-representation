@@ -11,9 +11,9 @@ from intrep.problems.language_modeling.training import (
     LanguageModelingTrainingConfig,
     train_language_modeling_with_artifacts,
 )
-from intrep.text.corpus import read_split_text_corpora
-from intrep.text.examples import LanguageModelingExample
-from intrep.text.tokenizer import (
+from intrep.domains.language.corpus import read_split_text_corpora
+from intrep.domains.language.examples import LanguageModelingExample
+from intrep.domains.language.tokenizer import (
     TextTokenizerKind,
     build_text_tokenizer,
     load_text_tokenizer,

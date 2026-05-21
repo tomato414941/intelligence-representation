@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.vision.input_layer import ImagePatchInputLayer
+from intrep.domains.vision.input_layer import ImagePatchInputLayer
 
 
 class ClassificationHead(nn.Module):

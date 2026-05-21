@@ -1,6 +1,6 @@
 import unittest
 
-from intrep.text.examples import LanguageModelingExample, language_modeling_corpus_from_examples
+from intrep.domains.language.examples import LanguageModelingExample, language_modeling_corpus_from_examples
 
 
 class LanguageModelingExampleTest(unittest.TestCase):

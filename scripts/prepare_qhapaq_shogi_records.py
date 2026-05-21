@@ -9,7 +9,7 @@ from typing import Iterable
 
 import py7zr
 
-from intrep.worlds.shogi.kif_io import load_kif_game_record
+from intrep.domains.shogi.kif_io import load_kif_game_record
 
 
 def main() -> None:

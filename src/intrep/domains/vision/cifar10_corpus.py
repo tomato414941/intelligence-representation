@@ -10,7 +10,7 @@ from typing import Sequence
 
 import numpy as np
 
-from intrep.vision.classification import (
+from intrep.domains.vision.classification import (
     CIFAR10_LABELS,
     ImageClassificationExample,
     image_classification_example_to_record,

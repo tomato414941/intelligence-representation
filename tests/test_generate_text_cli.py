@@ -6,10 +6,10 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.text.byte_tokenizer import ByteTokenizer
+from intrep.domains.language.byte_tokenizer import ByteTokenizer
 from intrep.representation.assemblies.language_modeling import LanguageModelingConfig, LanguageModelingModel
 from intrep.problems.language_modeling.generate import generate_text_from_checkpoint, main
-from intrep.text.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
+from intrep.domains.language.tokenizer import train_byte_pair_tokenizer, text_tokenizer_to_payload
 
 
 class GenerateTextCLITest(unittest.TestCase):

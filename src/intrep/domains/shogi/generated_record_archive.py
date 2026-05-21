@@ -4,7 +4,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     iter_shogi_game_records_jsonl,
     shogi_game_record_to_json,
 )

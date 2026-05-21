@@ -5,7 +5,7 @@ import shogi
 
 from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPairRelationEdges
-from intrep.worlds.shogi.coordinates import absolute_to_relative_square, relative_to_absolute_square
+from intrep.domains.shogi.coordinates import absolute_to_relative_square, relative_to_absolute_square
 from intrep.representation.inputs.shogi_position_features.position_schema import *
 
 

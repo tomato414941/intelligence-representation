@@ -38,7 +38,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
 )
-from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
+from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.representation.inputs.shogi_position_features.position_encoding import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,

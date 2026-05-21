@@ -3,9 +3,9 @@
 This document records shogi-specific learning boundaries. It does not define a
 generic world/problem framework for every future domain.
 
-## World-Side Shogi Data
+## Domain-Side Shogi Data
 
-`intrep.worlds.shogi` owns source-side shogi data and formats:
+`intrep.domains.shogi` owns source-side shogi data and formats:
 
 - `ShogiGameRecord`: lightweight recorded game facts such as actors, initial
   position, moves, result, end reason, and source metadata
@@ -17,7 +17,7 @@ generic world/problem framework for every future domain.
 - train/eval game-record splitting
 - engine-analysis source records
 
-Code belongs in `worlds/shogi` when it preserves, organizes, validates,
+Code belongs in `domains/shogi` when it preserves, organizes, validates,
 selects, or replays shogi experience before a specific learning target is
 chosen.
 
@@ -38,9 +38,9 @@ configuration, or learner loop.
 
 ## Boundary Rule
 
-The boundary is source-side versus problem-side.
+The boundary is domain-side versus problem-side.
 
-Training Data Bundles are world-side fixed source snapshots. Tensor caches are
+Training Data Bundles are domain-side fixed source snapshots. Tensor caches are
 problem-side acceleration artifacts derived from a Data Selection or Training
 Data Bundle.
 

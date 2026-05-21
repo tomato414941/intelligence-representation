@@ -9,13 +9,13 @@ from unittest.mock import patch
 from PIL import Image
 
 from intrep import train_image_classification
-from intrep.vision.classification import (
+from intrep.domains.vision.classification import (
     FASHION_MNIST_LABELS,
     ImageFolderClassificationDataset,
     ImageClassificationMetrics,
     ImageClassificationTrainingResult,
 )
-from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
+from intrep.domains.vision.classification_checkpoint import load_image_classification_checkpoint
 from intrep.transfer.shared_core import load_shared_core_initialization
 from intrep.representation.assemblies.image_classification import ImageClassificationModel
 

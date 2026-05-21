@@ -4,7 +4,7 @@ from pathlib import Path
 
 import shogi
 
-from intrep.worlds.shogi.position_index import (
+from intrep.domains.shogi.position_index import (
     ShogiPositionIndex,
     ShogiPositionIndexEntry,
     ShogiPositionIndexRecord,

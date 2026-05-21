@@ -50,7 +50,7 @@ Read these first:
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Boundaries](docs/model-boundaries.md)
 - [Learning Data Boundaries](docs/learning-data-boundaries.md)
-- [Worlds and Experience](docs/worlds-and-experience.md)
+- [Domains and Experience](docs/domains-and-experience.md)
 - [Datasets](docs/datasets.md)
 - [Training](docs/training.md)
 - [RunPod](docs/runpod.md)

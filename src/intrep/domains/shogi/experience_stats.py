@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord
-from intrep.worlds.shogi.game_trace import trace_shogi_game_record
+from intrep.domains.shogi.game_record import ShogiActorSpec, ShogiGameRecord
+from intrep.domains.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)

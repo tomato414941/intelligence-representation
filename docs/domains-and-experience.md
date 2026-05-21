@@ -1,18 +1,18 @@
-# Worlds And Experience
+# Domains And Experience
 
-This document defines how action-oriented worlds fit into the project. It is a
+This document defines how action-oriented domains fit into the project. It is a
 boundary document, not a reinforcement-learning algorithm spec.
 
 Use [Glossary](glossary.md) as the source of truth for short boundary-term
-definitions. This document explains world, observation, action, feedback, and
-experience in interaction-oriented settings.
+definitions. This document explains domain, world-like interfaces,
+observation, action, feedback, and experience in interaction-oriented settings.
 
-## World
+## Domain And World-Like Interface
 
-A world is a structured setting with state, entities, relations, changes,
-constraints, and consequences. Some worlds receive actions and return
-observations or feedback. Others are observed or replayed through source
-records.
+A domain is a structured source family with rules, state, entities, relations,
+changes, constraints, and consequences. Some domains expose world-like
+interfaces that receive actions and return observations or feedback. Others are
+observed or replayed through source records.
 
 Examples:
 
@@ -92,12 +92,12 @@ discrete action -> action embedding
 reward or done -> scalar/class target, or a history token when needed
 ```
 
-Do not force every world or task into one raw schema. Keep the world interface,
+Do not force every domain or task into one raw schema. Keep the domain interface,
 experience record, training example, and model input separate.
 
 ## First Sim World
 
-Grid world is the first action-oriented simulation because it is small,
+Grid is the first action-oriented simulation domain because it is small,
 deterministic, and easy to render as text, image, tensor, or candidate choices.
 
 The first version uses full observation: the agent, goal, and walls are visible
@@ -110,7 +110,7 @@ The first useful objective is:
 observation + action -> next observation / reward / terminated
 ```
 
-The first implementation path renders grid-world experience as text
+The first implementation path renders grid experience as text
 language-modeling examples. This is intentionally a small bridge into the
 existing text training path, not a new problem-specific trainer.
 
@@ -124,7 +124,7 @@ grid observation tensor + action id
   -> terminated flag
 ```
 
-This keeps the world interface close to common RL practice while still using a
+This keeps the domain interface close to common RL practice while still using a
 small Transformer core.
 
 Policy learning and online reinforcement learning can be added later if the

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import shogi
 
-from intrep.worlds.shogi.game_record import (
+from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiDecisionTelemetry,
     ShogiGameRecord,
@@ -14,7 +14,7 @@ from intrep.worlds.shogi.game_record import (
     shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.worlds.shogi.game_trace import trace_shogi_game_record
+from intrep.domains.shogi.game_trace import trace_shogi_game_record
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})

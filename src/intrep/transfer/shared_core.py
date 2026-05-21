@@ -5,11 +5,11 @@ from pathlib import Path
 
 import torch
 
-from intrep.vision.classification_checkpoint import load_image_classification_checkpoint
+from intrep.domains.vision.classification_checkpoint import load_image_classification_checkpoint
 from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
 from intrep.core.training_utils import TrainingDevice, resolve_training_device
-from intrep.text.tokenizer import TextTokenizer
+from intrep.domains.language.tokenizer import TextTokenizer
 
 
 @dataclass(frozen=True)

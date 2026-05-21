@@ -22,7 +22,7 @@ from intrep.representation.inputs.shogi_position_features.position_tactical_heur
     counterfactual_removal_feature_id_rows,
     drop_potential_feature_id_rows,
 )
-from intrep.worlds.shogi.coordinates import opponent_color
+from intrep.domains.shogi.coordinates import opponent_color
 
 
 def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:

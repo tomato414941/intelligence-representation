@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.vision.io import read_portable_image
+from intrep.domains.vision.io import read_portable_image
 
 T = TypeVar("T")
 

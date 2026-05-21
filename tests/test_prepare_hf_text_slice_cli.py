@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from intrep.text import prepare_hf_text_slice
+from intrep.domains.language import prepare_hf_text_slice
 
 
 class PrepareHFTextSliceCLITest(unittest.TestCase):
