@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shogi
 
-from intrep.representation.inputs.shogi_position_features.position_derived import PieceSlotRelationInfo, _ShogiPositionDerivedRelations
+from intrep.representation.inputs.shogi_position_features.position_derived import PieceElementRelationInfo, _ShogiPositionDerivedRelations
 from intrep.domains.shogi.coordinates import opponent_color, relative_to_absolute_square
 from intrep.representation.inputs.shogi_position_features.position_schema import *
 from intrep.representation.inputs.shogi_position_features.position_square_features import king_relative_square_feature_id, piece_feature_id
@@ -47,25 +47,25 @@ def piece_feature_id_rows(
     ]
 
 
-def piece_slot_relation_infos(board: shogi.Board) -> list[PieceSlotRelationInfo]:
-    infos: list[PieceSlotRelationInfo] = []
+def piece_element_relation_infos(board: shogi.Board) -> list[PieceElementRelationInfo]:
+    infos: list[PieceElementRelationInfo] = []
     for relative_square in range(SQUARE_ELEMENT_COUNT):
         absolute_square = relative_to_absolute_square(relative_square, board.turn)
         piece = board.piece_at(absolute_square)
         if piece is not None:
-            infos.append(PieceSlotRelationInfo(piece=piece, location_kind="board", relative_square=relative_square))
+            infos.append(PieceElementRelationInfo(piece=piece, location_kind="board", relative_square=relative_square))
     for color in (board.turn, opponent_color(board.turn)):
         for piece_type in HAND_PIECE_TYPES:
             for _ in range(board.pieces_in_hand[color][piece_type]):
                 infos.append(
-                    PieceSlotRelationInfo(
+                    PieceElementRelationInfo(
                         piece=shogi.Piece(piece_type, color),
                         location_kind="hand",
                         relative_square=None,
                     )
                 )
     while len(infos) < PIECE_SLOT_COUNT:
-        infos.append(PieceSlotRelationInfo(piece=None, location_kind="empty", relative_square=None))
+        infos.append(PieceElementRelationInfo(piece=None, location_kind="empty", relative_square=None))
     if len(infos) > PIECE_SLOT_COUNT:
         raise ValueError("shogi board contains more pieces than supported piece slots")
     return infos

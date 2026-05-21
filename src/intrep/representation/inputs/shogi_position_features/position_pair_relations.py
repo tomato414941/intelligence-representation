@@ -31,12 +31,12 @@ def pair_relation_edges_from_board(
         from intrep.representation.inputs.shogi_position_features.position_rich_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
-    slot_infos = derived.piece_slot_relation_infos
+    piece_infos = derived.piece_element_relation_infos
     legal_drop_targets = derived.legal_drop_targets_by_color
-    for piece_slot, info in enumerate(slot_infos):
+    for piece_element_offset, info in enumerate(piece_infos):
         if info.piece is None:
             continue
-        piece_element_index = RICH_PIECE_ELEMENT_OFFSET + piece_slot
+        piece_element_index = RICH_PIECE_ELEMENT_OFFSET + piece_element_offset
         if info.location_kind == "board" and info.relative_square is not None:
             from_absolute_square = relative_to_absolute_square(info.relative_square, board.turn)
             square_element_index = RICH_SQUARE_ELEMENT_OFFSET + info.relative_square
@@ -53,14 +53,14 @@ def pair_relation_edges_from_board(
                 square_element_index = RICH_SQUARE_ELEMENT_OFFSET + relative_square
                 add_bidirectional_edge(piece_element_index, square_element_index, PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE)
 
-    for source_slot, source_info in enumerate(slot_infos):
+    for source_element_offset, source_info in enumerate(piece_infos):
         if source_info.piece is None:
             continue
-        source_element_index = RICH_PIECE_ELEMENT_OFFSET + source_slot
-        for target_slot, target_info in enumerate(slot_infos):
-            if source_slot == target_slot or target_info.piece is None:
+        source_element_index = RICH_PIECE_ELEMENT_OFFSET + source_element_offset
+        for target_element_offset, target_info in enumerate(piece_infos):
+            if source_element_offset == target_element_offset or target_info.piece is None:
                 continue
-            target_element_index = RICH_PIECE_ELEMENT_OFFSET + target_slot
+            target_element_index = RICH_PIECE_ELEMENT_OFFSET + target_element_offset
             if source_info.piece.color == target_info.piece.color:
                 add_edge(source_element_index, target_element_index, PAIR_RELATION_PIECE_SAME_SIDE)
             if source_info.location_kind != "board" or target_info.location_kind != "board":

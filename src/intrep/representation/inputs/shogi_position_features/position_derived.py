@@ -6,7 +6,7 @@ import shogi
 
 
 @dataclass(frozen=True)
-class PieceSlotRelationInfo:
+class PieceElementRelationInfo:
     piece: shogi.Piece | None
     location_kind: str
     relative_square: int | None
@@ -18,4 +18,4 @@ class _ShogiPositionDerivedRelations:
     drop_potential_feature_rows: list[list[int]]
     drop_shadow_feature_rows: list[list[int]]
     legal_drop_targets_by_color: dict[int, dict[int, set[int]]]
-    piece_slot_relation_infos: list[PieceSlotRelationInfo]
+    piece_element_relation_infos: list[PieceElementRelationInfo]

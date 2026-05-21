@@ -57,14 +57,14 @@ from intrep.representation.inputs.shogi_position_features.position_line_features
     squares_for_line_index,
 )
 from intrep.representation.inputs.shogi_position_features.position_piece_features import (
-    PieceSlotRelationInfo,
+    PieceElementRelationInfo,
     board_piece_element_feature_ids,
     empty_piece_element_feature_ids,
     hand_piece_element_feature_ids,
     hand_piece_feature_ids,
     piece_feature_id_rows,
     piece_feature_ids,
-    piece_slot_relation_infos,
+    piece_element_relation_infos,
 )
 from intrep.representation.inputs.shogi_position_features.position_pair_relations import pair_relation_edges_from_board
 

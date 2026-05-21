@@ -62,10 +62,10 @@ class ShogiDlshogiLikePositionTest(unittest.TestCase):
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
-        own_attack_count_slot = 28
-        opponent_attack_count_slot = 29
-        own_rook_attack_slot = 30 + SQUARE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
-        opponent_king_attack_slot = 30 + len(SQUARE_ATTACK_PIECE_TYPES) + SQUARE_ATTACK_PIECE_TYPES.index(shogi.KING)
+        own_attack_count_field = 28
+        opponent_attack_count_field = 29
+        own_rook_attack_field = 30 + SQUARE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
+        opponent_king_attack_field = 30 + len(SQUARE_ATTACK_PIECE_TYPES) + SQUARE_ATTACK_PIECE_TYPES.index(shogi.KING)
 
         self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT,))
         self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT))
@@ -85,19 +85,19 @@ class ShogiDlshogiLikePositionTest(unittest.TestCase):
             OWN_PIECE_OFFSET + shogi.KING - 1,
         )
         self.assertEqual(
-            int(features.square_feature_ids[relative_5a, own_attack_count_slot].item()),
+            int(features.square_feature_ids[relative_5a, own_attack_count_field].item()),
             OWN_ATTACK_OFFSET + 1,
         )
         self.assertEqual(
-            int(features.square_feature_ids[relative_5e, opponent_attack_count_slot].item()),
+            int(features.square_feature_ids[relative_5e, opponent_attack_count_field].item()),
             OPPONENT_ATTACK_OFFSET,
         )
         self.assertEqual(
-            int(features.square_feature_ids[relative_5a, own_rook_attack_slot].item()),
+            int(features.square_feature_ids[relative_5a, own_rook_attack_field].item()),
             OWN_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQUARE_ATTACK_PIECE_TYPES.index(shogi.ROOK) * 2 + 1,
         )
         self.assertEqual(
-            int(features.square_feature_ids[relative_5e, opponent_king_attack_slot].item()),
+            int(features.square_feature_ids[relative_5e, opponent_king_attack_field].item()),
             OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET + SQUARE_ATTACK_PIECE_TYPES.index(shogi.KING) * 2,
         )
 

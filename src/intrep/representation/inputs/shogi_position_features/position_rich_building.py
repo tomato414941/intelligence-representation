@@ -6,7 +6,7 @@ import torch
 from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
 from intrep.representation.inputs.shogi_position_features.position_pair_relations import pair_relation_edges_from_board
-from intrep.representation.inputs.shogi_position_features.position_piece_features import piece_feature_id_rows, piece_slot_relation_infos
+from intrep.representation.inputs.shogi_position_features.position_piece_features import piece_feature_id_rows, piece_element_relation_infos
 from intrep.representation.inputs.shogi_position_features.position_line_features import line_feature_id_rows
 from intrep.representation.inputs.shogi_position_features.position_schema import SHOGI_POSITION_STATE_FEATURE_ID
 from intrep.representation.inputs.shogi_position_features.position_square_features import (
@@ -61,5 +61,5 @@ def _shogi_position_derived_relations(board: shogi.Board) -> _ShogiPositionDeriv
         drop_potential_feature_rows=drop_potential_feature_id_rows(board),
         drop_shadow_feature_rows=drop_shadow_feature_id_rows(board, legal_drop_targets_by_color=legal_drop_targets_by_color),
         legal_drop_targets_by_color=legal_drop_targets_by_color,
-        piece_slot_relation_infos=piece_slot_relation_infos(board),
+        piece_element_relation_infos=piece_element_relation_infos(board),
     )
