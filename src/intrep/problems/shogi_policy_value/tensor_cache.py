@@ -24,15 +24,15 @@ from intrep.problems.shogi_policy_value.examples import (
 )
 from intrep.problems.shogi_policy_value.samples import (
     LegalMovePolicyValueTensorSample,
-    CompactPolicyPlaneValueTensorSample,
+    CompactActionPlanePolicyValueTensorSample,
 )
 from intrep.problems.shogi_policy_value.tensorization import (
     tensorize_legal_move_policy_value_examples,
-    tensorize_compact_policy_plane_value_examples,
+    tensorize_compact_action_plane_policy_value_examples,
 )
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     validate_shogi_policy_value_output_space,
 )
 from intrep.problems.shogi_policy_value.position_input_identity import (
@@ -71,13 +71,13 @@ from intrep.representation.inputs.shogi_position_features.position_minimal_split
 from intrep.representation.inputs.shogi_position_features.position_minimal_single_global import (
     validate_shogi_minimal_single_global_position_feature_structure,
 )
-from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "legal-move"
-DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "policy-plane"
-ShogiPolicyValueTensorCacheSample = LegalMovePolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
+DEFAULT_SHOGI_ACTION_PLANE_POLICY_VALUE_TENSOR_CACHE_NAME = "action-plane-policy"
+ShogiPolicyValueTensorCacheSample = LegalMovePolicyValueTensorSample | CompactActionPlanePolicyValueTensorSample
 SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES: dict[str, str] = {
     "position_features.global_feature_ids": "uint16",
     "position_features.square_feature_ids": "uint16",
@@ -90,11 +90,11 @@ SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES: dict[str, str] = {
     "legal_move.label": "uint16",
     "legal_move.policy_targets": "float32",
     "legal_move.value_target": "float32",
-    "policy_plane.legal_action_indices": "uint16",
-    "policy_plane.target_action_indices": "uint16",
-    "policy_plane.target_weights": "float32",
-    "policy_plane.policy_plane_label": "uint16",
-    "policy_plane.value_target": "float32",
+    "action_plane_policy.legal_action_indices": "uint16",
+    "action_plane_policy.target_action_indices": "uint16",
+    "action_plane_policy.target_weights": "float32",
+    "action_plane_policy.action_plane_policy_label": "uint16",
+    "action_plane_policy.value_target": "float32",
 }
 
 
@@ -114,8 +114,8 @@ def default_shogi_policy_value_tensor_cache_path(
 ) -> Path:
     validate_shogi_policy_value_output_space(output_space)
     cache_name = (
-        DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME
-        if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
+        DEFAULT_SHOGI_ACTION_PLANE_POLICY_VALUE_TENSOR_CACHE_NAME
+        if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY
         else DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME
     )
     return data_selection_path.parent / "cache" / cache_name
@@ -455,7 +455,7 @@ def _merge_output_space_stats(target: dict[str, int], shard: dict[str, object]) 
 def _finalize_output_space_stats(output_space: str, stats: dict[str, int]) -> dict[str, int]:
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE:
         return {"max_legal_move_count": int(stats["max_legal_move_count"])}
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
         return {
             "max_legal_action_count": int(stats["max_legal_action_count"]),
             "max_target_action_count": int(stats["max_target_action_count"]),
@@ -546,7 +546,7 @@ class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTens
         return self._loaded_samples
 
 
-class ShardedCompactPolicyPlaneValueTensorSamples(Sequence[CompactPolicyPlaneValueTensorSample]):
+class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPlanePolicyValueTensorSample]):
     def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, input_module: str) -> None:
         self.cache_dir = cache_dir
         self.shards = tuple(shards)
@@ -559,23 +559,23 @@ class ShardedCompactPolicyPlaneValueTensorSamples(Sequence[CompactPolicyPlaneVal
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_samples: list[CompactPolicyPlaneValueTensorSample] = []
+        self._loaded_samples: list[CompactActionPlanePolicyValueTensorSample] = []
 
     def __len__(self) -> int:
         return self.sample_count
 
     @overload
-    def __getitem__(self, index: int) -> CompactPolicyPlaneValueTensorSample:
+    def __getitem__(self, index: int) -> CompactActionPlanePolicyValueTensorSample:
         ...
 
     @overload
-    def __getitem__(self, index: slice) -> list[CompactPolicyPlaneValueTensorSample]:
+    def __getitem__(self, index: slice) -> list[CompactActionPlanePolicyValueTensorSample]:
         ...
 
     def __getitem__(
         self,
         index: int | slice,
-    ) -> CompactPolicyPlaneValueTensorSample | list[CompactPolicyPlaneValueTensorSample]:
+    ) -> CompactActionPlanePolicyValueTensorSample | list[CompactActionPlanePolicyValueTensorSample]:
         if isinstance(index, slice):
             return [self[item] for item in range(*index.indices(len(self)))]
         if index < 0:
@@ -601,13 +601,13 @@ class ShardedCompactPolicyPlaneValueTensorSamples(Sequence[CompactPolicyPlaneVal
                 return mid
         raise IndexError(index)
 
-    def _load_shard_samples(self, shard_index: int) -> list[CompactPolicyPlaneValueTensorSample]:
+    def _load_shard_samples(self, shard_index: int) -> list[CompactActionPlanePolicyValueTensorSample]:
         if self._loaded_shard_index == shard_index:
             return self._loaded_samples
         shard = self.shards[shard_index]
         payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
         self._loaded_samples = [
-            _compact_policy_plane_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
+            _compact_action_plane_policy_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
         ]
         self._loaded_shard_index = shard_index
         return self._loaded_samples
@@ -637,10 +637,10 @@ def _load_tensor_cache_sequences(
                 input_module=input_module,
             ),
         )
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
         return (
-            ShardedCompactPolicyPlaneValueTensorSamples(path, train_shards, input_module=input_module),
-            ShardedCompactPolicyPlaneValueTensorSamples(path, eval_shards, input_module=input_module),
+            ShardedCompactActionPlanePolicyValueTensorSamples(path, train_shards, input_module=input_module),
+            ShardedCompactActionPlanePolicyValueTensorSamples(path, eval_shards, input_module=input_module),
         )
     raise ValueError(f"unsupported shogi policy/value output space: {output_space}")
 
@@ -962,8 +962,8 @@ def _tensorize_examples_for_output_space(
             examples,
             position_features_from_sfen=position_features_from_sfen,
         )
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        return tensorize_compact_policy_plane_value_examples(
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        return tensorize_compact_action_plane_policy_value_examples(
             examples,
             position_features_from_sfen=position_features_from_sfen,
         )
@@ -981,13 +981,13 @@ def _sample_output_space_stats(
                 default=0,
             )
         }
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
         return {
             "max_legal_action_count": max(
                 (
                     int(sample.legal_action_indices.shape[0])
                     for sample in samples
-                    if isinstance(sample, CompactPolicyPlaneValueTensorSample)
+                    if isinstance(sample, CompactActionPlanePolicyValueTensorSample)
                 ),
                 default=0,
             ),
@@ -995,7 +995,7 @@ def _sample_output_space_stats(
                 (
                     int(sample.target_action_indices.shape[0])
                     for sample in samples
-                    if isinstance(sample, CompactPolicyPlaneValueTensorSample)
+                    if isinstance(sample, CompactActionPlanePolicyValueTensorSample)
                 ),
                 default=0,
             ),
@@ -1004,10 +1004,10 @@ def _sample_output_space_stats(
 
 
 def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: str) -> dict[str, Any]:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        if not isinstance(sample, CompactPolicyPlaneValueTensorSample):
-            raise TypeError("policy-plane tensor cache requires compact policy-plane samples")
-        return _compact_policy_plane_sample_to_payload(sample)
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        if not isinstance(sample, CompactActionPlanePolicyValueTensorSample):
+            raise TypeError("action-plane policy tensor cache requires compact action-plane policy samples")
+        return _compact_action_plane_policy_sample_to_payload(sample)
     if not isinstance(sample, LegalMovePolicyValueTensorSample):
         raise TypeError("legal-move tensor cache requires legal-move samples")
     return _legal_move_sample_to_payload(sample)
@@ -1039,38 +1039,38 @@ def _legal_move_sample_from_payload(payload: Any, *, input_module: str) -> Legal
     )
 
 
-def _compact_policy_plane_sample_to_payload(sample: CompactPolicyPlaneValueTensorSample) -> dict[str, Any]:
+def _compact_action_plane_policy_sample_to_payload(sample: CompactActionPlanePolicyValueTensorSample) -> dict[str, Any]:
     return {
         "position_features": _position_features_to_payload(sample.position_features),
         "legal_action_indices": _uint16_tensor(
             "legal_action_indices",
             sample.legal_action_indices,
-            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+            maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
         ),
         "target_action_indices": _uint16_tensor(
             "target_action_indices",
             sample.target_action_indices,
-            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+            maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
         ),
         "target_weights": sample.target_weights.to(dtype=torch.float32),
-        "policy_plane_label": _uint16_tensor(
-            "policy_plane_label",
-            sample.policy_plane_label,
-            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        "action_plane_policy_label": _uint16_tensor(
+            "action_plane_policy_label",
+            sample.action_plane_policy_label,
+            maximum_exclusive=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
         ),
         "value_target": sample.value_target.to(dtype=torch.float32),
     }
 
 
-def _compact_policy_plane_sample_from_payload(payload: Any, *, input_module: str) -> CompactPolicyPlaneValueTensorSample:
+def _compact_action_plane_policy_sample_from_payload(payload: Any, *, input_module: str) -> CompactActionPlanePolicyValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
-    return CompactPolicyPlaneValueTensorSample(
+    return CompactActionPlanePolicyValueTensorSample(
         position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
         legal_action_indices=payload["legal_action_indices"].to(dtype=torch.long),
         target_action_indices=payload["target_action_indices"].to(dtype=torch.long),
         target_weights=payload["target_weights"].to(dtype=torch.float32),
-        policy_plane_label=payload["policy_plane_label"].to(dtype=torch.long),
+        action_plane_policy_label=payload["action_plane_policy_label"].to(dtype=torch.long),
         value_target=payload["value_target"].to(dtype=torch.float32),
     )
 

@@ -18,14 +18,14 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
 from intrep.problems.shogi_policy_value.samples import (
-    ShogiPolicyPlaneValueDataset,
+    ShogiActionPlanePolicyValueDataset,
     ShogiLegalMovePolicyValueDataset,
     ShogiPolicyValueDatasetItem,
     collate_legal_move_policy_value_samples,
-    collate_policy_plane_value_samples,
+    collate_action_plane_policy_value_samples,
 )
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     shogi_policy_value_output_space_for_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
@@ -128,9 +128,9 @@ def _loader(
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        dataset = ShogiPolicyPlaneValueDataset(examples)
-        collate_fn = collate_policy_plane_value_samples
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        dataset = ShogiActionPlanePolicyValueDataset(examples)
+        collate_fn = collate_action_plane_policy_value_samples
     else:
         dataset = ShogiLegalMovePolicyValueDataset(examples)
         collate_fn = collate_legal_move_policy_value_samples

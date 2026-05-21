@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build the shogi policy-plane tensor cache on a RunPod CPU Pod.
+# Build the shogi action-plane policy tensor cache on a RunPod CPU Pod.
 # The completed cache stays on the kept Pod; the local output directory receives
 # only small run metadata and the cache manifest.
 
@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 RUNPOD_RUNNER_ROOT=${RUNPOD_RUNNER_ROOT:-"$PWD/../runpod-job-runner"}
 RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
 RUN_ID=${RUN_ID:-$(date -u +%Y%m%d-%H%M%S)}
-RUNPOD_JOB_NAME=${RUNPOD_JOB_NAME:-intrep-shogi-policy-plane-cache}
+RUNPOD_JOB_NAME=${RUNPOD_JOB_NAME:-intrep-shogi-action-plane-policy-cache}
 RUNPOD_IMAGE=${RUNPOD_IMAGE:-runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404}
 CPU_FLAVOR_ID=${CPU_FLAVOR_ID:-cpu3g}
 VCPU_COUNT=${VCPU_COUNT:-16}
@@ -25,9 +25,9 @@ DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
 LOCAL_BUNDLE=${LOCAL_BUNDLE:-data/shogi/training-data-bundles/qhapaq-full}
 DATA_SELECTION=${DATA_SELECTION:-"$LOCAL_BUNDLE/data-selection.json"}
-CACHE_DIR=${CACHE_DIR:-"$LOCAL_BUNDLE/cache/policy-plane"}
+CACHE_DIR=${CACHE_DIR:-"$LOCAL_BUNDLE/cache/action-plane-policy"}
 SHARD_EXAMPLES=${SHARD_EXAMPLES:-10000}
-OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-policy-plane-cache-$RUN_ID}
+OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-action-plane-policy-cache-$RUN_ID}
 
 if [[ ! -x .venv/bin/python ]]; then
   echo ".venv/bin/python is required for local input discovery" >&2
@@ -83,11 +83,11 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES jobs=$JOBS output_space=policy_plane\"
+echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES jobs=$JOBS output_space=action_plane_policy\"
 .venv/bin/python -u scripts/build_shogi_policy_value_tensor_cache_parallel.py \
   --data-selection \"$DATA_SELECTION\" \
   --out \"$CACHE_DIR\" \
-  --output-space policy_plane \
+  --output-space action_plane_policy \
   --shard-examples \"$SHARD_EXAMPLES\" \
   --jobs \"$JOBS\" \
   --resume | tee \"$OUTPUT_DIR/cache_build_summary.json\"

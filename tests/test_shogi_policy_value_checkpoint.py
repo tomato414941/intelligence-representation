@@ -5,10 +5,10 @@ from pathlib import Path
 import torch
 
 from intrep.problems.shogi_policy_value.samples import (
-    ShogiPolicyPlaneValueDataset,
+    ShogiActionPlanePolicyValueDataset,
     ShogiLegalMovePolicyValueDataset,
     collate_legal_move_policy_value_samples,
-    collate_policy_plane_value_samples,
+    collate_action_plane_policy_value_samples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.problems.shogi_policy_value.checkpoint import (
@@ -20,7 +20,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_ID,
     SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
@@ -85,7 +85,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(actual, expected))
 
-    def test_save_and_load_policy_plane_model_preserves_logits(self) -> None:
+    def test_save_and_load_action_plane_policy_model_preserves_logits(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -95,21 +95,21 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
         batch = next(
             iter(
                 torch.utils.data.DataLoader(
-                    ShogiPolicyPlaneValueDataset(examples),
+                    ShogiActionPlanePolicyValueDataset(examples),
                     batch_size=2,
-                    collate_fn=collate_policy_plane_value_samples,
+                    collate_fn=collate_action_plane_policy_value_samples,
                 )
             )
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi-policy-plane.pt"
+            path = Path(directory) / "shogi-action-plane-policy.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
             self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
@@ -120,7 +120,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
             self.assertEqual(
                 payload["config"]["assembly_spec"],
-                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID),
+                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID),
             )
             loaded = load_shogi_policy_value_checkpoint(path)
 
@@ -312,7 +312,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi.pt"
             save_shogi_policy_value_checkpoint(path, result)
             payload = torch.load(path, weights_only=False)
-            payload["config"]["assembly_spec_id"] = SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID
+            payload["config"]["assembly_spec_id"] = SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID
             torch.save(payload, path)
 
             with self.assertRaisesRegex(ValueError, "assembly spec"):

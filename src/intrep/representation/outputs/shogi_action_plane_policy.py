@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 
-class ShogiPolicyPlaneHead(nn.Module):
+class ShogiActionPlanePolicyHead(nn.Module):
     def __init__(self, *, embedding_dim: int, hidden_dim: int, action_count: int) -> None:
         super().__init__()
         self.scorer = nn.Sequential(

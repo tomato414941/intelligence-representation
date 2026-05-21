@@ -8,13 +8,13 @@ import torch
 from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_DLSHOGI_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_DLSHOGI_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
 )
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
@@ -58,7 +58,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.mean_reciprocal_rank, 0.0)
         self.assertGreaterEqual(result.metrics.mean_correct_move_rank, 1.0)
 
-    def test_trains_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_action_plane_policy_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -69,7 +69,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -79,7 +79,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreaterEqual(result.metrics.top_3_accuracy, result.metrics.accuracy)
         self.assertGreaterEqual(result.metrics.top_5_accuracy, result.metrics.top_3_accuracy)
 
-    def test_trains_alpha_zero_like_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_alpha_zero_like_action_plane_policy_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -90,7 +90,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -98,7 +98,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.initial_loss, 0.0)
         self.assertGreater(result.metrics.final_loss, 0.0)
 
-    def test_trains_dlshogi_like_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_dlshogi_like_action_plane_policy_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -109,7 +109,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_DLSHOGI_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_DLSHOGI_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -117,7 +117,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.initial_loss, 0.0)
         self.assertGreater(result.metrics.final_loss, 0.0)
 
-    def test_trains_minimal_split_global_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_minimal_split_global_action_plane_policy_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -128,7 +128,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -136,7 +136,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         self.assertGreater(result.metrics.initial_loss, 0.0)
         self.assertGreater(result.metrics.final_loss, 0.0)
 
-    def test_trains_minimal_single_global_policy_plane_model_for_one_step(self) -> None:
+    def test_trains_minimal_single_global_action_plane_policy_model_for_one_step(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
 
         result = train_shogi_policy_value_model(
@@ -147,7 +147,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             ),
         )
 

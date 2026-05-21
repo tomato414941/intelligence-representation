@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_training_config,
 )
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     shogi_policy_value_output_space_for_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.position_input_identity import (
@@ -22,7 +22,7 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_input_identity_for_assembly_spec_id,
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
-from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_legal_mask
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_legal_mask
 from intrep.representation.inputs.shogi_position_features.position_rich import (
     SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
@@ -250,8 +250,8 @@ def _run_policy_value_inference_batch(
     position_features = stack_shogi_position_features(
         [position_features_from_sfen(position_sfen) for position_sfen in position_sfens]
     ).to(device)
-    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(device)
+    if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards]).to(device)
         logits, values = model.forward_policy_value(position_features, legal_action_mask)
     else:
         legal_moves_by_position = [tuple(move.usi() for move in board.legal_moves) for board in boards]

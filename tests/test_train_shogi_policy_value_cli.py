@@ -18,14 +18,14 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.samples import CompactPolicyPlaneValueTensorSample
+from intrep.problems.shogi_policy_value.samples import CompactActionPlanePolicyValueTensorSample
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
 )
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.tensor_cache import (
@@ -187,21 +187,21 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 2)
             self.assertEqual(metrics["eval_policy_target_summary"]["available_ratio"], 0.0)
 
-    def test_trains_policy_plane_model_from_policy_plane_tensor_cache(self) -> None:
+    def test_trains_action_plane_policy_model_from_action_plane_policy_tensor_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            tensor_cache_path = root / "cache" / "policy-plane"
-            checkpoint_path = root / "shogi-policy-plane.pt"
+            tensor_cache_path = root / "cache" / "action-plane-policy"
+            checkpoint_path = root / "shogi-action-plane-policy.pt"
             metrics_path = root / "metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "white")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "black")])
             data_selection_path.write_text(
                 json.dumps(
                     {
-                        "name": "test-shogi-policy-plane-value",
+                        "name": "test-shogi-action-plane-policy-value",
                         "objective": "shogi policy-value",
                         "target_construction": {
                             "policy": "chosen_move",
@@ -220,11 +220,11 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             build_shogi_policy_value_tensor_cache(
                 data_selection_path=data_selection_path,
                 output_path=tensor_cache_path,
-                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+                output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
                 shard_games=1,
             )
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
+            self.assertEqual(manifest["output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY)
             self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             self.assertIn("max_legal_action_count", manifest)
             self.assertIn("max_target_action_count", manifest)
@@ -240,16 +240,16 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(sample_payload["legal_action_indices"].dtype, torch.uint16)
             self.assertEqual(sample_payload["target_action_indices"].dtype, torch.uint16)
             self.assertEqual(sample_payload["target_weights"].dtype, torch.float32)
-            self.assertEqual(sample_payload["policy_plane_label"].dtype, torch.uint16)
+            self.assertEqual(sample_payload["action_plane_policy_label"].dtype, torch.uint16)
             self.assertEqual(sample_payload["value_target"].dtype, torch.float32)
             cache = load_shogi_policy_value_tensor_cache(
                 tensor_cache_path,
-                expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+                expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
             )
-            self.assertIsInstance(cache.train_samples[0], CompactPolicyPlaneValueTensorSample)
+            self.assertIsInstance(cache.train_samples[0], CompactActionPlanePolicyValueTensorSample)
             self.assertEqual(cache.train_samples[0].legal_action_indices.dtype, torch.long)
             self.assertEqual(cache.train_samples[0].target_action_indices.dtype, torch.long)
-            self.assertEqual(cache.train_samples[0].policy_plane_label.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].action_plane_policy_label.dtype, torch.long)
             self.assertEqual(cache.train_samples[0].target_weights.dtype, torch.float32)
 
             with patch(
@@ -277,15 +277,15 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     "--num-heads",
                     "2",
                     "--assembly-spec",
-                    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                    SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
                 ],
             ), patch("sys.stdout", new_callable=StringIO):
                 main()
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["config"]["assembly_spec_id"], SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID)
+            self.assertEqual(metrics["config"]["assembly_spec_id"], SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID)
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
-            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
+            self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY)
 
     def test_tensor_cache_rejects_output_space_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -325,7 +325,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "output_space"):
                 load_shogi_policy_value_tensor_cache(
                     tensor_cache_path,
-                    expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+                    expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
                 )
     def test_writes_policy_target_summary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

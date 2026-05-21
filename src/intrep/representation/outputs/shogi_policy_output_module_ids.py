@@ -3,5 +3,4 @@ from __future__ import annotations
 
 SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_attention_policy_output"
 SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_summary_legal_move_policy_output"
-SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID = "shogi_policy_plane_policy_output"
-
+SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID = "shogi_action_plane_policy_output"

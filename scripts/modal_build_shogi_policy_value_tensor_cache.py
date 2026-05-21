@@ -26,7 +26,7 @@ VOLUME_ROOT = Path("/data")
 DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
 DEFAULT_CACHE_NAME = "legal-move"
-DEFAULT_POLICY_PLANE_CACHE_NAME = "policy-plane"
+DEFAULT_ACTION_PLANE_POLICY_CACHE_NAME = "action-plane-policy"
 DEFAULT_OUTPUT_SPACE = "legal_move"
 DEFAULT_RELEASE = "local"
 DEFAULT_SHARD_EXAMPLES = 10_000
@@ -145,8 +145,8 @@ def run(
         raise ValueError("split must be all, train, or eval")
     if limit_shards is not None and limit_shards <= 0:
         raise ValueError("limit_shards must be positive")
-    if output_space not in {"legal_move", "policy_plane"}:
-        raise ValueError("output_space must be legal_move or policy_plane")
+    if output_space not in {"legal_move", "action_plane_policy"}:
+        raise ValueError("output_space must be legal_move or action_plane_policy")
     if release not in {"local", "volume"}:
         raise ValueError("release must be local or volume")
 
@@ -363,8 +363,8 @@ def _log_event(event: str, **fields: object) -> None:
 
 
 def _cache_name_for_output_space(output_space: str) -> str:
-    if output_space == "policy_plane":
-        return DEFAULT_POLICY_PLANE_CACHE_NAME
+    if output_space == "action_plane_policy":
+        return DEFAULT_ACTION_PLANE_POLICY_CACHE_NAME
     return DEFAULT_CACHE_NAME
 
 

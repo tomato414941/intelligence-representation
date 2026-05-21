@@ -49,6 +49,6 @@ rebuild time becomes a meaningful constraint.
 
 ## Non-Goals
 
-- block policy-plane tensor cache creation
+- block action-plane policy tensor cache creation
 - redesign Training Data Bundle
 - add generic cache abstractions before a concrete second need exists

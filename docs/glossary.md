@@ -632,9 +632,9 @@ may name the input representation, core/model design, output representation,
 training recipe, and artifact references that should be evaluated together.
 
 Model entry names are human-facing labels and may be renamed when the roster
-needs more precision. For example, `shogi-policy-plane` and `shogi-legal-move`
-can be separate shogi model entries. Artifact identities, manifests, and hashes
-carry the exact machine-checkable details.
+needs more precision. For example, `shogi-action-plane-policy-output` and
+`shogi-legal-move` can be separate shogi model entries. Artifact identities,
+manifests, and hashes carry the exact machine-checkable details.
 
 ### Representation
 

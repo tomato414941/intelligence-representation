@@ -7,10 +7,10 @@ from intrep.representation.outputs.shogi_policy_outputs import (
 )
 
 SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE = "legal_move"
-SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE = "policy_plane"
+SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY = "action_plane_policy"
 SHOGI_POLICY_VALUE_OUTPUT_SPACES = (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
 )
 
 
@@ -18,8 +18,8 @@ def shogi_policy_value_output_space_for_policy_output(policy_output: str) -> str
     policy_output_kind = shogi_policy_output_kind(policy_output)
     if policy_output_kind == ShogiPolicyOutputKind.LEGAL_MOVE:
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE
-    if policy_output_kind == ShogiPolicyOutputKind.POLICY_PLANE:
-        return SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
+    if policy_output_kind == ShogiPolicyOutputKind.ACTION_PLANE_POLICY:
+        return SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY
     raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
 
 

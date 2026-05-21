@@ -158,18 +158,18 @@ It is an acceleration artifact, not a source of truth. The training command
 rejects a cache whose embedded data selection does not match the requested
 `data-selection.json`.
 
-For large shogi bundles, build the policy-plane cache on a RunPod CPU Pod. This
+For large shogi bundles, build the action-plane policy cache on a RunPod CPU Pod. This
 is tensor-cache construction, not training; the GPU training path still consumes
 the completed cache through `intrep.train_shogi_policy_value`.
 
 ```sh
-scripts/runpod_build_shogi_policy_plane_tensor_cache.sh
+scripts/runpod_build_shogi_action_plane_policy_tensor_cache.sh
 ```
 
 The RunPod job syncs the Training Data Bundle, builds the cache under:
 
 ```text
-data/shogi/training-data-bundles/qhapaq-full/cache/policy-plane
+data/shogi/training-data-bundles/qhapaq-full/cache/action-plane-policy
 ```
 
 The script keeps the Pod after completion because the full cache is large. The

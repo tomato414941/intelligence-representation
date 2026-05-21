@@ -21,7 +21,7 @@ from intrep.representation.outputs.shogi_policy_outputs import (
 )
 from intrep.representation.outputs.shogi_policy_output_module_ids import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID,
 )
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_RICH_POSITION_INPUT_MODULE_ID,
@@ -40,7 +40,7 @@ class SharedCoreShogiPolicyValueModelConfig:
 
 
 @dataclass(frozen=True)
-class PolicyPlaneShogiPolicyValueModelConfig:
+class ActionPlanePolicyShogiPolicyValueModelConfig:
     embedding_dim: int = 256
     num_heads: int = 8
     hidden_dim: int = 1024
@@ -111,10 +111,10 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         return self.value_output(_state_element_hidden(position_hidden, self.position_layout))
 
 
-class PolicyPlaneShogiPolicyValueModel(nn.Module):
+class ActionPlanePolicyShogiPolicyValueModel(nn.Module):
     def __init__(
         self,
-        config: PolicyPlaneShogiPolicyValueModelConfig | None = None,
+        config: ActionPlanePolicyShogiPolicyValueModelConfig | None = None,
         *,
         encoder: nn.Module | None = None,
         policy_output: nn.Module | None = None,
@@ -122,7 +122,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         position_layout: ShogiPositionHiddenLayout | None = None,
     ) -> None:
         super().__init__()
-        self.config = config or PolicyPlaneShogiPolicyValueModelConfig()
+        self.config = config or ActionPlanePolicyShogiPolicyValueModelConfig()
         self.position_layout = position_layout or SHOGI_RICH_POSITION_HIDDEN_LAYOUT
         self.encoder = encoder or _build_shogi_position_encoder(
             embedding_dim=self.config.embedding_dim,
@@ -132,7 +132,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             dropout=self.config.dropout,
         )
         self.policy_output = policy_output or build_shogi_policy_output(
-            module_id=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+            module_id=SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID,
             config=_policy_output_module_config(self.config),
             position_layout=self.position_layout,
         )
@@ -141,19 +141,19 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             hidden_dim=self.config.hidden_dim,
         )
 
-    def forward(self, position_features: ShogiPositionFeatures, policy_plane_legal_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, position_features: ShogiPositionFeatures, action_plane_policy_legal_mask: torch.Tensor) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_element_hidden(position_hidden, self.position_layout)
-        return self.policy_output(position_embedding, policy_plane_legal_mask)
+        return self.policy_output(position_embedding, action_plane_policy_legal_mask)
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        policy_plane_legal_mask: torch.Tensor,
+        action_plane_policy_legal_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_element_hidden(position_hidden, self.position_layout)
-        logits = self.policy_output(position_embedding, policy_plane_legal_mask)
+        logits = self.policy_output(position_embedding, action_plane_policy_legal_mask)
         return logits, self.value_output(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
@@ -210,9 +210,9 @@ def _build_shogi_policy_value_model_from_policy_output(
             ),
             position_layout=position_layout,
         )
-    if policy_output_kind == ShogiPolicyOutputKind.POLICY_PLANE:
-        return PolicyPlaneShogiPolicyValueModel(
-            PolicyPlaneShogiPolicyValueModelConfig(
+    if policy_output_kind == ShogiPolicyOutputKind.ACTION_PLANE_POLICY:
+        return ActionPlanePolicyShogiPolicyValueModel(
+            ActionPlanePolicyShogiPolicyValueModelConfig(
                 embedding_dim=embedding_dim,
                 num_heads=num_heads,
                 hidden_dim=hidden_dim,
@@ -282,7 +282,7 @@ def _build_shogi_position_encoder(
 
 
 def _policy_output_module_config(
-    config: SharedCoreShogiPolicyValueModelConfig | PolicyPlaneShogiPolicyValueModelConfig,
+    config: SharedCoreShogiPolicyValueModelConfig | ActionPlanePolicyShogiPolicyValueModelConfig,
 ) -> ShogiPolicyOutputModuleConfig:
     return ShogiPolicyOutputModuleConfig(
         embedding_dim=config.embedding_dim,

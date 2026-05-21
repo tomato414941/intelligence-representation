@@ -12,17 +12,17 @@ from intrep.representation.outputs.shogi_legal_move import (
 )
 from intrep.representation.outputs.shogi_policy_output_module_ids import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+    SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
 )
-from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
-from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
+from intrep.representation.outputs.shogi_action_plane_policy import ShogiActionPlanePolicyHead
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
 from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 
 
 class ShogiPolicyOutputKind(str, Enum):
     LEGAL_MOVE = "legal_move"
-    POLICY_PLANE = "policy_plane"
+    ACTION_PLANE_POLICY = "action_plane_policy"
 
 
 @dataclass(frozen=True)
@@ -65,14 +65,14 @@ def _build_state_summary_legal_move_output(
     )
 
 
-def _build_policy_plane_output(
+def _build_action_plane_policy_output(
     config: ShogiPolicyOutputModuleConfig,
     _position_layout: ShogiPositionHiddenLayout,
 ) -> nn.Module:
-    return ShogiPolicyPlaneHead(
+    return ShogiActionPlanePolicyHead(
         embedding_dim=config.embedding_dim,
         hidden_dim=config.hidden_dim,
-        action_count=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        action_count=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
     )
 
 
@@ -87,10 +87,10 @@ _SHOGI_POLICY_OUTPUT_MODULES_BY_ID = {
         kind=ShogiPolicyOutputKind.LEGAL_MOVE,
         factory=_build_state_summary_legal_move_output,
     ),
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID: ShogiPolicyOutputModule(
-        module_id=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-        kind=ShogiPolicyOutputKind.POLICY_PLANE,
-        factory=_build_policy_plane_output,
+    SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID: ShogiPolicyOutputModule(
+        module_id=SHOGI_ACTION_PLANE_POLICY_OUTPUT_MODULE_ID,
+        kind=ShogiPolicyOutputKind.ACTION_PLANE_POLICY,
+        factory=_build_action_plane_policy_output,
     ),
 }
 

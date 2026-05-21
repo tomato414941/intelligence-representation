@@ -14,18 +14,18 @@ from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
 from intrep.problems.shogi_policy_value.samples import (
     LegalMovePolicyValueBatch,
-    PolicyPlaneValueBatch,
-    ShogiPolicyPlaneValueDataset,
+    ActionPlanePolicyValueBatch,
+    ShogiActionPlanePolicyValueDataset,
     ShogiLegalMovePolicyValueDataset,
     ShogiPolicyValueDatasetItem,
     collate_legal_move_policy_value_samples,
-    collate_policy_plane_value_samples,
+    collate_action_plane_policy_value_samples,
 )
 from intrep.representation.assemblies.shogi_policy_value import (
     build_shogi_policy_value_model_for_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     shogi_policy_value_output_space_for_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.position_input_identity import (
@@ -492,7 +492,7 @@ def evaluate_shogi_policy_value_metrics(
 
 
 def _build_shogi_policy_value_loader(
-    dataset: ShogiLegalMovePolicyValueDataset | ShogiPolicyPlaneValueDataset,
+    dataset: ShogiLegalMovePolicyValueDataset | ShogiActionPlanePolicyValueDataset,
     config: ShogiPolicyValueTrainingConfig,
     *,
     shuffle: bool,
@@ -511,23 +511,23 @@ def _build_shogi_policy_value_loader(
 def _build_shogi_policy_value_dataset(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     config: ShogiPolicyValueTrainingConfig,
-) -> ShogiLegalMovePolicyValueDataset | ShogiPolicyPlaneValueDataset:
+) -> ShogiLegalMovePolicyValueDataset | ShogiActionPlanePolicyValueDataset:
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(config.assembly_spec_id)
     if shogi_policy_value_output_space_for_assembly_spec(
         config.assembly_spec_id
-    ) == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        return ShogiPolicyPlaneValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
+    ) == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
+        return ShogiActionPlanePolicyValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
     return ShogiLegalMovePolicyValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
 
 
-ShogiPolicyValueBatch = LegalMovePolicyValueBatch | PolicyPlaneValueBatch
+ShogiPolicyValueBatch = LegalMovePolicyValueBatch | ActionPlanePolicyValueBatch
 
 
 def _collate_shogi_policy_value_batch(
-    dataset: ShogiLegalMovePolicyValueDataset | ShogiPolicyPlaneValueDataset,
+    dataset: ShogiLegalMovePolicyValueDataset | ShogiActionPlanePolicyValueDataset,
 ):
-    if isinstance(dataset, ShogiPolicyPlaneValueDataset):
-        return collate_policy_plane_value_samples
+    if isinstance(dataset, ShogiActionPlanePolicyValueDataset):
+        return collate_action_plane_policy_value_samples
     return collate_legal_move_policy_value_samples
 
 
@@ -536,7 +536,7 @@ def _batch_to_device(
     *,
     device: torch.device,
 ) -> ShogiPolicyValueBatch:
-    if isinstance(batch, (LegalMovePolicyValueBatch, PolicyPlaneValueBatch)):
+    if isinstance(batch, (LegalMovePolicyValueBatch, ActionPlanePolicyValueBatch)):
         return batch.to(device)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
@@ -559,7 +559,7 @@ def _sparse_policy_target_loss(
 def _batch_policy_target_loss(logits: torch.Tensor, batch: ShogiPolicyValueBatch) -> torch.Tensor:
     if isinstance(batch, LegalMovePolicyValueBatch):
         return _policy_target_loss(logits, batch.policy_targets)
-    if isinstance(batch, PolicyPlaneValueBatch):
+    if isinstance(batch, ActionPlanePolicyValueBatch):
         return _sparse_policy_target_loss(logits, batch.target_action_indices, batch.target_weights)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
@@ -567,7 +567,7 @@ def _batch_policy_target_loss(logits: torch.Tensor, batch: ShogiPolicyValueBatch
 def _forward_batch_policy(model: nn.Module, batch: ShogiPolicyValueBatch) -> torch.Tensor:
     if isinstance(batch, LegalMovePolicyValueBatch):
         return model(batch.position_features, batch.legal_move_feature_ids, batch.legal_move_mask)
-    if isinstance(batch, PolicyPlaneValueBatch):
+    if isinstance(batch, ActionPlanePolicyValueBatch):
         return model(batch.position_features, batch.legal_action_mask)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
@@ -580,7 +580,7 @@ def _forward_batch_policy_value(model: nn.Module, batch: ShogiPolicyValueBatch) 
             batch.legal_move_feature_ids,
             batch.legal_move_mask,
         )
-    if isinstance(batch, PolicyPlaneValueBatch):
+    if isinstance(batch, ActionPlanePolicyValueBatch):
         return _forward_policy_value(model, batch.position_features, batch.legal_action_mask)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 

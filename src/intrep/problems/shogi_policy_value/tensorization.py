@@ -9,9 +9,9 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
 )
 from intrep.problems.shogi_policy_value.samples import (
-    CompactPolicyPlaneValueTensorSample,
+    CompactActionPlanePolicyValueTensorSample,
     LegalMovePolicyValueTensorSample,
-    PolicyPlaneValueTensorSample,
+    ActionPlanePolicyValueTensorSample,
     ShogiPolicyValueDatasetItem,
 )
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
@@ -89,40 +89,40 @@ def tensorize_legal_move_policy_value_examples(
     ]
 
 
-def tensorize_policy_plane_value_example(
+def tensorize_action_plane_policy_value_example(
     example: ShogiMovePolicyValueExample,
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> PolicyPlaneValueTensorSample:
+) -> ActionPlanePolicyValueTensorSample:
     if torch is None:
-        raise RuntimeError("torch is required to materialize shogi policy-plane samples")
-    from intrep.representation.outputs.shogi_policy_plane_encoding import (
-        SHOGI_POLICY_PLANE_ACTION_COUNT,
-        shogi_policy_plane_action_index,
-        shogi_policy_plane_legal_mask,
+        raise RuntimeError("torch is required to materialize shogi action-plane policy samples")
+    from intrep.representation.outputs.shogi_action_plane_policy_encoding import (
+        SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+        shogi_action_plane_policy_action_index,
+        shogi_action_plane_policy_legal_mask,
     )
     board = shogi.Board(example.position_sfen)
     position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
     position_features = position_features_from_sfen(example.position_sfen)
-    policy_plane_label = torch.tensor(
-        shogi_policy_plane_action_index(example.chosen_move, turn=board.turn),
+    action_plane_policy_label = torch.tensor(
+        shogi_action_plane_policy_action_index(example.chosen_move, turn=board.turn),
         dtype=torch.long,
     )
-    policy_plane_targets = torch.zeros(SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.float32)
+    action_plane_policy_targets = torch.zeros(SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.float32)
     if example.policy_targets is None:
         if example.policy_target_source != "chosen_move":
             raise ValueError(f"missing policy_targets for policy_target_source={example.policy_target_source}")
-        policy_plane_targets[int(policy_plane_label.item())] = 1.0
+        action_plane_policy_targets[int(action_plane_policy_label.item())] = 1.0
     else:
         total = sum(example.policy_targets.values())
         for move, weight in example.policy_targets.items():
-            action_index = shogi_policy_plane_action_index(move, turn=board.turn)
-            policy_plane_targets[action_index] = float(weight) / total
-    return PolicyPlaneValueTensorSample(
+            action_index = shogi_action_plane_policy_action_index(move, turn=board.turn)
+            action_plane_policy_targets[action_index] = float(weight) / total
+    return ActionPlanePolicyValueTensorSample(
         position_features=position_features,
-        policy_plane_targets=policy_plane_targets,
-        policy_plane_legal_mask=shogi_policy_plane_legal_mask(board),
-        policy_plane_label=policy_plane_label,
+        action_plane_policy_targets=action_plane_policy_targets,
+        action_plane_policy_legal_mask=shogi_action_plane_policy_legal_mask(board),
+        action_plane_policy_label=action_plane_policy_label,
         value_target=torch.tensor(
             float("nan") if example.value_target is None else example.value_target,
             dtype=torch.float32,
@@ -130,13 +130,13 @@ def tensorize_policy_plane_value_example(
     )
 
 
-def tensorize_policy_plane_value_examples(
+def tensorize_action_plane_policy_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> list[PolicyPlaneValueTensorSample]:
+) -> list[ActionPlanePolicyValueTensorSample]:
     return [
-        tensorize_policy_plane_value_example(
+        tensorize_action_plane_policy_value_example(
             example,
             position_features_from_sfen=position_features_from_sfen,
         )
@@ -144,46 +144,46 @@ def tensorize_policy_plane_value_examples(
     ]
 
 
-def tensorize_compact_policy_plane_value_example(
+def tensorize_compact_action_plane_policy_value_example(
     example: ShogiMovePolicyValueExample,
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> CompactPolicyPlaneValueTensorSample:
+) -> CompactActionPlanePolicyValueTensorSample:
     if torch is None:
-        raise RuntimeError("torch is required to materialize shogi policy-plane samples")
-    from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index
+        raise RuntimeError("torch is required to materialize shogi action-plane policy samples")
+    from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_action_index
     board = shogi.Board(example.position_sfen)
     position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
     position_features = position_features_from_sfen(example.position_sfen)
     legal_action_indices = torch.tensor(
-        [shogi_policy_plane_action_index(move, turn=board.turn) for move in example.legal_moves],
+        [shogi_action_plane_policy_action_index(move, turn=board.turn) for move in example.legal_moves],
         dtype=torch.long,
     )
-    policy_plane_label = torch.tensor(
-        shogi_policy_plane_action_index(example.chosen_move, turn=board.turn),
+    action_plane_policy_label = torch.tensor(
+        shogi_action_plane_policy_action_index(example.chosen_move, turn=board.turn),
         dtype=torch.long,
     )
     if example.policy_targets is None:
         if example.policy_target_source != "chosen_move":
             raise ValueError(f"missing policy_targets for policy_target_source={example.policy_target_source}")
-        target_action_indices = policy_plane_label.reshape(1)
+        target_action_indices = action_plane_policy_label.reshape(1)
         target_weights = torch.ones(1, dtype=torch.float32)
     else:
         total = sum(example.policy_targets.values())
         target_action_indices = torch.tensor(
-            [shogi_policy_plane_action_index(move, turn=board.turn) for move in example.policy_targets],
+            [shogi_action_plane_policy_action_index(move, turn=board.turn) for move in example.policy_targets],
             dtype=torch.long,
         )
         target_weights = torch.tensor(
             [float(weight) / total for weight in example.policy_targets.values()],
             dtype=torch.float32,
         )
-    return CompactPolicyPlaneValueTensorSample(
+    return CompactActionPlanePolicyValueTensorSample(
         position_features=position_features,
         legal_action_indices=legal_action_indices,
         target_action_indices=target_action_indices,
         target_weights=target_weights,
-        policy_plane_label=policy_plane_label,
+        action_plane_policy_label=action_plane_policy_label,
         value_target=torch.tensor(
             float("nan") if example.value_target is None else example.value_target,
             dtype=torch.float32,
@@ -191,13 +191,13 @@ def tensorize_compact_policy_plane_value_example(
     )
 
 
-def tensorize_compact_policy_plane_value_examples(
+def tensorize_compact_action_plane_policy_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> list[CompactPolicyPlaneValueTensorSample]:
+) -> list[CompactActionPlanePolicyValueTensorSample]:
     return [
-        tensorize_compact_policy_plane_value_example(
+        tensorize_compact_action_plane_policy_value_example(
             example,
             position_features_from_sfen=position_features_from_sfen,
         )
@@ -250,62 +250,62 @@ def legal_move_policy_value_tensor_sample(
 ) -> LegalMovePolicyValueTensorSample:
     if isinstance(example, LegalMovePolicyValueTensorSample):
         return example
-    if isinstance(example, (PolicyPlaneValueTensorSample, CompactPolicyPlaneValueTensorSample)):
-        raise ValueError("policy-plane tensor samples cannot be used with ShogiLegalMovePolicyValueDataset")
+    if isinstance(example, (ActionPlanePolicyValueTensorSample, CompactActionPlanePolicyValueTensorSample)):
+        raise ValueError("action-plane policy tensor samples cannot be used with ShogiLegalMovePolicyValueDataset")
     return tensorize_legal_move_policy_value_example(
         example,
         position_features_from_sfen=position_features_from_sfen,
     )
 
 
-def policy_plane_value_tensor_sample(
+def action_plane_policy_value_tensor_sample(
     example: ShogiPolicyValueDatasetItem,
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> PolicyPlaneValueTensorSample:
-    if isinstance(example, PolicyPlaneValueTensorSample):
+) -> ActionPlanePolicyValueTensorSample:
+    if isinstance(example, ActionPlanePolicyValueTensorSample):
         return example
-    if isinstance(example, CompactPolicyPlaneValueTensorSample):
-        from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
+    if isinstance(example, CompactActionPlanePolicyValueTensorSample):
+        from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
 
-        policy_plane_targets = torch.zeros(SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.float32)
-        policy_plane_targets[example.target_action_indices.long()] = example.target_weights
-        policy_plane_legal_mask = torch.zeros(SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.bool)
-        policy_plane_legal_mask[example.legal_action_indices.long()] = True
-        return PolicyPlaneValueTensorSample(
+        action_plane_policy_targets = torch.zeros(SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.float32)
+        action_plane_policy_targets[example.target_action_indices.long()] = example.target_weights
+        action_plane_policy_legal_mask = torch.zeros(SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.bool)
+        action_plane_policy_legal_mask[example.legal_action_indices.long()] = True
+        return ActionPlanePolicyValueTensorSample(
             position_features=example.position_features,
-            policy_plane_targets=policy_plane_targets,
-            policy_plane_legal_mask=policy_plane_legal_mask,
-            policy_plane_label=example.policy_plane_label,
+            action_plane_policy_targets=action_plane_policy_targets,
+            action_plane_policy_legal_mask=action_plane_policy_legal_mask,
+            action_plane_policy_label=example.action_plane_policy_label,
             value_target=example.value_target,
         )
     if isinstance(example, LegalMovePolicyValueTensorSample):
-        raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
-    return tensorize_policy_plane_value_example(
+        raise ValueError("legal-move tensor samples cannot be used with ShogiActionPlanePolicyValueDataset")
+    return tensorize_action_plane_policy_value_example(
         example,
         position_features_from_sfen=position_features_from_sfen,
     )
 
 
-def compact_policy_plane_value_tensor_sample(
+def compact_action_plane_policy_value_tensor_sample(
     example: ShogiPolicyValueDatasetItem,
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
-) -> CompactPolicyPlaneValueTensorSample:
-    if isinstance(example, CompactPolicyPlaneValueTensorSample):
+) -> CompactActionPlanePolicyValueTensorSample:
+    if isinstance(example, CompactActionPlanePolicyValueTensorSample):
         return example
-    if isinstance(example, PolicyPlaneValueTensorSample):
-        return CompactPolicyPlaneValueTensorSample(
+    if isinstance(example, ActionPlanePolicyValueTensorSample):
+        return CompactActionPlanePolicyValueTensorSample(
             position_features=example.position_features,
-            legal_action_indices=example.policy_plane_legal_mask.nonzero(as_tuple=False).flatten().long(),
-            target_action_indices=example.policy_plane_targets.nonzero(as_tuple=False).flatten().long(),
-            target_weights=example.policy_plane_targets[example.policy_plane_targets > 0.0].float(),
-            policy_plane_label=example.policy_plane_label,
+            legal_action_indices=example.action_plane_policy_legal_mask.nonzero(as_tuple=False).flatten().long(),
+            target_action_indices=example.action_plane_policy_targets.nonzero(as_tuple=False).flatten().long(),
+            target_weights=example.action_plane_policy_targets[example.action_plane_policy_targets > 0.0].float(),
+            action_plane_policy_label=example.action_plane_policy_label,
             value_target=example.value_target,
         )
     if isinstance(example, LegalMovePolicyValueTensorSample):
-        raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
-    return tensorize_compact_policy_plane_value_example(
+        raise ValueError("legal-move tensor samples cannot be used with ShogiActionPlanePolicyValueDataset")
+    return tensorize_compact_action_plane_policy_value_example(
         example,
         position_features_from_sfen=position_features_from_sfen,
     )
@@ -314,8 +314,8 @@ def compact_policy_plane_value_tensor_sample(
 def choice_count(example: ShogiPolicyValueDatasetItem) -> int:
     if isinstance(example, LegalMovePolicyValueTensorSample):
         return int(example.legal_move_feature_ids.shape[0])
-    if isinstance(example, (PolicyPlaneValueTensorSample, CompactPolicyPlaneValueTensorSample)):
-        raise ValueError("policy-plane tensor samples do not have candidate choices")
+    if isinstance(example, (ActionPlanePolicyValueTensorSample, CompactActionPlanePolicyValueTensorSample)):
+        raise ValueError("action-plane policy tensor samples do not have candidate choices")
     return len(example.legal_moves)
 
 

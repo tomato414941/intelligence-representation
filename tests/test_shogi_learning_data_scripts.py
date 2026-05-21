@@ -525,10 +525,10 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
             self.assertEqual(
                 modal_builder._local_cache_path(
                     local_bundle=local_bundle,
-                    output_space="policy_plane",
+                    output_space="action_plane_policy",
                     local_cache=None,
                 ),
-                local_bundle / "cache" / "policy-plane",
+                local_bundle / "cache" / "action-plane-policy",
             )
 
     def test_modal_tensor_cache_builder_upload_overwrites_remote_bundle_files(self) -> None:
@@ -566,10 +566,10 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
         modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
         file_entry = type("FileEntry", (), {})
         paths = [
-            "qhapaq-full/cache/policy-plane/train/source-0000-examples-00000000-00010000.json",
-            "qhapaq-full/cache/policy-plane/eval/source-0000-examples-00000000-00010000.json",
-            "qhapaq-full/cache/policy-plane/manifest.json",
-            "qhapaq-full/cache/policy-plane/train/source-0000-examples-00000000-00010000.pt",
+            "qhapaq-full/cache/action-plane-policy/train/source-0000-examples-00000000-00010000.json",
+            "qhapaq-full/cache/action-plane-policy/eval/source-0000-examples-00000000-00010000.json",
+            "qhapaq-full/cache/action-plane-policy/manifest.json",
+            "qhapaq-full/cache/action-plane-policy/train/source-0000-examples-00000000-00010000.pt",
         ]
         entries = []
         for path in paths:
@@ -582,7 +582,7 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
         with patch.object(modal_builder, "volume", volume, create=True):
             completed = modal_builder._completed_shard_manifest_paths(
                 remote_bundle="qhapaq-full",
-                cache_name="policy-plane",
+                cache_name="action-plane-policy",
             )
 
         self.assertEqual(
@@ -592,7 +592,7 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
                 "eval/source-0000-examples-00000000-00010000.json",
             },
         )
-        volume.listdir.assert_called_once_with("/qhapaq-full/cache/policy-plane", recursive=True)
+        volume.listdir.assert_called_once_with("/qhapaq-full/cache/action-plane-policy", recursive=True)
 
 
 def _load_script_module(name: str) -> ModuleType:

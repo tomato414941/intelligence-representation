@@ -27,21 +27,21 @@ class LegalMovePolicyValueTensorSample:
 
 
 @dataclass(frozen=True)
-class PolicyPlaneValueTensorSample:
+class ActionPlanePolicyValueTensorSample:
     position_features: ShogiPositionFeatures
-    policy_plane_targets: torch.Tensor
-    policy_plane_legal_mask: torch.Tensor
-    policy_plane_label: torch.Tensor
+    action_plane_policy_targets: torch.Tensor
+    action_plane_policy_legal_mask: torch.Tensor
+    action_plane_policy_label: torch.Tensor
     value_target: torch.Tensor
 
 
 @dataclass(frozen=True)
-class CompactPolicyPlaneValueTensorSample:
+class CompactActionPlanePolicyValueTensorSample:
     position_features: ShogiPositionFeatures
     legal_action_indices: torch.Tensor
     target_action_indices: torch.Tensor
     target_weights: torch.Tensor
-    policy_plane_label: torch.Tensor
+    action_plane_policy_label: torch.Tensor
     value_target: torch.Tensor
 
 
@@ -66,7 +66,7 @@ class LegalMovePolicyValueBatch:
 
 
 @dataclass(frozen=True)
-class PolicyPlaneValueBatch:
+class ActionPlanePolicyValueBatch:
     position_features: ShogiPositionFeatures
     legal_action_mask: torch.Tensor
     labels: torch.Tensor
@@ -74,8 +74,8 @@ class PolicyPlaneValueBatch:
     target_weights: torch.Tensor
     value_targets: torch.Tensor
 
-    def to(self, device: torch.device) -> "PolicyPlaneValueBatch":
-        return PolicyPlaneValueBatch(
+    def to(self, device: torch.device) -> "ActionPlanePolicyValueBatch":
+        return ActionPlanePolicyValueBatch(
             position_features=self.position_features.to(device),
             legal_action_mask=self.legal_action_mask.to(device),
             labels=self.labels.to(device),
@@ -88,8 +88,8 @@ class PolicyPlaneValueBatch:
 ShogiPolicyValueDatasetItem = (
     ShogiMovePolicyValueExample
     | LegalMovePolicyValueTensorSample
-    | PolicyPlaneValueTensorSample
-    | CompactPolicyPlaneValueTensorSample
+    | ActionPlanePolicyValueTensorSample
+    | CompactActionPlanePolicyValueTensorSample
 )
 
 
@@ -124,7 +124,7 @@ class ShogiLegalMovePolicyValueDataset(TorchDataset):
         )
 
 
-class ShogiPolicyPlaneValueDataset(TorchDataset):
+class ShogiActionPlanePolicyValueDataset(TorchDataset):
     def __init__(
         self,
         examples: Sequence[ShogiPolicyValueDatasetItem],
@@ -134,7 +134,7 @@ class ShogiPolicyPlaneValueDataset(TorchDataset):
         if not examples:
             raise ValueError("examples must not be empty")
         if any(isinstance(example, LegalMovePolicyValueTensorSample) for example in examples):
-            raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
+            raise ValueError("legal-move tensor samples cannot be used with ShogiActionPlanePolicyValueDataset")
         self.examples = examples
         self.position_features_from_sfen = position_features_from_sfen
 
@@ -143,10 +143,10 @@ class ShogiPolicyPlaneValueDataset(TorchDataset):
 
     def __getitem__(self, index: int):
         if torch is None:
-            raise RuntimeError("torch is required to materialize ShogiPolicyPlaneValueDataset items")
-        from intrep.problems.shogi_policy_value.tensorization import compact_policy_plane_value_tensor_sample
+            raise RuntimeError("torch is required to materialize ShogiActionPlanePolicyValueDataset items")
+        from intrep.problems.shogi_policy_value.tensorization import compact_action_plane_policy_value_tensor_sample
 
-        return compact_policy_plane_value_tensor_sample(
+        return compact_action_plane_policy_value_tensor_sample(
             self.examples[index],
             position_features_from_sfen=self.position_features_from_sfen,
         )
@@ -177,21 +177,21 @@ def collate_legal_move_policy_value_samples(
     )
 
 
-def collate_policy_plane_value_samples(
-    samples: Sequence[CompactPolicyPlaneValueTensorSample],
-) -> PolicyPlaneValueBatch:
+def collate_action_plane_policy_value_samples(
+    samples: Sequence[CompactActionPlanePolicyValueTensorSample],
+) -> ActionPlanePolicyValueBatch:
     if torch is None:
-        raise RuntimeError("torch is required to collate shogi policy-plane samples")
-    from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
+        raise RuntimeError("torch is required to collate shogi action-plane policy samples")
+    from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
 
     max_target_count = max(int(sample.target_action_indices.shape[0]) for sample in samples)
-    legal_action_mask = torch.zeros((len(samples), SHOGI_POLICY_PLANE_ACTION_COUNT), dtype=torch.bool)
+    legal_action_mask = torch.zeros((len(samples), SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT), dtype=torch.bool)
     for row_index, sample in enumerate(samples):
         legal_action_mask[row_index, sample.legal_action_indices.long()] = True
-    return PolicyPlaneValueBatch(
+    return ActionPlanePolicyValueBatch(
         position_features=stack_shogi_position_features([sample.position_features for sample in samples]),
         legal_action_mask=legal_action_mask,
-        labels=torch.stack([sample.policy_plane_label for sample in samples]),
+        labels=torch.stack([sample.action_plane_policy_label for sample in samples]),
         target_action_indices=torch.stack(
             [
                 _pad_action_indices(sample.target_action_indices, max_action_count=max_target_count)

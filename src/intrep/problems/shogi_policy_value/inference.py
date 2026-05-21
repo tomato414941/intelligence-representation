@@ -11,14 +11,14 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_training_config,
 )
 from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
+    SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     shogi_policy_value_output_space_for_assembly_spec,
 )
 from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_feature_builder_for_assembly_spec_id,
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
-from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_action_index, shogi_action_plane_policy_legal_mask
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
 
@@ -39,9 +39,9 @@ class ShogiPolicyValueCheckpointEvaluator:
         torch_device = torch.device(device)
         if (
             shogi_policy_value_output_space_for_assembly_spec(config.assembly_spec_id)
-            == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
+            == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY
         ):
-            return cls(_policy_plane_evaluator(model, torch_device, config.assembly_spec_id))
+            return cls(_action_plane_policy_evaluator(model, torch_device, config.assembly_spec_id))
         return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id))
 
     def __init__(
@@ -95,7 +95,7 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
     return evaluate_batch
 
 
-def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
+def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
@@ -105,7 +105,7 @@ def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device, 
         position_features = stack_shogi_position_features(
             [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
-        legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(torch_device)
+        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards]).to(torch_device)
 
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
@@ -117,7 +117,7 @@ def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device, 
         evaluations: list[PositionEvaluation] = []
         for index, (board, (_position_sfen, legal_moves)) in enumerate(zip(boards, requests, strict=True)):
             action_indices = torch.tensor(
-                [shogi_policy_plane_action_index(move, turn=board.turn) for move in legal_moves],
+                [shogi_action_plane_policy_action_index(move, turn=board.turn) for move in legal_moves],
                 dtype=torch.long,
                 device=torch_device,
             )
