@@ -47,9 +47,9 @@ from intrep.representation.inputs.shogi_position_features.position_rich import (
     SHOGI_RICH_POSITION_FEATURE_MANIFEST,
     SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_RICH_POSITION_ELEMENT_COUNT,
-    SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT,
     SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
-    SHOGI_RICH_POSITION_LINE_SLOT_COUNT,
+    SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT,
     SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT,
     SHOGI_RICH_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
@@ -95,7 +95,7 @@ class ShogiRichPositionEncodingTest(unittest.TestCase):
     def test_encodes_start_position_as_feature_groups(self) -> None:
         features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
 
-        self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,))
+        self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT,))
         self.assertEqual(
             tuple(features.square_feature_ids.shape),
             (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT),
@@ -106,7 +106,7 @@ class ShogiRichPositionEncodingTest(unittest.TestCase):
         )
         self.assertEqual(
             tuple(features.line_feature_ids.shape),
-            (SHOGI_RICH_POSITION_LINE_SLOT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
+            (SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
         )
         self.assertEqual(SHOGI_RICH_POSITION_ELEMENT_COUNT, 191)
         self.assertEqual(int(features.global_feature_ids[1].item()), SIDE_TO_MOVE_BLACK_FEATURE_ID)

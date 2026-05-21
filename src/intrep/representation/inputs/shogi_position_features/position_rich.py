@@ -73,7 +73,7 @@ def validate_shogi_rich_position_feature_structure(features: ShogiPositionFeatur
     validate_integer_tensor_shape(
         "global_feature_ids",
         features.global_feature_ids,
-        (SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,),
+        (SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT,),
     )
     validate_integer_tensor_shape(
         "square_feature_ids",
@@ -88,7 +88,7 @@ def validate_shogi_rich_position_feature_structure(features: ShogiPositionFeatur
     validate_integer_tensor_shape(
         "line_feature_ids",
         features.line_feature_ids,
-        (SHOGI_RICH_POSITION_LINE_SLOT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
+        (SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
     )
     validate_pair_relation_edge_structure(
         features.pair_relation_edges,
