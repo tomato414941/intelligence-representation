@@ -14,7 +14,8 @@ RUNPOD_JOB_NAME=${RUNPOD_JOB_NAME:-intrep-shogi-policy-plane-cache}
 RUNPOD_IMAGE=${RUNPOD_IMAGE:-runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404}
 CPU_FLAVOR_ID=${CPU_FLAVOR_ID:-cpu3g}
 VCPU_COUNT=${VCPU_COUNT:-16}
-CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-300}
+JOBS=${JOBS:-"$VCPU_COUNT"}
+CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-160}
 VOLUME_SIZE=${VOLUME_SIZE:-0}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-720}
 WAIT_SECONDS=${WAIT_SECONDS:-600}
@@ -76,18 +77,19 @@ python3 "$RUNPOD_JOB" \
   --sync README.md \
   --sync AGENTS.md \
   --sync scripts/setup_runpod_cpu.sh \
-  --sync scripts/build_shogi_policy_value_tensor_cache.py \
+  --sync scripts/build_shogi_policy_value_tensor_cache_parallel.py \
   "${SYNC_ARGS[@]}" \
   --setup-command 'cd "$REMOTE_DIR"; bash scripts/setup_runpod_cpu.sh' \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES output_space=policy_plane\"
-.venv/bin/python -u scripts/build_shogi_policy_value_tensor_cache.py \
+echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES jobs=$JOBS output_space=policy_plane\"
+.venv/bin/python -u scripts/build_shogi_policy_value_tensor_cache_parallel.py \
   --data-selection \"$DATA_SELECTION\" \
   --out \"$CACHE_DIR\" \
   --output-space policy_plane \
   --shard-examples \"$SHARD_EXAMPLES\" \
+  --jobs \"$JOBS\" \
   --resume | tee \"$OUTPUT_DIR/cache_build_summary.json\"
 cp \"$CACHE_DIR/manifest.json\" \"$OUTPUT_DIR/cache_manifest.json\"
 du -sh \"$CACHE_DIR\" | tee \"$OUTPUT_DIR/cache_size.txt\"

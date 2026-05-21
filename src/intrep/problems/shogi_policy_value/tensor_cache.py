@@ -20,6 +20,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
     load_shogi_move_policy_value_examples_jsonl,
+    shogi_move_policy_value_example_from_json,
 )
 from intrep.problems.shogi_policy_value.samples import (
     LegalMovePolicyValueTensorSample,
@@ -219,11 +220,16 @@ def build_shogi_policy_value_tensor_cache_shard(
     analyses_by_position = load_shogi_engine_analysis_by_position_jsonl(
         tuple(source.path for source in data_selection.analysis_sources)
     )
-    source_examples = _source_examples(source, data_selection=data_selection, analyses_by_position=analyses_by_position)
+    source_examples = _source_examples_for_range(
+        source,
+        data_selection=data_selection,
+        analyses_by_position=analyses_by_position,
+        start_index=source_example_start_index,
+        end_index=source_example_end_index,
+    )
     examples = [
-        (source_example_index, example)
-        for source_example_index, example in enumerate(source_examples)
-        if source_example_start_index <= source_example_index < source_example_end_index
+        (source_example_start_index + offset, example)
+        for offset, example in enumerate(source_examples)
     ]
     if not examples:
         raise ValueError("shard range must contain at least one example")
@@ -707,6 +713,59 @@ def _source_examples(
             max_games=source.max_games,
         )
     raise ValueError(f"unsupported data selection source kind: {source.kind}")
+
+
+def _source_examples_for_range(
+    source: ShogiPolicyValueDataSelectionSource,
+    *,
+    data_selection: ShogiPolicyValueDataSelection,
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    start_index: int,
+    end_index: int,
+) -> list[ShogiMovePolicyValueExample]:
+    if source.kind == "shogi_policy_value_examples_jsonl":
+        max_examples = source.max_examples
+        if max_examples is not None:
+            end_index = min(end_index, max_examples)
+        if end_index <= start_index:
+            return []
+        return _load_shogi_move_policy_value_examples_jsonl_range(
+            source.path,
+            start_index=start_index,
+            end_index=end_index,
+        )
+    return [
+        example
+        for source_example_index, example in enumerate(
+            _source_examples(source, data_selection=data_selection, analyses_by_position=analyses_by_position)
+        )
+        if start_index <= source_example_index < end_index
+    ]
+
+
+def _load_shogi_move_policy_value_examples_jsonl_range(
+    path: str | Path,
+    *,
+    start_index: int,
+    end_index: int,
+) -> list[ShogiMovePolicyValueExample]:
+    if start_index < 0:
+        raise ValueError("start_index must be non-negative")
+    if end_index <= start_index:
+        raise ValueError("end_index must be greater than start_index")
+    examples: list[ShogiMovePolicyValueExample] = []
+    index = 0
+    with Path(path).open(encoding="utf-8") as file:
+        for line in file:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if index >= end_index:
+                break
+            if index >= start_index:
+                examples.append(shogi_move_policy_value_example_from_json(json.loads(stripped)))
+            index += 1
+    return examples
 
 
 def _build_shard(
