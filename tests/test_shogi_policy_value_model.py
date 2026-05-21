@@ -27,13 +27,15 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
 from intrep.representation.assemblies.shogi_policy_value import (
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
-    SHOGI_RICH_POSITION_HIDDEN_LAYOUT,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _build_shogi_policy_value_model_from_policy_output,
-    _shogi_position_hidden_layout,
     _state_element_hidden,
     build_shogi_policy_value_model_for_assembly_spec,
+)
+from intrep.representation.inputs.shogi_position_modules import (
+    SHOGI_RICH_POSITION_HIDDEN_LAYOUT,
+    shogi_position_hidden_layout,
 )
 from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 from intrep.representation.inputs.shogi_rich_position import ShogiRichPositionAttentionLogitBias, ShogiRichPositionInputLayer
@@ -103,7 +105,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(spec["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
 
     def test_shogi_position_hidden_layout_is_derived_from_position_input(self) -> None:
-        layout = _shogi_position_hidden_layout(SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID)
+        layout = shogi_position_hidden_layout(SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID)
 
         self.assertEqual(layout.state_element_index, 0)
         self.assertEqual(layout.square_element_offset, 1)

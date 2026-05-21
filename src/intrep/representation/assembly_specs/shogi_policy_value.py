@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from intrep.representation.inputs.shogi_position_module_ids import (
+    SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
+    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
+)
+
 
 SHOGI_POLICY_VALUE_ASSEMBLY_ID = "shogi_policy_value"
 SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID = (
@@ -32,13 +40,6 @@ SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS = (
 )
 SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID = SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID
 
-SHOGI_RICH_POSITION_INPUT_MODULE_ID = (
-    "shogi_rich_global_square_piece_line_pair_drop_shadow_coarse_counterfactual_drop_potential_position_input"
-)
-SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID = "shogi_alpha_zero_like_no_history_position_input"
-SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID = "shogi_dlshogi_like_no_history_position_input"
-SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID = "shogi_minimal_single_global_position_input"
-SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID = "shogi_minimal_split_global_position_input"
 SHOGI_SHARED_CORE_MODULE_ID = "shared_transformer_core"
 SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID = "shogi_legal_move_attention_policy_output"
 SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID = "shogi_state_summary_legal_move_policy_output"

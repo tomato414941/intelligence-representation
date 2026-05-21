@@ -6,30 +6,10 @@ import torch
 from torch import nn
 
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.representation.inputs.shogi_rich_position import (
-    ShogiRichPositionEncoder,
-    ShogiRichPositionAttentionLogitBias,
-    ShogiRichPositionInputLayer,
-)
-from intrep.representation.inputs.shogi_alpha_zero_like_position import (
-    ShogiAlphaZeroLikePositionAttentionLogitBias,
-    ShogiAlphaZeroLikePositionEncoder,
-    ShogiAlphaZeroLikePositionInputLayer,
-)
-from intrep.representation.inputs.shogi_dlshogi_like_position import (
-    ShogiDlshogiLikePositionAttentionLogitBias,
-    ShogiDlshogiLikePositionEncoder,
-    ShogiDlshogiLikePositionInputLayer,
-)
-from intrep.representation.inputs.shogi_minimal_split_global_position import (
-    ShogiMinimalSplitGlobalPositionAttentionLogitBias,
-    ShogiMinimalSplitGlobalPositionEncoder,
-    ShogiMinimalSplitGlobalPositionInputLayer,
-)
-from intrep.representation.inputs.shogi_minimal_single_global_position import (
-    ShogiMinimalSingleGlobalPositionAttentionLogitBias,
-    ShogiMinimalSingleGlobalPositionEncoder,
-    ShogiMinimalSingleGlobalPositionInputLayer,
+from intrep.representation.inputs.shogi_position_modules import (
+    SHOGI_RICH_POSITION_HIDDEN_LAYOUT,
+    build_shogi_position_encoder as build_shogi_position_encoder_for_module,
+    shogi_position_hidden_layout,
 )
 from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
@@ -39,42 +19,13 @@ from intrep.representation.outputs.shogi_legal_move import (
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
-    SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
-    SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
-from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
-    SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT,
-    SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_OFFSET,
-    SHOGI_ALPHA_ZERO_LIKE_STATE_ELEMENT_INDEX,
-)
-from intrep.representation.inputs.shogi_position_features.position_dlshogi_like import (
-    SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT,
-    SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_OFFSET,
-    SHOGI_DLSHOGI_LIKE_STATE_ELEMENT_INDEX,
-)
-from intrep.representation.inputs.shogi_position_features.position_minimal_single_global import (
-    SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT,
-    SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_OFFSET,
-    SHOGI_MINIMAL_SINGLE_GLOBAL_STATE_ELEMENT_INDEX,
-)
-from intrep.representation.inputs.shogi_position_features.position_minimal_split_global import (
-    SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT,
-    SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_OFFSET,
-    SHOGI_MINIMAL_SPLIT_GLOBAL_STATE_ELEMENT_INDEX,
-)
-from intrep.representation.inputs.shogi_position_features.position_schema import (
-    RICH_SQUARE_ELEMENT_OFFSET,
-    SHOGI_POSITION_SQUARE_COUNT,
-    STATE_ELEMENT_INDEX,
-)
 from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
@@ -96,19 +47,12 @@ class PolicyPlaneShogiPolicyValueModelConfig:
     dropout: float = 0.0
 
 
-SHOGI_RICH_POSITION_HIDDEN_LAYOUT = ShogiPositionHiddenLayout(
-    state_element_index=STATE_ELEMENT_INDEX,
-    square_element_offset=RICH_SQUARE_ELEMENT_OFFSET,
-    square_element_count=SHOGI_POSITION_SQUARE_COUNT,
-)
-
-
 class SharedCoreShogiPolicyValueModel(nn.Module):
     def __init__(
         self,
         config: SharedCoreShogiPolicyValueModelConfig | None = None,
         *,
-        encoder: ShogiRichPositionEncoder | None = None,
+        encoder: nn.Module | None = None,
         policy_output: ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput | None = None,
         value_output: ScalarTanhValueHead | None = None,
         position_layout: ShogiPositionHiddenLayout | None = None,
@@ -167,7 +111,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         self,
         config: PolicyPlaneShogiPolicyValueModelConfig | None = None,
         *,
-        encoder: ShogiRichPositionEncoder | None = None,
+        encoder: nn.Module | None = None,
         policy_output: ShogiPolicyPlaneHead | None = None,
         value_output: ScalarTanhValueHead | None = None,
         position_layout: ShogiPositionHiddenLayout | None = None,
@@ -229,7 +173,7 @@ def _build_shogi_policy_value_model_from_policy_output(
     num_layers: int,
     dropout: float = 0.0,
 ) -> nn.Module:
-    position_layout = _shogi_position_hidden_layout(position_input)
+    position_layout = shogi_position_hidden_layout(position_input)
     if policy_output in (
         SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
         SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
@@ -305,13 +249,7 @@ def _build_shogi_position_encoder(
     hidden_dim: int,
     num_layers: int,
     dropout: float,
-) -> (
-    ShogiRichPositionEncoder
-    | ShogiAlphaZeroLikePositionEncoder
-    | ShogiDlshogiLikePositionEncoder
-    | ShogiMinimalSingleGlobalPositionEncoder
-    | ShogiMinimalSplitGlobalPositionEncoder
-):
+) -> nn.Module:
     core = SharedTransformerCore(
         embedding_dim=embedding_dim,
         num_heads=num_heads,
@@ -319,67 +257,11 @@ def _build_shogi_position_encoder(
         num_layers=num_layers,
         dropout=dropout,
     )
-    if input_module_id == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
-        return ShogiRichPositionEncoder(
-            input_layer=ShogiRichPositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiRichPositionAttentionLogitBias(),
-            core=core,
-        )
-    if input_module_id == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
-        return ShogiAlphaZeroLikePositionEncoder(
-            input_layer=ShogiAlphaZeroLikePositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiAlphaZeroLikePositionAttentionLogitBias(),
-            core=core,
-        )
-    if input_module_id == SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID:
-        return ShogiDlshogiLikePositionEncoder(
-            input_layer=ShogiDlshogiLikePositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiDlshogiLikePositionAttentionLogitBias(),
-            core=core,
-        )
-    if input_module_id == SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID:
-        return ShogiMinimalSingleGlobalPositionEncoder(
-            input_layer=ShogiMinimalSingleGlobalPositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiMinimalSingleGlobalPositionAttentionLogitBias(),
-            core=core,
-        )
-    if input_module_id == SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID:
-        return ShogiMinimalSplitGlobalPositionEncoder(
-            input_layer=ShogiMinimalSplitGlobalPositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiMinimalSplitGlobalPositionAttentionLogitBias(),
-            core=core,
-        )
-    raise ValueError(f"unsupported shogi position input module: {input_module_id}")
-
-
-def _shogi_position_hidden_layout(input_module_id: str) -> ShogiPositionHiddenLayout:
-    if input_module_id == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
-        return SHOGI_RICH_POSITION_HIDDEN_LAYOUT
-    if input_module_id == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
-        return ShogiPositionHiddenLayout(
-            state_element_index=SHOGI_ALPHA_ZERO_LIKE_STATE_ELEMENT_INDEX,
-            square_element_offset=SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_OFFSET,
-            square_element_count=SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT,
-        )
-    if input_module_id == SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID:
-        return ShogiPositionHiddenLayout(
-            state_element_index=SHOGI_DLSHOGI_LIKE_STATE_ELEMENT_INDEX,
-            square_element_offset=SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_OFFSET,
-            square_element_count=SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT,
-        )
-    if input_module_id == SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID:
-        return ShogiPositionHiddenLayout(
-            state_element_index=SHOGI_MINIMAL_SINGLE_GLOBAL_STATE_ELEMENT_INDEX,
-            square_element_offset=SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_OFFSET,
-            square_element_count=SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT,
-        )
-    if input_module_id == SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID:
-        return ShogiPositionHiddenLayout(
-            state_element_index=SHOGI_MINIMAL_SPLIT_GLOBAL_STATE_ELEMENT_INDEX,
-            square_element_offset=SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_OFFSET,
-            square_element_count=SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT,
-        )
-    raise ValueError(f"unsupported shogi position input module: {input_module_id}")
+    return build_shogi_position_encoder_for_module(
+        input_module_id=input_module_id,
+        embedding_dim=embedding_dim,
+        core=core,
+    )
 
 
 def _build_legal_move_policy_output(
