@@ -512,7 +512,7 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
                     "--force",
                     modal_builder.VOLUME_NAME,
                     "/qhapaq-full/cache/legal-move",
-                    str(local_cache),
+                    str(local_cache.parent),
                 ],
                 check=True,
             )

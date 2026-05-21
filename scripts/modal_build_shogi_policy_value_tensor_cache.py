@@ -395,7 +395,7 @@ def _release_remote_cache_to_local(
             "--force",
             VOLUME_NAME,
             remote_cache,
-            str(local_cache),
+            str(local_cache.parent),
         ],
         check=True,
     )
