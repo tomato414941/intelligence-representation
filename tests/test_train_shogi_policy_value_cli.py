@@ -26,6 +26,7 @@ from intrep.problems.shogi_policy_value.output_space import (
 )
 from intrep.problems.shogi_policy_value.tensor_cache import build_shogi_policy_value_tensor_cache
 from intrep.problems.shogi_policy_value.tensor_cache import (
+    SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES,
     build_shogi_policy_value_tensor_cache_shard,
     load_shogi_policy_value_tensor_cache,
     write_shogi_policy_value_tensor_cache_manifest,
@@ -219,13 +220,32 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             )
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
+            self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             self.assertIn("max_legal_action_count", manifest)
             self.assertIn("max_target_action_count", manifest)
+            shard_path = next((tensor_cache_path / "train").glob("*.pt"))
+            shard_payload = torch.load(shard_path, weights_only=False)
+            self.assertEqual(shard_payload["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
+            sample_payload = shard_payload["samples"][0]
+            position_payload = sample_payload["position_features"]
+            self.assertEqual(position_payload["global_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["square_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["piece_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["line_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(sample_payload["legal_action_indices"].dtype, torch.uint16)
+            self.assertEqual(sample_payload["target_action_indices"].dtype, torch.uint16)
+            self.assertEqual(sample_payload["target_weights"].dtype, torch.float32)
+            self.assertEqual(sample_payload["policy_plane_label"].dtype, torch.uint16)
+            self.assertEqual(sample_payload["value_target"].dtype, torch.float32)
             cache = load_shogi_policy_value_tensor_cache(
                 tensor_cache_path,
                 expected_output_space=SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
             )
             self.assertIsInstance(cache.train_samples[0], CompactPolicyPlaneValueTensorSample)
+            self.assertEqual(cache.train_samples[0].legal_action_indices.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].target_action_indices.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].policy_plane_label.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].target_weights.dtype, torch.float32)
 
             with patch(
                 "sys.argv",
@@ -405,14 +425,29 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue(list((tensor_cache_path / "train").glob("*.json")))
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
+            self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             shard_path = next((tensor_cache_path / "train").glob("*.pt"))
             shard_payload = torch.load(shard_path, weights_only=False)
+            self.assertEqual(shard_payload["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
+            self.assertEqual(shard_payload["samples"][0]["legal_move_features"].dtype, torch.uint16)
+            self.assertEqual(shard_payload["samples"][0]["label"].dtype, torch.uint16)
+            self.assertEqual(shard_payload["samples"][0]["policy_targets"].dtype, torch.float32)
+            self.assertEqual(shard_payload["samples"][0]["value_target"].dtype, torch.float32)
             position_payload = shard_payload["samples"][0]["position_features"]
+            self.assertEqual(position_payload["global_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["square_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["piece_feature_ids"].dtype, torch.uint16)
+            self.assertEqual(position_payload["line_feature_ids"].dtype, torch.uint16)
             self.assertNotIn("pair_relation_ids", position_payload)
             pair_relation_edges = position_payload["pair_relation_edges"]
-            self.assertEqual(pair_relation_edges["source_element_indices"].dtype, torch.int16)
-            self.assertEqual(pair_relation_edges["target_element_indices"].dtype, torch.int16)
+            self.assertEqual(pair_relation_edges["source_element_indices"].dtype, torch.uint16)
+            self.assertEqual(pair_relation_edges["target_element_indices"].dtype, torch.uint16)
             self.assertEqual(pair_relation_edges["relation_ids"].dtype, torch.uint8)
+            cache = load_shogi_policy_value_tensor_cache(tensor_cache_path)
+            self.assertEqual(cache.train_samples[0].position_features.global_feature_ids.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].legal_move_features.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].label.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].policy_targets.dtype, torch.float32)
 
             with patch(
                 "sys.argv",
@@ -694,6 +729,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
             self.assertEqual(manifest["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
             self.assertEqual(manifest["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
+            self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             self.assertEqual(manifest["train_count"], 2)
             self.assertEqual(manifest["eval_count"], 2)
             self.assertTrue((tensor_cache_path / "manifest.json").exists())

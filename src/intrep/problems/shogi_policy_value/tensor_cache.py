@@ -48,13 +48,39 @@ from intrep.representation.inputs.shogi_position_features.position_encoding impo
     ShogiPositionFeatures,
     validate_shogi_position_feature_structure,
 )
-from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import validate_shogi_alpha_zero_like_position_feature_structure
+from intrep.representation.inputs.shogi_position_features.position_schema import (
+    PAIR_RELATION_COUNT,
+    SHOGI_POSITION_ELEMENT_COUNT,
+    SHOGI_POSITION_FEATURE_VOCAB_SIZE,
+)
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
+    validate_shogi_alpha_zero_like_position_feature_structure,
+)
+from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v4"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v2"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "legal-move"
 DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "policy-plane"
 ShogiPolicyValueTensorCacheSample = LegalMovePolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
+SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES: dict[str, str] = {
+    "position_features.global_feature_ids": "uint16",
+    "position_features.square_feature_ids": "uint16",
+    "position_features.piece_feature_ids": "uint16",
+    "position_features.line_feature_ids": "uint16",
+    "position_features.pair_relation_edges.source_element_indices": "uint16",
+    "position_features.pair_relation_edges.target_element_indices": "uint16",
+    "position_features.pair_relation_edges.relation_ids": "uint8",
+    "legal_move.legal_move_features": "uint16",
+    "legal_move.label": "uint16",
+    "legal_move.policy_targets": "float32",
+    "legal_move.value_target": "float32",
+    "policy_plane.legal_action_indices": "uint16",
+    "policy_plane.target_action_indices": "uint16",
+    "policy_plane.target_weights": "float32",
+    "policy_plane.policy_plane_label": "uint16",
+    "policy_plane.value_target": "float32",
+}
 
 
 @dataclass(frozen=True)
@@ -132,6 +158,7 @@ def build_shogi_policy_value_tensor_cache(
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         **_input_feature_identity(input_module),
+        "storage_dtypes": SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES,
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -262,6 +289,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
         **_input_feature_identity(input_module),
+        "storage_dtypes": SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES,
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -291,6 +319,7 @@ def load_shogi_policy_value_tensor_cache(
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
     _validate_input_feature_identity(manifest, artifact_name="tensor cache", expected_input_module=expected_input_module)
+    _validate_storage_dtypes(manifest, artifact_name="tensor cache")
     output_space = _manifest_output_space(manifest)
     if expected_output_space is not None:
         validate_shogi_policy_value_output_space(expected_output_space)
@@ -366,6 +395,11 @@ def _validate_input_feature_identity(
         raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
     if payload.get("input_feature_manifest") != expected["input_feature_manifest"]:
         raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
+
+
+def _validate_storage_dtypes(payload: dict[str, object], *, artifact_name: str) -> None:
+    if payload.get("storage_dtypes") != SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES:
+        raise ValueError(f"unsupported shogi policy/value {artifact_name} storage dtypes")
 
 
 def _manifest_output_space(manifest: dict[str, object]) -> str:
@@ -745,6 +779,7 @@ def _shard_identity(
     return {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA,
         **_input_feature_identity(input_module),
+        "storage_dtypes": SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES,
         "output_space": output_space,
         "split": split,
         "source_index": source_index,
@@ -796,6 +831,7 @@ def _load_shard_manifest_file(path: Path, *, input_module: str = SHOGI_POSITION_
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
     _validate_input_feature_identity(payload, artifact_name="tensor cache shard", expected_input_module=input_module)
+    _validate_storage_dtypes(payload, artifact_name="tensor cache shard")
     return payload
 
 
@@ -808,6 +844,7 @@ def _load_shard(path: Path, *, input_module: str = SHOGI_POSITION_INPUT_MODULE_I
     if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard schema")
     _validate_input_feature_identity(payload, artifact_name="tensor cache shard", expected_input_module=input_module)
+    _validate_storage_dtypes(payload, artifact_name="tensor cache shard")
     return payload
 
 
@@ -817,6 +854,7 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
         "input_schema_id",
         "input_feature_manifest",
         "input_feature_manifest_hash",
+        "storage_dtypes",
         "output_space",
         "split",
         "source_index",
@@ -905,10 +943,14 @@ def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: 
 def _legal_move_sample_to_payload(sample: LegalMovePolicyValueTensorSample) -> dict[str, Any]:
     return {
         "position_features": _position_features_to_payload(sample.position_features),
-        "legal_move_features": sample.legal_move_features,
-        "label": sample.label,
-        "policy_targets": sample.policy_targets,
-        "value_target": sample.value_target,
+        "legal_move_features": _uint16_tensor(
+            "legal_move_features",
+            sample.legal_move_features,
+            maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+        ),
+        "label": _uint16_tensor("label", sample.label),
+        "policy_targets": sample.policy_targets.to(dtype=torch.float32),
+        "value_target": sample.value_target.to(dtype=torch.float32),
     }
 
 
@@ -917,21 +959,33 @@ def _legal_move_sample_from_payload(payload: Any, *, input_module: str) -> Legal
         raise ValueError("tensor cache sample must be a mapping")
     return LegalMovePolicyValueTensorSample(
         position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
-        legal_move_features=payload["legal_move_features"],
-        label=payload["label"],
-        policy_targets=payload["policy_targets"],
-        value_target=payload["value_target"],
+        legal_move_features=payload["legal_move_features"].to(dtype=torch.long),
+        label=payload["label"].to(dtype=torch.long),
+        policy_targets=payload["policy_targets"].to(dtype=torch.float32),
+        value_target=payload["value_target"].to(dtype=torch.float32),
     )
 
 
 def _compact_policy_plane_sample_to_payload(sample: CompactPolicyPlaneValueTensorSample) -> dict[str, Any]:
     return {
         "position_features": _position_features_to_payload(sample.position_features),
-        "legal_action_indices": sample.legal_action_indices,
-        "target_action_indices": sample.target_action_indices,
-        "target_weights": sample.target_weights,
-        "policy_plane_label": sample.policy_plane_label,
-        "value_target": sample.value_target,
+        "legal_action_indices": _uint16_tensor(
+            "legal_action_indices",
+            sample.legal_action_indices,
+            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        ),
+        "target_action_indices": _uint16_tensor(
+            "target_action_indices",
+            sample.target_action_indices,
+            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        ),
+        "target_weights": sample.target_weights.to(dtype=torch.float32),
+        "policy_plane_label": _uint16_tensor(
+            "policy_plane_label",
+            sample.policy_plane_label,
+            maximum_exclusive=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        ),
+        "value_target": sample.value_target.to(dtype=torch.float32),
     }
 
 
@@ -940,24 +994,36 @@ def _compact_policy_plane_sample_from_payload(payload: Any, *, input_module: str
         raise ValueError("tensor cache sample must be a mapping")
     return CompactPolicyPlaneValueTensorSample(
         position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
-        legal_action_indices=payload["legal_action_indices"],
-        target_action_indices=payload["target_action_indices"],
-        target_weights=payload["target_weights"],
-        policy_plane_label=payload["policy_plane_label"],
-        value_target=payload["value_target"],
+        legal_action_indices=payload["legal_action_indices"].to(dtype=torch.long),
+        target_action_indices=payload["target_action_indices"].to(dtype=torch.long),
+        target_weights=payload["target_weights"].to(dtype=torch.float32),
+        policy_plane_label=payload["policy_plane_label"].to(dtype=torch.long),
+        value_target=payload["value_target"].to(dtype=torch.float32),
     )
 
 
 def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, Any]:
     return {
-        "global_feature_ids": features.global_feature_ids,
-        "square_feature_ids": features.square_feature_ids,
-        "piece_feature_ids": features.piece_feature_ids,
-        "line_feature_ids": features.line_feature_ids,
+        "global_feature_ids": _position_feature_tensor("global_feature_ids", features.global_feature_ids),
+        "square_feature_ids": _position_feature_tensor("square_feature_ids", features.square_feature_ids),
+        "piece_feature_ids": _position_feature_tensor("piece_feature_ids", features.piece_feature_ids),
+        "line_feature_ids": _position_feature_tensor("line_feature_ids", features.line_feature_ids),
         "pair_relation_edges": {
-            "source_element_indices": features.pair_relation_edges.source_element_indices.to(dtype=torch.int16),
-            "target_element_indices": features.pair_relation_edges.target_element_indices.to(dtype=torch.int16),
-            "relation_ids": features.pair_relation_edges.relation_ids.to(dtype=torch.uint8),
+            "source_element_indices": _uint16_tensor(
+                "pair_relation_edges.source_element_indices",
+                features.pair_relation_edges.source_element_indices,
+                maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+            ),
+            "target_element_indices": _uint16_tensor(
+                "pair_relation_edges.target_element_indices",
+                features.pair_relation_edges.target_element_indices,
+                maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+            ),
+            "relation_ids": _uint8_tensor(
+                "pair_relation_edges.relation_ids",
+                features.pair_relation_edges.relation_ids,
+                maximum_exclusive=PAIR_RELATION_COUNT,
+            ),
         },
     }
 
@@ -966,10 +1032,10 @@ def _position_features_from_payload(payload: Any, *, input_module: str) -> Shogi
     if not isinstance(payload, dict):
         raise ValueError("position features payload must be a mapping")
     features = ShogiPositionFeatures(
-        global_feature_ids=payload["global_feature_ids"],
-        square_feature_ids=payload["square_feature_ids"],
-        piece_feature_ids=payload["piece_feature_ids"],
-        line_feature_ids=payload["line_feature_ids"],
+        global_feature_ids=payload["global_feature_ids"].to(dtype=torch.long),
+        square_feature_ids=payload["square_feature_ids"].to(dtype=torch.long),
+        piece_feature_ids=payload["piece_feature_ids"].to(dtype=torch.long),
+        line_feature_ids=payload["line_feature_ids"].to(dtype=torch.long),
         pair_relation_edges=_pair_relation_edges_from_payload(payload["pair_relation_edges"]),
     )
     _validate_position_feature_structure_for_input_module(features, input_module=input_module)
@@ -998,6 +1064,55 @@ def _pair_relation_edges_from_payload(payload: Any) -> ShogiPairRelationEdges:
         target_element_indices=payload["target_element_indices"].to(dtype=torch.long),
         relation_ids=payload["relation_ids"].to(dtype=torch.long),
     )
+
+
+def _position_feature_tensor(name: str, tensor: torch.Tensor) -> torch.Tensor:
+    return _uint16_tensor(name, tensor, maximum_exclusive=SHOGI_POSITION_FEATURE_VOCAB_SIZE)
+
+
+def _uint16_tensor(name: str, tensor: torch.Tensor, *, maximum_exclusive: int | None = None) -> torch.Tensor:
+    _validate_non_negative_integer_tensor(
+        name,
+        tensor,
+        maximum_exclusive=maximum_exclusive,
+        storage_maximum_inclusive=65535,
+    )
+    return tensor.to(dtype=torch.uint16)
+
+
+def _uint8_tensor(name: str, tensor: torch.Tensor, *, maximum_exclusive: int | None = None) -> torch.Tensor:
+    _validate_non_negative_integer_tensor(
+        name,
+        tensor,
+        maximum_exclusive=maximum_exclusive,
+        storage_maximum_inclusive=255,
+    )
+    return tensor.to(dtype=torch.uint8)
+
+
+def _validate_non_negative_integer_tensor(
+    name: str,
+    tensor: torch.Tensor,
+    *,
+    maximum_exclusive: int | None,
+    storage_maximum_inclusive: int,
+) -> None:
+    if not isinstance(tensor, torch.Tensor):
+        raise ValueError(f"{name} must be a tensor")
+    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8, torch.uint16):
+        raise ValueError(f"{name} must use an integer dtype")
+    if tensor.numel() == 0:
+        return
+    minimum = int(tensor.min().item())
+    if minimum < 0:
+        raise ValueError(f"{name} must be non-negative")
+    if maximum_exclusive is not None:
+        maximum = int(tensor.max().item())
+        if maximum >= maximum_exclusive:
+            raise ValueError(f"{name} must be less than {maximum_exclusive}")
+    maximum = int(tensor.max().item())
+    if maximum > storage_maximum_inclusive:
+        raise ValueError(f"{name} must be less than or equal to {storage_maximum_inclusive}")
 
 
 def _policy_target_summary(examples: Sequence[ShogiMovePolicyValueExample]) -> dict[str, float | int]:

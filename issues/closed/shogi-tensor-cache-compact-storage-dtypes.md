@@ -1,6 +1,6 @@
 # Shogi Tensor Cache Compact Storage Dtypes
 
-Status: open. Priority: high.
+Status: closed. Priority: high.
 
 ## Issue
 
@@ -48,3 +48,18 @@ Representative measurement from the Qhapaq policy-plane cache:
 
 Compression helps, but dtype compaction should happen first because the durable
 cache format is currently wider than the represented values require.
+
+## Resolution
+
+Tensor cache schema `v4` and shard schema `v2` store durable ID tensors with
+compact dtypes and cast them back to runtime dtypes when loading samples.
+
+- position feature IDs: `uint16`
+- pair relation edge indices: `uint16`
+- pair relation IDs: `uint8`
+- legal-move feature IDs and labels: `uint16`
+- policy-plane action IDs and labels: `uint16`
+- policy weights and value targets: `float32`
+
+Cache and shard manifests record `storage_dtypes`, and loaders reject caches
+whose storage dtype manifest does not match the current cache format.
