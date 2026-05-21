@@ -5,8 +5,11 @@ This document is the project-specific RunPod operations note for
 
 ## Setup
 
-This repo's RunPod setup is designed to use the PyTorch/CUDA stack already
-provided by the selected RunPod template.
+This repo has separate RunPod setup scripts for GPU training and CPU cache
+construction.
+
+For GPU training, use the PyTorch/CUDA stack already provided by the selected
+RunPod template.
 
 Do not run `uv sync` on RunPod, because it can replace the template's system
 PyTorch with a wheel whose CUDA build does not match the host NVIDIA driver.
@@ -22,6 +25,15 @@ and installs non-torch runtime dependencies explicitly.
 
 For torchvision jobs, run `./scripts/setup_runpod_vision.sh` after
 `setup_runpod.sh` and provide a torchvision wheel matching the selected image.
+
+For CPU-only tensor-cache construction, use:
+
+```sh
+./scripts/setup_runpod_cpu.sh
+```
+
+The CPU setup does not require CUDA. It installs this repo and the runtime
+Python packages needed to build shogi tensor caches.
 
 ## RunPod Command Runner
 

@@ -157,30 +157,27 @@ It is an acceleration artifact, not a source of truth. The training command
 rejects a cache whose embedded data selection does not match the requested
 `data-selection.json`.
 
-For large shogi bundles, build the same cache with Modal CPU workers instead of
-a single local Python process. This is tensor-cache construction, not training;
-the GPU training path still consumes the released cache through
-`intrep.train_shogi_policy_value`.
+For large shogi bundles, build the policy-plane cache on a RunPod CPU Pod. This
+is tensor-cache construction, not training; the GPU training path still consumes
+the completed cache through `intrep.train_shogi_policy_value`.
 
 ```sh
-uv run --with modal modal run scripts/modal_build_shogi_policy_value_tensor_cache.py \
-  --local-bundle data/shogi/training-data-bundles/qhapaq-full \
-  --remote-bundle qhapaq-full \
-  --shard-examples 10000
+scripts/runpod_build_shogi_policy_plane_tensor_cache.sh
 ```
 
-The Modal job uploads the Training Data Bundle to the `intrep-shogi-tensor-cache`
-Volume, builds one tensor shard per worker task, and writes the final
-`manifest.json` from shard manifests. By default it then releases the completed
-cache back to the local bundle path:
+The RunPod job syncs the Training Data Bundle, builds the cache under:
 
 ```text
-data/shogi/training-data-bundles/qhapaq-full/cache/legal-move
+data/shogi/training-data-bundles/qhapaq-full/cache/policy-plane
 ```
 
-Use `--release volume` only when intentionally leaving the completed cache in
-the Modal Volume. The output remains a rebuildable cache derived from
-`data-selection.json`, not a source of truth.
+The script keeps the Pod after completion because the full cache is large. The
+local run output contains small metadata files such as `cache_manifest.json`,
+`cache_size.txt`, and `remote_cache_path.txt`. Move or release the completed
+cache from the kept Pod, then terminate the Pod manually.
+
+The older Modal tensor-cache builder is not the normal path. Remove it after the
+RunPod CPU cache path has produced a full cache successfully.
 
 `scripts/create_shogi_training_data_bundle.py` still accepts repeated
 `--train-games` inputs for temporary experiments and explicit source mixes. When
