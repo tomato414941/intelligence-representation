@@ -546,6 +546,22 @@ A token can be a representation element, but not every representation element
 is a token. Use this term when discussing non-text or domain-structured items
 that are processed as elements in a vector sequence or set.
 
+### Feature Slot
+
+A feature slot is a typed feature field inside one representation element.
+
+It is not an addressable sequence element by itself. It is one attribute
+position within an element such as a square, piece, line, or state summary
+element. Multiple feature slots may be embedded and combined to form one
+element embedding.
+
+Examples:
+
+- piece identity inside a square element
+- attack count inside a square element
+- king-relative square inside a piece element
+- line occupancy count inside a line element
+
 ### Input Interface
 
 An input interface is the broader route by which source-side or world-side
