@@ -18,7 +18,7 @@ class ShogiMinimalSingleGlobalPositionInputLayer(nn.Module):
         super().__init__()
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
         self.global_feature_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, embedding_dim)
-        self.square_slot_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, embedding_dim)
+        self.square_position_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
 
@@ -42,10 +42,10 @@ class ShogiMinimalSingleGlobalPositionInputLayer(nn.Module):
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_feature_ids = position_features.square_feature_ids.squeeze(-1)
-        square_slots = torch.arange(SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
+        square_positions = torch.arange(SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
             0
         )
-        return self.square_norm(self.feature_embedding(square_feature_ids) + self.square_slot_embedding(square_slots))
+        return self.square_norm(self.feature_embedding(square_feature_ids) + self.square_position_embedding(square_positions))
 
 
 class ShogiMinimalSingleGlobalPositionAttentionLogitBias(nn.Module):

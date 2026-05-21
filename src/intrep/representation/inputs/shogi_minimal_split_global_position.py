@@ -17,8 +17,8 @@ class ShogiMinimalSplitGlobalPositionInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
-        self.global_slot_embedding = nn.Embedding(SHOGI_MINIMAL_SPLIT_GLOBAL_GLOBAL_ELEMENT_COUNT, embedding_dim)
-        self.square_slot_embedding = nn.Embedding(SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT, embedding_dim)
+        self.global_element_embedding = nn.Embedding(SHOGI_MINIMAL_SPLIT_GLOBAL_GLOBAL_ELEMENT_COUNT, embedding_dim)
+        self.square_position_embedding = nn.Embedding(SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
 
@@ -33,15 +33,20 @@ class ShogiMinimalSplitGlobalPositionInputLayer(nn.Module):
 
     def _global_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         global_feature_ids = position_features.global_feature_ids
-        slots = torch.arange(SHOGI_MINIMAL_SPLIT_GLOBAL_GLOBAL_ELEMENT_COUNT, device=global_feature_ids.device).unsqueeze(0)
-        return self.global_norm(self.feature_embedding(global_feature_ids) + self.global_slot_embedding(slots))
+        global_elements = torch.arange(
+            SHOGI_MINIMAL_SPLIT_GLOBAL_GLOBAL_ELEMENT_COUNT,
+            device=global_feature_ids.device,
+        ).unsqueeze(0)
+        return self.global_norm(
+            self.feature_embedding(global_feature_ids) + self.global_element_embedding(global_elements)
+        )
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_feature_ids = position_features.square_feature_ids.squeeze(-1)
-        square_slots = torch.arange(SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
+        square_positions = torch.arange(SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
             0
         )
-        return self.square_norm(self.feature_embedding(square_feature_ids) + self.square_slot_embedding(square_slots))
+        return self.square_norm(self.feature_embedding(square_feature_ids) + self.square_position_embedding(square_positions))
 
 
 class ShogiMinimalSplitGlobalPositionAttentionLogitBias(nn.Module):

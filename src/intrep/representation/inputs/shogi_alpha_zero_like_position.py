@@ -18,9 +18,9 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
-        self.global_slot_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT, embedding_dim)
+        self.global_element_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT, embedding_dim)
         self.square_feature_slot_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT, embedding_dim)
-        self.square_slot_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, embedding_dim)
+        self.square_position_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
 
@@ -35,8 +35,12 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
 
     def _global_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         global_feature_ids = position_features.global_feature_ids
-        slots = torch.arange(SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT, device=global_feature_ids.device).unsqueeze(0)
-        return self.global_norm(self.feature_embedding(global_feature_ids) + self.global_slot_embedding(slots))
+        global_elements = torch.arange(SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT, device=global_feature_ids.device).unsqueeze(
+            0
+        )
+        return self.global_norm(
+            self.feature_embedding(global_feature_ids) + self.global_element_embedding(global_elements)
+        )
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_feature_ids = position_features.square_feature_ids
@@ -44,7 +48,7 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
             SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT,
             device=square_feature_ids.device,
         )
-        square_slots = torch.arange(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
+        square_positions = torch.arange(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
             0
         )
         square_feature_slot_embeddings = self.square_feature_slot_embedding(square_feature_slots).view(
@@ -57,7 +61,7 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
             self.feature_embedding(square_feature_ids)
             + square_feature_slot_embeddings
         ).sum(dim=2)
-        return self.square_norm(hidden + self.square_slot_embedding(square_slots))
+        return self.square_norm(hidden + self.square_position_embedding(square_positions))
 
 
 class ShogiAlphaZeroLikePositionAttentionLogitBias(nn.Module):
