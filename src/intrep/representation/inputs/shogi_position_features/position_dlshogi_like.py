@@ -31,7 +31,7 @@ from intrep.representation.inputs.shogi_position_features.position_square_featur
 )
 
 
-SHOGI_DLSHOGI_LIKE_POSITION_INPUT_SCHEMA_ID = "shogi_dlshogi_like_no_history_position_features"
+SHOGI_DLSHOGI_LIKE_POSITION_INPUT_SCHEMA_ID = "shogi_dlshogi_like_position_features"
 SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT = 18
 SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT = 81
 SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT = 58

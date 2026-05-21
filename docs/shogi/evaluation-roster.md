@@ -11,4 +11,4 @@ manifests, checkpoints, and metrics.
 | `shogi-action-plane-policy-output-minimal-single-global` | Board pieces + one global summary element for state, side, move count, and hands. | implemented |
 | `shogi-action-plane-policy-output-minimal-split-global` | Board pieces + separate global elements for state, side, move count, and hands. | implemented |
 | `shogi-action-plane-policy-output-alpha-zero-like-no-history` | Current-state piece planes + split global side, move count, and hands; no history. | implemented |
-| `shogi-action-plane-policy-output-dlshogi-like` | AlphaZero-like current state + check and attack features; no history. | implemented |
+| `shogi-action-plane-policy-output-dlshogi-like` | dlshogi-style current-position piece, hand, check, and attack features. | implemented |
