@@ -50,6 +50,8 @@ from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
+)
+from intrep.representation.inputs.shogi_position_features.position_rich import (
     validate_shogi_rich_position_feature_structure,
 )
 from intrep.representation.inputs.shogi_position_features.position_schema import (

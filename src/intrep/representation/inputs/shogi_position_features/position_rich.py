@@ -6,7 +6,8 @@ from intrep.representation.inputs.shogi_position_features.position_features impo
     ShogiPositionFeatures,
     stack_shogi_pair_relation_edges,
     stack_shogi_position_features,
-    validate_shogi_rich_position_feature_structure,
+    validate_integer_tensor_shape,
+    validate_pair_relation_edge_structure,
 )
 from intrep.representation.inputs.shogi_position_features.position_rich_building import shogi_rich_position_features_from_sfen
 from intrep.domains.shogi.coordinates import (
@@ -66,3 +67,31 @@ from intrep.representation.inputs.shogi_position_features.position_piece_feature
     piece_slot_relation_infos,
 )
 from intrep.representation.inputs.shogi_position_features.position_pair_relations import pair_relation_edges_from_board
+
+
+def validate_shogi_rich_position_feature_structure(features: ShogiPositionFeatures) -> None:
+    validate_integer_tensor_shape(
+        "global_feature_ids",
+        features.global_feature_ids,
+        (SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,),
+    )
+    validate_integer_tensor_shape(
+        "square_feature_ids",
+        features.square_feature_ids,
+        (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT),
+    )
+    validate_integer_tensor_shape(
+        "piece_feature_ids",
+        features.piece_feature_ids,
+        (SHOGI_RICH_POSITION_PIECE_SLOT_COUNT, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT),
+    )
+    validate_integer_tensor_shape(
+        "line_feature_ids",
+        features.line_feature_ids,
+        (SHOGI_RICH_POSITION_LINE_SLOT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
+    )
+    validate_pair_relation_edge_structure(
+        features.pair_relation_edges,
+        element_count=SHOGI_RICH_POSITION_ELEMENT_COUNT,
+        relation_count=PAIR_RELATION_COUNT,
+    )

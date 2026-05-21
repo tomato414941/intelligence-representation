@@ -6,7 +6,12 @@ import json
 import shogi
 import torch
 
-from intrep.representation.inputs.shogi_position_features.position_features import ShogiPairRelationEdges, ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_features import (
+    ShogiPairRelationEdges,
+    ShogiPositionFeatures,
+    validate_empty_pair_relation_edges,
+    validate_integer_tensor_shape,
+)
 from intrep.representation.inputs.shogi_position_features.position_schema import (
     HAND_PIECE_TYPES,
     OPPONENT_SQUARE_PIECE_TYPE_ATTACK_OFFSET,
@@ -108,29 +113,19 @@ def shogi_dlshogi_like_position_features_from_sfen(position_sfen: str) -> ShogiP
 
 
 def validate_shogi_dlshogi_like_position_feature_structure(features: ShogiPositionFeatures) -> None:
-    _validate_integer_tensor_shape(
+    validate_integer_tensor_shape(
         "global_feature_ids",
         features.global_feature_ids,
         (SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT,),
     )
-    _validate_integer_tensor_shape(
+    validate_integer_tensor_shape(
         "square_feature_ids",
         features.square_feature_ids,
         (SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT, SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT),
     )
-    _validate_integer_tensor_shape("piece_feature_ids", features.piece_feature_ids, (0, 0))
-    _validate_integer_tensor_shape("line_feature_ids", features.line_feature_ids, (0, 0))
-    if int(features.pair_relation_edges.relation_ids.numel()) != 0:
-        raise ValueError("dlshogi-like position features must not contain pair relation edges")
-
-
-def _validate_integer_tensor_shape(name: str, tensor: object, expected_shape: tuple[int, ...]) -> None:
-    if not isinstance(tensor, torch.Tensor):
-        raise ValueError(f"{name} must be a tensor")
-    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8):
-        raise ValueError(f"{name} must use an integer dtype")
-    if tuple(tensor.shape) != expected_shape:
-        raise ValueError(f"{name} must have shape {expected_shape}")
+    validate_integer_tensor_shape("piece_feature_ids", features.piece_feature_ids, (0, 0))
+    validate_integer_tensor_shape("line_feature_ids", features.line_feature_ids, (0, 0))
+    validate_empty_pair_relation_edges(features.pair_relation_edges, context="dlshogi-like")
 
 
 def _dlshogi_like_square_feature_rows(board: shogi.Board) -> list[list[int]]:
