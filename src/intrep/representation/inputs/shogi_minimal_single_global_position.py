@@ -21,7 +21,7 @@ class ShogiMinimalSingleGlobalPositionInputLayer(nn.Module):
     def __init__(self, *, embedding_dim: int) -> None:
         super().__init__()
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
-        self.global_feature_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, embedding_dim)
+        self.global_field_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, embedding_dim)
         self.square_position_embedding = nn.Embedding(SHOGI_MINIMAL_SINGLE_GLOBAL_SQUARE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
@@ -37,10 +37,10 @@ class ShogiMinimalSingleGlobalPositionInputLayer(nn.Module):
 
     def _global_embedding(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         global_feature_ids = position_features.global_feature_ids
-        feature_slots = torch.arange(SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, device=global_feature_ids.device)
+        global_fields = torch.arange(SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, device=global_feature_ids.device)
         hidden = (
             self.feature_embedding(global_feature_ids)
-            + self.global_feature_embedding(feature_slots).view(1, 1, SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, -1)
+            + self.global_field_embedding(global_fields).view(1, 1, SHOGI_MINIMAL_SINGLE_GLOBAL_GLOBAL_FEATURE_COUNT, -1)
         ).sum(dim=2)
         return self.global_norm(hidden)
 

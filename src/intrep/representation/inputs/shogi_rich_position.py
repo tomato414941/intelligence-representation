@@ -31,9 +31,9 @@ class ShogiRichPositionInputLayer(nn.Module):
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
         self.global_element_embedding = nn.Embedding(SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT, embedding_dim)
         self.square_position_embedding = nn.Embedding(SHOGI_RICH_POSITION_SQUARE_ELEMENT_COUNT, embedding_dim)
-        self.square_feature_embedding = nn.Embedding(SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
-        self.piece_feature_embedding = nn.Embedding(SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
-        self.line_feature_embedding = nn.Embedding(SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, embedding_dim)
+        self.square_field_embedding = nn.Embedding(SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, embedding_dim)
+        self.piece_field_embedding = nn.Embedding(SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, embedding_dim)
+        self.line_field_embedding = nn.Embedding(SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, embedding_dim)
         self.line_element_embedding = nn.Embedding(SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
@@ -60,32 +60,32 @@ class ShogiRichPositionInputLayer(nn.Module):
 
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_features = position_features.square_feature_ids
-        square_feature_embeddings = self.feature_embedding(square_features)
-        feature_slots = torch.arange(SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, device=square_features.device)
+        square_feature_value_embeddings = self.feature_embedding(square_features)
+        square_fields = torch.arange(SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, device=square_features.device)
         square_hidden = (
-            square_feature_embeddings
-            + self.square_feature_embedding(feature_slots).view(1, 1, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, -1)
+            square_feature_value_embeddings
+            + self.square_field_embedding(square_fields).view(1, 1, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         square_positions = torch.arange(SHOGI_POSITION_SQUARE_COUNT, device=square_features.device).unsqueeze(0)
         return self.square_norm(square_hidden + self.square_position_embedding(square_positions))
 
     def _piece_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         piece_features = position_features.piece_feature_ids
-        piece_feature_embeddings = self.feature_embedding(piece_features)
-        feature_slots = torch.arange(SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, device=piece_features.device)
+        piece_feature_value_embeddings = self.feature_embedding(piece_features)
+        piece_fields = torch.arange(SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, device=piece_features.device)
         piece_hidden = (
-            piece_feature_embeddings
-            + self.piece_feature_embedding(feature_slots).view(1, 1, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, -1)
+            piece_feature_value_embeddings
+            + self.piece_field_embedding(piece_fields).view(1, 1, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         return self.piece_norm(piece_hidden)
 
     def _line_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         line_features = position_features.line_feature_ids
-        line_feature_embeddings = self.feature_embedding(line_features)
-        feature_slots = torch.arange(SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, device=line_features.device)
+        line_feature_value_embeddings = self.feature_embedding(line_features)
+        line_fields = torch.arange(SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, device=line_features.device)
         line_hidden = (
-            line_feature_embeddings
-            + self.line_feature_embedding(feature_slots).view(1, 1, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, -1)
+            line_feature_value_embeddings
+            + self.line_field_embedding(line_fields).view(1, 1, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT, -1)
         ).sum(dim=2)
         line_elements = torch.arange(SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, device=line_features.device).unsqueeze(0)
         return self.line_norm(line_hidden + self.line_element_embedding(line_elements))

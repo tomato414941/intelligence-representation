@@ -27,7 +27,7 @@ def piece_feature_id_rows(
         piece = board.piece_at(absolute_square)
         if piece is not None:
             piece_features.extend(
-                board_piece_slot_feature_ids(
+                board_piece_element_feature_ids(
                     board,
                     piece,
                     relative_square,
@@ -35,12 +35,12 @@ def piece_feature_id_rows(
                     drop_potential_features=derived.drop_potential_feature_rows[relative_square],
                 )
             )
-    piece_features.extend(hand_piece_slot_feature_ids(board))
+    piece_features.extend(hand_piece_element_feature_ids(board))
     empty_slot_count = PIECE_SLOT_COUNT - len(piece_features) // PIECE_FEATURE_COUNT
     if empty_slot_count < 0:
         raise ValueError("shogi board contains more pieces than supported piece slots")
     for _ in range(empty_slot_count):
-        piece_features.extend(empty_piece_slot_feature_ids())
+        piece_features.extend(empty_piece_element_feature_ids())
     return [
         piece_features[index : index + PIECE_FEATURE_COUNT]
         for index in range(0, len(piece_features), PIECE_FEATURE_COUNT)
@@ -71,7 +71,7 @@ def piece_slot_relation_infos(board: shogi.Board) -> list[PieceSlotRelationInfo]
     return infos
 
 
-def board_piece_slot_feature_ids(
+def board_piece_element_feature_ids(
     board: shogi.Board,
     piece: shogi.Piece,
     relative_square: int,
@@ -100,7 +100,7 @@ def board_piece_slot_feature_ids(
     ]
 
 
-def hand_piece_slot_feature_ids(board: shogi.Board) -> list[int]:
+def hand_piece_element_feature_ids(board: shogi.Board) -> list[int]:
     feature_ids: list[int] = []
     for color in (board.turn, opponent_color(board.turn)):
         for piece_type in HAND_PIECE_TYPES:
@@ -129,7 +129,7 @@ def hand_piece_feature_ids(piece: shogi.Piece, *, own_color: int) -> list[int]:
     ]
 
 
-def empty_piece_slot_feature_ids() -> list[int]:
+def empty_piece_element_feature_ids() -> list[int]:
     return [
         PIECE_LOCATION_EMPTY_FEATURE_ID,
         EMPTY_SQUARE_FEATURE_ID,

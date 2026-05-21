@@ -48,19 +48,19 @@ from intrep.representation.inputs.shogi_position_features.position_tactical_heur
 )
 from intrep.representation.inputs.shogi_position_features.position_line_features import (
     king_on_absolute_squares,
+    line_element_feature_ids,
     line_feature_id_rows,
     line_feature_ids,
     line_kind_index,
-    line_slot_feature_ids,
     piece_slides_on_line,
     slider_on_absolute_squares,
     squares_for_line_index,
 )
 from intrep.representation.inputs.shogi_position_features.position_piece_features import (
     PieceSlotRelationInfo,
-    board_piece_slot_feature_ids,
-    empty_piece_slot_feature_ids,
-    hand_piece_slot_feature_ids,
+    board_piece_element_feature_ids,
+    empty_piece_element_feature_ids,
+    hand_piece_element_feature_ids,
     hand_piece_feature_ids,
     piece_feature_id_rows,
     piece_feature_ids,

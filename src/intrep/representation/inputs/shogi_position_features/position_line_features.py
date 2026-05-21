@@ -14,10 +14,10 @@ def line_feature_ids(board: shogi.Board) -> list[int]:
 
 
 def line_feature_id_rows(board: shogi.Board) -> list[list[int]]:
-    return [line_slot_feature_ids(board, line_index) for line_index in range(LINE_ELEMENT_COUNT)]
+    return [line_element_feature_ids(board, line_index) for line_index in range(LINE_ELEMENT_COUNT)]
 
 
-def line_slot_feature_ids(board: shogi.Board, line_index: int) -> list[int]:
+def line_element_feature_ids(board: shogi.Board, line_index: int) -> list[int]:
     line_kind = line_kind_index(line_index)
     relative_squares = squares_for_line_index(line_index)
     absolute_squares = {relative_to_absolute_square(square, board.turn) for square in relative_squares}
