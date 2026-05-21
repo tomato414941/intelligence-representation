@@ -4,6 +4,7 @@ set -euo pipefail
 # Build a shogi action-plane policy tensor cache on a RunPod CPU Pod.
 #
 # CACHE_RETENTION=pod keeps the Pod after success so the cache can be used there.
+# CACHE_RETENTION=release uploads the cache to artifact storage, then deletes the Pod.
 # CACHE_RETENTION=measure deletes the Pod after success and keeps only run metadata.
 # Container disk is not persistent: deleting the Pod deletes the remote cache.
 
@@ -28,6 +29,10 @@ DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 CACHE_RETENTION=${CACHE_RETENTION:-pod}
 MAX_TRAIN_EXAMPLES=${MAX_TRAIN_EXAMPLES:-}
 MAX_EVAL_EXAMPLES=${MAX_EVAL_EXAMPLES:-}
+R2_ENV_FILE=${R2_ENV_FILE:-"$HOME/.secrets/intrep-cloudflare-r2"}
+RELEASE_PREFIX=${RELEASE_PREFIX:-}
+RCLONE_TRANSFERS=${RCLONE_TRANSFERS:-8}
+RCLONE_CHECKERS=${RCLONE_CHECKERS:-16}
 
 LOCAL_BUNDLE=${LOCAL_BUNDLE:-data/shogi/training-data-bundles/qhapaq-full}
 DATA_SELECTION=${DATA_SELECTION:-"$LOCAL_BUNDLE/data-selection.json"}
@@ -38,11 +43,14 @@ if [[ -z "$ASSEMBLY_SPEC" ]]; then
   echo "ASSEMBLY_SPEC is required for tensor cache construction" >&2
   exit 1
 fi
-if [[ "$CACHE_RETENTION" != "pod" && "$CACHE_RETENTION" != "measure" ]]; then
-  echo "CACHE_RETENTION must be pod or measure" >&2
+if [[ "$CACHE_RETENTION" != "pod" && "$CACHE_RETENTION" != "release" && "$CACHE_RETENTION" != "measure" ]]; then
+  echo "CACHE_RETENTION must be pod, release, or measure" >&2
   exit 1
 fi
 CACHE_DIR=${CACHE_DIR:-"$LOCAL_BUNDLE/cache/$ASSEMBLY_SPEC"}
+if [[ -z "$RELEASE_PREFIX" ]]; then
+  RELEASE_PREFIX="shogi/tensor-caches/$(basename "$LOCAL_BUNDLE")/$ASSEMBLY_SPEC"
+fi
 
 if [[ ! -x .venv/bin/python ]]; then
   echo ".venv/bin/python is required for local input discovery" >&2
@@ -50,9 +58,13 @@ if [[ ! -x .venv/bin/python ]]; then
 fi
 
 LIMITED_DATA_SELECTION=
+R2_REMOTE_ENV=
 cleanup_limited_data_selection() {
   if [[ -n "$LIMITED_DATA_SELECTION" ]]; then
     rm -f "$LIMITED_DATA_SELECTION"
+  fi
+  if [[ -n "$R2_REMOTE_ENV" ]]; then
+    rm -f "$R2_REMOTE_ENV"
   fi
 }
 trap cleanup_limited_data_selection EXIT
@@ -79,6 +91,16 @@ PY
   DATA_SELECTION="$LIMITED_DATA_SELECTION"
 fi
 
+if [[ "$CACHE_RETENTION" == "release" ]]; then
+  if [[ ! -f "$R2_ENV_FILE" ]]; then
+    echo "R2_ENV_FILE is required for CACHE_RETENTION=release: $R2_ENV_FILE" >&2
+    exit 1
+  fi
+  R2_REMOTE_ENV="runs/shogi/.runpod-r2-env-$RUN_ID"
+  mkdir -p "$(dirname "$R2_REMOTE_ENV")"
+  cp "$R2_ENV_FILE" "$R2_REMOTE_ENV"
+fi
+
 mapfile -t INPUT_FILES < <(
   .venv/bin/python -m intrep.problems.shogi_policy_value.training_inputs \
     --data-selection "$DATA_SELECTION"
@@ -88,6 +110,9 @@ SYNC_ARGS=()
 for input_file in "${INPUT_FILES[@]}"; do
   SYNC_ARGS+=(--sync "$input_file")
 done
+if [[ -n "$R2_REMOTE_ENV" ]]; then
+  SYNC_ARGS+=(--sync "$R2_REMOTE_ENV")
+fi
 
 CLOUD_ARGS=()
 if [[ "$SECURE_CLOUD" == "1" ]]; then
@@ -144,5 +169,28 @@ echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR sh
   --summary-output \"$OUTPUT_DIR/cache_build_summary.json\" | tee \"$OUTPUT_DIR/cache_build_events.jsonl\"
 cp \"$CACHE_DIR/manifest.json\" \"$OUTPUT_DIR/cache_manifest.json\"
 du -sh \"$CACHE_DIR\" | tee \"$OUTPUT_DIR/cache_size.txt\"
-printf '%s\n' \"$CACHE_DIR\" > \"$OUTPUT_DIR/remote_cache_path.txt\"" \
+printf '%s\n' \"$CACHE_DIR\" > \"$OUTPUT_DIR/remote_cache_path.txt\"
+if [[ \"$CACHE_RETENTION\" == \"release\" ]]; then
+  if ! command -v rclone >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y rclone
+  fi
+  set -a
+  . \"$R2_REMOTE_ENV\"
+  set +a
+  export RCLONE_CONFIG_R2_TYPE=s3
+  export RCLONE_CONFIG_R2_PROVIDER=Cloudflare
+  export RCLONE_CONFIG_R2_ACCESS_KEY_ID=\"\$R2_ACCESS_KEY_ID\"
+  export RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=\"\$R2_SECRET_ACCESS_KEY\"
+  export RCLONE_CONFIG_R2_ENDPOINT=\"\$R2_ENDPOINT\"
+  release_target=\"r2:\$R2_BUCKET/$RELEASE_PREFIX\"
+  rclone copy \"$CACHE_DIR\" \"\$release_target\" \
+    --s3-no-check-bucket \
+    --transfers \"$RCLONE_TRANSFERS\" \
+    --checkers \"$RCLONE_CHECKERS\" \
+    --stats 30s \
+    --stats-one-line
+  rclone size \"\$release_target\" --json > \"$OUTPUT_DIR/cache_release_size.json\"
+  printf 'r2://%s/%s\n' \"\$R2_BUCKET\" \"$RELEASE_PREFIX\" > \"$OUTPUT_DIR/cache_release_uri.txt\"
+fi" \
   "$@"
