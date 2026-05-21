@@ -6,15 +6,15 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from intrep.problems.shogi_policy_value.output_space import (
-    SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    SHOGI_POLICY_VALUE_OUTPUT_SPACES,
-)
+from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
 from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
     write_shogi_policy_value_tensor_cache_manifest,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_RICH_POSITION_INPUT_MODULE_ID
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
+    shogi_policy_value_input_for_assembly_spec_id,
+)
 
 
 def main() -> None:
@@ -22,18 +22,19 @@ def main() -> None:
     parser.add_argument("--data-selection", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
-        "--output-space",
-        choices=SHOGI_POLICY_VALUE_OUTPUT_SPACES,
-        default=SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
+        "--assembly-spec",
+        choices=SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
+        required=True,
     )
     parser.add_argument("--shard-examples", type=int, default=10_000)
     parser.add_argument("--jobs", type=int, default=4)
-    parser.add_argument("--input-module", default=SHOGI_RICH_POSITION_INPUT_MODULE_ID)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
     if args.jobs <= 0:
         raise ValueError("jobs must be positive")
+    input_module = shogi_policy_value_input_for_assembly_spec_id(args.assembly_spec)
+    output_space = shogi_policy_value_output_space_for_assembly_spec(args.assembly_spec)
     tasks = _build_tasks(
         data_selection_path=args.data_selection,
         shard_examples=args.shard_examples,
@@ -44,7 +45,9 @@ def main() -> None:
                 "event": "build_start",
                 "data_selection": str(args.data_selection),
                 "cache_dir": str(args.out),
-                "output_space": args.output_space,
+                "assembly_spec": args.assembly_spec,
+                "input_module": input_module,
+                "output_space": output_space,
                 "shard_examples": args.shard_examples,
                 "jobs": args.jobs,
                 "shard_count": len(tasks),
@@ -62,8 +65,8 @@ def main() -> None:
                 task,
                 data_selection_path=args.data_selection,
                 cache_dir=args.out,
-                output_space=args.output_space,
-                input_module=args.input_module,
+                output_space=output_space,
+                input_module=input_module,
                 resume=args.resume,
             )
             for task in tasks
@@ -93,8 +96,8 @@ def main() -> None:
         data_selection_path=args.data_selection,
         cache_dir=args.out,
         shard_examples=args.shard_examples,
-        output_space=args.output_space,
-        input_module=args.input_module,
+        output_space=output_space,
+        input_module=input_module,
     )
     print(
         json.dumps(

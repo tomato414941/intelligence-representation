@@ -140,6 +140,8 @@ Repeated training can use a rebuildable tensor cache derived from the same
 ```sh
 uv run python scripts/build_shogi_policy_value_tensor_cache.py \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
+  --out data/shogi/training-data-bundles/current/cache/shogi_policy_value_rich_position_transformer_legal_move_attention \
+  --assembly-spec shogi_policy_value_rich_position_transformer_legal_move_attention \
   --shard-examples 100000 \
   --resume
 ```
@@ -147,7 +149,7 @@ uv run python scripts/build_shogi_policy_value_tensor_cache.py \
 ```sh
 uv run python -m intrep.train_shogi_policy_value \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
-  --tensor-cache data/shogi/training-data-bundles/current/cache/legal-move \
+  --tensor-cache data/shogi/training-data-bundles/current/cache/shogi_policy_value_rich_position_transformer_legal_move_attention \
   --checkpoint-path runs/shogi/checkpoint.pt \
   --metrics-path runs/shogi/metrics.json \
   --assembly-spec shogi_policy_value_rich_position_transformer_legal_move_attention
@@ -163,13 +165,14 @@ is tensor-cache construction, not training; the GPU training path still consumes
 the completed cache through `intrep.train_shogi_policy_value`.
 
 ```sh
-scripts/runpod_build_shogi_action_plane_policy_tensor_cache.sh
+ASSEMBLY_SPEC=shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy \
+  scripts/runpod_build_shogi_action_plane_policy_tensor_cache.sh
 ```
 
 The RunPod job syncs the Training Data Bundle, builds the cache under:
 
 ```text
-data/shogi/training-data-bundles/qhapaq-full/cache/action-plane-policy
+data/shogi/training-data-bundles/qhapaq-full/cache/<assembly-spec>
 ```
 
 The script keeps the Pod after completion because the full cache is large. The

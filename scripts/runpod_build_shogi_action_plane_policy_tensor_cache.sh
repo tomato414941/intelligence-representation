@@ -15,6 +15,7 @@ RUNPOD_IMAGE=${RUNPOD_IMAGE:-runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404}
 CPU_FLAVOR_ID=${CPU_FLAVOR_ID:-cpu3g}
 VCPU_COUNT=${VCPU_COUNT:-16}
 JOBS=${JOBS:-"$VCPU_COUNT"}
+ASSEMBLY_SPEC=${ASSEMBLY_SPEC:-}
 CONTAINER_DISK_SIZE=${CONTAINER_DISK_SIZE:-160}
 VOLUME_SIZE=${VOLUME_SIZE:-0}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-720}
@@ -25,9 +26,14 @@ DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 
 LOCAL_BUNDLE=${LOCAL_BUNDLE:-data/shogi/training-data-bundles/qhapaq-full}
 DATA_SELECTION=${DATA_SELECTION:-"$LOCAL_BUNDLE/data-selection.json"}
-CACHE_DIR=${CACHE_DIR:-"$LOCAL_BUNDLE/cache/action-plane-policy"}
 SHARD_EXAMPLES=${SHARD_EXAMPLES:-10000}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-action-plane-policy-cache-$RUN_ID}
+
+if [[ -z "$ASSEMBLY_SPEC" ]]; then
+  echo "ASSEMBLY_SPEC is required for tensor cache construction" >&2
+  exit 1
+fi
+CACHE_DIR=${CACHE_DIR:-"$LOCAL_BUNDLE/cache/$ASSEMBLY_SPEC"}
 
 if [[ ! -x .venv/bin/python ]]; then
   echo ".venv/bin/python is required for local input discovery" >&2
@@ -83,11 +89,11 @@ python3 "$RUNPOD_JOB" \
   --output "$OUTPUT_DIR" \
   --timings-output "$OUTPUT_DIR/runpod_timings.json" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
-echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES jobs=$JOBS output_space=action_plane_policy\"
+echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR shard_examples=$SHARD_EXAMPLES jobs=$JOBS assembly_spec=$ASSEMBLY_SPEC\"
 .venv/bin/python -u scripts/build_shogi_policy_value_tensor_cache_parallel.py \
   --data-selection \"$DATA_SELECTION\" \
   --out \"$CACHE_DIR\" \
-  --output-space action_plane_policy \
+  --assembly-spec \"$ASSEMBLY_SPEC\" \
   --shard-examples \"$SHARD_EXAMPLES\" \
   --jobs \"$JOBS\" \
   --resume | tee \"$OUTPUT_DIR/cache_build_summary.json\"

@@ -525,10 +525,10 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
             self.assertEqual(
                 modal_builder._local_cache_path(
                     local_bundle=local_bundle,
-                    output_space="action_plane_policy",
+                    cache_name="shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
                     local_cache=None,
                 ),
-                local_bundle / "cache" / "action-plane-policy",
+                local_bundle / "cache" / "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
             )
 
     def test_modal_tensor_cache_builder_upload_overwrites_remote_bundle_files(self) -> None:

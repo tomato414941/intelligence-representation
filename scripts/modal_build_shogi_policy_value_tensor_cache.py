@@ -14,6 +14,9 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
+from intrep.representation.assembly_specs.shogi_policy_value import shogi_policy_value_input_for_assembly_spec_id
+
 try:
     import modal
 except ModuleNotFoundError:  # pragma: no cover - Modal is supplied by `modal run`.
@@ -25,9 +28,6 @@ VOLUME_NAME = os.environ.get("INTREP_MODAL_VOLUME_NAME", "intrep-shogi-tensor-ca
 VOLUME_ROOT = Path("/data")
 DEFAULT_LOCAL_BUNDLE = Path("data/shogi/training-data-bundles/qhapaq-full")
 DEFAULT_REMOTE_BUNDLE = "qhapaq-full"
-DEFAULT_CACHE_NAME = "legal-move"
-DEFAULT_ACTION_PLANE_POLICY_CACHE_NAME = "action-plane-policy"
-DEFAULT_OUTPUT_SPACE = "legal_move"
 DEFAULT_RELEASE = "local"
 DEFAULT_SHARD_EXAMPLES = 10_000
 WORKER_MEMORY_MB = int(os.environ.get("INTREP_MODAL_TENSOR_CACHE_WORKER_MEMORY_MB", "8192"))
@@ -64,6 +64,7 @@ if modal is not None:
             shard_index=int(task["shard_index"]),
             resume=True,
             output_space=str(task["output_space"]),
+            input_module=str(task["input_module"]),
         )
         volume.commit()
         return result
@@ -78,7 +79,13 @@ if modal is not None:
         return {"remote_cache": f"{remote_bundle}/cache/{cache_name}", "removed": True}
 
     @app.function(image=image, volumes={str(VOLUME_ROOT): volume}, timeout=60 * 60)
-    def write_remote_manifest(remote_bundle: str, shard_examples: int, cache_name: str, output_space: str) -> dict[str, object]:
+    def write_remote_manifest(
+        remote_bundle: str,
+        shard_examples: int,
+        cache_name: str,
+        output_space: str,
+        input_module: str,
+    ) -> dict[str, object]:
         from intrep.problems.shogi_policy_value.tensor_cache import (
             write_shogi_policy_value_tensor_cache_manifest,
         )
@@ -90,6 +97,7 @@ if modal is not None:
             cache_dir=cache_dir,
             shard_examples=shard_examples,
             output_space=output_space,
+            input_module=input_module,
         )
         volume.commit()
         return result
@@ -103,7 +111,7 @@ if modal is not None:
         skip_upload: bool = False,
         limit_shards: int = 0,
         reset_cache: bool = False,
-        output_space: str = DEFAULT_OUTPUT_SPACE,
+        assembly_spec: str = "",
         release: str = DEFAULT_RELEASE,
         local_cache: str = "",
     ) -> None:
@@ -115,7 +123,7 @@ if modal is not None:
             skip_upload=skip_upload,
             limit_shards=limit_shards or None,
             reset_cache=reset_cache,
-            output_space=output_space,
+            assembly_spec=assembly_spec,
             release=release,
             local_cache=Path(local_cache) if local_cache else None,
         )
@@ -133,7 +141,7 @@ def run(
     skip_upload: bool,
     limit_shards: int | None,
     reset_cache: bool,
-    output_space: str,
+    assembly_spec: str,
     release: str,
     local_cache: Path | None,
 ) -> None:
@@ -145,16 +153,18 @@ def run(
         raise ValueError("split must be all, train, or eval")
     if limit_shards is not None and limit_shards <= 0:
         raise ValueError("limit_shards must be positive")
-    if output_space not in {"legal_move", "action_plane_policy"}:
-        raise ValueError("output_space must be legal_move or action_plane_policy")
+    if not assembly_spec:
+        raise ValueError("assembly_spec is required")
     if release not in {"local", "volume"}:
         raise ValueError("release must be local or volume")
 
+    input_module = shogi_policy_value_input_for_assembly_spec_id(assembly_spec)
+    output_space = shogi_policy_value_output_space_for_assembly_spec(assembly_spec)
     local_bundle = local_bundle.resolve()
-    cache_name = _cache_name_for_output_space(output_space)
+    cache_name = assembly_spec
     local_cache_path = _local_cache_path(
         local_bundle=local_bundle,
-        output_space=output_space,
+        cache_name=cache_name,
         local_cache=local_cache,
     )
     data_selection_path = local_bundle / "data-selection.json"
@@ -177,12 +187,22 @@ def run(
         shard_examples=shard_examples,
         split=split,
         output_space=output_space,
+        input_module=input_module,
         cache_name=cache_name,
     )
     if limit_shards is not None:
         tasks = tasks[:limit_shards]
 
-    _log_event("build_start", volume=VOLUME_NAME, remote_bundle=remote_bundle, cache_name=cache_name, shard_count=len(tasks))
+    _log_event(
+        "build_start",
+        volume=VOLUME_NAME,
+        remote_bundle=remote_bundle,
+        cache_name=cache_name,
+        assembly_spec=assembly_spec,
+        input_module=input_module,
+        output_space=output_space,
+        shard_count=len(tasks),
+    )
     monitor = _RemoteShardProgressMonitor(
         remote_bundle=remote_bundle,
         cache_name=cache_name,
@@ -197,7 +217,7 @@ def run(
     _log_event("build_done", built_shards=len(results), shard_count=len(tasks))
 
     _log_event("manifest_start", remote_bundle=remote_bundle, cache_name=cache_name)
-    manifest = write_remote_manifest.remote(remote_bundle, shard_examples, cache_name, output_space)
+    manifest = write_remote_manifest.remote(remote_bundle, shard_examples, cache_name, output_space, input_module)
     _log_event(
         "manifest_done",
         train_count=manifest["train_count"],
@@ -222,6 +242,8 @@ def run(
         remote_cache=remote_cache,
         local_cache=str(local_cache_path) if release == "local" else None,
         release=release,
+        assembly_spec=assembly_spec,
+        input_module=input_module,
         output_space=output_space,
         built_shards=len(results),
         train_count=manifest["train_count"],
@@ -245,6 +267,7 @@ def _build_tasks(
     shard_examples: int,
     split: str,
     output_space: str,
+    input_module: str,
     cache_name: str,
 ) -> list[dict[str, object]]:
     payload = json.loads(local_data_selection_path.read_text(encoding="utf-8"))
@@ -266,6 +289,7 @@ def _build_tasks(
                     {
                         "remote_bundle": remote_bundle,
                         "cache_name": cache_name,
+                        "input_module": input_module,
                         "output_space": output_space,
                         "split": split_name,
                         "source_index": source_index,
@@ -362,16 +386,10 @@ def _log_event(event: str, **fields: object) -> None:
     print(json.dumps({"event": event, **fields}, sort_keys=True), flush=True)
 
 
-def _cache_name_for_output_space(output_space: str) -> str:
-    if output_space == "action_plane_policy":
-        return DEFAULT_ACTION_PLANE_POLICY_CACHE_NAME
-    return DEFAULT_CACHE_NAME
-
-
-def _local_cache_path(*, local_bundle: Path, output_space: str, local_cache: Path | None) -> Path:
+def _local_cache_path(*, local_bundle: Path, cache_name: str, local_cache: Path | None) -> Path:
     if local_cache is not None:
         return local_cache.resolve()
-    return local_bundle / "cache" / _cache_name_for_output_space(output_space)
+    return local_bundle / "cache" / cache_name
 
 
 def _release_remote_cache_to_local(
