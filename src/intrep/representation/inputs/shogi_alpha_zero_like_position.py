@@ -10,7 +10,7 @@ from intrep.representation.inputs.shogi_square_geometry import (
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT,
-    SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT,
+    SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_OFFSET,
 )
@@ -23,7 +23,7 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
         super().__init__()
         self.feature_embedding = nn.Embedding(SHOGI_POSITION_FEATURE_VOCAB_SIZE, embedding_dim)
         self.global_element_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT, embedding_dim)
-        self.square_field_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT, embedding_dim)
+        self.square_field_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT, embedding_dim)
         self.square_position_embedding = nn.Embedding(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, embedding_dim)
         self.global_norm = nn.LayerNorm(embedding_dim)
         self.square_norm = nn.LayerNorm(embedding_dim)
@@ -49,7 +49,7 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
     def _square_embeddings(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         square_feature_ids = position_features.square_feature_ids
         square_fields = torch.arange(
-            SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT,
+            SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT,
             device=square_feature_ids.device,
         )
         square_positions = torch.arange(SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, device=square_feature_ids.device).unsqueeze(
@@ -58,7 +58,7 @@ class ShogiAlphaZeroLikePositionInputLayer(nn.Module):
         square_field_embeddings = self.square_field_embedding(square_fields).view(
             1,
             1,
-            SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT,
+            SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT,
             -1,
         )
         hidden = (self.feature_embedding(square_feature_ids) + square_field_embeddings).sum(dim=2)

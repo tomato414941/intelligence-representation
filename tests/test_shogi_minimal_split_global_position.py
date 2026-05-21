@@ -13,7 +13,7 @@ from intrep.representation.inputs.shogi_position_features.position_minimal_split
     SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST,
     SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_ELEMENT_OFFSET,
-    SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_FEATURE_COUNT,
+    SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_FIELD_COUNT,
     shogi_minimal_split_global_position_feature_manifest_hash,
     shogi_minimal_split_global_position_features_from_sfen,
 )
@@ -48,7 +48,7 @@ class ShogiMinimalSplitGlobalPositionTest(unittest.TestCase):
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
 
         self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_MINIMAL_SPLIT_GLOBAL_GLOBAL_ELEMENT_COUNT,))
-        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_FEATURE_COUNT))
+        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_FIELD_COUNT))
         self.assertEqual(tuple(features.piece_feature_ids.shape), (0, 0))
         self.assertEqual(tuple(features.line_feature_ids.shape), (0, 0))
         self.assertEqual(int(features.pair_relation_edges.relation_ids.numel()), 0)

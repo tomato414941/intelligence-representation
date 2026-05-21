@@ -13,7 +13,7 @@ from intrep.representation.inputs.shogi_position_features.position_alpha_zero_li
     SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST,
     SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_OFFSET,
-    SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT,
+    SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT,
     shogi_alpha_zero_like_position_feature_manifest_hash,
     shogi_alpha_zero_like_position_features_from_sfen,
 )
@@ -50,7 +50,7 @@ class ShogiAlphaZeroLikePositionTest(unittest.TestCase):
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
 
         self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT,))
-        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT))
+        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_ALPHA_ZERO_LIKE_SQUARE_FIELD_COUNT))
         self.assertEqual(tuple(features.piece_feature_ids.shape), (0, 0))
         self.assertEqual(tuple(features.line_feature_ids.shape), (0, 0))
         self.assertEqual(int(features.pair_relation_edges.relation_ids.numel()), 0)

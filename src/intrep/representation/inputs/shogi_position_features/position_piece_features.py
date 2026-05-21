@@ -36,14 +36,14 @@ def piece_feature_id_rows(
                 )
             )
     piece_features.extend(hand_piece_element_feature_ids(board))
-    empty_slot_count = PIECE_SLOT_COUNT - len(piece_features) // PIECE_FEATURE_COUNT
+    empty_slot_count = PIECE_SLOT_COUNT - len(piece_features) // PIECE_FIELD_COUNT
     if empty_slot_count < 0:
         raise ValueError("shogi board contains more pieces than supported piece slots")
     for _ in range(empty_slot_count):
         piece_features.extend(empty_piece_element_feature_ids())
     return [
-        piece_features[index : index + PIECE_FEATURE_COUNT]
-        for index in range(0, len(piece_features), PIECE_FEATURE_COUNT)
+        piece_features[index : index + PIECE_FIELD_COUNT]
+        for index in range(0, len(piece_features), PIECE_FIELD_COUNT)
     ]
 
 

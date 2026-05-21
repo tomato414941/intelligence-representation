@@ -265,7 +265,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             payload = torch.load(path, weights_only=False)
             payload["config"]["input_feature_manifest"] = {
                 **payload["config"]["input_feature_manifest"],
-                "square_feature_count": 999,
+                "square_field_count": 999,
             }
             torch.save(payload, path)
 

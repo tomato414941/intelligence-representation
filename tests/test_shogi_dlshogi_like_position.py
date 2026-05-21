@@ -13,7 +13,7 @@ from intrep.representation.inputs.shogi_position_features.position_dlshogi_like 
     SHOGI_DLSHOGI_LIKE_POSITION_FEATURE_MANIFEST,
     SHOGI_DLSHOGI_LIKE_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_OFFSET,
-    SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT,
+    SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT,
     shogi_dlshogi_like_position_feature_manifest_hash,
     shogi_dlshogi_like_position_features_from_sfen,
 )
@@ -68,7 +68,7 @@ class ShogiDlshogiLikePositionTest(unittest.TestCase):
         opponent_king_attack_field = 30 + len(SQUARE_ATTACK_PIECE_TYPES) + SQUARE_ATTACK_PIECE_TYPES.index(shogi.KING)
 
         self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT,))
-        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT))
+        self.assertEqual(tuple(features.square_feature_ids.shape), (81, SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT))
         self.assertEqual(tuple(features.piece_feature_ids.shape), (0, 0))
         self.assertEqual(tuple(features.line_feature_ids.shape), (0, 0))
         self.assertEqual(int(features.pair_relation_edges.relation_ids.numel()), 0)

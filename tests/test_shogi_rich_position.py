@@ -48,12 +48,12 @@ from intrep.representation.inputs.shogi_position_features.position_rich import (
     SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_RICH_POSITION_ELEMENT_COUNT,
     SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT,
-    SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_LINE_FIELD_COUNT,
     SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT,
-    SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_PIECE_FIELD_COUNT,
     SHOGI_RICH_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
-    SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_SQUARE_FIELD_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
@@ -89,8 +89,8 @@ class ShogiRichPositionEncodingTest(unittest.TestCase):
             SHOGI_RICH_POSITION_FEATURE_MANIFEST["representation_element_count"],
             SHOGI_RICH_POSITION_ELEMENT_COUNT,
         )
-        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["square_feature_count"], SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT)
-        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["piece_feature_count"], SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT)
+        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["square_field_count"], SHOGI_RICH_POSITION_SQUARE_FIELD_COUNT)
+        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["piece_field_count"], SHOGI_RICH_POSITION_PIECE_FIELD_COUNT)
 
     def test_encodes_start_position_as_feature_groups(self) -> None:
         features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
@@ -98,15 +98,15 @@ class ShogiRichPositionEncodingTest(unittest.TestCase):
         self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_RICH_POSITION_GLOBAL_ELEMENT_COUNT,))
         self.assertEqual(
             tuple(features.square_feature_ids.shape),
-            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT),
+            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FIELD_COUNT),
         )
         self.assertEqual(
             tuple(features.piece_feature_ids.shape),
-            (SHOGI_RICH_POSITION_PIECE_SLOT_COUNT, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT),
+            (SHOGI_RICH_POSITION_PIECE_SLOT_COUNT, SHOGI_RICH_POSITION_PIECE_FIELD_COUNT),
         )
         self.assertEqual(
             tuple(features.line_feature_ids.shape),
-            (SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
+            (SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, SHOGI_RICH_POSITION_LINE_FIELD_COUNT),
         )
         self.assertEqual(SHOGI_RICH_POSITION_ELEMENT_COUNT, 191)
         self.assertEqual(int(features.global_feature_ids[1].item()), SIDE_TO_MOVE_BLACK_FEATURE_ID)

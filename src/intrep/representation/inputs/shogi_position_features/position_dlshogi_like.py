@@ -34,7 +34,7 @@ from intrep.representation.inputs.shogi_position_features.position_square_featur
 SHOGI_DLSHOGI_LIKE_POSITION_INPUT_SCHEMA_ID = "shogi_dlshogi_like_no_history_position_features"
 SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT = 18
 SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT = 81
-SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT = 58
+SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT = 58
 SHOGI_DLSHOGI_LIKE_ELEMENT_COUNT = (
     SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT + SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT
 )
@@ -49,7 +49,7 @@ def shogi_dlshogi_like_position_feature_manifest() -> dict[str, object]:
         "representation_element_count": SHOGI_DLSHOGI_LIKE_ELEMENT_COUNT,
         "global_element_count": SHOGI_DLSHOGI_LIKE_GLOBAL_ELEMENT_COUNT,
         "square_element_count": SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT,
-        "square_feature_count": SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT,
+        "square_field_count": SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square"],
         "global_feature_groups": [
@@ -121,7 +121,7 @@ def validate_shogi_dlshogi_like_position_feature_structure(features: ShogiPositi
     validate_integer_tensor_shape(
         "square_feature_ids",
         features.square_feature_ids,
-        (SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT, SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT),
+        (SHOGI_DLSHOGI_LIKE_SQUARE_ELEMENT_COUNT, SHOGI_DLSHOGI_LIKE_SQUARE_FIELD_COUNT),
     )
     validate_integer_tensor_shape("piece_feature_ids", features.piece_feature_ids, (0, 0))
     validate_integer_tensor_shape("line_feature_ids", features.line_feature_ids, (0, 0))

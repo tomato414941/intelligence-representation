@@ -6,7 +6,7 @@ import torch
 from intrep.domains.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
 
 
-SHOGI_MOVE_FEATURE_COUNT = 4
+SHOGI_MOVE_FIELD_COUNT = 4
 NO_FROM_SQUARE_ID = SHOGI_SQUARE_COUNT
 NO_DROP_PIECE_ID = 0
 
@@ -33,7 +33,7 @@ def shogi_legal_move_features(
     turn: int,
     max_legal_move_count: int,
 ) -> torch.Tensor:
-    features = torch.zeros((max_legal_move_count, SHOGI_MOVE_FEATURE_COUNT), dtype=torch.long)
+    features = torch.zeros((max_legal_move_count, SHOGI_MOVE_FIELD_COUNT), dtype=torch.long)
     for index, move_usi in enumerate(move_usis):
         features[index] = shogi_move_feature_ids(move_usi, turn=turn)
     return features
