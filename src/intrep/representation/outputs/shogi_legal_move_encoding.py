@@ -27,13 +27,13 @@ def shogi_move_feature_ids(move_usi: str, *, turn: int) -> torch.Tensor:
     )
 
 
-def shogi_legal_move_features(
+def shogi_legal_move_feature_ids(
     move_usis: tuple[str, ...],
     *,
     turn: int,
     max_legal_move_count: int,
 ) -> torch.Tensor:
-    features = torch.zeros((max_legal_move_count, SHOGI_MOVE_FIELD_COUNT), dtype=torch.long)
+    feature_ids = torch.zeros((max_legal_move_count, SHOGI_MOVE_FIELD_COUNT), dtype=torch.long)
     for index, move_usi in enumerate(move_usis):
-        features[index] = shogi_move_feature_ids(move_usi, turn=turn)
-    return features
+        feature_ids[index] = shogi_move_feature_ids(move_usi, turn=turn)
+    return feature_ids

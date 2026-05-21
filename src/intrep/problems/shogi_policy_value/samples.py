@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover - exercised in lightweight preprocessing
 @dataclass(frozen=True)
 class LegalMovePolicyValueTensorSample:
     position_features: ShogiPositionFeatures
-    legal_move_features: torch.Tensor
+    legal_move_feature_ids: torch.Tensor
     label: torch.Tensor
     policy_targets: torch.Tensor
     value_target: torch.Tensor
@@ -48,7 +48,7 @@ class CompactPolicyPlaneValueTensorSample:
 @dataclass(frozen=True)
 class LegalMovePolicyValueBatch:
     position_features: ShogiPositionFeatures
-    legal_move_features: torch.Tensor
+    legal_move_feature_ids: torch.Tensor
     legal_move_mask: torch.Tensor
     labels: torch.Tensor
     policy_targets: torch.Tensor
@@ -57,7 +57,7 @@ class LegalMovePolicyValueBatch:
     def to(self, device: torch.device) -> "LegalMovePolicyValueBatch":
         return LegalMovePolicyValueBatch(
             position_features=self.position_features.to(device),
-            legal_move_features=self.legal_move_features.to(device),
+            legal_move_feature_ids=self.legal_move_feature_ids.to(device),
             legal_move_mask=self.legal_move_mask.to(device),
             labels=self.labels.to(device),
             policy_targets=self.policy_targets.to(device),
@@ -157,12 +157,12 @@ def collate_legal_move_policy_value_samples(
 ) -> LegalMovePolicyValueBatch:
     if torch is None:
         raise RuntimeError("torch is required to collate shogi policy/value samples")
-    max_legal_move_count = max(int(sample.legal_move_features.shape[0]) for sample in samples)
+    max_legal_move_count = max(int(sample.legal_move_feature_ids.shape[0]) for sample in samples)
     return LegalMovePolicyValueBatch(
         position_features=stack_shogi_position_features([sample.position_features for sample in samples]),
-        legal_move_features=torch.stack(
+        legal_move_feature_ids=torch.stack(
             [
-                _pad_legal_move_features(sample.legal_move_features, max_legal_move_count=max_legal_move_count)
+                _pad_legal_move_feature_ids(sample.legal_move_feature_ids, max_legal_move_count=max_legal_move_count)
                 for sample in samples
             ]
         ),
@@ -206,7 +206,7 @@ def collate_policy_plane_value_samples(
 
 
 def _choice_count(example: LegalMovePolicyValueTensorSample) -> int:
-    return int(example.legal_move_features.shape[0])
+    return int(example.legal_move_feature_ids.shape[0])
 
 
 def _legal_move_mask(choice_count: int, *, max_legal_move_count: int) -> torch.Tensor:
@@ -215,14 +215,14 @@ def _legal_move_mask(choice_count: int, *, max_legal_move_count: int) -> torch.T
     return legal_move_mask
 
 
-def _pad_legal_move_features(legal_move_features: torch.Tensor, *, max_legal_move_count: int) -> torch.Tensor:
-    if legal_move_features.shape[0] == max_legal_move_count:
-        return legal_move_features
+def _pad_legal_move_feature_ids(legal_move_feature_ids: torch.Tensor, *, max_legal_move_count: int) -> torch.Tensor:
+    if legal_move_feature_ids.shape[0] == max_legal_move_count:
+        return legal_move_feature_ids
     padded = torch.zeros(
-        (max_legal_move_count, legal_move_features.shape[1]),
-        dtype=legal_move_features.dtype,
+        (max_legal_move_count, legal_move_feature_ids.shape[1]),
+        dtype=legal_move_feature_ids.dtype,
     )
-    padded[: legal_move_features.shape[0]] = legal_move_features
+    padded[: legal_move_feature_ids.shape[0]] = legal_move_feature_ids
     return padded
 
 

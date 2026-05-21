@@ -86,7 +86,7 @@ SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES: dict[str, str] = {
     "position_features.pair_relation_edges.source_element_indices": "uint16",
     "position_features.pair_relation_edges.target_element_indices": "uint16",
     "position_features.pair_relation_edges.relation_ids": "uint8",
-    "legal_move.legal_move_features": "uint16",
+    "legal_move.legal_move_feature_ids": "uint16",
     "legal_move.label": "uint16",
     "legal_move.policy_targets": "float32",
     "legal_move.value_target": "float32",
@@ -977,7 +977,7 @@ def _sample_output_space_stats(
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE:
         return {
             "max_legal_move_count": max(
-                (int(sample.legal_move_features.shape[0]) for sample in samples if isinstance(sample, LegalMovePolicyValueTensorSample)),
+                (int(sample.legal_move_feature_ids.shape[0]) for sample in samples if isinstance(sample, LegalMovePolicyValueTensorSample)),
                 default=0,
             )
         }
@@ -1016,9 +1016,9 @@ def _sample_to_payload(sample: ShogiPolicyValueTensorCacheSample, output_space: 
 def _legal_move_sample_to_payload(sample: LegalMovePolicyValueTensorSample) -> dict[str, Any]:
     return {
         "position_features": _position_features_to_payload(sample.position_features),
-        "legal_move_features": _uint16_tensor(
-            "legal_move_features",
-            sample.legal_move_features,
+        "legal_move_feature_ids": _uint16_tensor(
+            "legal_move_feature_ids",
+            sample.legal_move_feature_ids,
             maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
         ),
         "label": _uint16_tensor("label", sample.label),
@@ -1032,7 +1032,7 @@ def _legal_move_sample_from_payload(payload: Any, *, input_module: str) -> Legal
         raise ValueError("tensor cache sample must be a mapping")
     return LegalMovePolicyValueTensorSample(
         position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
-        legal_move_features=payload["legal_move_features"].to(dtype=torch.long),
+        legal_move_feature_ids=payload["legal_move_feature_ids"].to(dtype=torch.long),
         label=payload["label"].to(dtype=torch.long),
         policy_targets=payload["policy_targets"].to(dtype=torch.float32),
         value_target=payload["value_target"].to(dtype=torch.float32),

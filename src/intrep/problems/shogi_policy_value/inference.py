@@ -17,7 +17,7 @@ from intrep.problems.shogi_policy_value.output_space import (
 from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_feature_builder_for_assembly_spec_id,
 )
-from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
+from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
 from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
@@ -65,9 +65,9 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
         position_features = stack_shogi_position_features(
             [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
-        legal_move_features = torch.stack(
+        legal_move_feature_ids = torch.stack(
             [
-                shogi_legal_move_features(
+                shogi_legal_move_feature_ids(
                     legal_moves,
                     turn=board.turn,
                     max_legal_move_count=max_legal_move_count,
@@ -81,9 +81,9 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
 
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
-                logits, values = model.forward_policy_value(position_features, legal_move_features, legal_move_mask)
+                logits, values = model.forward_policy_value(position_features, legal_move_feature_ids, legal_move_mask)
             else:
-                logits = model(position_features, legal_move_features, legal_move_mask)
+                logits = model(position_features, legal_move_feature_ids, legal_move_mask)
                 values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
 
         evaluations: list[PositionEvaluation] = []

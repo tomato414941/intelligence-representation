@@ -21,12 +21,12 @@ class ShogiLegalMoveInputLayer(nn.Module):
         self.promotion_embedding = nn.Embedding(PROMOTION_VOCAB_SIZE, embedding_dim)
         self.drop_piece_embedding = nn.Embedding(DROP_PIECE_VOCAB_SIZE, embedding_dim)
 
-    def forward(self, legal_move_features: torch.Tensor) -> torch.Tensor:
+    def forward(self, legal_move_feature_ids: torch.Tensor) -> torch.Tensor:
         return (
-            self.from_square_embedding(legal_move_features[..., 0])
-            + self.to_square_embedding(legal_move_features[..., 1])
-            + self.promotion_embedding(legal_move_features[..., 2])
-            + self.drop_piece_embedding(legal_move_features[..., 3])
+            self.from_square_embedding(legal_move_feature_ids[..., 0])
+            + self.to_square_embedding(legal_move_feature_ids[..., 1])
+            + self.promotion_embedding(legal_move_feature_ids[..., 2])
+            + self.drop_piece_embedding(legal_move_feature_ids[..., 3])
         )
 
 
@@ -57,11 +57,11 @@ class ShogiStateSummaryLegalMovePolicyOutput(nn.Module):
         self,
         *,
         position_hidden: torch.Tensor,
-        legal_move_features: torch.Tensor,
+        legal_move_feature_ids: torch.Tensor,
         legal_move_mask: torch.Tensor,
     ) -> torch.Tensor:
         state_hidden = position_hidden[:, 0]
-        move_embedding = self.move_input(legal_move_features)
+        move_embedding = self.move_input(legal_move_feature_ids)
         expanded_state = state_hidden[:, None, :].expand(-1, move_embedding.size(1), -1)
         return self.policy_head(torch.cat((expanded_state, move_embedding), dim=-1), legal_move_mask)
 
@@ -106,24 +106,24 @@ class ShogiLegalMoveAttentionPolicyOutput(nn.Module):
         self,
         *,
         position_hidden: torch.Tensor,
-        legal_move_features: torch.Tensor,
+        legal_move_feature_ids: torch.Tensor,
         legal_move_mask: torch.Tensor,
     ) -> torch.Tensor:
-        legal_move_embeddings = self.legal_move_embeddings(position_hidden, legal_move_features)
+        legal_move_embeddings = self.legal_move_embeddings(position_hidden, legal_move_feature_ids)
         return self.policy_head(
             position_hidden=position_hidden,
             legal_move_embeddings=legal_move_embeddings,
             legal_move_mask=legal_move_mask,
         )
 
-    def legal_move_embeddings(self, position_hidden: torch.Tensor, legal_move_features: torch.Tensor) -> torch.Tensor:
-        move_embedding = self.move_input(legal_move_features)
+    def legal_move_embeddings(self, position_hidden: torch.Tensor, legal_move_feature_ids: torch.Tensor) -> torch.Tensor:
+        move_embedding = self.move_input(legal_move_feature_ids)
         from_square_hidden = _legal_move_square_hidden(
             position_hidden,
-            legal_move_features[..., 0],
+            legal_move_feature_ids[..., 0],
             zero_square_id=NO_FROM_SQUARE_ID,
         )
-        to_square_hidden = _legal_move_square_hidden(position_hidden, legal_move_features[..., 1])
+        to_square_hidden = _legal_move_square_hidden(position_hidden, legal_move_feature_ids[..., 1])
         return move_embedding + from_square_hidden + to_square_hidden
 
 

@@ -216,7 +216,7 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
         legal_moves = examples[0].legal_moves
         self.assertEqual(int(sample.label.item()), legal_moves.index("7g7f"))
-        self.assertEqual(int(sample.legal_move_features.shape[0]), len(legal_moves))
+        self.assertEqual(int(sample.legal_move_feature_ids.shape[0]), len(legal_moves))
         self.assertEqual(float(sample.policy_targets[legal_moves.index("7g7f")].item()), 0.75)
         self.assertEqual(float(sample.policy_targets[legal_moves.index("2g2f")].item()), 0.25)
 

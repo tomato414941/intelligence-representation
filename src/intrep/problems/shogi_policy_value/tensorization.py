@@ -58,14 +58,14 @@ def tensorize_legal_move_policy_value_example(
     *,
     position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> LegalMovePolicyValueTensorSample:
-    position_features, legal_move_features, _legal_move_mask, move_index, policy_targets = policy_sample(
+    position_features, legal_move_feature_ids, _legal_move_mask, move_index, policy_targets = policy_sample(
         example,
         max_legal_move_count=len(example.legal_moves),
         position_features_from_sfen=position_features_from_sfen,
     )
     return LegalMovePolicyValueTensorSample(
         position_features=position_features,
-        legal_move_features=legal_move_features,
+        legal_move_feature_ids=legal_move_feature_ids,
         label=move_index,
         policy_targets=policy_targets,
         value_target=torch.tensor(
@@ -213,11 +213,11 @@ def policy_sample(
 ):
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy samples")
-    from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
+    from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
     board = shogi.Board(example.position_sfen)
     position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
     position_features = position_features_from_sfen(example.position_sfen)
-    legal_move_features = shogi_legal_move_features(
+    legal_move_feature_ids = shogi_legal_move_feature_ids(
         example.legal_moves,
         turn=board.turn,
         max_legal_move_count=max_legal_move_count,
@@ -236,7 +236,7 @@ def policy_sample(
             policy_targets[example.legal_moves.index(move)] = float(weight) / total
     return (
         position_features,
-        legal_move_features,
+        legal_move_feature_ids,
         legal_move_mask,
         torch.tensor(move_index, dtype=torch.long),
         policy_targets,
@@ -313,7 +313,7 @@ def compact_policy_plane_value_tensor_sample(
 
 def choice_count(example: ShogiPolicyValueDatasetItem) -> int:
     if isinstance(example, LegalMovePolicyValueTensorSample):
-        return int(example.legal_move_features.shape[0])
+        return int(example.legal_move_feature_ids.shape[0])
     if isinstance(example, (PolicyPlaneValueTensorSample, CompactPolicyPlaneValueTensorSample)):
         raise ValueError("policy-plane tensor samples do not have candidate choices")
     return len(example.legal_moves)

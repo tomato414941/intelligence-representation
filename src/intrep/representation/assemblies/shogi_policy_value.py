@@ -98,27 +98,27 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
     def forward(
         self,
         position_features: ShogiPositionFeatures,
-        legal_move_features: torch.Tensor,
+        legal_move_feature_ids: torch.Tensor,
         legal_move_mask: torch.Tensor,
     ) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
         return self.policy_output(
             position_hidden=position_hidden,
-            legal_move_features=legal_move_features,
+            legal_move_feature_ids=legal_move_feature_ids,
             legal_move_mask=legal_move_mask,
         )
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        legal_move_features: torch.Tensor,
+        legal_move_feature_ids: torch.Tensor,
         legal_move_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_element_hidden(position_hidden)
         logits = self.policy_output(
             position_hidden=position_hidden,
-            legal_move_features=legal_move_features,
+            legal_move_feature_ids=legal_move_feature_ids,
             legal_move_mask=legal_move_mask,
         )
         return logits, self.value_output(position_embedding)

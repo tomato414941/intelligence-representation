@@ -429,7 +429,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             shard_path = next((tensor_cache_path / "train").glob("*.pt"))
             shard_payload = torch.load(shard_path, weights_only=False)
             self.assertEqual(shard_payload["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
-            self.assertEqual(shard_payload["samples"][0]["legal_move_features"].dtype, torch.uint16)
+            self.assertEqual(shard_payload["samples"][0]["legal_move_feature_ids"].dtype, torch.uint16)
             self.assertEqual(shard_payload["samples"][0]["label"].dtype, torch.uint16)
             self.assertEqual(shard_payload["samples"][0]["policy_targets"].dtype, torch.float32)
             self.assertEqual(shard_payload["samples"][0]["value_target"].dtype, torch.float32)
@@ -445,7 +445,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(pair_relation_edges["relation_ids"].dtype, torch.uint8)
             cache = load_shogi_policy_value_tensor_cache(tensor_cache_path)
             self.assertEqual(cache.train_samples[0].position_features.global_feature_ids.dtype, torch.long)
-            self.assertEqual(cache.train_samples[0].legal_move_features.dtype, torch.long)
+            self.assertEqual(cache.train_samples[0].legal_move_feature_ids.dtype, torch.long)
             self.assertEqual(cache.train_samples[0].label.dtype, torch.long)
             self.assertEqual(cache.train_samples[0].policy_targets.dtype, torch.float32)
 

@@ -97,24 +97,24 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(spec["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
 
     def test_state_summary_policy_output_returns_legal_move_logits(self) -> None:
-        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
         model = _state_summary_legal_move_model()
 
-        logits = model(position_features, legal_move_features, legal_move_mask)
+        logits = model(position_features, legal_move_feature_ids, legal_move_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
 
     def test_state_summary_policy_output_masks_invalid_legal_moves(self) -> None:
-        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
         legal_move_mask[:, -1] = False
         model = _state_summary_legal_move_model()
 
-        logits = model(position_features, legal_move_features, legal_move_mask)
+        logits = model(position_features, legal_move_feature_ids, legal_move_mask)
 
         self.assertLess(float(logits[0, -1].item()), -1e20)
 
     def test_shared_core_model_returns_legal_move_logits(self) -> None:
-        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -124,7 +124,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_features, legal_move_features, legal_move_mask)
+        logits = model(position_features, legal_move_feature_ids, legal_move_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
 
@@ -145,7 +145,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertLessEqual(float(values.abs().max().item()), 1.0)
 
     def test_shared_core_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -156,7 +156,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
-        logits, values = model.forward_policy_value(position_features, legal_move_features, legal_move_mask)
+        logits, values = model.forward_policy_value(position_features, legal_move_feature_ids, legal_move_mask)
 
         self.assertEqual(tuple(logits.shape), tuple(legal_move_mask.shape))
         self.assertEqual(tuple(values.shape), (2,))
@@ -267,7 +267,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(float(bias[batch, row, column].item()), 700.0)
 
     def test_shared_models_pass_position_geometry_attention_logit_bias_to_core(self) -> None:
-        position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
+        position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
         model = SharedCoreShogiPolicyValueModel(
             SharedCoreShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -278,7 +278,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
-        model(position_features, legal_move_features, legal_move_mask)
+        model(position_features, legal_move_feature_ids, legal_move_mask)
 
         self.assertIn("attention_logit_bias", model.encoder.core.forward.call_args.kwargs)
 
@@ -458,7 +458,7 @@ def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.T
     batch = collate_legal_move_policy_value_samples([dataset[index] for index in range(len(dataset))])
     return (
         batch.position_features,
-        batch.legal_move_features,
+        batch.legal_move_feature_ids,
         batch.legal_move_mask,
         batch.labels,
         batch.policy_targets,

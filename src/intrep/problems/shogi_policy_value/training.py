@@ -569,7 +569,7 @@ def _batch_policy_target_loss(logits: torch.Tensor, batch: ShogiPolicyValueBatch
 
 def _forward_batch_policy(model: nn.Module, batch: ShogiPolicyValueBatch) -> torch.Tensor:
     if isinstance(batch, LegalMovePolicyValueBatch):
-        return model(batch.position_features, batch.legal_move_features, batch.legal_move_mask)
+        return model(batch.position_features, batch.legal_move_feature_ids, batch.legal_move_mask)
     if isinstance(batch, PolicyPlaneValueBatch):
         return model(batch.position_features, batch.legal_action_mask)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
@@ -580,7 +580,7 @@ def _forward_batch_policy_value(model: nn.Module, batch: ShogiPolicyValueBatch) 
         return _forward_policy_value(
             model,
             batch.position_features,
-            batch.legal_move_features,
+            batch.legal_move_feature_ids,
             batch.legal_move_mask,
         )
     if isinstance(batch, PolicyPlaneValueBatch):
