@@ -14,6 +14,9 @@ from intrep.problems.shogi_policy_value.benchmarking import (
 )
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+)
 from intrep.representation.inputs.shogi_position_features.position_rich import SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH, SHOGI_RICH_POSITION_INPUT_SCHEMA_ID
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 
@@ -63,7 +66,7 @@ class ShogiPolicyValueBenchmarkingTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,

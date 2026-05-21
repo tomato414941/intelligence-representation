@@ -37,6 +37,9 @@ from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingResult,
     build_shogi_policy_value_model,
 )
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+)
 from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiDecisionTelemetry,
@@ -198,7 +201,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
         with patch("intrep.problems.shogi_policy_value.generated_game_production._run_generation_command") as run:
             with self.assertRaisesRegex(ValueError, "generator_gate_games"):
                 run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=Path("source.pt"),
                         run_dir=Path("online"),
                         training_eval_data_selection=Path("eval/data-selection.json"),
@@ -210,7 +213,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "generator_gate_worker_processes"):
                 run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=Path("source.pt"),
                         run_dir=Path("online"),
                         training_eval_data_selection=Path("eval/data-selection.json"),
@@ -336,12 +339,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=2,
@@ -493,12 +496,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, ))),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=2,
@@ -594,12 +597,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, ))),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=3,
@@ -693,12 +696,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=1,
@@ -778,12 +781,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
-                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig())),
+                patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", return_value=_training_result(ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, ))),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=1,
@@ -869,7 +872,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
@@ -888,7 +891,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=1),),
-                        training_config=ShogiPolicyValueTrainingConfig(
+                        training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                             learning_rate=0.01,
                             weight_decay=0.02,
                             policy_loss_weight=0.7,
@@ -966,7 +969,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
@@ -987,7 +990,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                         training_eval_data_selection=training_eval_data_selection,
                         arena_repo=arena_repo,
                         experience_sources=(_self_play_source(games=1),),
-                        training_config=ShogiPolicyValueTrainingConfig(progress_every=2),
+                        training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, progress_every=2),
                         )
                     )
 
@@ -1031,12 +1034,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
                 result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=2,
@@ -1141,12 +1144,12 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                 patch("intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_state_dict", return_value={}),
                 patch(
                     "intrep.problems.shogi_policy_value.online_replay.load_shogi_policy_value_checkpoint_training_config",
-                    return_value=ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2),
+                    return_value=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2),
                 ),
                 patch("intrep.problems.shogi_policy_value.online_replay.train_shogi_policy_value_model", side_effect=fake_train),
             ):
                 first_result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=1,
@@ -1159,7 +1162,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
                     )
                 )
                 resumed_result = run_shogi_online_replay(
-                    ShogiOnlineReplayConfig(
+                    ShogiOnlineReplayConfig(training_config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
                         checkpoint=checkpoint_path,
                         run_dir=run_dir,
                         iterations=2,
@@ -1187,7 +1190,7 @@ class ShogiOnlineReplayTest(unittest.TestCase):
 def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValueTrainingResult:
     return ShogiPolicyValueTrainingResult(
         model=build_shogi_policy_value_model(
-            ShogiPolicyValueTrainingConfig(
+            ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
@@ -1229,7 +1232,7 @@ def _training_result(config: ShogiPolicyValueTrainingConfig) -> ShogiPolicyValue
 
 
 def _write_checkpoint(path: Path) -> None:
-    config = ShogiPolicyValueTrainingConfig(embedding_dim=8, hidden_dim=16, num_heads=2)
+    config = ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID, embedding_dim=8, hidden_dim=16, num_heads=2)
     save_shogi_policy_value_state_checkpoint(path, build_shogi_policy_value_model(config).state_dict(), config)
 
 

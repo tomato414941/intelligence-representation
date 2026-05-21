@@ -12,6 +12,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_DLSHOGI_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 )
@@ -40,7 +41,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
 
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -181,7 +182,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         result = train_shogi_policy_value_model(
             examples,
             eval_examples=examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -201,7 +202,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "num_workers"):
             train_shogi_policy_value_model(
                 examples,
-                config=ShogiPolicyValueTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                     max_steps=1,
                     num_workers=-1,
                 ),
@@ -213,7 +214,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least one loss weight"):
             train_shogi_policy_value_model(
                 examples,
-                config=ShogiPolicyValueTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                     max_steps=1,
                     policy_loss_weight=0.0,
                     value_loss_weight=0.0,
@@ -226,7 +227,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "allow_nonstandard_loss_weights"):
             train_shogi_policy_value_model(
                 examples,
-                config=ShogiPolicyValueTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                     max_steps=1,
                     value_loss_weight=0.5,
                 ),
@@ -238,7 +239,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
 
         train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=3,
                 batch_size=2,
                 embedding_dim=8,
@@ -257,7 +258,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
 
         train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=3,
                 batch_size=2,
                 embedding_dim=8,
@@ -277,7 +278,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
             train_shogi_policy_value_model(
                 examples,
                 eval_examples=examples,
-                config=ShogiPolicyValueTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                     max_steps=1,
                     batch_size=1,
                     embedding_dim=8,
@@ -301,7 +302,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
         result = train_shogi_policy_value_model(
             examples,
             eval_examples=examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=5,
                 batch_size=2,
                 learning_rate=0.0,
@@ -325,7 +326,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
             train_shogi_policy_value_model(
                 examples,
                 eval_examples=examples,
-                config=ShogiPolicyValueTrainingConfig(
+                config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                     max_steps=1,
                     early_stopping_patience=1,
                 ),
@@ -345,7 +346,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
 
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=2,
                 batch_size=2,
                 embedding_dim=8,

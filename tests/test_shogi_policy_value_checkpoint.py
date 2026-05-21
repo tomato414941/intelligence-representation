@@ -32,7 +32,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=2,
                 batch_size=2,
                 embedding_dim=8,
@@ -134,7 +134,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -157,7 +157,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -180,7 +180,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -204,7 +204,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -227,7 +227,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -250,7 +250,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -276,7 +276,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,
@@ -299,7 +299,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
-            config=ShogiPolicyValueTrainingConfig(
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 max_steps=1,
                 batch_size=2,
                 embedding_dim=8,

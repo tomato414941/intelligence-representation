@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import replace
 from pathlib import Path
 
+from intrep.problems.shogi_policy_value.checkpoint import (
+    load_shogi_policy_value_checkpoint_training_config,
+)
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
     DEFAULT_USI_READ_TIMEOUT_SECONDS,
@@ -25,7 +29,6 @@ from intrep.problems.shogi_policy_value.online_replay import (
     ShogiOnlineReplayTrainingBudget,
     run_shogi_online_replay,
 )
-from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -88,6 +91,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--early-stopping-patience", type=int)
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args(argv)
+    checkpoint_training_config = load_shogi_policy_value_checkpoint_training_config(
+        args.checkpoint,
+        device=args.device,
+    )
 
     result = run_shogi_online_replay(
         ShogiOnlineReplayConfig(
@@ -119,7 +126,8 @@ def main(argv: list[str] | None = None) -> None:
             nn_leaf_eval_batch_limit=args.nn_leaf_eval_batch_limit,
             generation_worker_processes=args.generation_worker_processes,
             mcts_move_time_limit_sec=args.mcts_move_time_limit_sec,
-            training_config=ShogiPolicyValueTrainingConfig(
+            training_config=replace(
+                checkpoint_training_config,
                 learning_rate=args.learning_rate,
                 weight_decay=args.weight_decay,
                 policy_loss_weight=args.policy_loss_weight,

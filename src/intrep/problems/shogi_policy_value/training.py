@@ -24,9 +24,6 @@ from intrep.problems.shogi_policy_value.samples import (
 from intrep.representation.assemblies.shogi_policy_value import (
     build_shogi_policy_value_model_for_assembly_spec,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
-)
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     shogi_policy_value_output_space_for_assembly_spec,
@@ -39,6 +36,7 @@ from intrep.representation.inputs.shogi_position_features.position_features impo
 
 @dataclass(frozen=True)
 class ShogiPolicyValueTrainingConfig:
+    assembly_spec_id: str
     max_steps: int = 100
     batch_size: int = 8
     learning_rate: float = 0.003
@@ -48,7 +46,6 @@ class ShogiPolicyValueTrainingConfig:
     hidden_dim: int = 1024
     num_heads: int = 8
     num_layers: int = 6
-    assembly_spec_id: str = SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID
     policy_loss_weight: float = 1.0
     value_loss_weight: float = 1.0
     allow_nonstandard_loss_weights: bool = False
@@ -143,12 +140,12 @@ def train_shogi_policy_value_model(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     *,
     eval_examples: Sequence[ShogiPolicyValueDatasetItem] | None = None,
-    config: ShogiPolicyValueTrainingConfig | None = None,
+    config: ShogiPolicyValueTrainingConfig,
     initial_state_dict: object | None = None,
     progress_callback: Callable[[ShogiPolicyValueTrainingProgress], None] | None = None,
     phase_progress_callback: Callable[[ShogiPolicyValuePhaseProgress], None] | None = None,
 ) -> ShogiPolicyValueTrainingResult:
-    training_config = config or ShogiPolicyValueTrainingConfig()
+    training_config = config
     if training_config.max_steps <= 0:
         raise ValueError("max_steps must be positive")
     if training_config.log_every is not None and training_config.log_every <= 0:

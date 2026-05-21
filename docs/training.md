@@ -149,7 +149,8 @@ uv run python -m intrep.train_shogi_policy_value \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
   --tensor-cache data/shogi/training-data-bundles/current/cache/legal-move \
   --checkpoint-path runs/shogi/checkpoint.pt \
-  --metrics-path runs/shogi/metrics.json
+  --metrics-path runs/shogi/metrics.json \
+  --assembly-spec shogi_policy_value_rich_position_transformer_legal_move_attention
 ```
 
 The cache is a sharded directory with a manifest and split-specific shard files.

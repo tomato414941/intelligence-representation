@@ -97,6 +97,7 @@ class ShogiOnlineReplayConfig:
     checkpoint: Path
     run_dir: Path
     training_eval_data_selection: Path
+    training_config: ShogiPolicyValueTrainingConfig
     iterations: int = 1
     resume: bool = False
     replay_capacity: int = DEFAULT_REPLAY_CAPACITY
@@ -123,7 +124,6 @@ class ShogiOnlineReplayConfig:
     nn_leaf_eval_batch_limit: int = 64
     generation_worker_processes: int = DEFAULT_GENERATION_WORKER_PROCESSES
     mcts_move_time_limit_sec: float | None = None
-    training_config: ShogiPolicyValueTrainingConfig = ShogiPolicyValueTrainingConfig()
     seed: int = 7
 
 

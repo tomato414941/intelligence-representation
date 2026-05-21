@@ -10,6 +10,9 @@ from unittest.mock import patch
 from intrep.problems.shogi_policy_value.evaluate import main
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+)
 from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -61,7 +64,7 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            config = ShogiPolicyValueTrainingConfig(
+            config = ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,

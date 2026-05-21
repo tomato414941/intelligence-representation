@@ -23,7 +23,6 @@ from intrep.problems.shogi_policy_value.samples import ShogiPolicyValueDatasetIt
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
-    SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
     shogi_policy_value_input_for_assembly_spec_id,
 )
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
@@ -54,7 +53,7 @@ def main() -> None:
     parser.add_argument(
         "--assembly-spec",
         choices=SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
-        default=SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
+        required=True,
     )
     parser.add_argument("--policy-loss-weight", type=float, default=1.0)
     parser.add_argument("--value-loss-weight", type=float, default=1.0)

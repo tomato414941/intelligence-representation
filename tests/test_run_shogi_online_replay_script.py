@@ -8,6 +8,10 @@ from types import ModuleType
 from unittest.mock import Mock, patch
 
 from intrep.problems.shogi_policy_value.online_replay import ShogiOnlineReplayResult
+from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+)
 
 
 class RunShogiOnlineReplayScriptTest(unittest.TestCase):
@@ -30,6 +34,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         run_replay = Mock(return_value=result)
 
         with (
+            patch.object(
+                module,
+                "load_shogi_policy_value_checkpoint_training_config",
+                return_value=_checkpoint_training_config(),
+            ),
             patch.object(module, "run_shogi_online_replay", run_replay),
             patch.object(module, "print"),
         ):
@@ -51,6 +60,10 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_budget.max_seed_examples_per_iteration, 50000)
         self.assertEqual(config.generator_gate_worker_processes, 4)
         self.assertEqual(config.generation_worker_processes, 8)
+        self.assertEqual(
+            config.training_config.assembly_spec_id,
+            SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+        )
 
     def test_passes_cli_arguments_to_online_replay_config_and_prints_result(self) -> None:
         module = _load_script_module()
@@ -71,6 +84,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         run_replay = Mock(return_value=result)
 
         with (
+            patch.object(
+                module,
+                "load_shogi_policy_value_checkpoint_training_config",
+                return_value=_checkpoint_training_config(),
+            ),
             patch.object(module, "run_shogi_online_replay", run_replay),
             patch.object(module, "print") as print_,
         ):
@@ -201,6 +219,10 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(config.training_config.progress_every, 20)
         self.assertEqual(config.training_config.eval_every, 25)
         self.assertEqual(config.training_config.early_stopping_patience, 3)
+        self.assertEqual(
+            config.training_config.assembly_spec_id,
+            SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+        )
         self.assertEqual(config.seed, 11)
         self.assertEqual(json.loads(print_.call_args.args[0]), result.to_json())
 
@@ -223,6 +245,11 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         run_replay = Mock(return_value=result)
 
         with (
+            patch.object(
+                module,
+                "load_shogi_policy_value_checkpoint_training_config",
+                return_value=_checkpoint_training_config(),
+            ),
             patch.object(module, "run_shogi_online_replay", run_replay),
             patch.object(module, "print"),
         ):
@@ -267,6 +294,15 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         self.assertEqual(sources[2].black_player.kind, "usi_engine")
         self.assertEqual(sources[2].white_player.kind, "checkpoint")
         self.assertEqual(sources[2].policy_target_construction, "chosen_move")
+
+
+def _checkpoint_training_config() -> ShogiPolicyValueTrainingConfig:
+    return ShogiPolicyValueTrainingConfig(
+        assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+        embedding_dim=8,
+        hidden_dim=16,
+        num_heads=2,
+    )
 
 
 def _load_script_module() -> ModuleType:
