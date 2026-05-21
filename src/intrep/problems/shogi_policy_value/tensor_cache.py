@@ -495,7 +495,8 @@ class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTens
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_samples: list[LegalMovePolicyValueTensorSample] = []
+        self._loaded_payload_samples: list[Any] = []
+        self._loaded_samples: dict[int, LegalMovePolicyValueTensorSample] = {}
 
     def __len__(self) -> int:
         return self.sample_count
@@ -517,7 +518,7 @@ class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTens
             raise IndexError(index)
         shard_index = self._shard_index_for_sample(index)
         shard_offset = self.offsets[shard_index]
-        return self._load_shard_samples(shard_index)[index - shard_offset]
+        return self._load_shard_sample(shard_index, index - shard_offset)
 
     def _shard_index_for_sample(self, index: int) -> int:
         low = 0
@@ -534,16 +535,23 @@ class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTens
                 return mid
         raise IndexError(index)
 
-    def _load_shard_samples(self, shard_index: int) -> list[LegalMovePolicyValueTensorSample]:
+    def _load_shard_sample(self, shard_index: int, sample_index: int) -> LegalMovePolicyValueTensorSample:
+        self._load_shard_payload_samples(shard_index)
+        if sample_index not in self._loaded_samples:
+            self._loaded_samples[sample_index] = _legal_move_sample_from_payload(
+                self._loaded_payload_samples[sample_index],
+                input_module=self.input_module,
+            )
+        return self._loaded_samples[sample_index]
+
+    def _load_shard_payload_samples(self, shard_index: int) -> None:
         if self._loaded_shard_index == shard_index:
-            return self._loaded_samples
+            return
         shard = self.shards[shard_index]
         payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
-        self._loaded_samples = [
-            _legal_move_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
-        ]
+        self._loaded_payload_samples = list(payload["samples"])
+        self._loaded_samples = {}
         self._loaded_shard_index = shard_index
-        return self._loaded_samples
 
 
 class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPlanePolicyValueTensorSample]):
@@ -559,7 +567,8 @@ class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPl
             offset += int(shard["sample_count"])
         self.sample_count = offset
         self._loaded_shard_index: int | None = None
-        self._loaded_samples: list[CompactActionPlanePolicyValueTensorSample] = []
+        self._loaded_payload_samples: list[Any] = []
+        self._loaded_samples: dict[int, CompactActionPlanePolicyValueTensorSample] = {}
 
     def __len__(self) -> int:
         return self.sample_count
@@ -584,7 +593,7 @@ class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPl
             raise IndexError(index)
         shard_index = self._shard_index_for_sample(index)
         shard_offset = self.offsets[shard_index]
-        return self._load_shard_samples(shard_index)[index - shard_offset]
+        return self._load_shard_sample(shard_index, index - shard_offset)
 
     def _shard_index_for_sample(self, index: int) -> int:
         low = 0
@@ -601,16 +610,23 @@ class ShardedCompactActionPlanePolicyValueTensorSamples(Sequence[CompactActionPl
                 return mid
         raise IndexError(index)
 
-    def _load_shard_samples(self, shard_index: int) -> list[CompactActionPlanePolicyValueTensorSample]:
+    def _load_shard_sample(self, shard_index: int, sample_index: int) -> CompactActionPlanePolicyValueTensorSample:
+        self._load_shard_payload_samples(shard_index)
+        if sample_index not in self._loaded_samples:
+            self._loaded_samples[sample_index] = _compact_action_plane_policy_sample_from_payload(
+                self._loaded_payload_samples[sample_index],
+                input_module=self.input_module,
+            )
+        return self._loaded_samples[sample_index]
+
+    def _load_shard_payload_samples(self, shard_index: int) -> None:
         if self._loaded_shard_index == shard_index:
-            return self._loaded_samples
+            return
         shard = self.shards[shard_index]
         payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
-        self._loaded_samples = [
-            _compact_action_plane_policy_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
-        ]
+        self._loaded_payload_samples = list(payload["samples"])
+        self._loaded_samples = {}
         self._loaded_shard_index = shard_index
-        return self._loaded_samples
 
 
 def _load_tensor_cache_sequences(
