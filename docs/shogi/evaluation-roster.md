@@ -4,7 +4,7 @@ This roster lists model entries that should be kept visible as comparison
 targets. Entry names are human-facing labels. Exact identity belongs in specs,
 manifests, hashes, checkpoints, and metrics.
 
-## Shogi Policy-Plane Entries
+## Shogi Model Entries
 
 | Entry | Input intent | Status |
 | --- | --- | --- |
