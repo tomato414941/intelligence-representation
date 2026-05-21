@@ -31,6 +31,9 @@ from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     shogi_policy_value_output_space_for_assembly_spec,
 )
+from intrep.problems.shogi_policy_value.position_input_identity import (
+    shogi_position_feature_builder_for_assembly_spec_id,
+)
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
 
 
@@ -512,11 +515,12 @@ def _build_shogi_policy_value_dataset(
     examples: Sequence[ShogiPolicyValueDatasetItem],
     config: ShogiPolicyValueTrainingConfig,
 ) -> ShogiLegalMovePolicyValueDataset | ShogiPolicyPlaneValueDataset:
+    position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(config.assembly_spec_id)
     if shogi_policy_value_output_space_for_assembly_spec(
         config.assembly_spec_id
     ) == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        return ShogiPolicyPlaneValueDataset(examples)
-    return ShogiLegalMovePolicyValueDataset(examples)
+        return ShogiPolicyPlaneValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
+    return ShogiLegalMovePolicyValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
 
 
 ShogiPolicyValueBatch = LegalMovePolicyValueBatch | PolicyPlaneValueBatch

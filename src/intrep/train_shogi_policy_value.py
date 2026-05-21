@@ -26,6 +26,7 @@ from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_va
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
     SHOGI_POLICY_VALUE_DEFAULT_ASSEMBLY_SPEC_ID,
+    shogi_policy_value_input_for_assembly_spec_id,
 )
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
 from intrep.problems.shogi_policy_value.training import (
@@ -90,6 +91,7 @@ def main() -> None:
             expected_data_selection=data_selection,
             expected_data_selection_root=args.data_selection.parent,
             expected_output_space=shogi_policy_value_output_space_for_assembly_spec(args.assembly_spec),
+            expected_input_module=shogi_policy_value_input_for_assembly_spec_id(args.assembly_spec),
         )
         train_examples = tensor_cache.train_samples
         eval_examples = tensor_cache.eval_samples

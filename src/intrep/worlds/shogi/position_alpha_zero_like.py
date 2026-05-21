@@ -88,3 +88,29 @@ def shogi_alpha_zero_like_position_features_from_sfen(position_sfen: str) -> Sho
             relation_ids=torch.empty((0,), dtype=torch.long),
         ),
     )
+
+
+def validate_shogi_alpha_zero_like_position_feature_structure(features: ShogiPositionFeatures) -> None:
+    _validate_integer_tensor_shape(
+        "global_feature_ids",
+        features.global_feature_ids,
+        (SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT,),
+    )
+    _validate_integer_tensor_shape(
+        "square_feature_ids",
+        features.square_feature_ids,
+        (SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT, SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT),
+    )
+    _validate_integer_tensor_shape("piece_feature_ids", features.piece_feature_ids, (0, 0))
+    _validate_integer_tensor_shape("line_feature_ids", features.line_feature_ids, (0, 0))
+    if int(features.pair_relation_edges.relation_ids.numel()) != 0:
+        raise ValueError("alpha-zero-like position features must not contain pair relation edges")
+
+
+def _validate_integer_tensor_shape(name: str, tensor: object, expected_shape: tuple[int, ...]) -> None:
+    if not isinstance(tensor, torch.Tensor):
+        raise ValueError(f"{name} must be a tensor")
+    if not tensor.dtype in (torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8):
+        raise ValueError(f"{name} must use an integer dtype")
+    if tuple(tensor.shape) != expected_shape:
+        raise ValueError(f"{name} must have shape {expected_shape}")

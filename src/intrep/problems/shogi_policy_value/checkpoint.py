@@ -12,12 +12,10 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
-from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
-from intrep.worlds.shogi.position_encoding import (
-    SHOGI_POSITION_FEATURE_MANIFEST,
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_INPUT_SCHEMA_ID,
+from intrep.problems.shogi_policy_value.position_input_identity import (
+    shogi_position_input_identity_for_assembly_spec_id,
 )
+from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingResult
 
 
 SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.checkpoint.v3"
@@ -169,9 +167,7 @@ def shogi_policy_value_checkpoint_content_sha256(
 def _checkpoint_config_payload(config: object) -> dict[str, object]:
     assembly_spec = _checkpoint_assembly_spec(config)
     return {
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
-        "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
-        "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+        **shogi_position_input_identity_for_assembly_spec_id(str(assembly_spec["assembly_spec_id"])),
         "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
         "assembly_spec_id": assembly_spec["assembly_spec_id"],
         "assembly_spec": assembly_spec,
@@ -189,11 +185,12 @@ def _validate_checkpoint_input_schema_id(payload: dict[str, object]) -> None:
     config = payload.get("config")
     if not isinstance(config, dict):
         raise ValueError("shogi checkpoint config must be an object")
-    if config.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+    expected = shogi_position_input_identity_for_assembly_spec_id(_config_str(config, "assembly_spec_id"))
+    if config.get("input_schema_id") != expected["input_schema_id"]:
         raise ValueError("unsupported shogi checkpoint input schema")
-    if config.get("input_feature_manifest_hash") != SHOGI_POSITION_FEATURE_MANIFEST_HASH:
+    if config.get("input_feature_manifest_hash") != expected["input_feature_manifest_hash"]:
         raise ValueError("unsupported shogi checkpoint input feature manifest")
-    if config.get("input_feature_manifest") != SHOGI_POSITION_FEATURE_MANIFEST:
+    if config.get("input_feature_manifest") != expected["input_feature_manifest"]:
         raise ValueError("unsupported shogi checkpoint input feature manifest")
 
 

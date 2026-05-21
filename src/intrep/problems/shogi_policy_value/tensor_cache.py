@@ -30,15 +30,21 @@ from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     validate_shogi_policy_value_output_space,
 )
+from intrep.problems.shogi_policy_value.position_input_identity import (
+    shogi_position_feature_builder_for_input_module,
+    shogi_position_input_identity_for_input_module,
+)
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_POSITION_INPUT_MODULE_ID,
+)
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.worlds.shogi.position_encoding import (
-    SHOGI_POSITION_FEATURE_MANIFEST,
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_INPUT_SCHEMA_ID,
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
     validate_shogi_position_feature_structure,
 )
+from intrep.worlds.shogi.position_alpha_zero_like import validate_shogi_alpha_zero_like_position_feature_structure
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"
@@ -78,8 +84,10 @@ def build_shogi_policy_value_tensor_cache(
     shard_games: int | None = None,
     resume: bool = False,
     output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
+    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
+    shogi_position_input_identity_for_input_module(input_module)
     if shard_games is not None:
         shard_examples = shard_games
     if shard_examples <= 0:
@@ -110,6 +118,7 @@ def build_shogi_policy_value_tensor_cache(
                 analyses_by_position=analyses_by_position,
                 resume=resume,
                 output_space=output_space,
+                input_module=input_module,
             ):
                 shards.append(shard)
                 _merge_output_space_stats(output_stats, shard)
@@ -118,7 +127,7 @@ def build_shogi_policy_value_tensor_cache(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        **_input_feature_identity(),
+        **_input_feature_identity(input_module),
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -157,8 +166,10 @@ def build_shogi_policy_value_tensor_cache_shard(
     shard_index: int,
     resume: bool = False,
     output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
+    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
+    shogi_position_input_identity_for_input_module(input_module)
     if source_example_start_index is None:
         source_example_start_index = source_game_start_index
     if source_example_end_index is None:
@@ -198,6 +209,7 @@ def build_shogi_policy_value_tensor_cache_shard(
         data_selection_path=data_selection_path,
         resume=resume,
         output_space=output_space,
+        input_module=input_module,
     )
 
 
@@ -208,12 +220,14 @@ def write_shogi_policy_value_tensor_cache_manifest(
     shard_examples: int = 100_000,
     shard_games: int | None = None,
     output_space: str | None = None,
+    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
+    shogi_position_input_identity_for_input_module(input_module)
     if shard_games is not None:
         shard_examples = shard_games
     data_selection = load_shogi_policy_value_data_selection(data_selection_path)
     shards = sorted(
-        (_load_shard_manifest_file(path) for path in cache_dir.glob("*/*.json")),
+        (_load_shard_manifest_file(path, input_module=input_module) for path in cache_dir.glob("*/*.json")),
         key=lambda shard: (
             str(shard["split"]),
             int(shard["source_index"]),
@@ -243,7 +257,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
 
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA,
-        **_input_feature_identity(),
+        **_input_feature_identity(input_module),
         "output_space": output_space,
         "data_selection_path": str(data_selection_path),
         "data_selection": shogi_policy_value_data_selection_to_json(data_selection, root=data_selection_path.parent),
@@ -266,12 +280,13 @@ def load_shogi_policy_value_tensor_cache(
     expected_data_selection: ShogiPolicyValueDataSelection | None = None,
     expected_data_selection_root: Path | None = None,
     expected_output_space: str | None = None,
+    expected_input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
 ) -> ShogiPolicyValueTensorCache:
     manifest_path = path / "manifest.json"
     manifest = _object_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache schema")
-    _validate_input_feature_identity(manifest, artifact_name="tensor cache")
+    _validate_input_feature_identity(manifest, artifact_name="tensor cache", expected_input_module=expected_input_module)
     output_space = _manifest_output_space(manifest)
     if expected_output_space is not None:
         validate_shogi_policy_value_output_space(expected_output_space)
@@ -287,7 +302,14 @@ def load_shogi_policy_value_tensor_cache(
             raise ValueError("tensor cache data selection does not match requested data selection")
     train_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "train"]
     eval_shards = [_object_dict(shard) for shard in _object_list(manifest["shards"]) if _object_dict(shard)["split"] == "eval"]
-    train_samples, eval_samples = _load_tensor_cache_sequences(path, manifest, output_space, train_shards, eval_shards)
+    train_samples, eval_samples = _load_tensor_cache_sequences(
+        path,
+        manifest,
+        output_space,
+        train_shards,
+        eval_shards,
+        input_module=expected_input_module,
+    )
     return ShogiPolicyValueTensorCache(
         output_space=output_space,
         train_samples=train_samples,
@@ -323,20 +345,22 @@ def _data_selection_json_with_paths_relative_to(payload: dict[str, object], *, r
     return result
 
 
-def _input_feature_identity() -> dict[str, object]:
-    return {
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
-        "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
-        "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    }
+def _input_feature_identity(input_module: str) -> dict[str, object]:
+    return shogi_position_input_identity_for_input_module(input_module)
 
 
-def _validate_input_feature_identity(payload: dict[str, object], *, artifact_name: str) -> None:
-    if payload.get("input_schema_id") != SHOGI_POSITION_INPUT_SCHEMA_ID:
+def _validate_input_feature_identity(
+    payload: dict[str, object],
+    *,
+    artifact_name: str,
+    expected_input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+) -> None:
+    expected = shogi_position_input_identity_for_input_module(expected_input_module)
+    if payload.get("input_schema_id") != expected["input_schema_id"]:
         raise ValueError(f"unsupported shogi policy/value {artifact_name} input schema")
-    if payload.get("input_feature_manifest_hash") != SHOGI_POSITION_FEATURE_MANIFEST_HASH:
+    if payload.get("input_feature_manifest_hash") != expected["input_feature_manifest_hash"]:
         raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
-    if payload.get("input_feature_manifest") != SHOGI_POSITION_FEATURE_MANIFEST:
+    if payload.get("input_feature_manifest") != expected["input_feature_manifest"]:
         raise ValueError(f"unsupported shogi policy/value {artifact_name} input feature manifest")
 
 
@@ -393,10 +417,18 @@ def _split_sources(
 
 
 class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTensorSample]):
-    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, max_legal_move_count: int) -> None:
+    def __init__(
+        self,
+        cache_dir: Path,
+        shards: Sequence[dict[str, object]],
+        *,
+        max_legal_move_count: int,
+        input_module: str,
+    ) -> None:
         self.cache_dir = cache_dir
         self.shards = tuple(shards)
         self.max_legal_move_count = max_legal_move_count
+        self.input_module = input_module
         self.offsets: list[int] = []
         self.sequential_access_preferred = True
         offset = 0
@@ -448,16 +480,19 @@ class ShardedLegalMovePolicyValueTensorSamples(Sequence[LegalMovePolicyValueTens
         if self._loaded_shard_index == shard_index:
             return self._loaded_samples
         shard = self.shards[shard_index]
-        payload = _load_shard(self.cache_dir / str(shard["path"]))
-        self._loaded_samples = [_legal_move_sample_from_payload(item) for item in payload["samples"]]
+        payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
+        self._loaded_samples = [
+            _legal_move_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
+        ]
         self._loaded_shard_index = shard_index
         return self._loaded_samples
 
 
 class ShardedCompactPolicyPlaneValueTensorSamples(Sequence[CompactPolicyPlaneValueTensorSample]):
-    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]]) -> None:
+    def __init__(self, cache_dir: Path, shards: Sequence[dict[str, object]], *, input_module: str) -> None:
         self.cache_dir = cache_dir
         self.shards = tuple(shards)
+        self.input_module = input_module
         self.offsets: list[int] = []
         self.sequential_access_preferred = True
         offset = 0
@@ -512,8 +547,10 @@ class ShardedCompactPolicyPlaneValueTensorSamples(Sequence[CompactPolicyPlaneVal
         if self._loaded_shard_index == shard_index:
             return self._loaded_samples
         shard = self.shards[shard_index]
-        payload = _load_shard(self.cache_dir / str(shard["path"]))
-        self._loaded_samples = [_compact_policy_plane_sample_from_payload(item) for item in payload["samples"]]
+        payload = _load_shard(self.cache_dir / str(shard["path"]), input_module=self.input_module)
+        self._loaded_samples = [
+            _compact_policy_plane_sample_from_payload(item, input_module=self.input_module) for item in payload["samples"]
+        ]
         self._loaded_shard_index = shard_index
         return self._loaded_samples
 
@@ -524,17 +561,28 @@ def _load_tensor_cache_sequences(
     output_space: str,
     train_shards: Sequence[dict[str, object]],
     eval_shards: Sequence[dict[str, object]],
+    input_module: str,
 ) -> tuple[Sequence[ShogiPolicyValueTensorCacheSample], Sequence[ShogiPolicyValueTensorCacheSample]]:
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE:
         max_legal_move_count = int(manifest["max_legal_move_count"])
         return (
-            ShardedLegalMovePolicyValueTensorSamples(path, train_shards, max_legal_move_count=max_legal_move_count),
-            ShardedLegalMovePolicyValueTensorSamples(path, eval_shards, max_legal_move_count=max_legal_move_count),
+            ShardedLegalMovePolicyValueTensorSamples(
+                path,
+                train_shards,
+                max_legal_move_count=max_legal_move_count,
+                input_module=input_module,
+            ),
+            ShardedLegalMovePolicyValueTensorSamples(
+                path,
+                eval_shards,
+                max_legal_move_count=max_legal_move_count,
+                input_module=input_module,
+            ),
         )
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         return (
-            ShardedCompactPolicyPlaneValueTensorSamples(path, train_shards),
-            ShardedCompactPolicyPlaneValueTensorSamples(path, eval_shards),
+            ShardedCompactPolicyPlaneValueTensorSamples(path, train_shards, input_module=input_module),
+            ShardedCompactPolicyPlaneValueTensorSamples(path, eval_shards, input_module=input_module),
         )
     raise ValueError(f"unsupported shogi policy/value output space: {output_space}")
 
@@ -551,6 +599,7 @@ def _build_source_shards(
     analyses_by_position: dict[str, ShogiEngineAnalysis],
     resume: bool,
     output_space: str,
+    input_module: str,
 ) -> list[dict[str, object]]:
     shards: list[dict[str, object]] = []
     batch: list[tuple[int, ShogiMovePolicyValueExample]] = []
@@ -575,6 +624,7 @@ def _build_source_shards(
                     data_selection_path=data_selection_path,
                     resume=resume,
                     output_space=output_space,
+                    input_module=input_module,
                 )
             )
             batch = []
@@ -587,11 +637,12 @@ def _build_source_shards(
                 split_dir=split_dir,
                 shard_index=len(shards),
                 examples=batch,
-            data_selection=data_selection,
-            data_selection_path=data_selection_path,
-            resume=resume,
-            output_space=output_space,
-        )
+                data_selection=data_selection,
+                data_selection_path=data_selection_path,
+                resume=resume,
+                output_space=output_space,
+                input_module=input_module,
+            )
         )
     return shards
 
@@ -632,6 +683,7 @@ def _build_shard(
     data_selection_path: Path,
     resume: bool,
     output_space: str,
+    input_module: str,
 ) -> dict[str, object]:
     first_index = examples[0][0]
     last_index = examples[-1][0]
@@ -647,14 +699,15 @@ def _build_shard(
         data_selection_path=data_selection_path,
         path=shard_path,
         output_space=output_space,
+        input_module=input_module,
     )
     if resume and shard_path.exists():
-        loaded = _try_load_matching_shard(shard_path, expected)
+        loaded = _try_load_matching_shard(shard_path, expected, input_module=input_module)
         if loaded is not None:
             return loaded
 
     shard_examples = [example for _source_example_index, example in examples]
-    samples = _tensorize_examples_for_output_space(shard_examples, output_space)
+    samples = _tensorize_examples_for_output_space(shard_examples, output_space, input_module=input_module)
     summary = _policy_target_summary(shard_examples)
     output_stats = _sample_output_space_stats(samples, output_space)
     payload = {
@@ -683,10 +736,11 @@ def _shard_identity(
     data_selection_path: Path,
     path: Path,
     output_space: str,
+    input_module: str,
 ) -> dict[str, object]:
     return {
         "schema_version": SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA,
-        **_input_feature_identity(),
+        **_input_feature_identity(input_module),
         "output_space": output_space,
         "split": split,
         "source_index": source_index,
@@ -701,11 +755,11 @@ def _shard_identity(
     }
 
 
-def _try_load_matching_shard(shard_path: Path, expected: dict[str, object]) -> dict[str, object] | None:
+def _try_load_matching_shard(shard_path: Path, expected: dict[str, object], *, input_module: str) -> dict[str, object] | None:
     manifest_path = _shard_manifest_path(shard_path)
     if manifest_path.exists() and shard_path.exists():
         try:
-            manifest = _load_shard_manifest_file(manifest_path)
+            manifest = _load_shard_manifest_file(manifest_path, input_module=input_module)
         except Exception:  # noqa: BLE001
             return None
         for key, value in expected.items():
@@ -716,7 +770,7 @@ def _try_load_matching_shard(shard_path: Path, expected: dict[str, object]) -> d
         return manifest
 
     try:
-        payload = _load_shard(shard_path)
+        payload = _load_shard(shard_path, input_module=input_module)
     except Exception:  # noqa: BLE001
         return None
     for key, value in expected.items():
@@ -733,11 +787,11 @@ def _shard_manifest_path(shard_path: Path) -> Path:
     return shard_path.with_suffix(".json")
 
 
-def _load_shard_manifest_file(path: Path) -> dict[str, object]:
+def _load_shard_manifest_file(path: Path, *, input_module: str = SHOGI_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
     payload = _object_dict(json.loads(path.read_text(encoding="utf-8")))
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
-    _validate_input_feature_identity(payload, artifact_name="tensor cache shard")
+    _validate_input_feature_identity(payload, artifact_name="tensor cache shard", expected_input_module=input_module)
     return payload
 
 
@@ -745,11 +799,11 @@ def _write_shard_manifest_file(path: Path, manifest: dict[str, object]) -> None:
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
-def _load_shard(path: Path) -> dict[str, object]:
+def _load_shard(path: Path, *, input_module: str = SHOGI_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard schema")
-    _validate_input_feature_identity(payload, artifact_name="tensor cache shard")
+    _validate_input_feature_identity(payload, artifact_name="tensor cache shard", expected_input_module=input_module)
     return payload
 
 
@@ -784,11 +838,20 @@ def _shard_manifest(payload: dict[str, object]) -> dict[str, object]:
 def _tensorize_examples_for_output_space(
     examples: Sequence[ShogiMovePolicyValueExample],
     output_space: str,
+    *,
+    input_module: str,
 ) -> list[ShogiPolicyValueTensorCacheSample]:
+    position_features_from_sfen = shogi_position_feature_builder_for_input_module(input_module)
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE:
-        return tensorize_legal_move_policy_value_examples(examples)
+        return tensorize_legal_move_policy_value_examples(
+            examples,
+            position_features_from_sfen=position_features_from_sfen,
+        )
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
-        return tensorize_compact_policy_plane_value_examples(examples)
+        return tensorize_compact_policy_plane_value_examples(
+            examples,
+            position_features_from_sfen=position_features_from_sfen,
+        )
     raise ValueError(f"unsupported shogi policy/value output space: {output_space}")
 
 
@@ -845,11 +908,11 @@ def _legal_move_sample_to_payload(sample: LegalMovePolicyValueTensorSample) -> d
     }
 
 
-def _legal_move_sample_from_payload(payload: Any) -> LegalMovePolicyValueTensorSample:
+def _legal_move_sample_from_payload(payload: Any, *, input_module: str) -> LegalMovePolicyValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
     return LegalMovePolicyValueTensorSample(
-        position_features=_position_features_from_payload(payload["position_features"]),
+        position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
         legal_move_features=payload["legal_move_features"],
         label=payload["label"],
         policy_targets=payload["policy_targets"],
@@ -868,11 +931,11 @@ def _compact_policy_plane_sample_to_payload(sample: CompactPolicyPlaneValueTenso
     }
 
 
-def _compact_policy_plane_sample_from_payload(payload: Any) -> CompactPolicyPlaneValueTensorSample:
+def _compact_policy_plane_sample_from_payload(payload: Any, *, input_module: str) -> CompactPolicyPlaneValueTensorSample:
     if not isinstance(payload, dict):
         raise ValueError("tensor cache sample must be a mapping")
     return CompactPolicyPlaneValueTensorSample(
-        position_features=_position_features_from_payload(payload["position_features"]),
+        position_features=_position_features_from_payload(payload["position_features"], input_module=input_module),
         legal_action_indices=payload["legal_action_indices"],
         target_action_indices=payload["target_action_indices"],
         target_weights=payload["target_weights"],
@@ -895,7 +958,7 @@ def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, 
     }
 
 
-def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
+def _position_features_from_payload(payload: Any, *, input_module: str) -> ShogiPositionFeatures:
     if not isinstance(payload, dict):
         raise ValueError("position features payload must be a mapping")
     features = ShogiPositionFeatures(
@@ -905,8 +968,22 @@ def _position_features_from_payload(payload: Any) -> ShogiPositionFeatures:
         line_feature_ids=payload["line_feature_ids"],
         pair_relation_edges=_pair_relation_edges_from_payload(payload["pair_relation_edges"]),
     )
-    validate_shogi_position_feature_structure(features)
+    _validate_position_feature_structure_for_input_module(features, input_module=input_module)
     return features
+
+
+def _validate_position_feature_structure_for_input_module(
+    features: ShogiPositionFeatures,
+    *,
+    input_module: str,
+) -> None:
+    if input_module == SHOGI_POSITION_INPUT_MODULE_ID:
+        validate_shogi_position_feature_structure(features)
+        return
+    if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
+        validate_shogi_alpha_zero_like_position_feature_structure(features)
+        return
+    raise ValueError(f"unsupported shogi position input module: {input_module}")
 
 
 def _pair_relation_edges_from_payload(payload: Any) -> ShogiPairRelationEdges:

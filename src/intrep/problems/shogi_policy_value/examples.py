@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import shogi
 from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures, stack_shogi_position_features
+
+
+ShogiPositionFeatureBuilder = Callable[[str], ShogiPositionFeatures]
 
 try:
     import torch
@@ -227,10 +230,16 @@ def shogi_move_choice_example_from_board(board: shogi.Board, chosen_move: str) -
 
 
 class ShogiMoveChoiceDataset(TorchDataset):
-    def __init__(self, examples: Sequence[ShogiMoveChoiceExample]) -> None:
+    def __init__(
+        self,
+        examples: Sequence[ShogiMoveChoiceExample],
+        *,
+        position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
+    ) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
         self.examples = tuple(examples)
+        self.position_features_from_sfen = position_features_from_sfen
         self.max_legal_move_count = max(len(example.legal_moves) for example in self.examples)
 
     def __len__(self) -> int:
@@ -242,14 +251,21 @@ class ShogiMoveChoiceDataset(TorchDataset):
         return _policy_sample(
             self.examples[index],
             max_legal_move_count=self.max_legal_move_count,
+            position_features_from_sfen=self.position_features_from_sfen,
         )
 
 
 class ShogiLegalMovePolicyValueDataset(TorchDataset):
-    def __init__(self, examples: Sequence[ShogiPolicyValueDatasetItem]) -> None:
+    def __init__(
+        self,
+        examples: Sequence[ShogiPolicyValueDatasetItem],
+        *,
+        position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
+    ) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
         self.examples = examples
+        self.position_features_from_sfen = position_features_from_sfen
         self.max_legal_move_count = int(
             getattr(examples, "max_legal_move_count", None) or max(_choice_count(example) for example in self.examples)
         )
@@ -260,13 +276,21 @@ class ShogiLegalMovePolicyValueDataset(TorchDataset):
     def __getitem__(self, index: int):
         if torch is None:
             raise RuntimeError("torch is required to materialize ShogiLegalMovePolicyValueDataset items")
-        return _legal_move_policy_value_tensor_sample(self.examples[index])
+        return _legal_move_policy_value_tensor_sample(
+            self.examples[index],
+            position_features_from_sfen=self.position_features_from_sfen,
+        )
 
 
-def tensorize_legal_move_policy_value_example(example: ShogiMovePolicyValueExample) -> LegalMovePolicyValueTensorSample:
+def tensorize_legal_move_policy_value_example(
+    example: ShogiMovePolicyValueExample,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
+) -> LegalMovePolicyValueTensorSample:
     position_features, legal_move_features, _legal_move_mask, move_index, policy_targets = _policy_sample(
         example,
         max_legal_move_count=len(example.legal_moves),
+        position_features_from_sfen=position_features_from_sfen,
     )
     return LegalMovePolicyValueTensorSample(
         position_features=position_features,
@@ -282,17 +306,31 @@ def tensorize_legal_move_policy_value_example(example: ShogiMovePolicyValueExamp
 
 def tensorize_legal_move_policy_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> list[LegalMovePolicyValueTensorSample]:
-    return [tensorize_legal_move_policy_value_example(example) for example in examples]
+    return [
+        tensorize_legal_move_policy_value_example(
+            example,
+            position_features_from_sfen=position_features_from_sfen,
+        )
+        for example in examples
+    ]
 
 
 class ShogiPolicyPlaneValueDataset(TorchDataset):
-    def __init__(self, examples: Sequence[ShogiPolicyValueDatasetItem]) -> None:
+    def __init__(
+        self,
+        examples: Sequence[ShogiPolicyValueDatasetItem],
+        *,
+        position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
+    ) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
         if any(isinstance(example, LegalMovePolicyValueTensorSample) for example in examples):
             raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
         self.examples = examples
+        self.position_features_from_sfen = position_features_from_sfen
 
     def __len__(self) -> int:
         return len(self.examples)
@@ -300,7 +338,10 @@ class ShogiPolicyPlaneValueDataset(TorchDataset):
     def __getitem__(self, index: int):
         if torch is None:
             raise RuntimeError("torch is required to materialize ShogiPolicyPlaneValueDataset items")
-        return _compact_policy_plane_value_tensor_sample(self.examples[index])
+        return _compact_policy_plane_value_tensor_sample(
+            self.examples[index],
+            position_features_from_sfen=self.position_features_from_sfen,
+        )
 
 
 def collate_legal_move_policy_value_samples(
@@ -356,7 +397,11 @@ def collate_policy_plane_value_samples(
     )
 
 
-def tensorize_policy_plane_value_example(example: ShogiMovePolicyValueExample) -> PolicyPlaneValueTensorSample:
+def tensorize_policy_plane_value_example(
+    example: ShogiMovePolicyValueExample,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
+) -> PolicyPlaneValueTensorSample:
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy-plane samples")
     from intrep.worlds.shogi.policy_plane import (
@@ -364,10 +409,9 @@ def tensorize_policy_plane_value_example(example: ShogiMovePolicyValueExample) -
         shogi_policy_plane_action_index,
         shogi_policy_plane_legal_mask,
     )
-    from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen
-
     board = shogi.Board(example.position_sfen)
-    position_features = shogi_position_features_from_sfen(example.position_sfen)
+    position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
+    position_features = position_features_from_sfen(example.position_sfen)
     policy_plane_label = torch.tensor(
         shogi_policy_plane_action_index(example.chosen_move, turn=board.turn),
         dtype=torch.long,
@@ -396,20 +440,29 @@ def tensorize_policy_plane_value_example(example: ShogiMovePolicyValueExample) -
 
 def tensorize_policy_plane_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> list[PolicyPlaneValueTensorSample]:
-    return [tensorize_policy_plane_value_example(example) for example in examples]
+    return [
+        tensorize_policy_plane_value_example(
+            example,
+            position_features_from_sfen=position_features_from_sfen,
+        )
+        for example in examples
+    ]
 
 
 def tensorize_compact_policy_plane_value_example(
     example: ShogiMovePolicyValueExample,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> CompactPolicyPlaneValueTensorSample:
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy-plane samples")
     from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index
-    from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen
-
     board = shogi.Board(example.position_sfen)
-    position_features = shogi_position_features_from_sfen(example.position_sfen)
+    position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
+    position_features = position_features_from_sfen(example.position_sfen)
     legal_action_indices = torch.tensor(
         [shogi_policy_plane_action_index(move, turn=board.turn) for move in example.legal_moves],
         dtype=torch.long,
@@ -448,22 +501,30 @@ def tensorize_compact_policy_plane_value_example(
 
 def tensorize_compact_policy_plane_value_examples(
     examples: Sequence[ShogiMovePolicyValueExample],
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> list[CompactPolicyPlaneValueTensorSample]:
-    return [tensorize_compact_policy_plane_value_example(example) for example in examples]
+    return [
+        tensorize_compact_policy_plane_value_example(
+            example,
+            position_features_from_sfen=position_features_from_sfen,
+        )
+        for example in examples
+    ]
 
 
 def _policy_sample(
     example: ShogiMoveChoiceExample | ShogiMovePolicyValueExample,
     *,
     max_legal_move_count: int,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ):
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy samples")
     from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
-    from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen
-
     board = shogi.Board(example.position_sfen)
-    position_features = shogi_position_features_from_sfen(example.position_sfen)
+    position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
+    position_features = position_features_from_sfen(example.position_sfen)
     legal_move_features = shogi_legal_move_features(
         example.legal_moves,
         turn=board.turn,
@@ -492,16 +553,23 @@ def _policy_sample(
 
 def _legal_move_policy_value_tensor_sample(
     example: ShogiPolicyValueDatasetItem,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> LegalMovePolicyValueTensorSample:
     if isinstance(example, LegalMovePolicyValueTensorSample):
         return example
     if isinstance(example, (PolicyPlaneValueTensorSample, CompactPolicyPlaneValueTensorSample)):
         raise ValueError("policy-plane tensor samples cannot be used with ShogiLegalMovePolicyValueDataset")
-    return tensorize_legal_move_policy_value_example(example)
+    return tensorize_legal_move_policy_value_example(
+        example,
+        position_features_from_sfen=position_features_from_sfen,
+    )
 
 
 def _policy_plane_value_tensor_sample(
     example: ShogiPolicyValueDatasetItem,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> PolicyPlaneValueTensorSample:
     if isinstance(example, PolicyPlaneValueTensorSample):
         return example
@@ -521,11 +589,16 @@ def _policy_plane_value_tensor_sample(
         )
     if isinstance(example, LegalMovePolicyValueTensorSample):
         raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
-    return tensorize_policy_plane_value_example(example)
+    return tensorize_policy_plane_value_example(
+        example,
+        position_features_from_sfen=position_features_from_sfen,
+    )
 
 
 def _compact_policy_plane_value_tensor_sample(
     example: ShogiPolicyValueDatasetItem,
+    *,
+    position_features_from_sfen: ShogiPositionFeatureBuilder | None = None,
 ) -> CompactPolicyPlaneValueTensorSample:
     if isinstance(example, CompactPolicyPlaneValueTensorSample):
         return example
@@ -540,7 +613,16 @@ def _compact_policy_plane_value_tensor_sample(
         )
     if isinstance(example, LegalMovePolicyValueTensorSample):
         raise ValueError("legal-move tensor samples cannot be used with ShogiPolicyPlaneValueDataset")
-    return tensorize_compact_policy_plane_value_example(example)
+    return tensorize_compact_policy_plane_value_example(
+        example,
+        position_features_from_sfen=position_features_from_sfen,
+    )
+
+
+def _default_position_features_from_sfen() -> ShogiPositionFeatureBuilder:
+    from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen
+
+    return shogi_position_features_from_sfen
 
 
 def _choice_count(example: ShogiPolicyValueDatasetItem) -> int:

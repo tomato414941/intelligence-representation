@@ -11,6 +11,8 @@ from intrep.problems.shogi_policy_value.examples import (
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
 from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     shogi_policy_value_assembly_spec_for_id,
@@ -21,6 +23,7 @@ from intrep.representation.assemblies.shogi_policy_value import (
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
     _state_element_hidden,
+    build_shogi_policy_value_model_for_assembly_spec,
 )
 from intrep.representation.inputs.shogi_position import ShogiPositionAttentionLogitBias, ShogiPositionInputLayer
 from intrep.representation.outputs.shogi_legal_move import (
@@ -37,6 +40,10 @@ from intrep.worlds.shogi.position_encoding import (
     ShogiPositionFeatures,
     stack_shogi_position_features,
 )
+from intrep.worlds.shogi.position_alpha_zero_like import (
+    SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
+    shogi_alpha_zero_like_position_features_from_sfen,
+)
 
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
@@ -44,6 +51,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         spec = shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID)
 
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
+
+    def test_alpha_zero_like_policy_plane_assembly_spec_uses_alpha_zero_like_input(self) -> None:
+        spec = shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID)
+
+        self.assertEqual(spec["input"], SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID)
+        self.assertEqual(spec["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
 
     def test_state_summary_policy_output_returns_legal_move_logits(self) -> None:
         position_features, legal_move_features, legal_move_mask, _, _, _ = _batch()
@@ -307,6 +320,28 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
         self.assertEqual(tuple(values.shape), (2,))
         self.assertEqual(model.encoder.core.forward.call_count, 1)
+
+    def test_alpha_zero_like_policy_plane_model_uses_alpha_zero_like_position_length(self) -> None:
+        position_features = stack_shogi_position_features(
+            [
+                shogi_alpha_zero_like_position_features_from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"),
+                shogi_alpha_zero_like_position_features_from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"),
+            ]
+        )
+        legal_action_mask = torch.ones((2, SHOGI_POLICY_PLANE_ACTION_COUNT), dtype=torch.bool)
+        model = build_shogi_policy_value_model_for_assembly_spec(
+            assembly_spec_id=SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+        )
+
+        logits = model(position_features, legal_action_mask)
+        embeddings = model.encoder.input(position_features)
+
+        self.assertEqual(tuple(logits.shape), (2, SHOGI_POLICY_PLANE_ACTION_COUNT))
+        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT, 8))
 
 
 def _batch() -> tuple[ShogiPositionFeatures, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

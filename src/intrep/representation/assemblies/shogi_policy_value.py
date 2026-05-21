@@ -11,6 +11,11 @@ from intrep.representation.inputs.shogi_position import (
     ShogiPositionAttentionLogitBias,
     ShogiPositionInputLayer,
 )
+from intrep.representation.inputs.shogi_alpha_zero_like_position import (
+    ShogiAlphaZeroLikePositionAttentionLogitBias,
+    ShogiAlphaZeroLikePositionEncoder,
+    ShogiAlphaZeroLikePositionInputLayer,
+)
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
 from intrep.representation.outputs.shogi_legal_move import (
     ShogiLegalMoveAttentionPolicyOutput,
@@ -18,7 +23,9 @@ from intrep.representation.outputs.shogi_legal_move import (
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     shogi_policy_value_assembly_spec_for_id,
@@ -156,6 +163,7 @@ def _state_element_hidden(position_hidden: torch.Tensor) -> torch.Tensor:
 
 def _build_shogi_policy_value_model_from_policy_output(
     *,
+    position_input: str,
     policy_output: str,
     embedding_dim: int,
     num_heads: int,
@@ -167,6 +175,7 @@ def _build_shogi_policy_value_model_from_policy_output(
         SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
         SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     ):
+        _validate_legal_move_position_input(position_input)
         shared_config = SharedCoreShogiPolicyValueModelConfig(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
@@ -176,6 +185,14 @@ def _build_shogi_policy_value_model_from_policy_output(
         )
         return SharedCoreShogiPolicyValueModel(
             shared_config,
+            encoder=_build_shogi_position_encoder(
+                input_module_id=position_input,
+                embedding_dim=embedding_dim,
+                num_heads=num_heads,
+                hidden_dim=hidden_dim,
+                num_layers=num_layers,
+                dropout=dropout,
+            ),
             policy_output=_build_legal_move_policy_output_from_id(policy_output, shared_config),
         )
     if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
@@ -186,7 +203,15 @@ def _build_shogi_policy_value_model_from_policy_output(
                 hidden_dim=hidden_dim,
                 num_layers=num_layers,
                 dropout=dropout,
-            )
+            ),
+            encoder=_build_shogi_position_encoder(
+                input_module_id=position_input,
+                embedding_dim=embedding_dim,
+                num_heads=num_heads,
+                hidden_dim=hidden_dim,
+                num_layers=num_layers,
+                dropout=dropout,
+            ),
         )
     raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
 
@@ -202,6 +227,7 @@ def build_shogi_policy_value_model_for_assembly_spec(
 ) -> nn.Module:
     assembly_spec = shogi_policy_value_assembly_spec_for_id(assembly_spec_id)
     return _build_shogi_policy_value_model_from_policy_output(
+        position_input=str(assembly_spec["input"]),
         policy_output=str(assembly_spec["policy_output"]),
         embedding_dim=embedding_dim,
         num_heads=num_heads,
@@ -213,23 +239,38 @@ def build_shogi_policy_value_model_for_assembly_spec(
 
 def _build_shogi_position_encoder(
     *,
+    input_module_id: str = SHOGI_POSITION_INPUT_MODULE_ID,
     embedding_dim: int,
     num_heads: int,
     hidden_dim: int,
     num_layers: int,
     dropout: float,
-) -> ShogiPositionEncoder:
-    return ShogiPositionEncoder(
-        input_layer=ShogiPositionInputLayer(embedding_dim=embedding_dim),
-        attention_logit_bias=ShogiPositionAttentionLogitBias(),
-        core=SharedTransformerCore(
-            embedding_dim=embedding_dim,
-            num_heads=num_heads,
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            dropout=dropout,
-        ),
+) -> ShogiPositionEncoder | ShogiAlphaZeroLikePositionEncoder:
+    core = SharedTransformerCore(
+        embedding_dim=embedding_dim,
+        num_heads=num_heads,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        dropout=dropout,
     )
+    if input_module_id == SHOGI_POSITION_INPUT_MODULE_ID:
+        return ShogiPositionEncoder(
+            input_layer=ShogiPositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiPositionAttentionLogitBias(),
+            core=core,
+        )
+    if input_module_id == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
+        return ShogiAlphaZeroLikePositionEncoder(
+            input_layer=ShogiAlphaZeroLikePositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiAlphaZeroLikePositionAttentionLogitBias(),
+            core=core,
+        )
+    raise ValueError(f"unsupported shogi position input module: {input_module_id}")
+
+
+def _validate_legal_move_position_input(position_input: str) -> None:
+    if position_input != SHOGI_POSITION_INPUT_MODULE_ID:
+        raise ValueError("legal-move policy outputs require the rich shogi position input")
 
 
 def _build_legal_move_policy_output(
