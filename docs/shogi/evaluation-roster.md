@@ -1,8 +1,8 @@
 # Evaluation Roster
 
 This roster lists model entries that should be kept visible as comparison
-targets. Entry names are human-facing labels. Exact identity belongs in specs,
-manifests, hashes, checkpoints, and metrics.
+targets. Entry names are labels for humans. Exact run identity is recorded in specs,
+manifests, checkpoints, and metrics.
 
 ## Shogi Model Entries
 
