@@ -12,7 +12,7 @@ representation.
 
 | Entry | Input intent | Status |
 | --- | --- | --- |
-| `shogi-policy-plane` | Rich position features: square, piece, line, pair relations, drop shadow, counterfactual, and capture-flow style features. | implemented |
-| `shogi-policy-plane-minimal-global` | Minimal current-position state with separate global tokens: side-to-move, move count bucket, hand counts, and 81 square piece identities; no attack, line, pair, drop-shadow, counterfactual, capture-flow, piece-token, or history features. | wanted |
-| `shogi-policy-plane-alpha-zero-like-no-history` | Current-position AlphaZero-style state description: piece placement, hand counts, side-to-move, and move count; no attack, line, pair, drop-shadow, counterfactual, capture-flow, or position-history features. | wanted |
-| `shogi-policy-plane-dlshogi-like` | dlshogi/PGX-style current-position features: piece placement, piece-type attacks, attack count thresholds, hand count thresholds, and in-check; no line, pair, drop-shadow, counterfactual, or capture-flow features. | wanted |
+| `shogi-policy-plane-minimal-global` | Board pieces + hand counts + side/move count. | wanted |
+| `shogi-policy-plane-alpha-zero-like-no-history` | AlphaZero-style current state; no history. | wanted |
+| `shogi-policy-plane-dlshogi-like` | dlshogi-style state plus attack features. | wanted |
+| `shogi-policy-plane-rich` | Current rich features: piece, line, pair, drop, and tactical hints. | implemented |
