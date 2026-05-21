@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
-from intrep.representation.inputs.shogi_position_features.position_rich import RICH_SQUARE_ELEMENT_OFFSET
+from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 
 
 FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1
@@ -45,8 +45,9 @@ class ShogiStateSummaryLegalMovePolicyHead(nn.Module):
 
 
 class ShogiStateSummaryLegalMovePolicyOutput(nn.Module):
-    def __init__(self, *, embedding_dim: int, hidden_dim: int) -> None:
+    def __init__(self, *, embedding_dim: int, hidden_dim: int, position_layout: ShogiPositionHiddenLayout) -> None:
         super().__init__()
+        self.position_layout = position_layout
         self.move_input = ShogiLegalMoveInputLayer(embedding_dim=embedding_dim)
         self.policy_head = ShogiStateSummaryLegalMovePolicyHead(
             input_dim=embedding_dim * 2,
@@ -60,7 +61,7 @@ class ShogiStateSummaryLegalMovePolicyOutput(nn.Module):
         legal_move_feature_ids: torch.Tensor,
         legal_move_mask: torch.Tensor,
     ) -> torch.Tensor:
-        state_hidden = position_hidden[:, 0]
+        state_hidden = position_hidden[:, self.position_layout.state_element_index]
         move_embedding = self.move_input(legal_move_feature_ids)
         expanded_state = state_hidden[:, None, :].expand(-1, move_embedding.size(1), -1)
         return self.policy_head(torch.cat((expanded_state, move_embedding), dim=-1), legal_move_mask)
@@ -93,8 +94,16 @@ class ShogiLegalMoveAttentionPolicyHead(nn.Module):
 
 
 class ShogiLegalMoveAttentionPolicyOutput(nn.Module):
-    def __init__(self, *, embedding_dim: int, num_heads: int, hidden_dim: int) -> None:
+    def __init__(
+        self,
+        *,
+        embedding_dim: int,
+        num_heads: int,
+        hidden_dim: int,
+        position_layout: ShogiPositionHiddenLayout,
+    ) -> None:
         super().__init__()
+        self.position_layout = position_layout
         self.move_input = ShogiLegalMoveInputLayer(embedding_dim=embedding_dim)
         self.policy_head = ShogiLegalMoveAttentionPolicyHead(
             embedding_dim=embedding_dim,
@@ -121,9 +130,14 @@ class ShogiLegalMoveAttentionPolicyOutput(nn.Module):
         from_square_hidden = _legal_move_square_hidden(
             position_hidden,
             legal_move_feature_ids[..., 0],
+            position_layout=self.position_layout,
             zero_square_id=NO_FROM_SQUARE_ID,
         )
-        to_square_hidden = _legal_move_square_hidden(position_hidden, legal_move_feature_ids[..., 1])
+        to_square_hidden = _legal_move_square_hidden(
+            position_hidden,
+            legal_move_feature_ids[..., 1],
+            position_layout=self.position_layout,
+        )
         return move_embedding + from_square_hidden + to_square_hidden
 
 
@@ -131,12 +145,13 @@ def _legal_move_square_hidden(
     position_hidden: torch.Tensor,
     square_ids: torch.Tensor,
     *,
+    position_layout: ShogiPositionHiddenLayout,
     zero_square_id: int | None = None,
 ) -> torch.Tensor:
     embedding_dim = position_hidden.size(-1)
     zero_mask = square_ids.eq(zero_square_id) if zero_square_id is not None else torch.zeros_like(square_ids).bool()
     safe_square_ids = square_ids.masked_fill(zero_mask, 0)
-    element_indices = safe_square_ids + RICH_SQUARE_ELEMENT_OFFSET
+    element_indices = safe_square_ids + position_layout.square_element_offset
     gather_indices = element_indices[..., None].expand(-1, -1, embedding_dim)
     square_hidden = position_hidden.gather(dim=1, index=gather_indices)
     return square_hidden.masked_fill(zero_mask[..., None], 0.0)

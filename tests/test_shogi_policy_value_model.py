@@ -13,6 +13,7 @@ from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUA
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
@@ -26,13 +27,18 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
 from intrep.representation.assemblies.shogi_policy_value import (
     PolicyPlaneShogiPolicyValueModel,
     PolicyPlaneShogiPolicyValueModelConfig,
+    SHOGI_RICH_POSITION_HIDDEN_LAYOUT,
     SharedCoreShogiPolicyValueModel,
     SharedCoreShogiPolicyValueModelConfig,
+    _build_shogi_policy_value_model_from_policy_output,
+    _shogi_position_hidden_layout,
     _state_element_hidden,
     build_shogi_policy_value_model_for_assembly_spec,
 )
+from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 from intrep.representation.inputs.shogi_rich_position import ShogiRichPositionAttentionLogitBias, ShogiRichPositionInputLayer
 from intrep.representation.outputs.shogi_legal_move import (
+    ShogiLegalMoveAttentionPolicyOutput,
     ShogiStateSummaryLegalMovePolicyOutput,
     _legal_move_square_hidden,
 )
@@ -95,6 +101,26 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(spec["input"], SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID)
         self.assertEqual(spec["policy_output"], SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID)
+
+    def test_shogi_position_hidden_layout_is_derived_from_position_input(self) -> None:
+        layout = _shogi_position_hidden_layout(SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID)
+
+        self.assertEqual(layout.state_element_index, 0)
+        self.assertEqual(layout.square_element_offset, 1)
+        self.assertEqual(layout.square_element_count, 81)
+
+    def test_legal_move_policy_output_can_be_assembled_with_minimal_position_input(self) -> None:
+        model = _build_shogi_policy_value_model_from_policy_output(
+            position_input=SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
+            policy_output=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+        )
+
+        self.assertIsInstance(model, SharedCoreShogiPolicyValueModel)
+        self.assertEqual(model.position_layout.square_element_offset, 1)
 
     def test_state_summary_policy_output_returns_legal_move_logits(self) -> None:
         position_features, legal_move_feature_ids, legal_move_mask, _, _, _ = _batch()
@@ -175,9 +201,14 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(model.policy_output.policy_head.scorer[0].in_features, 8 * 2)
 
     def test_legal_move_square_hidden_maps_square_ids_to_board_features(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_RICH_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
+        position_layout = ShogiPositionHiddenLayout(
+            state_element_index=0,
+            square_element_offset=5,
+            square_element_count=81,
+        )
+        position_hidden = torch.arange(2 * (5 + 81) * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_RICH_POSITION_ELEMENT_COUNT,
+            5 + 81,
             3,
         )
         square_ids = torch.tensor([[0, 80], [NO_FROM_SQUARE_ID, 7]])
@@ -185,13 +216,41 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         square_hidden = _legal_move_square_hidden(
             position_hidden,
             square_ids,
+            position_layout=position_layout,
             zero_square_id=NO_FROM_SQUARE_ID,
         )
 
-        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, RICH_SQUARE_ELEMENT_OFFSET]))
-        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, RICH_SQUARE_ELEMENT_OFFSET + 80]))
+        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, 5]))
+        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, 5 + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
-        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, RICH_SQUARE_ELEMENT_OFFSET + 7]))
+        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, 5 + 7]))
+
+    def test_legal_move_attention_policy_output_uses_supplied_position_layout(self) -> None:
+        position_layout = ShogiPositionHiddenLayout(
+            state_element_index=0,
+            square_element_offset=3,
+            square_element_count=81,
+        )
+        output = ShogiLegalMoveAttentionPolicyOutput(
+            embedding_dim=4,
+            num_heads=2,
+            hidden_dim=8,
+            position_layout=position_layout,
+        )
+        position_hidden = torch.zeros((1, 3 + 81, 4))
+        position_hidden[0, 3] = torch.tensor([1.0, 2.0, 3.0, 4.0])
+        position_hidden[0, 3 + 80] = torch.tensor([4.0, 3.0, 2.0, 1.0])
+        legal_move_feature_ids = torch.tensor([[[0, 80, 0, 0]]])
+
+        embeddings = output.legal_move_embeddings(position_hidden, legal_move_feature_ids)
+
+        expected_square_hidden = position_hidden[:, 3] + position_hidden[:, 3 + 80]
+        self.assertTrue(
+            torch.allclose(
+                embeddings[0, 0] - output.move_input(legal_move_feature_ids)[0, 0],
+                expected_square_hidden[0],
+            )
+        )
 
     def test_position_input_layer_builds_global_square_piece_sequence(self) -> None:
         position_features, _, _, _, _, _ = _batch()
@@ -477,6 +536,7 @@ def _state_summary_legal_move_model() -> SharedCoreShogiPolicyValueModel:
         policy_output=ShogiStateSummaryLegalMovePolicyOutput(
             embedding_dim=8,
             hidden_dim=16,
+            position_layout=SHOGI_RICH_POSITION_HIDDEN_LAYOUT,
         ),
     )
 
