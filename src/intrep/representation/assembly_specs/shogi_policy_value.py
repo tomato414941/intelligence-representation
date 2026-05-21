@@ -26,7 +26,7 @@ SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID = (
     "shogi_policy_value_alpha_zero_like_position_transformer_action_plane_policy"
 )
 SHOGI_POLICY_VALUE_DLSHOGI_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID = (
-    "shogi_policy_value_dlshogi_like_position_transformer_action_plane_policy"
+    "shogi_policy_value_dlshogi_like_no_entering_king_position_transformer_action_plane_policy"
 )
 SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID = (
     "shogi_policy_value_minimal_single_global_position_transformer_action_plane_policy"
