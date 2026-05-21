@@ -14,6 +14,6 @@ representation.
 | --- | --- | --- |
 | `shogi-policy-plane-minimal-single-global` | Board pieces + one global summary element for state, side, move count, and hands. | implemented |
 | `shogi-policy-plane-minimal-split-global` | Board pieces + separate global elements for state, side, move count, and hands. | implemented |
-| `shogi-policy-plane-alpha-zero-like-no-history` | AlphaZero-style current state; no history. | wanted |
-| `shogi-policy-plane-dlshogi-like` | dlshogi-style state plus attack features. | wanted |
+| `shogi-policy-plane-alpha-zero-like-no-history` | Current-state piece planes + split global side, move count, and hands; no history. | implemented |
+| `shogi-policy-plane-dlshogi-like` | AlphaZero-like current state + check and attack features; no history. | implemented |
 | `shogi-policy-plane-rich` | Rich features: piece, line, pair, drop, and tactical hints. | implemented |

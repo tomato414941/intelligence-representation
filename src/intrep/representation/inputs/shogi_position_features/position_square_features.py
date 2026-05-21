@@ -38,6 +38,30 @@ def relative_square_feature_id(board: shogi.Board, relative_square: int) -> int:
     return piece_feature_id(board.piece_at(absolute_square), own_color=board.turn)
 
 
+def square_piece_plane_feature_id_rows(board: shogi.Board) -> list[list[int]]:
+    rows: list[list[int]] = []
+    for relative_square in range(SQUARE_ELEMENT_COUNT):
+        absolute_square = relative_to_absolute_square(relative_square, board.turn)
+        piece = board.piece_at(absolute_square)
+        rows.append(piece_plane_feature_ids(piece, own_color=board.turn))
+    return rows
+
+
+def piece_plane_feature_ids(piece: shogi.Piece | None, *, own_color: int) -> list[int]:
+    own_ids = _piece_plane_feature_ids_for_color(piece, color=own_color, offset=OWN_PIECE_OFFSET)
+    opponent_ids = _piece_plane_feature_ids_for_color(piece, color=opponent_color(own_color), offset=OPPONENT_PIECE_OFFSET)
+    return [*own_ids, *opponent_ids]
+
+
+def _piece_plane_feature_ids_for_color(piece: shogi.Piece | None, *, color: int, offset: int) -> list[int]:
+    return [
+        offset + int(piece_type) - 1
+        if piece is not None and piece.color == color and piece.piece_type == piece_type
+        else EMPTY_SQUARE_FEATURE_ID
+        for piece_type in SQUARE_ATTACK_PIECE_TYPES
+    ]
+
+
 def piece_feature_id(piece: shogi.Piece | None, *, own_color: int) -> int:
     if piece is None:
         return EMPTY_SQUARE_FEATURE_ID

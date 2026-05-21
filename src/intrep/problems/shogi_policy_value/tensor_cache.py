@@ -41,6 +41,7 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 )
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_RICH_POSITION_INPUT_MODULE_ID,
@@ -58,6 +59,9 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
 )
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     validate_shogi_alpha_zero_like_position_feature_structure,
+)
+from intrep.representation.inputs.shogi_position_features.position_dlshogi_like import (
+    validate_shogi_dlshogi_like_position_feature_structure,
 )
 from intrep.representation.inputs.shogi_position_features.position_minimal_split_global import (
     validate_shogi_minimal_split_global_position_feature_structure,
@@ -1119,6 +1123,9 @@ def _validate_position_feature_structure_for_input_module(
         return
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         validate_shogi_alpha_zero_like_position_feature_structure(features)
+        return
+    if input_module == SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID:
+        validate_shogi_dlshogi_like_position_feature_structure(features)
         return
     if input_module == SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID:
         validate_shogi_minimal_single_global_position_feature_structure(features)

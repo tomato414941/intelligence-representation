@@ -38,9 +38,12 @@ class ShogiAlphaZeroLikePositionTest(unittest.TestCase):
             shogi_alpha_zero_like_position_feature_manifest_hash(),
         )
         self.assertEqual(SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST["feature_groups"], ["global", "square"])
-        self.assertEqual(SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST["square_features"], ["piece_identity"])
+        self.assertEqual(
+            SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST["square_features"],
+            ["own_piece_planes", "opponent_piece_planes"],
+        )
 
-    def test_encodes_piece_placement_as_one_square_feature(self) -> None:
+    def test_encodes_piece_placement_as_square_piece_planes(self) -> None:
         features = shogi_alpha_zero_like_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
@@ -51,9 +54,18 @@ class ShogiAlphaZeroLikePositionTest(unittest.TestCase):
         self.assertEqual(tuple(features.piece_feature_ids.shape), (0, 0))
         self.assertEqual(tuple(features.line_feature_ids.shape), (0, 0))
         self.assertEqual(int(features.pair_relation_edges.relation_ids.numel()), 0)
-        self.assertEqual(int(features.square_feature_ids[relative_5a, 0].item()), OPPONENT_PIECE_OFFSET + shogi.KING - 1)
-        self.assertEqual(int(features.square_feature_ids[relative_5e, 0].item()), OWN_PIECE_OFFSET + shogi.ROOK - 1)
-        self.assertEqual(int(features.square_feature_ids[relative_5i, 0].item()), OWN_PIECE_OFFSET + shogi.KING - 1)
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5a, 14 + shogi.KING - 1].item()),
+            OPPONENT_PIECE_OFFSET + shogi.KING - 1,
+        )
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5e, shogi.ROOK - 1].item()),
+            OWN_PIECE_OFFSET + shogi.ROOK - 1,
+        )
+        self.assertEqual(
+            int(features.square_feature_ids[relative_5i, shogi.KING - 1].item()),
+            OWN_PIECE_OFFSET + shogi.KING - 1,
+        )
 
     def test_global_features_are_state_side_move_count_and_hands(self) -> None:
         board = shogi.Board("4k4/9/9/9/9/9/9/9/4K4 b P2b 1")

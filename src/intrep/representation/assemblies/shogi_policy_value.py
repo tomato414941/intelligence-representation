@@ -16,6 +16,11 @@ from intrep.representation.inputs.shogi_alpha_zero_like_position import (
     ShogiAlphaZeroLikePositionEncoder,
     ShogiAlphaZeroLikePositionInputLayer,
 )
+from intrep.representation.inputs.shogi_dlshogi_like_position import (
+    ShogiDlshogiLikePositionAttentionLogitBias,
+    ShogiDlshogiLikePositionEncoder,
+    ShogiDlshogiLikePositionInputLayer,
+)
 from intrep.representation.inputs.shogi_minimal_split_global_position import (
     ShogiMinimalSplitGlobalPositionAttentionLogitBias,
     ShogiMinimalSplitGlobalPositionEncoder,
@@ -34,6 +39,7 @@ from intrep.representation.outputs.shogi_legal_move import (
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
@@ -261,6 +267,7 @@ def _build_shogi_position_encoder(
 ) -> (
     ShogiRichPositionEncoder
     | ShogiAlphaZeroLikePositionEncoder
+    | ShogiDlshogiLikePositionEncoder
     | ShogiMinimalSingleGlobalPositionEncoder
     | ShogiMinimalSplitGlobalPositionEncoder
 ):
@@ -281,6 +288,12 @@ def _build_shogi_position_encoder(
         return ShogiAlphaZeroLikePositionEncoder(
             input_layer=ShogiAlphaZeroLikePositionInputLayer(embedding_dim=embedding_dim),
             attention_logit_bias=ShogiAlphaZeroLikePositionAttentionLogitBias(),
+            core=core,
+        )
+    if input_module_id == SHOGI_DLSHOGI_LIKE_POSITION_INPUT_MODULE_ID:
+        return ShogiDlshogiLikePositionEncoder(
+            input_layer=ShogiDlshogiLikePositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiDlshogiLikePositionAttentionLogitBias(),
             core=core,
         )
     if input_module_id == SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID:

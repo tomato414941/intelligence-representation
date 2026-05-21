@@ -15,7 +15,7 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
 from intrep.representation.inputs.shogi_position_features.position_square_features import (
     hand_feature_ids,
     move_count_bucket_feature_id,
-    relative_square_feature_id,
+    square_piece_plane_feature_id_rows,
     side_to_move_feature_id,
 )
 
@@ -23,7 +23,7 @@ from intrep.representation.inputs.shogi_position_features.position_square_featur
 SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_SCHEMA_ID = "shogi_alpha_zero_like_no_history_position_features"
 SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT = 17
 SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT = 81
-SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT = 1
+SHOGI_ALPHA_ZERO_LIKE_SQUARE_FEATURE_COUNT = 28
 SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT = (
     SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT + SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT
 )
@@ -48,8 +48,9 @@ def shogi_alpha_zero_like_position_feature_manifest() -> dict[str, object]:
             "own_hand_counts",
             "opponent_hand_counts",
         ],
-        "square_features": ["piece_identity"],
+        "square_features": ["own_piece_planes", "opponent_piece_planes"],
         "hand_piece_types": list(HAND_PIECE_TYPES),
+        "square_piece_types": list(shogi.PIECE_TYPES),
     }
 
 
@@ -73,10 +74,7 @@ def shogi_alpha_zero_like_position_features_from_sfen(position_sfen: str) -> Sho
         ],
         dtype=torch.long,
     )
-    square_feature_ids = torch.tensor(
-        [[relative_square_feature_id(board, relative_square)] for relative_square in range(81)],
-        dtype=torch.long,
-    )
+    square_feature_ids = torch.tensor(square_piece_plane_feature_id_rows(board), dtype=torch.long)
     return ShogiPositionFeatures(
         global_feature_ids=global_feature_ids,
         square_feature_ids=square_feature_ids,
