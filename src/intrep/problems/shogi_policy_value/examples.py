@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 import shogi
-from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures, stack_shogi_position_features
+from intrep.representation.inputs.shogi_position_features.position_encoding import ShogiPositionFeatures, stack_shogi_position_features
 
 
 ShogiPositionFeatureBuilder = Callable[[str], ShogiPositionFeatures]
@@ -374,7 +374,7 @@ def collate_policy_plane_value_samples(
 ) -> PolicyPlaneValueBatch:
     if torch is None:
         raise RuntimeError("torch is required to collate shogi policy-plane samples")
-    from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
+    from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
     max_target_count = max(int(sample.target_action_indices.shape[0]) for sample in samples)
     legal_action_mask = torch.zeros((len(samples), SHOGI_POLICY_PLANE_ACTION_COUNT), dtype=torch.bool)
@@ -404,7 +404,7 @@ def tensorize_policy_plane_value_example(
 ) -> PolicyPlaneValueTensorSample:
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy-plane samples")
-    from intrep.worlds.shogi.policy_plane import (
+    from intrep.representation.outputs.shogi_policy_plane_encoding import (
         SHOGI_POLICY_PLANE_ACTION_COUNT,
         shogi_policy_plane_action_index,
         shogi_policy_plane_legal_mask,
@@ -459,7 +459,7 @@ def tensorize_compact_policy_plane_value_example(
 ) -> CompactPolicyPlaneValueTensorSample:
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy-plane samples")
-    from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index
+    from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index
     board = shogi.Board(example.position_sfen)
     position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
     position_features = position_features_from_sfen(example.position_sfen)
@@ -521,7 +521,7 @@ def _policy_sample(
 ):
     if torch is None:
         raise RuntimeError("torch is required to materialize shogi policy samples")
-    from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
+    from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
     board = shogi.Board(example.position_sfen)
     position_features_from_sfen = position_features_from_sfen or _default_position_features_from_sfen()
     position_features = position_features_from_sfen(example.position_sfen)
@@ -574,7 +574,7 @@ def _policy_plane_value_tensor_sample(
     if isinstance(example, PolicyPlaneValueTensorSample):
         return example
     if isinstance(example, CompactPolicyPlaneValueTensorSample):
-        from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
+        from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
         policy_plane_targets = torch.zeros(SHOGI_POLICY_PLANE_ACTION_COUNT, dtype=torch.float32)
         policy_plane_targets[example.target_action_indices.long()] = example.target_weights
@@ -620,7 +620,7 @@ def _compact_policy_plane_value_tensor_sample(
 
 
 def _default_position_features_from_sfen() -> ShogiPositionFeatureBuilder:
-    from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen
+    from intrep.representation.inputs.shogi_position_features.position_encoding import shogi_position_features_from_sfen
 
     return shogi_position_features_from_sfen
 

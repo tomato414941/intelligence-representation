@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.benchmarking import (
 )
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST_HASH, SHOGI_POSITION_INPUT_SCHEMA_ID
+from intrep.representation.inputs.shogi_position_features.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST_HASH, SHOGI_POSITION_INPUT_SCHEMA_ID
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 
 

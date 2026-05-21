@@ -12,7 +12,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
-from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index
+from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index
 
 
 class ShogiPolicyValueInferenceTest(unittest.TestCase):

@@ -17,9 +17,13 @@ from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     shogi_policy_value_output_space_for_assembly_spec,
 )
-from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
-from intrep.worlds.shogi.policy_plane import shogi_policy_plane_legal_mask
-from intrep.worlds.shogi.position_encoding import (
+from intrep.problems.shogi_policy_value.position_input_identity import (
+    shogi_position_feature_builder_for_assembly_spec_id,
+    shogi_position_input_identity_for_assembly_spec_id,
+)
+from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
+from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_legal_mask
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     SHOGI_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_POSITION_INPUT_SCHEMA_ID,
     shogi_position_features_from_sfen,
@@ -160,6 +164,7 @@ def benchmark_shogi_policy_value_inference_batching(
                 _run_policy_value_inference_batch(
                     model,
                     output_space=output_space,
+                    assembly_spec_id=config.assembly_spec_id,
                     position_sfens=batch_positions,
                     device=torch_device,
                 )
@@ -175,6 +180,7 @@ def benchmark_shogi_policy_value_inference_batching(
                 output_count = _run_policy_value_inference_batch(
                     model,
                     output_space=output_space,
+                    assembly_spec_id=config.assembly_spec_id,
                     position_sfens=batch_positions,
                     device=torch_device,
                 )
@@ -198,10 +204,11 @@ def benchmark_shogi_policy_value_inference_batching(
                 }
             )
 
+    input_identity = shogi_position_input_identity_for_assembly_spec_id(config.assembly_spec_id)
     return {
         "schema_version": SHOGI_POLICY_VALUE_INFERENCE_BATCHING_BENCHMARK_SCHEMA,
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
-        "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+        "input_schema_id": input_identity["input_schema_id"],
+        "input_feature_manifest_hash": input_identity["input_feature_manifest_hash"],
         "checkpoint_path": str(checkpoint_path),
         "assembly_spec_id": config.assembly_spec_id,
         "output_space": output_space,
@@ -234,12 +241,14 @@ def _run_policy_value_inference_batch(
     model: torch.nn.Module,
     *,
     output_space: str,
+    assembly_spec_id: str,
     position_sfens: Sequence[str],
     device: torch.device,
 ) -> int:
     boards = [shogi.Board(position_sfen) for position_sfen in position_sfens]
+    position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
     position_features = stack_shogi_position_features(
-        [shogi_position_features_from_sfen(position_sfen) for position_sfen in position_sfens]
+        [position_features_from_sfen(position_sfen) for position_sfen in position_sfens]
     ).to(device)
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE:
         legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(device)

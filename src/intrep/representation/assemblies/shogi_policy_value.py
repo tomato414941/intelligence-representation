@@ -30,8 +30,8 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
-from intrep.worlds.shogi.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
-from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
+from intrep.representation.inputs.shogi_position_features.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
+from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
 @dataclass(frozen=True)

@@ -39,7 +39,7 @@ from intrep.worlds.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.worlds.shogi.game_trace import trace_shogi_game_record
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     SHOGI_POSITION_FEATURE_MANIFEST,
     SHOGI_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_POSITION_INPUT_SCHEMA_ID,

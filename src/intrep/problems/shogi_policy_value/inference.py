@@ -14,9 +14,12 @@ from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
     shogi_policy_value_output_space_for_assembly_spec,
 )
-from intrep.worlds.shogi.move_encoding import shogi_legal_move_features
-from intrep.worlds.shogi.policy_plane import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
-from intrep.worlds.shogi.position_encoding import shogi_position_features_from_sfen, stack_shogi_position_features
+from intrep.problems.shogi_policy_value.position_input_identity import (
+    shogi_position_feature_builder_for_assembly_spec_id,
+)
+from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
+from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
+from intrep.representation.inputs.shogi_position_features.position_encoding import stack_shogi_position_features
 
 
 PositionEvaluation = tuple[dict[str, float], float]
@@ -38,8 +41,8 @@ class ShogiPolicyValueCheckpointEvaluator:
             shogi_policy_value_output_space_for_assembly_spec(config.assembly_spec_id)
             == SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
         ):
-            return cls(_policy_plane_evaluator(model, torch_device))
-        return cls(_legal_move_evaluator(model, torch_device))
+            return cls(_policy_plane_evaluator(model, torch_device, config.assembly_spec_id))
+        return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id))
 
     def __init__(
         self,
@@ -51,14 +54,16 @@ class ShogiPolicyValueCheckpointEvaluator:
         return self.evaluate_positions(requests)
 
 
-def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device):
+def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
+    position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
+
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
         if not requests:
             return []
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
         max_legal_move_count = max(len(legal_moves) for _position_sfen, legal_moves in requests)
         position_features = stack_shogi_position_features(
-            [shogi_position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+            [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
         legal_move_features = torch.stack(
             [
@@ -90,13 +95,15 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device):
     return evaluate_batch
 
 
-def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device):
+def _policy_plane_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
+    position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
+
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
         if not requests:
             return []
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
         position_features = stack_shogi_position_features(
-            [shogi_position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+            [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         ).to(torch_device)
         legal_action_mask = torch.stack([shogi_policy_plane_legal_mask(board) for board in boards]).to(torch_device)
 

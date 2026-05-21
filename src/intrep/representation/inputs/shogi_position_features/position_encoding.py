@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from intrep.worlds.shogi.position_schema import *
-from intrep.worlds.shogi.position_features import (
+from intrep.representation.inputs.shogi_position_features.position_schema import *
+from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
     stack_shogi_pair_relation_edges,
     stack_shogi_position_features,
     validate_shogi_position_feature_structure,
 )
-from intrep.worlds.shogi.position_building import shogi_position_features_from_sfen
-from intrep.worlds.shogi.position_geometry import (
+from intrep.representation.inputs.shogi_position_features.position_building import shogi_position_features_from_sfen
+from intrep.worlds.shogi.coordinates import (
     absolute_to_relative_square,
     king_relative_offset_bucket,
     opponent_color,
     relative_to_absolute_square,
 )
-from intrep.worlds.shogi.position_square_features import (
+from intrep.representation.inputs.shogi_position_features.position_square_features import (
     attack_count_feature_id,
     attack_feature_ids,
     drop_shadow_feature_id_rows,
@@ -33,7 +33,7 @@ from intrep.worlds.shogi.position_square_features import (
     square_piece_type_attack_feature_id_rows,
     square_piece_type_attack_feature_ids,
 )
-from intrep.worlds.shogi.position_tactical_heuristics import (
+from intrep.representation.inputs.shogi_position_features.position_tactical_heuristics import (
     counterfactual_removal_feature_id_rows,
     drop_potential_feature_id_rows,
     hand_piece_type_after_capture,
@@ -45,7 +45,7 @@ from intrep.worlds.shogi.position_tactical_heuristics import (
     piece_type_can_drop_on_square,
     coarse_slider_line_blocker,
 )
-from intrep.worlds.shogi.position_line_features import (
+from intrep.representation.inputs.shogi_position_features.position_line_features import (
     king_on_absolute_squares,
     line_feature_id_rows,
     line_feature_ids,
@@ -55,7 +55,7 @@ from intrep.worlds.shogi.position_line_features import (
     slider_on_absolute_squares,
     squares_for_line_index,
 )
-from intrep.worlds.shogi.position_piece_features import (
+from intrep.representation.inputs.shogi_position_features.position_piece_features import (
     PieceSlotRelationInfo,
     board_piece_slot_feature_ids,
     empty_piece_slot_feature_ids,
@@ -65,4 +65,4 @@ from intrep.worlds.shogi.position_piece_features import (
     piece_feature_ids,
     piece_slot_relation_infos,
 )
-from intrep.worlds.shogi.position_pair_relations import pair_relation_edges_from_board
+from intrep.representation.inputs.shogi_position_features.position_pair_relations import pair_relation_edges_from_board

@@ -39,12 +39,12 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POSITION_INPUT_MODULE_ID,
 )
 from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
     validate_shogi_position_feature_structure,
 )
-from intrep.worlds.shogi.position_alpha_zero_like import validate_shogi_alpha_zero_like_position_feature_structure
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import validate_shogi_alpha_zero_like_position_feature_structure
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v3"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v1"

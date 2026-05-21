@@ -7,7 +7,7 @@ from intrep.representation.inputs.shogi_alpha_zero_like_position import (
     ShogiAlphaZeroLikePositionAttentionLogitBias,
     ShogiAlphaZeroLikePositionInputLayer,
 )
-from intrep.worlds.shogi.position_alpha_zero_like import (
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST,
@@ -17,7 +17,7 @@ from intrep.worlds.shogi.position_alpha_zero_like import (
     shogi_alpha_zero_like_position_feature_manifest_hash,
     shogi_alpha_zero_like_position_features_from_sfen,
 )
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     HAND_PIECE_TYPES,
     MOVE_COUNT_BUCKET_OFFSET,
     OPPONENT_HAND_OFFSET,

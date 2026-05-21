@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
-from intrep.worlds.shogi.position_encoding import SQUARE_ELEMENT_OFFSET
+from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
+from intrep.representation.inputs.shogi_position_features.position_encoding import SQUARE_ELEMENT_OFFSET
 
 
 FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1

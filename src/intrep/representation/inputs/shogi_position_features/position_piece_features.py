@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import shogi
 
-from intrep.worlds.shogi.position_derived import PieceSlotRelationInfo, _ShogiPositionDerivedRelations
-from intrep.worlds.shogi.position_geometry import opponent_color, relative_to_absolute_square
-from intrep.worlds.shogi.position_schema import *
-from intrep.worlds.shogi.position_square_features import king_relative_square_feature_id, piece_feature_id
+from intrep.representation.inputs.shogi_position_features.position_derived import PieceSlotRelationInfo, _ShogiPositionDerivedRelations
+from intrep.worlds.shogi.coordinates import opponent_color, relative_to_absolute_square
+from intrep.representation.inputs.shogi_position_features.position_schema import *
+from intrep.representation.inputs.shogi_position_features.position_square_features import king_relative_square_feature_id, piece_feature_id
 
 
 def piece_feature_ids(board: shogi.Board) -> list[int]:
@@ -19,7 +19,7 @@ def piece_feature_id_rows(
 ) -> list[list[int]]:
     piece_features: list[int] = []
     if derived is None:
-        from intrep.worlds.shogi.position_building import _shogi_position_derived_relations
+        from intrep.representation.inputs.shogi_position_features.position_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
     for relative_square in range(SQUARE_ELEMENT_COUNT):

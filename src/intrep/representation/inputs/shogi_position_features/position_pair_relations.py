@@ -3,10 +3,10 @@ from __future__ import annotations
 import torch
 import shogi
 
-from intrep.worlds.shogi.position_derived import _ShogiPositionDerivedRelations
-from intrep.worlds.shogi.position_features import ShogiPairRelationEdges
-from intrep.worlds.shogi.position_geometry import absolute_to_relative_square, relative_to_absolute_square
-from intrep.worlds.shogi.position_schema import *
+from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPairRelationEdges
+from intrep.worlds.shogi.coordinates import absolute_to_relative_square, relative_to_absolute_square
+from intrep.representation.inputs.shogi_position_features.position_schema import *
 
 
 def pair_relation_edges_from_board(
@@ -28,7 +28,7 @@ def pair_relation_edges_from_board(
         add_edge(target, source, relation_id)
 
     if derived is None:
-        from intrep.worlds.shogi.position_building import _shogi_position_derived_relations
+        from intrep.representation.inputs.shogi_position_features.position_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
     slot_infos = derived.piece_slot_relation_infos

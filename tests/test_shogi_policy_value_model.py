@@ -9,7 +9,7 @@ from intrep.problems.shogi_policy_value.examples import (
     tensorize_policy_plane_value_examples,
 )
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
-from intrep.worlds.shogi.move_encoding import NO_FROM_SQUARE_ID
+from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
@@ -31,8 +31,8 @@ from intrep.representation.outputs.shogi_legal_move import (
     _legal_move_square_hidden,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
-from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     LINE_ELEMENT_OFFSET,
     PAIR_RELATION_PIECE_ON_SQUARE,
     SHOGI_POSITION_ELEMENT_COUNT,
@@ -40,7 +40,7 @@ from intrep.worlds.shogi.position_encoding import (
     ShogiPositionFeatures,
     stack_shogi_position_features,
 )
-from intrep.worlds.shogi.position_alpha_zero_like import (
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
     shogi_alpha_zero_like_position_features_from_sfen,
 )

@@ -24,7 +24,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
-from intrep.worlds.shogi.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
+from intrep.representation.inputs.shogi_position_features.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST, SHOGI_POSITION_FEATURE_MANIFEST_HASH
 
 
 class ShogiPolicyValueCheckpointTest(unittest.TestCase):

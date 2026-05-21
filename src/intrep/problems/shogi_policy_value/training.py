@@ -34,7 +34,7 @@ from intrep.problems.shogi_policy_value.output_space import (
 from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_feature_builder_for_assembly_spec_id,
 )
-from intrep.worlds.shogi.position_encoding import ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_encoding import ShogiPositionFeatures
 
 
 @dataclass(frozen=True)

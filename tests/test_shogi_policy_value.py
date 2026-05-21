@@ -17,9 +17,9 @@ from intrep.problems.shogi_policy_value.examples import (
     tensorize_policy_plane_value_example,
 )
 from tests.shogi_test_helpers import shogi_move_choice_examples_from_test_moves, shogi_move_policy_value_examples_from_test_moves
-from intrep.worlds.shogi.move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
-from intrep.worlds.shogi.policy_plane import SHOGI_POLICY_PLANE_ACTION_COUNT, shogi_policy_plane_action_index
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.outputs.shogi_legal_move_encoding import SHOGI_MOVE_FEATURE_COUNT, shogi_move_feature_ids
+from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT, shogi_policy_plane_action_index
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,
     SHOGI_POSITION_LINE_FEATURE_COUNT,
     SHOGI_POSITION_LINE_SLOT_COUNT,

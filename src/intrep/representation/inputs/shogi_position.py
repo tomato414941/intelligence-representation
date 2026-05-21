@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     LINE_ELEMENT_OFFSET,
     PAIR_RELATION_COUNT,
     SHOGI_POSITION_ELEMENT_COUNT,

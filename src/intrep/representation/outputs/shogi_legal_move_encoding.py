@@ -3,11 +3,11 @@ from __future__ import annotations
 import shogi
 import torch
 
-from intrep.worlds.shogi.position_encoding import absolute_to_relative_square
+from intrep.worlds.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
 
 
 SHOGI_MOVE_FEATURE_COUNT = 4
-NO_FROM_SQUARE_ID = 81
+NO_FROM_SQUARE_ID = SHOGI_SQUARE_COUNT
 NO_DROP_PIECE_ID = 0
 
 

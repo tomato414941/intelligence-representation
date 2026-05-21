@@ -6,13 +6,13 @@ import json
 import shogi
 import torch
 
-from intrep.worlds.shogi.position_features import ShogiPairRelationEdges, ShogiPositionFeatures
-from intrep.worlds.shogi.position_schema import (
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPairRelationEdges, ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_schema import (
     HAND_PIECE_TYPES,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_STATE_FEATURE_ID,
 )
-from intrep.worlds.shogi.position_square_features import (
+from intrep.representation.inputs.shogi_position_features.position_square_features import (
     hand_feature_ids,
     move_count_bucket_feature_id,
     relative_square_feature_id,

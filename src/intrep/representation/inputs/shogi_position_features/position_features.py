@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
-from intrep.worlds.shogi.position_schema import (
+from intrep.representation.inputs.shogi_position_features.position_schema import (
     PAIR_RELATION_COUNT,
     SHOGI_POSITION_ELEMENT_COUNT,
     SHOGI_POSITION_GLOBAL_SLOT_COUNT,

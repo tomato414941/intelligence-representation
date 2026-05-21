@@ -7,13 +7,13 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POSITION_INPUT_MODULE_ID,
     shogi_policy_value_input_for_assembly_spec_id,
 )
-from intrep.worlds.shogi.position_alpha_zero_like import (
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST,
     SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_SCHEMA_ID,
     shogi_alpha_zero_like_position_features_from_sfen,
 )
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     SHOGI_POSITION_FEATURE_MANIFEST,
     SHOGI_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_POSITION_INPUT_SCHEMA_ID,

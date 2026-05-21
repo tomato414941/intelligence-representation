@@ -3,13 +3,13 @@ from __future__ import annotations
 import shogi
 import torch
 
-from intrep.worlds.shogi.position_derived import _ShogiPositionDerivedRelations
-from intrep.worlds.shogi.position_features import ShogiPositionFeatures
-from intrep.worlds.shogi.position_pair_relations import pair_relation_edges_from_board
-from intrep.worlds.shogi.position_piece_features import piece_feature_id_rows, piece_slot_relation_infos
-from intrep.worlds.shogi.position_line_features import line_feature_id_rows
-from intrep.worlds.shogi.position_schema import SHOGI_POSITION_STATE_FEATURE_ID
-from intrep.worlds.shogi.position_square_features import (
+from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_pair_relations import pair_relation_edges_from_board
+from intrep.representation.inputs.shogi_position_features.position_piece_features import piece_feature_id_rows, piece_slot_relation_infos
+from intrep.representation.inputs.shogi_position_features.position_line_features import line_feature_id_rows
+from intrep.representation.inputs.shogi_position_features.position_schema import SHOGI_POSITION_STATE_FEATURE_ID
+from intrep.representation.inputs.shogi_position_features.position_square_features import (
     drop_shadow_feature_id_rows,
     hand_feature_ids,
     in_check_feature_id,
@@ -18,11 +18,11 @@ from intrep.worlds.shogi.position_square_features import (
     side_to_move_feature_id,
     square_feature_id_rows,
 )
-from intrep.worlds.shogi.position_tactical_heuristics import (
+from intrep.representation.inputs.shogi_position_features.position_tactical_heuristics import (
     counterfactual_removal_feature_id_rows,
     drop_potential_feature_id_rows,
 )
-from intrep.worlds.shogi.position_geometry import opponent_color
+from intrep.worlds.shogi.coordinates import opponent_color
 
 
 def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:

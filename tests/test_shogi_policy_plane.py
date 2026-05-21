@@ -2,7 +2,7 @@ import unittest
 
 import shogi
 
-from intrep.worlds.shogi.policy_plane import (
+from intrep.representation.outputs.shogi_policy_plane_encoding import (
     SHOGI_POLICY_PLANE_ACTION_COUNT,
     SHOGI_POLICY_PLANE_MOVE_TYPE_COUNT,
     shogi_policy_plane_action_index,

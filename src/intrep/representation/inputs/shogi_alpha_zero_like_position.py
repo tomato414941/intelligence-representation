@@ -3,14 +3,14 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from intrep.worlds.shogi.position_alpha_zero_like import (
+from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_GLOBAL_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_COUNT,
     SHOGI_ALPHA_ZERO_LIKE_SQUARE_ELEMENT_OFFSET,
 )
-from intrep.worlds.shogi.position_features import ShogiPositionFeatures
-from intrep.worlds.shogi.position_schema import SHOGI_POSITION_FEATURE_VOCAB_SIZE
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_schema import SHOGI_POSITION_FEATURE_VOCAB_SIZE
 
 
 class ShogiAlphaZeroLikePositionInputLayer(nn.Module):

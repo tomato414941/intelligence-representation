@@ -3,7 +3,7 @@ import unittest
 import shogi
 import torch
 
-from intrep.worlds.shogi.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_encoding import (
     ATTACK_COUNT_BUCKET_MAX,
     OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET,
     COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import shogi
 
-from intrep.worlds.shogi.position_derived import _ShogiPositionDerivedRelations
-from intrep.worlds.shogi.position_geometry import (
+from intrep.representation.inputs.shogi_position_features.position_derived import _ShogiPositionDerivedRelations
+from intrep.worlds.shogi.coordinates import (
     absolute_to_relative_square,
     king_relative_offset_bucket,
     opponent_color,
     relative_to_absolute_square,
 )
-from intrep.worlds.shogi.position_schema import *
+from intrep.representation.inputs.shogi_position_features.position_schema import *
 
 
 def side_to_move_feature_id(color: int) -> int:
@@ -85,7 +85,7 @@ def square_feature_id_rows(
     own_square_piece_type_attacks, opponent_square_piece_type_attacks = square_piece_type_attack_feature_id_rows(board)
     king_relative_squares = king_relative_square_feature_ids(board)
     if derived is None:
-        from intrep.worlds.shogi.position_building import _shogi_position_derived_relations
+        from intrep.representation.inputs.shogi_position_features.position_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
     rows: list[list[int]] = []

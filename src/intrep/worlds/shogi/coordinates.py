@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import shogi
 
-from intrep.worlds.shogi.position_schema import SQUARE_ELEMENT_COUNT
+
+SHOGI_SQUARE_COUNT = 81
 
 
 def king_relative_offset_bucket(relative_square: int, relative_king_square: int) -> int:
@@ -19,7 +20,7 @@ def absolute_to_relative_square(square: int, turn: int) -> int:
     if turn == shogi.BLACK:
         return square
     if turn == shogi.WHITE:
-        return SQUARE_ELEMENT_COUNT - 1 - square
+        return SHOGI_SQUARE_COUNT - 1 - square
     raise ValueError(f"unsupported shogi color: {turn}")
 
 
