@@ -13,20 +13,21 @@ from intrep.representation.inputs.shogi_position_modules import (
 )
 from intrep.representation.shogi_position_hidden import ShogiPositionHiddenLayout
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
-from intrep.representation.outputs.shogi_legal_move import (
-    ShogiLegalMoveAttentionPolicyOutput,
-    ShogiStateSummaryLegalMovePolicyOutput,
+from intrep.representation.outputs.shogi_policy_outputs import (
+    ShogiPolicyOutputKind,
+    ShogiPolicyOutputModuleConfig,
+    build_shogi_policy_output,
+    shogi_policy_output_kind,
 )
-from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
-from intrep.representation.assembly_specs.shogi_policy_value import (
+from intrep.representation.outputs.shogi_policy_output_module_ids import (
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
+)
+from intrep.representation.assembly_specs.shogi_policy_value import (
+    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
-from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
 @dataclass(frozen=True)
@@ -53,7 +54,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         config: SharedCoreShogiPolicyValueModelConfig | None = None,
         *,
         encoder: nn.Module | None = None,
-        policy_output: ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput | None = None,
+        policy_output: nn.Module | None = None,
         value_output: ScalarTanhValueHead | None = None,
         position_layout: ShogiPositionHiddenLayout | None = None,
     ) -> None:
@@ -67,7 +68,11 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.policy_output = policy_output or _build_legal_move_policy_output(self.config, self.position_layout)
+        self.policy_output = policy_output or build_shogi_policy_output(
+            module_id=SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+            config=_policy_output_module_config(self.config),
+            position_layout=self.position_layout,
+        )
         self.value_output = value_output or ScalarTanhValueHead(
             embedding_dim=self.config.embedding_dim,
             hidden_dim=self.config.hidden_dim,
@@ -112,7 +117,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         config: PolicyPlaneShogiPolicyValueModelConfig | None = None,
         *,
         encoder: nn.Module | None = None,
-        policy_output: ShogiPolicyPlaneHead | None = None,
+        policy_output: nn.Module | None = None,
         value_output: ScalarTanhValueHead | None = None,
         position_layout: ShogiPositionHiddenLayout | None = None,
     ) -> None:
@@ -126,10 +131,10 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
             num_layers=self.config.num_layers,
             dropout=self.config.dropout,
         )
-        self.policy_output = policy_output or ShogiPolicyPlaneHead(
-            embedding_dim=self.config.embedding_dim,
-            hidden_dim=self.config.hidden_dim,
-            action_count=SHOGI_POLICY_PLANE_ACTION_COUNT,
+        self.policy_output = policy_output or build_shogi_policy_output(
+            module_id=SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
+            config=_policy_output_module_config(self.config),
+            position_layout=self.position_layout,
         )
         self.value_output = value_output or ScalarTanhValueHead(
             embedding_dim=self.config.embedding_dim,
@@ -174,10 +179,13 @@ def _build_shogi_policy_value_model_from_policy_output(
     dropout: float = 0.0,
 ) -> nn.Module:
     position_layout = shogi_position_hidden_layout(position_input)
-    if policy_output in (
-        SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-        SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    ):
+    policy_output_config = ShogiPolicyOutputModuleConfig(
+        embedding_dim=embedding_dim,
+        num_heads=num_heads,
+        hidden_dim=hidden_dim,
+    )
+    policy_output_kind = shogi_policy_output_kind(policy_output)
+    if policy_output_kind == ShogiPolicyOutputKind.LEGAL_MOVE:
         shared_config = SharedCoreShogiPolicyValueModelConfig(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
@@ -195,10 +203,14 @@ def _build_shogi_policy_value_model_from_policy_output(
                 num_layers=num_layers,
                 dropout=dropout,
             ),
-            policy_output=_build_legal_move_policy_output_from_id(policy_output, shared_config, position_layout),
+            policy_output=build_shogi_policy_output(
+                module_id=policy_output,
+                config=policy_output_config,
+                position_layout=position_layout,
+            ),
             position_layout=position_layout,
         )
-    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+    if policy_output_kind == ShogiPolicyOutputKind.POLICY_PLANE:
         return PolicyPlaneShogiPolicyValueModel(
             PolicyPlaneShogiPolicyValueModelConfig(
                 embedding_dim=embedding_dim,
@@ -214,6 +226,11 @@ def _build_shogi_policy_value_model_from_policy_output(
                 hidden_dim=hidden_dim,
                 num_layers=num_layers,
                 dropout=dropout,
+            ),
+            policy_output=build_shogi_policy_output(
+                module_id=policy_output,
+                config=policy_output_config,
+                position_layout=position_layout,
             ),
             position_layout=position_layout,
         )
@@ -264,36 +281,11 @@ def _build_shogi_position_encoder(
     )
 
 
-def _build_legal_move_policy_output(
-    config: SharedCoreShogiPolicyValueModelConfig,
-    position_layout: ShogiPositionHiddenLayout,
-) -> ShogiLegalMoveAttentionPolicyOutput:
-    return ShogiLegalMoveAttentionPolicyOutput(
+def _policy_output_module_config(
+    config: SharedCoreShogiPolicyValueModelConfig | PolicyPlaneShogiPolicyValueModelConfig,
+) -> ShogiPolicyOutputModuleConfig:
+    return ShogiPolicyOutputModuleConfig(
         embedding_dim=config.embedding_dim,
         num_heads=config.num_heads,
         hidden_dim=config.hidden_dim,
-        position_layout=position_layout,
-    )
-
-
-def _build_legal_move_policy_output_from_id(
-    policy_output: str,
-    config: SharedCoreShogiPolicyValueModelConfig,
-    position_layout: ShogiPositionHiddenLayout,
-) -> ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput:
-    if policy_output == SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID:
-        return _build_legal_move_policy_output(config, position_layout)
-    if policy_output == SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID:
-        return _build_state_summary_legal_move_policy_output(config, position_layout)
-    raise ValueError(f"unsupported shogi legal move policy output: {policy_output}")
-
-
-def _build_state_summary_legal_move_policy_output(
-    config: SharedCoreShogiPolicyValueModelConfig,
-    position_layout: ShogiPositionHiddenLayout,
-) -> ShogiStateSummaryLegalMovePolicyOutput:
-    return ShogiStateSummaryLegalMovePolicyOutput(
-        embedding_dim=config.embedding_dim,
-        hidden_dim=config.hidden_dim,
-        position_layout=position_layout,
     )

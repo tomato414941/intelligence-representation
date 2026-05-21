@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    shogi_policy_value_policy_output_for_assembly_spec_id,
+from intrep.representation.assembly_specs.shogi_policy_value import shogi_policy_value_policy_output_for_assembly_spec_id
+from intrep.representation.outputs.shogi_policy_outputs import (
+    ShogiPolicyOutputKind,
+    shogi_policy_output_kind,
 )
 
 SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE = "legal_move"
@@ -16,12 +15,10 @@ SHOGI_POLICY_VALUE_OUTPUT_SPACES = (
 
 
 def shogi_policy_value_output_space_for_policy_output(policy_output: str) -> str:
-    if policy_output in (
-        SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
-        SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
-    ):
+    policy_output_kind = shogi_policy_output_kind(policy_output)
+    if policy_output_kind == ShogiPolicyOutputKind.LEGAL_MOVE:
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE
-    if policy_output == SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID:
+    if policy_output_kind == ShogiPolicyOutputKind.POLICY_PLANE:
         return SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE
     raise ValueError(f"unsupported shogi policy/value policy output: {policy_output}")
 
