@@ -3,6 +3,10 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from intrep.representation.inputs.shogi_square_geometry import (
+    SHOGI_SQUARE_RELATIVE_POSITION_BUCKET_COUNT,
+    shogi_square_relative_position_relation_ids,
+)
 from intrep.representation.inputs.shogi_position_features.position_rich import (
     RICH_LINE_ELEMENT_OFFSET,
     PAIR_RELATION_COUNT,
@@ -90,13 +94,17 @@ class ShogiRichPositionInputLayer(nn.Module):
 class ShogiRichPositionAttentionLogitBias(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.relation_bias = nn.Embedding(17 * 17, 1)
+        self.relation_bias = nn.Embedding(SHOGI_SQUARE_RELATIVE_POSITION_BUCKET_COUNT, 1)
         self.line_square_relation_bias = nn.Embedding(2, 1)
         self.pair_relation_bias = nn.Embedding(PAIR_RELATION_COUNT, 1)
         nn.init.zeros_(self.relation_bias.weight)
         nn.init.zeros_(self.line_square_relation_bias.weight)
         nn.init.zeros_(self.pair_relation_bias.weight)
-        self.register_buffer("square_relation_ids", _square_geometry_relation_ids(), persistent=False)
+        self.register_buffer(
+            "square_relation_ids",
+            shogi_square_relative_position_relation_ids(),
+            persistent=False,
+        )
         self.register_buffer("line_square_relation_ids", _line_square_relation_ids(), persistent=False)
 
     def forward(self, position_features: ShogiPositionFeatures, embeddings: torch.Tensor) -> torch.Tensor:
@@ -162,21 +170,6 @@ class ShogiRichPositionEncoder(nn.Module):
             causal=False,
             attention_logit_bias=self.attention_logit_bias(position_features, position_embeddings),
         )
-
-
-def _square_geometry_relation_ids() -> torch.Tensor:
-    relation_ids = torch.empty((SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_COUNT), dtype=torch.long)
-    for from_square in range(SHOGI_POSITION_SQUARE_COUNT):
-        from_file = from_square % 9
-        from_rank = from_square // 9
-        for to_square in range(SHOGI_POSITION_SQUARE_COUNT):
-            to_file = to_square % 9
-            to_rank = to_square // 9
-            file_delta = to_file - from_file
-            rank_delta = to_rank - from_rank
-            relation_ids[from_square, to_square] = (rank_delta + 8) * 17 + file_delta + 8
-    return relation_ids
-
 
 def _line_square_relation_ids() -> torch.Tensor:
     relation_ids = torch.zeros((SHOGI_RICH_POSITION_LINE_ELEMENT_COUNT, SHOGI_POSITION_SQUARE_COUNT), dtype=torch.long)
