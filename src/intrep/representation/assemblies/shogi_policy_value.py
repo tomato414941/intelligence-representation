@@ -16,6 +16,11 @@ from intrep.representation.inputs.shogi_alpha_zero_like_position import (
     ShogiAlphaZeroLikePositionEncoder,
     ShogiAlphaZeroLikePositionInputLayer,
 )
+from intrep.representation.inputs.shogi_minimal_global_position import (
+    ShogiMinimalGlobalPositionAttentionLogitBias,
+    ShogiMinimalGlobalPositionEncoder,
+    ShogiMinimalGlobalPositionInputLayer,
+)
 from intrep.representation.outputs.scalar_value import ScalarTanhValueHead
 from intrep.representation.outputs.shogi_legal_move import (
     ShogiLegalMoveAttentionPolicyOutput,
@@ -25,6 +30,7 @@ from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHea
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
+    SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
@@ -245,7 +251,7 @@ def _build_shogi_position_encoder(
     hidden_dim: int,
     num_layers: int,
     dropout: float,
-) -> ShogiPositionEncoder | ShogiAlphaZeroLikePositionEncoder:
+) -> ShogiPositionEncoder | ShogiAlphaZeroLikePositionEncoder | ShogiMinimalGlobalPositionEncoder:
     core = SharedTransformerCore(
         embedding_dim=embedding_dim,
         num_heads=num_heads,
@@ -263,6 +269,12 @@ def _build_shogi_position_encoder(
         return ShogiAlphaZeroLikePositionEncoder(
             input_layer=ShogiAlphaZeroLikePositionInputLayer(embedding_dim=embedding_dim),
             attention_logit_bias=ShogiAlphaZeroLikePositionAttentionLogitBias(),
+            core=core,
+        )
+    if input_module_id == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
+        return ShogiMinimalGlobalPositionEncoder(
+            input_layer=ShogiMinimalGlobalPositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiMinimalGlobalPositionAttentionLogitBias(),
             core=core,
         )
     raise ValueError(f"unsupported shogi position input module: {input_module_id}")

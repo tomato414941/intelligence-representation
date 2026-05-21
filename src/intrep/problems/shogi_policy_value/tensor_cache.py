@@ -41,6 +41,7 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 )
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
 )
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
@@ -56,6 +57,9 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
 )
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     validate_shogi_alpha_zero_like_position_feature_structure,
+)
+from intrep.representation.inputs.shogi_position_features.position_minimal_global import (
+    validate_shogi_minimal_global_position_feature_structure,
 )
 from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
@@ -1111,6 +1115,9 @@ def _validate_position_feature_structure_for_input_module(
         return
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         validate_shogi_alpha_zero_like_position_feature_structure(features)
+        return
+    if input_module == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
+        validate_shogi_minimal_global_position_feature_structure(features)
         return
     raise ValueError(f"unsupported shogi position input module: {input_module}")
 

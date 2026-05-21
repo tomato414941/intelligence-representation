@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
     write_shogi_policy_value_tensor_cache_manifest,
 )
+from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POSITION_INPUT_MODULE_ID
 
 
 def main() -> None:
@@ -27,6 +28,7 @@ def main() -> None:
     )
     parser.add_argument("--shard-examples", type=int, default=10_000)
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument("--input-module", default=SHOGI_POSITION_INPUT_MODULE_ID)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
@@ -61,6 +63,7 @@ def main() -> None:
                 data_selection_path=args.data_selection,
                 cache_dir=args.out,
                 output_space=args.output_space,
+                input_module=args.input_module,
                 resume=args.resume,
             )
             for task in tasks
@@ -91,6 +94,7 @@ def main() -> None:
         cache_dir=args.out,
         shard_examples=args.shard_examples,
         output_space=args.output_space,
+        input_module=args.input_module,
     )
     print(
         json.dumps(
@@ -113,6 +117,7 @@ def _build_shard_task(
     data_selection_path: Path,
     cache_dir: Path,
     output_space: str,
+    input_module: str,
     resume: bool,
 ) -> dict[str, object]:
     return build_shogi_policy_value_tensor_cache_shard(
@@ -125,6 +130,7 @@ def _build_shard_task(
         shard_index=int(task["shard_index"]),
         resume=resume,
         output_space=output_space,
+        input_module=input_module,
     )
 
 

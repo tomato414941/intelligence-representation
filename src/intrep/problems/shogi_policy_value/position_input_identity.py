@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
+    SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_POSITION_INPUT_MODULE_ID,
     shogi_policy_value_input_for_assembly_spec_id,
 )
@@ -19,6 +20,12 @@ from intrep.representation.inputs.shogi_position_features.position_encoding impo
     SHOGI_POSITION_INPUT_SCHEMA_ID,
     ShogiPositionFeatures,
     shogi_position_features_from_sfen,
+)
+from intrep.representation.inputs.shogi_position_features.position_minimal_global import (
+    SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST,
+    SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_SCHEMA_ID,
+    shogi_minimal_global_position_features_from_sfen,
 )
 
 
@@ -36,6 +43,8 @@ def shogi_position_feature_builder_for_input_module(input_module: str) -> ShogiP
         return shogi_position_features_from_sfen
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         return shogi_alpha_zero_like_position_features_from_sfen
+    if input_module == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
+        return shogi_minimal_global_position_features_from_sfen
     raise ValueError(f"unsupported shogi position input module: {input_module}")
 
 
@@ -57,5 +66,11 @@ def shogi_position_input_identity_for_input_module(input_module: str) -> dict[st
             "input_schema_id": SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_SCHEMA_ID,
             "input_feature_manifest": SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST,
             "input_feature_manifest_hash": SHOGI_ALPHA_ZERO_LIKE_POSITION_FEATURE_MANIFEST_HASH,
+        }
+    if input_module == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
+        return {
+            "input_schema_id": SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_SCHEMA_ID,
+            "input_feature_manifest": SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST,
+            "input_feature_manifest_hash": SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST_HASH,
         }
     raise ValueError(f"unsupported shogi position input module: {input_module}")
