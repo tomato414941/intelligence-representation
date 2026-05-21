@@ -6,10 +6,6 @@ manifests, hashes, checkpoints, and metrics.
 
 ## Shogi Policy-Plane Entries
 
-Keep the output, core, training data, and training recipe fixed when comparing
-these entries. The intended comparison axis is the shogi position input
-representation.
-
 | Entry | Input intent | Status |
 | --- | --- | --- |
 | `shogi-policy-plane-minimal-single-global` | Board pieces + one global summary element for state, side, move count, and hands. | implemented |
