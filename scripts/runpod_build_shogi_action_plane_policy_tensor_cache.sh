@@ -96,7 +96,8 @@ echo \"cache_build_config data_selection=$DATA_SELECTION cache_dir=$CACHE_DIR sh
   --assembly-spec \"$ASSEMBLY_SPEC\" \
   --shard-examples \"$SHARD_EXAMPLES\" \
   --jobs \"$JOBS\" \
-  --resume | tee \"$OUTPUT_DIR/cache_build_summary.json\"
+  --resume \
+  --summary-output \"$OUTPUT_DIR/cache_build_summary.json\" | tee \"$OUTPUT_DIR/cache_build_events.jsonl\"
 cp \"$CACHE_DIR/manifest.json\" \"$OUTPUT_DIR/cache_manifest.json\"
 du -sh \"$CACHE_DIR\" | tee \"$OUTPUT_DIR/cache_size.txt\"
 printf '%s\n' \"$CACHE_DIR\" > \"$OUTPUT_DIR/remote_cache_path.txt\"" \

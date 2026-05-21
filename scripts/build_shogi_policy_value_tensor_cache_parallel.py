@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ def main() -> None:
     parser.add_argument("--shard-examples", type=int, default=10_000)
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--summary-output", type=Path)
     args = parser.parse_args()
 
     if args.jobs <= 0:
@@ -39,6 +41,8 @@ def main() -> None:
         data_selection_path=args.data_selection,
         shard_examples=args.shard_examples,
     )
+    total_expected_samples = sum(int(task["sample_count"]) for task in tasks)
+    started = time.monotonic()
     print(
         json.dumps(
             {
@@ -51,6 +55,7 @@ def main() -> None:
                 "shard_examples": args.shard_examples,
                 "jobs": args.jobs,
                 "shard_count": len(tasks),
+                "expected_sample_count": total_expected_samples,
             },
             sort_keys=True,
         ),
@@ -58,6 +63,8 @@ def main() -> None:
     )
 
     completed = 0
+    completed_samples = 0
+    completed_cache_bytes = 0
     with ProcessPoolExecutor(max_workers=args.jobs) as executor:
         futures = [
             executor.submit(
@@ -74,17 +81,36 @@ def main() -> None:
         for future in as_completed(futures):
             result = future.result()
             completed += 1
+            completed_samples += int(result["sample_count"])
+            cache_bytes = _shard_cache_bytes(args.out, str(result["path"]))
+            completed_cache_bytes += cache_bytes
+            elapsed_seconds = time.monotonic() - started
+            samples_per_second = _rate(completed_samples, elapsed_seconds)
+            remaining_samples = max(0, total_expected_samples - completed_samples)
+            estimated_remaining_seconds = (
+                remaining_samples / samples_per_second
+                if samples_per_second > 0.0
+                else None
+            )
             print(
                 json.dumps(
                     {
                         "event": "shard_done",
                         "completed_shards": completed,
                         "shard_count": len(tasks),
+                        "completed_samples": completed_samples,
+                        "expected_sample_count": total_expected_samples,
                         "split": result["split"],
                         "source_index": result["source_index"],
                         "source_example_start_index": result["source_example_start_index"],
                         "source_example_end_index": result["source_example_end_index"],
                         "sample_count": result["sample_count"],
+                        "cache_bytes": cache_bytes,
+                        "completed_cache_bytes": completed_cache_bytes,
+                        "elapsed_seconds": elapsed_seconds,
+                        "samples_per_second": samples_per_second,
+                        "bytes_per_sample": _rate(completed_cache_bytes, completed_samples),
+                        "estimated_remaining_seconds": estimated_remaining_seconds,
                         "path": result["path"],
                     },
                     sort_keys=True,
@@ -99,15 +125,34 @@ def main() -> None:
         output_space=output_space,
         input_module=input_module,
     )
+    elapsed_seconds = time.monotonic() - started
+    sample_count = int(manifest["train_count"]) + int(manifest["eval_count"])
+    cache_bytes = _cache_bytes(args.out)
+    summary = {
+        "event": "build_summary",
+        "data_selection": str(args.data_selection),
+        "cache_dir": str(args.out),
+        "assembly_spec": args.assembly_spec,
+        "input_module": input_module,
+        "output_space": output_space,
+        "shard_examples": args.shard_examples,
+        "jobs": args.jobs,
+        "train_count": manifest["train_count"],
+        "eval_count": manifest["eval_count"],
+        "sample_count": sample_count,
+        "shard_count": len(manifest["shards"]),
+        "cache_bytes": cache_bytes,
+        "pt_cache_bytes": _pt_cache_bytes(args.out),
+        "bytes_per_sample": _rate(cache_bytes, sample_count),
+        "elapsed_seconds": elapsed_seconds,
+        "samples_per_second": _rate(sample_count, elapsed_seconds),
+    }
+    if args.summary_output is not None:
+        args.summary_output.parent.mkdir(parents=True, exist_ok=True)
+        args.summary_output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(
         json.dumps(
-            {
-                "event": "manifest_done",
-                "train_count": manifest["train_count"],
-                "eval_count": manifest["eval_count"],
-                "shard_count": len(manifest["shards"]),
-                "cache_dir": str(args.out),
-            },
+            summary,
             sort_keys=True,
         ),
         flush=True,
@@ -162,10 +207,28 @@ def _build_tasks(*, data_selection_path: Path, shard_examples: int) -> list[dict
                         "source_example_start_index": start,
                         "source_example_end_index": end,
                         "shard_index": shard_index,
+                        "sample_count": end - start,
                     }
                 )
                 shard_index += 1
     return tasks
+
+
+def _shard_cache_bytes(cache_dir: Path, relative_path: str) -> int:
+    path = cache_dir / relative_path
+    return path.stat().st_size if path.exists() else 0
+
+
+def _cache_bytes(cache_dir: Path) -> int:
+    return sum(path.stat().st_size for path in cache_dir.rglob("*") if path.is_file())
+
+
+def _pt_cache_bytes(cache_dir: Path) -> int:
+    return sum(path.stat().st_size for path in cache_dir.glob("*/*.pt"))
+
+
+def _rate(numerator: int | float, denominator: int | float) -> float:
+    return float(numerator) / float(denominator) if denominator else 0.0
 
 
 def _count_jsonl_records(path: Path) -> int:
