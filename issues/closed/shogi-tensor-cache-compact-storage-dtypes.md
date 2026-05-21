@@ -51,8 +51,8 @@ cache format is currently wider than the represented values require.
 
 ## Resolution
 
-Tensor cache schema `v4` and shard schema `v2` store durable ID tensors with
-compact dtypes and cast them back to runtime dtypes when loading samples.
+Tensor cache payloads store durable ID tensors with compact dtypes and cast
+them back to runtime dtypes when loading samples.
 
 - position feature IDs: `uint16`
 - pair relation edge indices: `uint16`

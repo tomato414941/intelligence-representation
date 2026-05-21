@@ -58,8 +58,8 @@ from intrep.representation.inputs.shogi_position_features.position_alpha_zero_li
 )
 from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache.v4"
-SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard.v2"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache"
+SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard"
 DEFAULT_SHOGI_POLICY_VALUE_TENSOR_CACHE_NAME = "legal-move"
 DEFAULT_SHOGI_POLICY_PLANE_VALUE_TENSOR_CACHE_NAME = "policy-plane"
 ShogiPolicyValueTensorCacheSample = LegalMovePolicyValueTensorSample | CompactPolicyPlaneValueTensorSample
