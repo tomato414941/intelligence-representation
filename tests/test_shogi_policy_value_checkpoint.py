@@ -4,7 +4,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.problems.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.samples import (
     ShogiPolicyPlaneValueDataset,
     ShogiLegalMovePolicyValueDataset,
     collate_legal_move_policy_value_samples,

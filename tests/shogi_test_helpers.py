@@ -2,7 +2,10 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_move_choice_examples_from_game_record,
     shogi_move_policy_value_examples_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiMoveChoiceExample, ShogiMovePolicyValueExample
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiMoveChoiceExample,
+    ShogiMovePolicyValueExample,
+)
 from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,

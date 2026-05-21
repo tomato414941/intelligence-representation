@@ -15,7 +15,7 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiLegalMovePolicyValueDataset
+from intrep.problems.shogi_policy_value.samples import ShogiLegalMovePolicyValueDataset
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.domains.shogi.game_record import (
     ShogiActorSpec,

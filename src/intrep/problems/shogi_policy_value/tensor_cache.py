@@ -18,10 +18,14 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.examples import (
-    LegalMovePolicyValueTensorSample,
-    CompactPolicyPlaneValueTensorSample,
     ShogiMovePolicyValueExample,
     load_shogi_move_policy_value_examples_jsonl,
+)
+from intrep.problems.shogi_policy_value.samples import (
+    LegalMovePolicyValueTensorSample,
+    CompactPolicyPlaneValueTensorSample,
+)
+from intrep.problems.shogi_policy_value.tensorization import (
     tensorize_legal_move_policy_value_examples,
     tensorize_compact_policy_plane_value_examples,
 )

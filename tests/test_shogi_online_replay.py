@@ -29,7 +29,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint_identity,
     save_shogi_policy_value_state_checkpoint,
 )
-from intrep.problems.shogi_policy_value.examples import LegalMovePolicyValueTensorSample
+from intrep.problems.shogi_policy_value.samples import LegalMovePolicyValueTensorSample
 from intrep.problems.shogi_policy_value.training import (
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingMetrics,

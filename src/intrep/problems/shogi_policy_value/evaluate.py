@@ -16,11 +16,11 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
+from intrep.problems.shogi_policy_value.samples import (
     ShogiPolicyPlaneValueDataset,
     ShogiLegalMovePolicyValueDataset,
     ShogiPolicyValueDatasetItem,
-    ShogiMovePolicyValueExample,
     collate_legal_move_policy_value_samples,
     collate_policy_plane_value_samples,
 )

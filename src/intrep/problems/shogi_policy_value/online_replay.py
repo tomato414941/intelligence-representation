@@ -32,10 +32,10 @@ from intrep.problems.shogi_policy_value.data_selection import (
 )
 from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
-    LegalMovePolicyValueTensorSample,
     load_shogi_move_policy_value_examples_jsonl,
-    tensorize_legal_move_policy_value_examples,
 )
+from intrep.problems.shogi_policy_value.samples import LegalMovePolicyValueTensorSample
+from intrep.problems.shogi_policy_value.tensorization import tensorize_legal_move_policy_value_examples
 from intrep.problems.shogi_policy_value.generated_game_production import (
     DEFAULT_SHOGI_MAX_PLIES,
     ShogiGeneratedPlayerSpec,

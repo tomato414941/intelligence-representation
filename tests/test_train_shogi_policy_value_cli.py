@@ -18,7 +18,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import CompactPolicyPlaneValueTensorSample
+from intrep.problems.shogi_policy_value.samples import CompactPolicyPlaneValueTensorSample
 from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,

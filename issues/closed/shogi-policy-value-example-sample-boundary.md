@@ -1,6 +1,6 @@
 # Shogi Policy/Value Example Sample Boundary
 
-Status: open. Priority: medium.
+Status: closed. Priority: medium.
 
 ## Issue
 
@@ -44,3 +44,9 @@ records should not know tensor-cache storage details.
 This is a boundary cleanup. It should make storage dtype compaction and future
 policy/output variants easier to implement without making `examples.py` a
 catch-all module.
+
+## Resolution
+
+`examples.py` now owns durable shogi policy/value examples and JSONL
+serialization. Runtime tensor samples, batches, datasets, and collate helpers
+live in `samples.py`. Example-to-sample conversion lives in `tensorization.py`.

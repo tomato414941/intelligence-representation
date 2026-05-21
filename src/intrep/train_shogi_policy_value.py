@@ -18,10 +18,8 @@ from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection_examples,
     shogi_policy_value_data_selection_to_json,
 )
-from intrep.problems.shogi_policy_value.examples import (
-    ShogiPolicyValueDatasetItem,
-    ShogiMovePolicyValueExample,
-)
+from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
+from intrep.problems.shogi_policy_value.samples import ShogiPolicyValueDatasetItem
 from intrep.problems.shogi_policy_value.tensor_cache import load_shogi_policy_value_tensor_cache
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,

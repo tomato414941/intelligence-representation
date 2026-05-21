@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from intrep.core.training_run import BestMetricTracker
 from intrep.core.training_utils import build_adamw
-from intrep.problems.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.samples import (
     LegalMovePolicyValueBatch,
     PolicyPlaneValueBatch,
     ShogiPolicyPlaneValueDataset,

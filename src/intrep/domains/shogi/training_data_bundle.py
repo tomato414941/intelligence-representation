@@ -13,7 +13,10 @@ from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
     shogi_move_policy_value_examples_from_game_record,
 )
-from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample, write_shogi_move_policy_value_examples_jsonl
+from intrep.problems.shogi_policy_value.examples import (
+    ShogiMovePolicyValueExample,
+    write_shogi_move_policy_value_examples_jsonl,
+)
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.domains.shogi.experience_stats import (
     shogi_actor_pair,

@@ -5,13 +5,17 @@ import torch
 from torch.utils.data import DataLoader
 
 from intrep.problems.shogi_policy_value.examples import (
-    ShogiMoveChoiceDataset,
     ShogiMoveChoiceExample,
-    ShogiLegalMovePolicyValueDataset,
     ShogiMovePolicyValueExample,
     ShogiPositionValueExample,
-    collate_legal_move_policy_value_samples,
     shogi_move_choice_example_from_board,
+)
+from intrep.problems.shogi_policy_value.samples import (
+    ShogiLegalMovePolicyValueDataset,
+    collate_legal_move_policy_value_samples,
+)
+from intrep.problems.shogi_policy_value.tensorization import (
+    ShogiMoveChoiceDataset,
     tensorize_legal_move_policy_value_example,
     tensorize_compact_policy_plane_value_example,
     tensorize_policy_plane_value_example,

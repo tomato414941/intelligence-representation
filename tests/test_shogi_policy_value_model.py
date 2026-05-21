@@ -3,11 +3,11 @@ from unittest.mock import Mock
 
 import torch
 
-from intrep.problems.shogi_policy_value.examples import (
+from intrep.problems.shogi_policy_value.samples import (
     ShogiLegalMovePolicyValueDataset,
     collate_legal_move_policy_value_samples,
-    tensorize_policy_plane_value_examples,
 )
+from intrep.problems.shogi_policy_value.tensorization import tensorize_policy_plane_value_examples
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
 from intrep.representation.assembly_specs.shogi_policy_value import (
