@@ -8,8 +8,8 @@ import torch
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_model_checkpoint
 from intrep.problems.shogi_policy_value.inference import ShogiPolicyValueCheckpointEvaluator
 from intrep.representation.assembly_specs.shogi_policy_value import (
-    SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index
@@ -20,7 +20,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         board = shogi.Board()
         legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
         config = ShogiPolicyValueTrainingConfig(
-            assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+            assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
             hidden_dim=16,
         )
@@ -44,7 +44,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         preferred_move = "7g7f"
         action_index = shogi_policy_plane_action_index(preferred_move, turn=board.turn)
         config = ShogiPolicyValueTrainingConfig(
-            assembly_spec_id=SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+            assembly_spec_id=SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
             hidden_dim=16,
             num_heads=2,

@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from intrep.problems.shogi_policy_value.examples import ShogiMovePolicyValueExample
-from intrep.representation.inputs.shogi_position_features.position_encoding import ShogiPositionFeatures, stack_shogi_position_features
+from intrep.representation.inputs.shogi_position_features.position_features import (
+    ShogiPositionFeatures,
+    stack_shogi_position_features,
+)
 
 try:
     import torch

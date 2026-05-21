@@ -19,7 +19,7 @@ from intrep.problems.shogi_policy_value.data_selection import (
     shogi_policy_value_data_selection_to_json,
 )
 from intrep.problems.shogi_policy_value.samples import CompactPolicyPlaneValueTensorSample
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID
+from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID
 from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE,
@@ -40,10 +40,10 @@ from intrep.domains.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.domains.shogi.game_trace import trace_shogi_game_record
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
-    SHOGI_POSITION_FEATURE_MANIFEST,
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_INPUT_SCHEMA_ID,
+from intrep.representation.inputs.shogi_position_features.position_rich import (
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST,
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
 )
 from intrep.train_shogi_policy_value import main
 
@@ -270,13 +270,13 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                     "--num-heads",
                     "2",
                     "--assembly-spec",
-                    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
                 ],
             ), patch("sys.stdout", new_callable=StringIO):
                 main()
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-            self.assertEqual(metrics["config"]["assembly_spec_id"], SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID)
+            self.assertEqual(metrics["config"]["assembly_spec_id"], SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID)
             self.assertEqual(metrics["tensor_cache_path"], str(tensor_cache_path))
             self.assertEqual(metrics["tensor_cache_output_space"], SHOGI_POLICY_VALUE_OUTPUT_SPACE_POLICY_PLANE)
 
@@ -424,7 +424,7 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertTrue((tensor_cache_path / "eval").exists())
             self.assertTrue(list((tensor_cache_path / "train").glob("*.json")))
             manifest = json.loads((tensor_cache_path / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
+            self.assertEqual(manifest["input_schema_id"], SHOGI_RICH_POSITION_INPUT_SCHEMA_ID)
             self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             shard_path = next((tensor_cache_path / "train").glob("*.pt"))
             shard_payload = torch.load(shard_path, weights_only=False)
@@ -726,9 +726,9 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 shard_games=1,
             )
 
-            self.assertEqual(manifest["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
-            self.assertEqual(manifest["input_feature_manifest"], SHOGI_POSITION_FEATURE_MANIFEST)
-            self.assertEqual(manifest["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
+            self.assertEqual(manifest["input_schema_id"], SHOGI_RICH_POSITION_INPUT_SCHEMA_ID)
+            self.assertEqual(manifest["input_feature_manifest"], SHOGI_RICH_POSITION_FEATURE_MANIFEST)
+            self.assertEqual(manifest["input_feature_manifest_hash"], SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH)
             self.assertEqual(manifest["storage_dtypes"], SHOGI_POLICY_VALUE_TENSOR_CACHE_STORAGE_DTYPES)
             self.assertEqual(manifest["train_count"], 2)
             self.assertEqual(manifest["eval_count"], 2)

@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
     write_shogi_policy_value_tensor_cache_manifest,
 )
-from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_POSITION_INPUT_MODULE_ID
+from intrep.representation.assembly_specs.shogi_policy_value import SHOGI_RICH_POSITION_INPUT_MODULE_ID
 
 
 def main() -> None:
@@ -28,7 +28,7 @@ def main() -> None:
     )
     parser.add_argument("--shard-examples", type=int, default=10_000)
     parser.add_argument("--jobs", type=int, default=4)
-    parser.add_argument("--input-module", default=SHOGI_POSITION_INPUT_MODULE_ID)
+    parser.add_argument("--input-module", default=SHOGI_RICH_POSITION_INPUT_MODULE_ID)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 

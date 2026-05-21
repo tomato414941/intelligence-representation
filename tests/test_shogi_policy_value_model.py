@@ -16,7 +16,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_MINIMAL_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
-    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.representation.assemblies.shogi_policy_value import (
@@ -27,20 +27,22 @@ from intrep.representation.assemblies.shogi_policy_value import (
     _state_element_hidden,
     build_shogi_policy_value_model_for_assembly_spec,
 )
-from intrep.representation.inputs.shogi_position import ShogiPositionAttentionLogitBias, ShogiPositionInputLayer
+from intrep.representation.inputs.shogi_rich_position import ShogiRichPositionAttentionLogitBias, ShogiRichPositionInputLayer
 from intrep.representation.outputs.shogi_legal_move import (
     ShogiStateSummaryLegalMovePolicyOutput,
     _legal_move_square_hidden,
 )
 from intrep.representation.outputs.shogi_policy_plane import ShogiPolicyPlaneHead
 from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
-    LINE_ELEMENT_OFFSET,
-    PAIR_RELATION_PIECE_ON_SQUARE,
-    SHOGI_POSITION_ELEMENT_COUNT,
-    SQUARE_ELEMENT_OFFSET,
+from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPositionFeatures,
     stack_shogi_position_features,
+)
+from intrep.representation.inputs.shogi_position_features.position_schema import (
+    RICH_LINE_ELEMENT_OFFSET,
+    PAIR_RELATION_PIECE_ON_SQUARE,
+    SHOGI_RICH_POSITION_ELEMENT_COUNT,
+    RICH_SQUARE_ELEMENT_OFFSET,
 )
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
     SHOGI_ALPHA_ZERO_LIKE_ELEMENT_COUNT,
@@ -54,7 +56,7 @@ from intrep.representation.inputs.shogi_position_features.position_minimal_globa
 
 class ShogiPolicyValueModelTest(unittest.TestCase):
     def test_policy_plane_assembly_spec_uses_fixed_policy_head(self) -> None:
-        spec = shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID)
+        spec = shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID)
 
         self.assertEqual(spec["policy_output"], "shogi_policy_plane_policy_output")
 
@@ -149,9 +151,9 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertEqual(model.policy_output.policy_head.scorer[0].in_features, 8 * 2)
 
     def test_legal_move_square_hidden_maps_square_ids_to_board_features(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
+        position_hidden = torch.arange(2 * SHOGI_RICH_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_POSITION_ELEMENT_COUNT,
+            SHOGI_RICH_POSITION_ELEMENT_COUNT,
             3,
         )
         square_ids = torch.tensor([[0, 80], [NO_FROM_SQUARE_ID, 7]])
@@ -162,23 +164,23 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             zero_square_id=NO_FROM_SQUARE_ID,
         )
 
-        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, SQUARE_ELEMENT_OFFSET]))
-        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, SQUARE_ELEMENT_OFFSET + 80]))
+        self.assertTrue(torch.equal(square_hidden[0, 0], position_hidden[0, RICH_SQUARE_ELEMENT_OFFSET]))
+        self.assertTrue(torch.equal(square_hidden[0, 1], position_hidden[0, RICH_SQUARE_ELEMENT_OFFSET + 80]))
         self.assertTrue(torch.equal(square_hidden[1, 0], torch.zeros(3)))
-        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, SQUARE_ELEMENT_OFFSET + 7]))
+        self.assertTrue(torch.equal(square_hidden[1, 1], position_hidden[1, RICH_SQUARE_ELEMENT_OFFSET + 7]))
 
     def test_position_input_layer_builds_global_square_piece_sequence(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        layer = ShogiPositionInputLayer(embedding_dim=8)
+        layer = ShogiRichPositionInputLayer(embedding_dim=8)
 
         embeddings = layer(position_features)
 
-        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_POSITION_ELEMENT_COUNT, 8))
+        self.assertEqual(tuple(embeddings.shape), (2, SHOGI_RICH_POSITION_ELEMENT_COUNT, 8))
         self.assertFalse(hasattr(layer, "piece_slot_embedding"))
 
     def test_position_input_layer_normalizes_feature_groups(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        layer = ShogiPositionInputLayer(embedding_dim=8)
+        layer = ShogiRichPositionInputLayer(embedding_dim=8)
 
         embeddings = layer(position_features)
 
@@ -186,9 +188,9 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertLess(float(element_norms.max().item() - element_norms.min().item()), 1e-3)
 
     def test_state_element_hidden_uses_first_position_element(self) -> None:
-        position_hidden = torch.arange(2 * SHOGI_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
+        position_hidden = torch.arange(2 * SHOGI_RICH_POSITION_ELEMENT_COUNT * 3, dtype=torch.float32).reshape(
             2,
-            SHOGI_POSITION_ELEMENT_COUNT,
+            SHOGI_RICH_POSITION_ELEMENT_COUNT,
             3,
         )
 
@@ -198,8 +200,8 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
     def test_position_geometry_attention_logit_bias_targets_square_and_line_pairs(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
-        attention_logit_bias = ShogiPositionAttentionLogitBias()
+        embeddings = torch.zeros((2, SHOGI_RICH_POSITION_ELEMENT_COUNT, 8))
+        attention_logit_bias = ShogiRichPositionAttentionLogitBias()
         attention_logit_bias.relation_bias.weight.data[:, 0] = torch.arange(17 * 17, dtype=torch.float32)
         attention_logit_bias.line_square_relation_bias.weight.data[:, 0] = torch.tensor([0.0, 500.0])
 
@@ -209,23 +211,23 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(
             tuple(bias.shape),
-            (2, SHOGI_POSITION_ELEMENT_COUNT, SHOGI_POSITION_ELEMENT_COUNT),
+            (2, SHOGI_RICH_POSITION_ELEMENT_COUNT, SHOGI_RICH_POSITION_ELEMENT_COUNT),
         )
-        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET].item()), float(same_square_relation))
+        self.assertEqual(float(bias[0, RICH_SQUARE_ELEMENT_OFFSET, RICH_SQUARE_ELEMENT_OFFSET].item()), float(same_square_relation))
         self.assertEqual(
-            float(bias[0, SQUARE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET + 1].item()),
+            float(bias[0, RICH_SQUARE_ELEMENT_OFFSET, RICH_SQUARE_ELEMENT_OFFSET + 1].item()),
             float(one_file_right_relation),
         )
-        self.assertEqual(float(bias[0, 0, SQUARE_ELEMENT_OFFSET].item()), 0.0)
-        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, 0].item()), 0.0)
-        self.assertEqual(float(bias[0, LINE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[0, SQUARE_ELEMENT_OFFSET, LINE_ELEMENT_OFFSET].item()), 500.0)
-        self.assertEqual(float(bias[0, LINE_ELEMENT_OFFSET, SQUARE_ELEMENT_OFFSET + 1].item()), 0.0)
+        self.assertEqual(float(bias[0, 0, RICH_SQUARE_ELEMENT_OFFSET].item()), 0.0)
+        self.assertEqual(float(bias[0, RICH_SQUARE_ELEMENT_OFFSET, 0].item()), 0.0)
+        self.assertEqual(float(bias[0, RICH_LINE_ELEMENT_OFFSET, RICH_SQUARE_ELEMENT_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, RICH_SQUARE_ELEMENT_OFFSET, RICH_LINE_ELEMENT_OFFSET].item()), 500.0)
+        self.assertEqual(float(bias[0, RICH_LINE_ELEMENT_OFFSET, RICH_SQUARE_ELEMENT_OFFSET + 1].item()), 0.0)
 
     def test_position_geometry_attention_logit_bias_adds_dynamic_pair_relation_bias(self) -> None:
         position_features, _, _, _, _, _ = _batch()
-        embeddings = torch.zeros((2, SHOGI_POSITION_ELEMENT_COUNT, 8))
-        attention_logit_bias = ShogiPositionAttentionLogitBias()
+        embeddings = torch.zeros((2, SHOGI_RICH_POSITION_ELEMENT_COUNT, 8))
+        attention_logit_bias = ShogiRichPositionAttentionLogitBias()
         attention_logit_bias.pair_relation_bias.weight.data[:, 0] = 0.0
         attention_logit_bias.pair_relation_bias.weight.data[PAIR_RELATION_PIECE_ON_SQUARE, 0] = 700.0
 

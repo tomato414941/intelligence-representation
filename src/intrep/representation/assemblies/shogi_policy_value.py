@@ -6,10 +6,10 @@ import torch
 from torch import nn
 
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.representation.inputs.shogi_position import (
-    ShogiPositionEncoder,
-    ShogiPositionAttentionLogitBias,
-    ShogiPositionInputLayer,
+from intrep.representation.inputs.shogi_rich_position import (
+    ShogiRichPositionEncoder,
+    ShogiRichPositionAttentionLogitBias,
+    ShogiRichPositionInputLayer,
 )
 from intrep.representation.inputs.shogi_alpha_zero_like_position import (
     ShogiAlphaZeroLikePositionAttentionLogitBias,
@@ -31,12 +31,13 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_LEGAL_MOVE_ATTENTION_POLICY_OUTPUT_MODULE_ID,
     SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
-    SHOGI_POSITION_INPUT_MODULE_ID,
+    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     SHOGI_POLICY_PLANE_OUTPUT_MODULE_ID,
     SHOGI_STATE_SUMMARY_LEGAL_MOVE_POLICY_OUTPUT_MODULE_ID,
     shogi_policy_value_assembly_spec_for_id,
 )
-from intrep.representation.inputs.shogi_position_features.position_encoding import STATE_ELEMENT_INDEX, ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_schema import STATE_ELEMENT_INDEX
 from intrep.representation.outputs.shogi_policy_plane_encoding import SHOGI_POLICY_PLANE_ACTION_COUNT
 
 
@@ -63,7 +64,7 @@ class SharedCoreShogiPolicyValueModel(nn.Module):
         self,
         config: SharedCoreShogiPolicyValueModelConfig | None = None,
         *,
-        encoder: ShogiPositionEncoder | None = None,
+        encoder: ShogiRichPositionEncoder | None = None,
         policy_output: ShogiLegalMoveAttentionPolicyOutput | ShogiStateSummaryLegalMovePolicyOutput | None = None,
         value_output: ScalarTanhValueHead | None = None,
     ) -> None:
@@ -120,7 +121,7 @@ class PolicyPlaneShogiPolicyValueModel(nn.Module):
         self,
         config: PolicyPlaneShogiPolicyValueModelConfig | None = None,
         *,
-        encoder: ShogiPositionEncoder | None = None,
+        encoder: ShogiRichPositionEncoder | None = None,
         policy_output: ShogiPolicyPlaneHead | None = None,
         value_output: ScalarTanhValueHead | None = None,
     ) -> None:
@@ -245,13 +246,13 @@ def build_shogi_policy_value_model_for_assembly_spec(
 
 def _build_shogi_position_encoder(
     *,
-    input_module_id: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    input_module_id: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     embedding_dim: int,
     num_heads: int,
     hidden_dim: int,
     num_layers: int,
     dropout: float,
-) -> ShogiPositionEncoder | ShogiAlphaZeroLikePositionEncoder | ShogiMinimalGlobalPositionEncoder:
+) -> ShogiRichPositionEncoder | ShogiAlphaZeroLikePositionEncoder | ShogiMinimalGlobalPositionEncoder:
     core = SharedTransformerCore(
         embedding_dim=embedding_dim,
         num_heads=num_heads,
@@ -259,10 +260,10 @@ def _build_shogi_position_encoder(
         num_layers=num_layers,
         dropout=dropout,
     )
-    if input_module_id == SHOGI_POSITION_INPUT_MODULE_ID:
-        return ShogiPositionEncoder(
-            input_layer=ShogiPositionInputLayer(embedding_dim=embedding_dim),
-            attention_logit_bias=ShogiPositionAttentionLogitBias(),
+    if input_module_id == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
+        return ShogiRichPositionEncoder(
+            input_layer=ShogiRichPositionInputLayer(embedding_dim=embedding_dim),
+            attention_logit_bias=ShogiRichPositionAttentionLogitBias(),
             core=core,
         )
     if input_module_id == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
@@ -281,7 +282,7 @@ def _build_shogi_position_encoder(
 
 
 def _validate_legal_move_position_input(position_input: str) -> None:
-    if position_input != SHOGI_POSITION_INPUT_MODULE_ID:
+    if position_input != SHOGI_RICH_POSITION_INPUT_MODULE_ID:
         raise ValueError("legal-move policy outputs require the rich shogi position input")
 
 

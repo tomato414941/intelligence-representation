@@ -6,14 +6,14 @@ import torch
 
 from intrep.representation.inputs.shogi_position_features.position_schema import (
     PAIR_RELATION_COUNT,
-    SHOGI_POSITION_ELEMENT_COUNT,
-    SHOGI_POSITION_GLOBAL_SLOT_COUNT,
-    SHOGI_POSITION_LINE_FEATURE_COUNT,
-    SHOGI_POSITION_LINE_SLOT_COUNT,
-    SHOGI_POSITION_PIECE_FEATURE_COUNT,
-    SHOGI_POSITION_PIECE_SLOT_COUNT,
+    SHOGI_RICH_POSITION_ELEMENT_COUNT,
+    SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_LINE_SLOT_COUNT,
+    SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
-    SHOGI_POSITION_SQUARE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT,
 )
 
 
@@ -90,26 +90,26 @@ def stack_shogi_pair_relation_edges(edges: list[ShogiPairRelationEdges]) -> Shog
     )
 
 
-def validate_shogi_position_feature_structure(features: ShogiPositionFeatures) -> None:
+def validate_shogi_rich_position_feature_structure(features: ShogiPositionFeatures) -> None:
     _validate_integer_tensor_shape(
         "global_feature_ids",
         features.global_feature_ids,
-        (SHOGI_POSITION_GLOBAL_SLOT_COUNT,),
+        (SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,),
     )
     _validate_integer_tensor_shape(
         "square_feature_ids",
         features.square_feature_ids,
-        (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
+        (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT),
     )
     _validate_integer_tensor_shape(
         "piece_feature_ids",
         features.piece_feature_ids,
-        (SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT),
+        (SHOGI_RICH_POSITION_PIECE_SLOT_COUNT, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT),
     )
     _validate_integer_tensor_shape(
         "line_feature_ids",
         features.line_feature_ids,
-        (SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT),
+        (SHOGI_RICH_POSITION_LINE_SLOT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
     )
     _validate_pair_relation_edge_structure(features.pair_relation_edges)
 
@@ -136,13 +136,13 @@ def _validate_pair_relation_edge_structure(edges: ShogiPairRelationEdges) -> Non
         "pair_relation_edges.source_element_indices",
         edges.source_element_indices,
         minimum=0,
-        maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+        maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
     )
     _validate_integer_vector_range(
         "pair_relation_edges.target_element_indices",
         edges.target_element_indices,
         minimum=0,
-        maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+        maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
     )
     _validate_integer_vector_range(
         "pair_relation_edges.relation_ids",

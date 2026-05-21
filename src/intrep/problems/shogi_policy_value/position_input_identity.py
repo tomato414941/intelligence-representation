@@ -5,7 +5,7 @@ from collections.abc import Callable
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
-    SHOGI_POSITION_INPUT_MODULE_ID,
+    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
     shogi_policy_value_input_for_assembly_spec_id,
 )
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
@@ -14,13 +14,13 @@ from intrep.representation.inputs.shogi_position_features.position_alpha_zero_li
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_SCHEMA_ID,
     shogi_alpha_zero_like_position_features_from_sfen,
 )
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
-    SHOGI_POSITION_FEATURE_MANIFEST,
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_INPUT_SCHEMA_ID,
-    ShogiPositionFeatures,
-    shogi_position_features_from_sfen,
+from intrep.representation.inputs.shogi_position_features.position_rich import (
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST,
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
+    shogi_rich_position_features_from_sfen,
 )
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
 from intrep.representation.inputs.shogi_position_features.position_minimal_global import (
     SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST,
     SHOGI_MINIMAL_GLOBAL_POSITION_FEATURE_MANIFEST_HASH,
@@ -39,8 +39,8 @@ def shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id: str) -
 
 
 def shogi_position_feature_builder_for_input_module(input_module: str) -> ShogiPositionFeatureBuilder:
-    if input_module == SHOGI_POSITION_INPUT_MODULE_ID:
-        return shogi_position_features_from_sfen
+    if input_module == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
+        return shogi_rich_position_features_from_sfen
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         return shogi_alpha_zero_like_position_features_from_sfen
     if input_module == SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID:
@@ -55,11 +55,11 @@ def shogi_position_input_identity_for_assembly_spec_id(assembly_spec_id: str) ->
 
 
 def shogi_position_input_identity_for_input_module(input_module: str) -> dict[str, object]:
-    if input_module == SHOGI_POSITION_INPUT_MODULE_ID:
+    if input_module == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
         return {
-            "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
-            "input_feature_manifest": SHOGI_POSITION_FEATURE_MANIFEST,
-            "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+            "input_schema_id": SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
+            "input_feature_manifest": SHOGI_RICH_POSITION_FEATURE_MANIFEST,
+            "input_feature_manifest_hash": SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
         }
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         return {

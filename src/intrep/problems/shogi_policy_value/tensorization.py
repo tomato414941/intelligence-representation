@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.samples import (
     PolicyPlaneValueTensorSample,
     ShogiPolicyValueDatasetItem,
 )
-from intrep.representation.inputs.shogi_position_features.position_encoding import ShogiPositionFeatures
+from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
 
 try:
     import torch
@@ -320,6 +320,6 @@ def choice_count(example: ShogiPolicyValueDatasetItem) -> int:
 
 
 def _default_position_features_from_sfen() -> ShogiPositionFeatureBuilder:
-    from intrep.representation.inputs.shogi_position_features.position_encoding import shogi_position_features_from_sfen
+    from intrep.representation.inputs.shogi_position_features.position_rich import shogi_rich_position_features_from_sfen
 
-    return shogi_position_features_from_sfen
+    return shogi_rich_position_features_from_sfen

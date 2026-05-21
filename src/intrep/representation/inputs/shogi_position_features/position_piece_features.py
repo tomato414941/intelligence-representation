@@ -19,7 +19,7 @@ def piece_feature_id_rows(
 ) -> list[list[int]]:
     piece_features: list[int] = []
     if derived is None:
-        from intrep.representation.inputs.shogi_position_features.position_building import _shogi_position_derived_relations
+        from intrep.representation.inputs.shogi_position_features.position_rich_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
     for relative_square in range(SQUARE_ELEMENT_COUNT):

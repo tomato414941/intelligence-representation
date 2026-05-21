@@ -25,7 +25,7 @@ from intrep.representation.inputs.shogi_position_features.position_tactical_heur
 from intrep.domains.shogi.coordinates import opponent_color
 
 
-def shogi_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
+def shogi_rich_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
     board = shogi.Board(position_sfen)
     derived = _shogi_position_derived_relations(board)
     global_feature_ids = torch.tensor(

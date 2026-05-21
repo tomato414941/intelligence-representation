@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
-from intrep.representation.inputs.shogi_position_features.position_encoding import SQUARE_ELEMENT_OFFSET
+from intrep.representation.inputs.shogi_position_features.position_rich import RICH_SQUARE_ELEMENT_OFFSET
 
 
 FROM_SQUARE_VOCAB_SIZE = NO_FROM_SQUARE_ID + 1
@@ -136,7 +136,7 @@ def _legal_move_square_hidden(
     embedding_dim = position_hidden.size(-1)
     zero_mask = square_ids.eq(zero_square_id) if zero_square_id is not None else torch.zeros_like(square_ids).bool()
     safe_square_ids = square_ids.masked_fill(zero_mask, 0)
-    element_indices = safe_square_ids + SQUARE_ELEMENT_OFFSET
+    element_indices = safe_square_ids + RICH_SQUARE_ELEMENT_OFFSET
     gather_indices = element_indices[..., None].expand(-1, -1, embedding_dim)
     square_hidden = position_hidden.gather(dim=1, index=gather_indices)
     return square_hidden.masked_fill(zero_mask[..., None], 0.0)

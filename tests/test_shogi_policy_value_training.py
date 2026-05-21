@@ -10,8 +10,8 @@ from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_MINIMAL_GLOBAL_POLICY_PLANE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
-    SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+    SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
 )
 import intrep.problems.shogi_policy_value.training as training
 from intrep.problems.shogi_policy_value.training import (
@@ -66,7 +66,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_POLICY_PLANE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_POLICY_PLANE_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -125,7 +125,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 learning_rate=0.02,
                 embedding_dim=8,
                 hidden_dim=16,
-                assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
             ),
         )
 
@@ -344,7 +344,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
                 value_loss_weight=0.2,
                 allow_nonstandard_loss_weights=True,
             ),
@@ -385,7 +385,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 embedding_dim=8,
                 hidden_dim=16,
                 num_heads=2,
-                assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,
@@ -416,7 +416,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 hidden_dim=16,
                 num_heads=2,
                 num_layers=1,
-                assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
             )
         )
         model.forward_policy_value = Mock(wraps=model.forward_policy_value)
@@ -432,7 +432,7 @@ class ShogiPolicyValueTrainingTest(unittest.TestCase):
                 batch_size=2,
                 embedding_dim=8,
                 hidden_dim=16,
-                assembly_spec_id=SHOGI_POLICY_VALUE_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
+                assembly_spec_id=SHOGI_POLICY_VALUE_RICH_STATE_SUMMARY_LEGAL_MOVE_ASSEMBLY_SPEC_ID,
                 policy_loss_weight=0.0,
                 value_loss_weight=1.0,
                 allow_nonstandard_loss_weights=True,

@@ -28,7 +28,7 @@ def pair_relation_edges_from_board(
         add_edge(target, source, relation_id)
 
     if derived is None:
-        from intrep.representation.inputs.shogi_position_features.position_building import _shogi_position_derived_relations
+        from intrep.representation.inputs.shogi_position_features.position_rich_building import _shogi_position_derived_relations
 
         derived = _shogi_position_derived_relations(board)
     slot_infos = derived.piece_slot_relation_infos
@@ -36,31 +36,31 @@ def pair_relation_edges_from_board(
     for piece_slot, info in enumerate(slot_infos):
         if info.piece is None:
             continue
-        piece_element_index = PIECE_ELEMENT_OFFSET + piece_slot
+        piece_element_index = RICH_PIECE_ELEMENT_OFFSET + piece_slot
         if info.location_kind == "board" and info.relative_square is not None:
             from_absolute_square = relative_to_absolute_square(info.relative_square, board.turn)
-            square_element_index = SQUARE_ELEMENT_OFFSET + info.relative_square
+            square_element_index = RICH_SQUARE_ELEMENT_OFFSET + info.relative_square
             add_bidirectional_edge(piece_element_index, square_element_index, PAIR_RELATION_PIECE_ON_SQUARE)
             for relative_square in range(SQUARE_ELEMENT_COUNT):
                 absolute_square = relative_to_absolute_square(relative_square, board.turn)
                 if from_absolute_square in board.attackers(info.piece.color, absolute_square):
-                    target_element_index = SQUARE_ELEMENT_OFFSET + relative_square
+                    target_element_index = RICH_SQUARE_ELEMENT_OFFSET + relative_square
                     add_bidirectional_edge(piece_element_index, target_element_index, PAIR_RELATION_PIECE_ATTACKS_SQUARE)
         elif info.location_kind == "hand":
             targets = legal_drop_targets[info.piece.color].get(info.piece.piece_type, set())
             for absolute_square in targets:
                 relative_square = absolute_to_relative_square(absolute_square, board.turn)
-                square_element_index = SQUARE_ELEMENT_OFFSET + relative_square
+                square_element_index = RICH_SQUARE_ELEMENT_OFFSET + relative_square
                 add_bidirectional_edge(piece_element_index, square_element_index, PAIR_RELATION_HAND_PIECE_DROPS_TO_SQUARE)
 
     for source_slot, source_info in enumerate(slot_infos):
         if source_info.piece is None:
             continue
-        source_element_index = PIECE_ELEMENT_OFFSET + source_slot
+        source_element_index = RICH_PIECE_ELEMENT_OFFSET + source_slot
         for target_slot, target_info in enumerate(slot_infos):
             if source_slot == target_slot or target_info.piece is None:
                 continue
-            target_element_index = PIECE_ELEMENT_OFFSET + target_slot
+            target_element_index = RICH_PIECE_ELEMENT_OFFSET + target_slot
             if source_info.piece.color == target_info.piece.color:
                 add_edge(source_element_index, target_element_index, PAIR_RELATION_PIECE_SAME_SIDE)
             if source_info.location_kind != "board" or target_info.location_kind != "board":

@@ -15,4 +15,4 @@ representation.
 | `shogi-policy-plane-minimal-global` | Board pieces + hand counts + side/move count. | implemented |
 | `shogi-policy-plane-alpha-zero-like-no-history` | AlphaZero-style current state; no history. | wanted |
 | `shogi-policy-plane-dlshogi-like` | dlshogi-style state plus attack features. | wanted |
-| `shogi-policy-plane-rich` | Current rich features: piece, line, pair, drop, and tactical hints. | implemented |
+| `shogi-policy-plane-rich` | Rich features: piece, line, pair, drop, and tactical hints. | implemented |

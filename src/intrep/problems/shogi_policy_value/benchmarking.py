@@ -23,12 +23,12 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
 from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_legal_mask
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_INPUT_SCHEMA_ID,
-    shogi_position_features_from_sfen,
-    stack_shogi_position_features,
+from intrep.representation.inputs.shogi_position_features.position_rich import (
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
+    shogi_rich_position_features_from_sfen,
 )
+from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
 
 SHOGI_POSITION_FEATURE_GENERATION_BENCHMARK_SCHEMA = (
@@ -97,14 +97,14 @@ def benchmark_shogi_position_feature_generation(
 
     for _ in range(warmup):
         for position_sfen in positions:
-            shogi_position_features_from_sfen(position_sfen)
+            shogi_rich_position_features_from_sfen(position_sfen)
 
     durations: list[float] = []
     wall_started = time.perf_counter()
     for _ in range(repeat):
         for position_sfen in positions:
             started = time.perf_counter()
-            shogi_position_features_from_sfen(position_sfen)
+            shogi_rich_position_features_from_sfen(position_sfen)
             durations.append(time.perf_counter() - started)
     wall_time_seconds = time.perf_counter() - wall_started
     measured_position_count = len(durations)
@@ -112,8 +112,8 @@ def benchmark_shogi_position_feature_generation(
 
     return {
         "schema_version": SHOGI_POSITION_FEATURE_GENERATION_BENCHMARK_SCHEMA,
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
-        "input_feature_manifest_hash": SHOGI_POSITION_FEATURE_MANIFEST_HASH,
+        "input_schema_id": SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
+        "input_feature_manifest_hash": SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
         "position_count": len(positions),
         "measured_position_count": measured_position_count,
         "warmup": warmup,

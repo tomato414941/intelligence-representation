@@ -3,7 +3,7 @@ import unittest
 import shogi
 import torch
 
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_rich import (
     ATTACK_COUNT_BUCKET_MAX,
     OWN_DROP_POTENTIAL_AFTER_CAPTURING_PIECE_OFFSET,
     COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET,
@@ -36,7 +36,7 @@ from intrep.representation.inputs.shogi_position_features.position_encoding impo
     PIECE_LOCATION_BOARD_FEATURE_ID,
     PIECE_LOCATION_EMPTY_FEATURE_ID,
     PIECE_LOCATION_HAND_FEATURE_ID,
-    PIECE_ELEMENT_OFFSET,
+    RICH_PIECE_ELEMENT_OFFSET,
     PIECE_SLOT_COUNT,
     PIECE_SQUARE_OFFSET,
     PIECE_SQUARE_UNKNOWN_FEATURE_ID,
@@ -44,28 +44,28 @@ from intrep.representation.inputs.shogi_position_features.position_encoding impo
     PAIR_RELATION_PIECE_ATTACKS_SQUARE,
     PAIR_RELATION_PIECE_ON_SQUARE,
     SQUARE_ATTACK_PIECE_TYPES,
-    SHOGI_POSITION_FEATURE_MANIFEST,
-    SHOGI_POSITION_FEATURE_MANIFEST_HASH,
-    SHOGI_POSITION_ELEMENT_COUNT,
-    SHOGI_POSITION_GLOBAL_SLOT_COUNT,
-    SHOGI_POSITION_LINE_FEATURE_COUNT,
-    SHOGI_POSITION_LINE_SLOT_COUNT,
-    SHOGI_POSITION_PIECE_FEATURE_COUNT,
-    SHOGI_POSITION_PIECE_SLOT_COUNT,
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST,
+    SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
+    SHOGI_RICH_POSITION_ELEMENT_COUNT,
+    SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,
+    SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_LINE_SLOT_COUNT,
+    SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_PIECE_SLOT_COUNT,
     SHOGI_POSITION_SQUARE_COUNT,
-    SHOGI_POSITION_SQUARE_FEATURE_COUNT,
+    SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT,
     SHOGI_POSITION_VOCAB_SIZE,
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
     SIDE_TO_MOVE_BLACK_FEATURE_ID,
     SIDE_TO_MOVE_WHITE_FEATURE_ID,
-    SQUARE_ELEMENT_OFFSET,
+    RICH_SQUARE_ELEMENT_OFFSET,
     absolute_to_relative_square,
     king_relative_offset_bucket,
     move_count_bucket_feature_id,
-    shogi_position_feature_manifest_hash,
-    shogi_position_features_from_sfen,
-    validate_shogi_position_feature_structure,
+    shogi_rich_position_feature_manifest_hash,
+    shogi_rich_position_features_from_sfen,
+    validate_shogi_rich_position_feature_structure,
 )
 
 
@@ -82,33 +82,33 @@ COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET = OPPONENT_DROP_SHADOW_FEATURE_OFFSET + le
 DROP_POTENTIAL_FEATURE_OFFSET = COUNTERFACTUAL_REMOVAL_FEATURE_OFFSET + 3
 
 
-class ShogiPositionEncodingTest(unittest.TestCase):
+class ShogiRichPositionEncodingTest(unittest.TestCase):
     def test_feature_manifest_hash_matches_current_manifest(self) -> None:
-        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST_HASH, shogi_position_feature_manifest_hash())
+        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH, shogi_rich_position_feature_manifest_hash())
         self.assertEqual(
-            SHOGI_POSITION_FEATURE_MANIFEST["representation_element_count"],
-            SHOGI_POSITION_ELEMENT_COUNT,
+            SHOGI_RICH_POSITION_FEATURE_MANIFEST["representation_element_count"],
+            SHOGI_RICH_POSITION_ELEMENT_COUNT,
         )
-        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST["square_feature_count"], SHOGI_POSITION_SQUARE_FEATURE_COUNT)
-        self.assertEqual(SHOGI_POSITION_FEATURE_MANIFEST["piece_feature_count"], SHOGI_POSITION_PIECE_FEATURE_COUNT)
+        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["square_feature_count"], SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT)
+        self.assertEqual(SHOGI_RICH_POSITION_FEATURE_MANIFEST["piece_feature_count"], SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT)
 
     def test_encodes_start_position_as_feature_groups(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
 
-        self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_POSITION_GLOBAL_SLOT_COUNT,))
+        self.assertEqual(tuple(features.global_feature_ids.shape), (SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT,))
         self.assertEqual(
             tuple(features.square_feature_ids.shape),
-            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_POSITION_SQUARE_FEATURE_COUNT),
+            (SHOGI_POSITION_SQUARE_COUNT, SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT),
         )
         self.assertEqual(
             tuple(features.piece_feature_ids.shape),
-            (SHOGI_POSITION_PIECE_SLOT_COUNT, SHOGI_POSITION_PIECE_FEATURE_COUNT),
+            (SHOGI_RICH_POSITION_PIECE_SLOT_COUNT, SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT),
         )
         self.assertEqual(
             tuple(features.line_feature_ids.shape),
-            (SHOGI_POSITION_LINE_SLOT_COUNT, SHOGI_POSITION_LINE_FEATURE_COUNT),
+            (SHOGI_RICH_POSITION_LINE_SLOT_COUNT, SHOGI_RICH_POSITION_LINE_FEATURE_COUNT),
         )
-        self.assertEqual(SHOGI_POSITION_ELEMENT_COUNT, 191)
+        self.assertEqual(SHOGI_RICH_POSITION_ELEMENT_COUNT, 191)
         self.assertEqual(int(features.global_feature_ids[1].item()), SIDE_TO_MOVE_BLACK_FEATURE_ID)
         self.assertEqual(int(features.global_feature_ids[2].item()), NOT_IN_CHECK_FEATURE_ID)
         self.assertEqual(int(features.global_feature_ids[3].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
@@ -119,7 +119,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         board = shogi.Board()
         board.push_usi("7g7f")
 
-        features = shogi_position_features_from_sfen(board.sfen())
+        features = shogi_rich_position_features_from_sfen(board.sfen())
 
         self.assertEqual(int(features.global_feature_ids[1].item()), SIDE_TO_MOVE_WHITE_FEATURE_ID)
 
@@ -127,9 +127,9 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         board = shogi.Board()
         board.remove_piece_at(shogi.SQUARE_NAMES.index("1a"))
         board.set_piece_at(shogi.SQUARE_NAMES.index("5e"), shogi.Piece(shogi.PAWN, shogi.WHITE))
-        black_features = shogi_position_features_from_sfen(board.sfen())
+        black_features = shogi_rich_position_features_from_sfen(board.sfen())
         board.turn = shogi.WHITE
-        white_features = shogi_position_features_from_sfen(board.sfen())
+        white_features = shogi_rich_position_features_from_sfen(board.sfen())
 
         black_relative_square = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         white_relative_square = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.WHITE)
@@ -147,8 +147,8 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         checked_board = shogi.Board("4k4/9/9/9/4R4/9/9/9/4K4 w - 1")
 
-        safe_features = shogi_position_features_from_sfen(board.sfen())
-        checked_features = shogi_position_features_from_sfen(checked_board.sfen())
+        safe_features = shogi_rich_position_features_from_sfen(board.sfen())
+        checked_features = shogi_rich_position_features_from_sfen(checked_board.sfen())
 
         self.assertEqual(int(safe_features.global_feature_ids[2].item()), NOT_IN_CHECK_FEATURE_ID)
         self.assertEqual(int(checked_features.global_feature_ids[2].item()), IN_CHECK_FEATURE_ID)
@@ -158,8 +158,8 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         late_board = shogi.Board()
         late_board.move_number = 95
 
-        early_features = shogi_position_features_from_sfen(early_board.sfen())
-        late_features = shogi_position_features_from_sfen(late_board.sfen())
+        early_features = shogi_rich_position_features_from_sfen(early_board.sfen())
+        late_features = shogi_rich_position_features_from_sfen(late_board.sfen())
 
         self.assertEqual(int(early_features.global_feature_ids[3].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
         self.assertEqual(int(late_features.global_feature_ids[3].item()), MOVE_COUNT_BUCKET_OFFSET + 4)
@@ -170,7 +170,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(move_count_bucket_feature_id(221), MOVE_COUNT_BUCKET_OFFSET + MOVE_COUNT_BUCKET_OVERFLOW)
 
     def test_encodes_attack_counts_relative_to_side_to_move(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
         relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.BLACK)
         relative_3d = absolute_to_relative_square(shogi.SQUARE_NAMES.index("3d"), shogi.BLACK)
 
@@ -188,8 +188,8 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         black_relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.BLACK)
         white_relative_7f = absolute_to_relative_square(shogi.SQUARE_NAMES.index("7f"), shogi.WHITE)
 
-        black_features = shogi_position_features_from_sfen(black_board.sfen())
-        white_features = shogi_position_features_from_sfen(white_board.sfen())
+        black_features = shogi_rich_position_features_from_sfen(black_board.sfen())
+        white_features = shogi_rich_position_features_from_sfen(white_board.sfen())
 
         self.assertEqual(
             int(black_features.square_feature_ids[black_relative_7f, OWN_ATTACK_FEATURE_INDEX].item()),
@@ -201,7 +201,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_square_piece_type_attack_features(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5b = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.BLACK)
         rook_feature = SQUARE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
         pawn_feature = SQUARE_ATTACK_PIECE_TYPES.index(shogi.PAWN)
@@ -222,8 +222,8 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         relative_5b_white = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.WHITE)
         rook_feature = SQUARE_ATTACK_PIECE_TYPES.index(shogi.ROOK)
 
-        black_features = shogi_position_features_from_sfen(black_board.sfen())
-        white_features = shogi_position_features_from_sfen(white_board.sfen())
+        black_features = shogi_rich_position_features_from_sfen(black_board.sfen())
+        white_features = shogi_rich_position_features_from_sfen(white_board.sfen())
 
         self.assertEqual(
             int(black_features.square_feature_ids[relative_5b_black, OWN_PIECE_TYPE_ATTACK_FEATURE_OFFSET + rook_feature].item()),
@@ -235,7 +235,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_king_relative_square_features(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b - 1")
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
         relative_5h = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5h"), shogi.BLACK)
         expected_bucket = king_relative_offset_bucket(relative_5h, relative_5i)
@@ -251,7 +251,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         relative_5b_for_white = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5b"), shogi.WHITE)
         expected_bucket = king_relative_offset_bucket(relative_5b_for_white, relative_5a_for_white)
 
-        features = shogi_position_features_from_sfen(white_board.sfen())
+        features = shogi_rich_position_features_from_sfen(white_board.sfen())
 
         self.assertEqual(
             int(features.square_feature_ids[relative_5b_for_white, OWN_KING_RELATIVE_FEATURE_INDEX].item()),
@@ -259,7 +259,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_fixed_piece_features_in_relative_square_order(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
@@ -275,7 +275,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.piece_feature_ids[3, 2].item()), PIECE_SQUARE_UNKNOWN_FEATURE_ID)
 
     def test_piece_features_include_king_relative_square_features(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.BLACK)
@@ -292,7 +292,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_drop_shadow_features_for_own_hand_piece(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b P 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b P 1")
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         pawn_feature = HAND_PIECE_TYPES.index(shogi.PAWN)
@@ -307,7 +307,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_drop_shadow_features_for_opponent_hand_piece(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b b 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/9/9/9/9/4K4 b b 1")
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
         bishop_feature = HAND_PIECE_TYPES.index(shogi.BISHOP)
 
@@ -317,7 +317,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
     def test_encodes_counterfactual_removal_features(self) -> None:
-        features = shogi_position_features_from_sfen("4r3k/9/9/9/4G4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4r3k/9/9/9/4G4/9/9/9/4K4 b - 1")
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
 
         self.assertEqual(
@@ -331,7 +331,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.piece_feature_ids[2, 5].item()), COUNTERFACTUAL_REMOVAL_SELF_CHECK_OFFSET + 1)
 
     def test_encodes_drop_potential_features(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4G4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4G4/9/9/9/4K4 b - 1")
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
 
         self.assertEqual(
@@ -345,11 +345,11 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.piece_feature_ids[1, 8].item()), OPPONENT_DROP_POTENTIAL_AFTER_LOSING_PIECE_OFFSET + 1)
 
     def test_encodes_piece_square_and_piece_piece_pair_relations(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.BLACK)
         relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.BLACK)
-        white_king_element = PIECE_ELEMENT_OFFSET
-        rook_element = PIECE_ELEMENT_OFFSET + 1
+        white_king_element = RICH_PIECE_ELEMENT_OFFSET
+        rook_element = RICH_PIECE_ELEMENT_OFFSET + 1
 
         relation_edges = {
             (int(source.item()), int(target.item()), int(relation.item()))
@@ -362,17 +362,17 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         }
 
         self.assertIn(
-            (rook_element, SQUARE_ELEMENT_OFFSET + relative_5e, PAIR_RELATION_PIECE_ON_SQUARE),
+            (rook_element, RICH_SQUARE_ELEMENT_OFFSET + relative_5e, PAIR_RELATION_PIECE_ON_SQUARE),
             relation_edges,
         )
         self.assertIn(
-            (rook_element, SQUARE_ELEMENT_OFFSET + relative_5a, PAIR_RELATION_PIECE_ATTACKS_SQUARE),
+            (rook_element, RICH_SQUARE_ELEMENT_OFFSET + relative_5a, PAIR_RELATION_PIECE_ATTACKS_SQUARE),
             relation_edges,
         )
         self.assertIn((rook_element, white_king_element, PAIR_RELATION_PIECE_ATTACKS_PIECE), relation_edges)
 
     def test_encodes_line_features(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
         file_5_line = 4
 
         self.assertEqual(int(features.line_feature_ids[file_5_line, 0].item()), LINE_KIND_OFFSET)
@@ -383,7 +383,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.line_feature_ids[file_5_line, 5].item()), LINE_OCCUPANCY_COUNT_OFFSET + 3)
 
     def test_piece_features_include_hand_pieces_after_board_pieces(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b P2b 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b P2b 1")
 
         self.assertEqual(int(features.piece_feature_ids[3, 0].item()), PIECE_LOCATION_HAND_FEATURE_ID)
         self.assertEqual(int(features.piece_feature_ids[3, 1].item()), OWN_PIECE_OFFSET + shogi.PAWN - 1)
@@ -393,13 +393,13 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.piece_feature_ids[6, 0].item()), PIECE_LOCATION_EMPTY_FEATURE_ID)
 
     def test_full_start_position_uses_all_forty_piece_slots(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
 
         self.assertEqual(PIECE_SLOT_COUNT, 40)
         self.assertNotEqual(int(features.piece_feature_ids[PIECE_SLOT_COUNT - 1, 0].item()), PIECE_LOCATION_EMPTY_FEATURE_ID)
 
     def test_incomplete_piece_features_are_padded_to_forty_slots(self) -> None:
-        features = shogi_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
+        features = shogi_rich_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")
 
         self.assertEqual(PIECE_SLOT_COUNT, 40)
         self.assertEqual(int(features.piece_feature_ids[PIECE_SLOT_COUNT - 1, 0].item()), PIECE_LOCATION_EMPTY_FEATURE_ID)
@@ -411,7 +411,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         for _ in range(14):
             board.add_piece_into_hand(shogi.PAWN, shogi.BLACK)
 
-        features = shogi_position_features_from_sfen(board.sfen())
+        features = shogi_rich_position_features_from_sfen(board.sfen())
         own_pawn_hand_index = 4 + HAND_PIECE_TYPES.index(shogi.PAWN)
 
         self.assertEqual(HAND_COUNT_BUCKET_MAX, 18)
@@ -425,7 +425,7 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         board.add_piece_into_hand(shogi.PAWN, shogi.WHITE)
         board.turn = shogi.WHITE
 
-        features = shogi_position_features_from_sfen(board.sfen())
+        features = shogi_rich_position_features_from_sfen(board.sfen())
         own_pawn_hand_index = 4 + HAND_PIECE_TYPES.index(shogi.PAWN)
         opponent_pawn_hand_index = 4 + len(HAND_PIECE_TYPES) + HAND_PIECE_TYPES.index(shogi.PAWN)
 
@@ -433,12 +433,12 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         self.assertEqual(int(features.global_feature_ids[opponent_pawn_hand_index].item()), OPPONENT_HAND_OFFSET + 1)
 
     def test_validates_position_feature_structure(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
 
-        validate_shogi_position_feature_structure(features)
+        validate_shogi_rich_position_feature_structure(features)
 
     def test_rejects_invalid_position_feature_shape(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
         invalid = ShogiPositionFeatures(
             global_feature_ids=features.global_feature_ids[:-1],
             square_feature_ids=features.square_feature_ids,
@@ -448,24 +448,24 @@ class ShogiPositionEncodingTest(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(ValueError, "global_feature_ids"):
-            validate_shogi_position_feature_structure(invalid)
+            validate_shogi_rich_position_feature_structure(invalid)
 
     def test_rejects_invalid_pair_relation_edge_range(self) -> None:
-        features = shogi_position_features_from_sfen(shogi.Board().sfen())
+        features = shogi_rich_position_features_from_sfen(shogi.Board().sfen())
         invalid = ShogiPositionFeatures(
             global_feature_ids=features.global_feature_ids,
             square_feature_ids=features.square_feature_ids,
             piece_feature_ids=features.piece_feature_ids,
             line_feature_ids=features.line_feature_ids,
             pair_relation_edges=ShogiPairRelationEdges(
-                source_element_indices=torch.tensor([SHOGI_POSITION_ELEMENT_COUNT]),
+                source_element_indices=torch.tensor([SHOGI_RICH_POSITION_ELEMENT_COUNT]),
                 target_element_indices=torch.tensor([0]),
                 relation_ids=torch.tensor([PAIR_RELATION_PIECE_ON_SQUARE]),
             ),
         )
 
         with self.assertRaisesRegex(ValueError, "source_element_indices"):
-            validate_shogi_position_feature_structure(invalid)
+            validate_shogi_rich_position_feature_structure(invalid)
 
 
 if __name__ == "__main__":

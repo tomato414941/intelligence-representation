@@ -19,7 +19,7 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_features
 from intrep.representation.outputs.shogi_policy_plane_encoding import shogi_policy_plane_action_index, shogi_policy_plane_legal_mask
-from intrep.representation.inputs.shogi_position_features.position_encoding import stack_shogi_position_features
+from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
 
 PositionEvaluation = tuple[dict[str, float], float]

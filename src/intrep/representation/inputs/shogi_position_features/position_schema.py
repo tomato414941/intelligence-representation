@@ -25,9 +25,9 @@ PIECE_FEATURE_COUNT = 5 + COUNTERFACTUAL_FEATURE_COUNT + DROP_POTENTIAL_FEATURE_
 GLOBAL_ELEMENT_COUNT = 18
 LINE_ELEMENT_COUNT = 9 + 9 + 17 + 17
 LINE_FEATURE_COUNT = 6
-SHOGI_POSITION_ELEMENT_COUNT = GLOBAL_ELEMENT_COUNT + SQUARE_ELEMENT_COUNT + PIECE_SLOT_COUNT + LINE_ELEMENT_COUNT
-SHOGI_POSITION_INPUT_SCHEMA_ID = (
-    "shogi_global_square_piece_line_pair_edge_drop_shadow_coarse_counterfactual_drop_potential_feature_elements"
+SHOGI_RICH_POSITION_ELEMENT_COUNT = GLOBAL_ELEMENT_COUNT + SQUARE_ELEMENT_COUNT + PIECE_SLOT_COUNT + LINE_ELEMENT_COUNT
+SHOGI_RICH_POSITION_INPUT_SCHEMA_ID = (
+    "shogi_rich_global_square_piece_line_pair_edge_drop_shadow_coarse_counterfactual_drop_potential_feature_elements"
 )
 
 STATE_ELEMENT_INDEX = 0
@@ -35,9 +35,9 @@ GLOBAL_SIDE_TO_MOVE_ELEMENT_INDEX = 1
 GLOBAL_IN_CHECK_ELEMENT_INDEX = 2
 GLOBAL_MOVE_COUNT_ELEMENT_INDEX = 3
 GLOBAL_HAND_ELEMENT_OFFSET = 4
-SQUARE_ELEMENT_OFFSET = GLOBAL_ELEMENT_COUNT
-PIECE_ELEMENT_OFFSET = SQUARE_ELEMENT_OFFSET + SQUARE_ELEMENT_COUNT
-LINE_ELEMENT_OFFSET = PIECE_ELEMENT_OFFSET + PIECE_SLOT_COUNT
+RICH_SQUARE_ELEMENT_OFFSET = GLOBAL_ELEMENT_COUNT
+RICH_PIECE_ELEMENT_OFFSET = RICH_SQUARE_ELEMENT_OFFSET + SQUARE_ELEMENT_COUNT
+RICH_LINE_ELEMENT_OFFSET = RICH_PIECE_ELEMENT_OFFSET + PIECE_SLOT_COUNT
 PAIR_RELATION_NONE = 0
 PAIR_RELATION_PIECE_ON_SQUARE = 1
 PAIR_RELATION_PIECE_ATTACKS_SQUARE = 2
@@ -98,9 +98,9 @@ PIECE_LOCATION_HAND_FEATURE_ID = PIECE_LOCATION_BOARD_FEATURE_ID + 1
 PIECE_SQUARE_UNKNOWN_FEATURE_ID = PIECE_LOCATION_HAND_FEATURE_ID + 1
 PIECE_SQUARE_OFFSET = PIECE_SQUARE_UNKNOWN_FEATURE_ID + 1
 SHOGI_POSITION_VOCAB_SIZE = PIECE_SQUARE_OFFSET + SQUARE_ELEMENT_COUNT
-SHOGI_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_ELEMENT_COUNT
+SHOGI_RICH_POSITION_GLOBAL_SLOT_COUNT = GLOBAL_ELEMENT_COUNT
 SHOGI_POSITION_SQUARE_COUNT = SQUARE_ELEMENT_COUNT
-SHOGI_POSITION_SQUARE_FEATURE_COUNT = (
+SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT = (
     3
     + SQUARE_ATTACK_PIECE_TYPE_COUNT * 2
     + 2
@@ -108,28 +108,28 @@ SHOGI_POSITION_SQUARE_FEATURE_COUNT = (
     + COUNTERFACTUAL_FEATURE_COUNT
     + DROP_POTENTIAL_FEATURE_COUNT
 )
-SHOGI_POSITION_SQUARE_SLOT_COUNT = SQUARE_ELEMENT_COUNT
-SHOGI_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
-SHOGI_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
-SHOGI_POSITION_LINE_SLOT_COUNT = LINE_ELEMENT_COUNT
-SHOGI_POSITION_LINE_FEATURE_COUNT = LINE_FEATURE_COUNT
+SHOGI_RICH_POSITION_SQUARE_SLOT_COUNT = SQUARE_ELEMENT_COUNT
+SHOGI_RICH_POSITION_PIECE_SLOT_COUNT = PIECE_SLOT_COUNT
+SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT = PIECE_FEATURE_COUNT
+SHOGI_RICH_POSITION_LINE_SLOT_COUNT = LINE_ELEMENT_COUNT
+SHOGI_RICH_POSITION_LINE_FEATURE_COUNT = LINE_FEATURE_COUNT
 SHOGI_POSITION_STATE_FEATURE_ID = SHOGI_POSITION_VOCAB_SIZE
 SHOGI_POSITION_FEATURE_VOCAB_SIZE = SHOGI_POSITION_STATE_FEATURE_ID + 1
 
 
-def shogi_position_feature_manifest() -> dict[str, object]:
+def shogi_rich_position_feature_manifest() -> dict[str, object]:
     return {
-        "input_schema_id": SHOGI_POSITION_INPUT_SCHEMA_ID,
+        "input_schema_id": SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
         "coordinate_system": "side_to_move_relative_180_rotation",
         "global_element_count": GLOBAL_ELEMENT_COUNT,
         "square_element_count": SQUARE_ELEMENT_COUNT,
         "piece_slot_count": PIECE_SLOT_COUNT,
         "line_element_count": LINE_ELEMENT_COUNT,
-        "representation_element_count": SHOGI_POSITION_ELEMENT_COUNT,
+        "representation_element_count": SHOGI_RICH_POSITION_ELEMENT_COUNT,
         "global_feature_count": 1,
-        "square_feature_count": SHOGI_POSITION_SQUARE_FEATURE_COUNT,
-        "piece_feature_count": SHOGI_POSITION_PIECE_FEATURE_COUNT,
-        "line_feature_count": SHOGI_POSITION_LINE_FEATURE_COUNT,
+        "square_feature_count": SHOGI_RICH_POSITION_SQUARE_FEATURE_COUNT,
+        "piece_feature_count": SHOGI_RICH_POSITION_PIECE_FEATURE_COUNT,
+        "line_feature_count": SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square", "piece", "line", "pair_relation_edges"],
         "global_features": [
@@ -205,9 +205,9 @@ def shogi_position_feature_manifest() -> dict[str, object]:
             "global_in_check": GLOBAL_IN_CHECK_ELEMENT_INDEX,
             "global_move_count": GLOBAL_MOVE_COUNT_ELEMENT_INDEX,
             "global_hand": GLOBAL_HAND_ELEMENT_OFFSET,
-            "square": SQUARE_ELEMENT_OFFSET,
-            "piece": PIECE_ELEMENT_OFFSET,
-            "line": LINE_ELEMENT_OFFSET,
+            "square": RICH_SQUARE_ELEMENT_OFFSET,
+            "piece": RICH_PIECE_ELEMENT_OFFSET,
+            "line": RICH_LINE_ELEMENT_OFFSET,
         },
         "vocab_offsets": {
             "empty_square": EMPTY_SQUARE_FEATURE_ID,
@@ -249,10 +249,10 @@ def shogi_position_feature_manifest() -> dict[str, object]:
     }
 
 
-def shogi_position_feature_manifest_hash() -> str:
-    payload = json.dumps(shogi_position_feature_manifest(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+def shogi_rich_position_feature_manifest_hash() -> str:
+    payload = json.dumps(shogi_rich_position_feature_manifest(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
-SHOGI_POSITION_FEATURE_MANIFEST = shogi_position_feature_manifest()
-SHOGI_POSITION_FEATURE_MANIFEST_HASH = shogi_position_feature_manifest_hash()
+SHOGI_RICH_POSITION_FEATURE_MANIFEST = shogi_rich_position_feature_manifest()
+SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH = shogi_rich_position_feature_manifest_hash()

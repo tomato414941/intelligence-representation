@@ -17,7 +17,8 @@ from intrep.representation.inputs.shogi_position_features.position_alpha_zero_li
     shogi_alpha_zero_like_position_feature_manifest_hash,
     shogi_alpha_zero_like_position_features_from_sfen,
 )
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
+from intrep.representation.inputs.shogi_position_features.position_schema import (
     HAND_PIECE_TYPES,
     MOVE_COUNT_BUCKET_OFFSET,
     OPPONENT_HAND_OFFSET,
@@ -26,9 +27,8 @@ from intrep.representation.inputs.shogi_position_features.position_encoding impo
     OWN_PIECE_OFFSET,
     SHOGI_POSITION_STATE_FEATURE_ID,
     SIDE_TO_MOVE_BLACK_FEATURE_ID,
-    absolute_to_relative_square,
-    stack_shogi_position_features,
 )
+from intrep.domains.shogi.coordinates import absolute_to_relative_square
 
 
 class ShogiAlphaZeroLikePositionTest(unittest.TestCase):

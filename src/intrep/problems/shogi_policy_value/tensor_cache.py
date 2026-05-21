@@ -42,17 +42,17 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID,
     SHOGI_MINIMAL_GLOBAL_POSITION_INPUT_MODULE_ID,
-    SHOGI_POSITION_INPUT_MODULE_ID,
+    SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 )
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.representation.inputs.shogi_position_features.position_encoding import (
+from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,
-    validate_shogi_position_feature_structure,
+    validate_shogi_rich_position_feature_structure,
 )
 from intrep.representation.inputs.shogi_position_features.position_schema import (
     PAIR_RELATION_COUNT,
-    SHOGI_POSITION_ELEMENT_COUNT,
+    SHOGI_RICH_POSITION_ELEMENT_COUNT,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
 )
 from intrep.representation.inputs.shogi_position_features.position_alpha_zero_like import (
@@ -119,7 +119,7 @@ def build_shogi_policy_value_tensor_cache(
     shard_games: int | None = None,
     resume: bool = False,
     output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
     shogi_position_input_identity_for_input_module(input_module)
@@ -202,7 +202,7 @@ def build_shogi_policy_value_tensor_cache_shard(
     shard_index: int,
     resume: bool = False,
     output_space: str = SHOGI_POLICY_VALUE_OUTPUT_SPACE_LEGAL_MOVE,
-    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
     validate_shogi_policy_value_output_space(output_space)
     shogi_position_input_identity_for_input_module(input_module)
@@ -261,7 +261,7 @@ def write_shogi_policy_value_tensor_cache_manifest(
     shard_examples: int = 100_000,
     shard_games: int | None = None,
     output_space: str | None = None,
-    input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 ) -> dict[str, object]:
     shogi_position_input_identity_for_input_module(input_module)
     if shard_games is not None:
@@ -322,7 +322,7 @@ def load_shogi_policy_value_tensor_cache(
     expected_data_selection: ShogiPolicyValueDataSelection | None = None,
     expected_data_selection_root: Path | None = None,
     expected_output_space: str | None = None,
-    expected_input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    expected_input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 ) -> ShogiPolicyValueTensorCache:
     manifest_path = path / "manifest.json"
     manifest = _object_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
@@ -396,7 +396,7 @@ def _validate_input_feature_identity(
     payload: dict[str, object],
     *,
     artifact_name: str,
-    expected_input_module: str = SHOGI_POSITION_INPUT_MODULE_ID,
+    expected_input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 ) -> None:
     expected = shogi_position_input_identity_for_input_module(expected_input_module)
     if payload.get("input_schema_id") != expected["input_schema_id"]:
@@ -889,7 +889,7 @@ def _shard_manifest_path(shard_path: Path) -> Path:
     return shard_path.with_suffix(".json")
 
 
-def _load_shard_manifest_file(path: Path, *, input_module: str = SHOGI_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
+def _load_shard_manifest_file(path: Path, *, input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
     payload = _object_dict(json.loads(path.read_text(encoding="utf-8")))
     if payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard manifest schema")
@@ -902,7 +902,7 @@ def _write_shard_manifest_file(path: Path, manifest: dict[str, object]) -> None:
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
-def _load_shard(path: Path, *, input_module: str = SHOGI_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
+def _load_shard(path: Path, *, input_module: str = SHOGI_RICH_POSITION_INPUT_MODULE_ID) -> dict[str, object]:
     payload = torch.load(path, map_location="cpu", weights_only=False)
     if not isinstance(payload, dict) or payload.get("schema_version") != SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA:
         raise ValueError("unsupported shogi policy/value tensor cache shard schema")
@@ -1009,7 +1009,7 @@ def _legal_move_sample_to_payload(sample: LegalMovePolicyValueTensorSample) -> d
         "legal_move_features": _uint16_tensor(
             "legal_move_features",
             sample.legal_move_features,
-            maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+            maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
         ),
         "label": _uint16_tensor("label", sample.label),
         "policy_targets": sample.policy_targets.to(dtype=torch.float32),
@@ -1075,12 +1075,12 @@ def _position_features_to_payload(features: ShogiPositionFeatures) -> dict[str, 
             "source_element_indices": _uint16_tensor(
                 "pair_relation_edges.source_element_indices",
                 features.pair_relation_edges.source_element_indices,
-                maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+                maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
             ),
             "target_element_indices": _uint16_tensor(
                 "pair_relation_edges.target_element_indices",
                 features.pair_relation_edges.target_element_indices,
-                maximum_exclusive=SHOGI_POSITION_ELEMENT_COUNT,
+                maximum_exclusive=SHOGI_RICH_POSITION_ELEMENT_COUNT,
             ),
             "relation_ids": _uint8_tensor(
                 "pair_relation_edges.relation_ids",
@@ -1110,8 +1110,8 @@ def _validate_position_feature_structure_for_input_module(
     *,
     input_module: str,
 ) -> None:
-    if input_module == SHOGI_POSITION_INPUT_MODULE_ID:
-        validate_shogi_position_feature_structure(features)
+    if input_module == SHOGI_RICH_POSITION_INPUT_MODULE_ID:
+        validate_shogi_rich_position_feature_structure(features)
         return
     if input_module == SHOGI_ALPHA_ZERO_LIKE_POSITION_INPUT_MODULE_ID:
         validate_shogi_alpha_zero_like_position_feature_structure(features)

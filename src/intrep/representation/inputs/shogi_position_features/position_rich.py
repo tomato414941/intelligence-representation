@@ -6,9 +6,9 @@ from intrep.representation.inputs.shogi_position_features.position_features impo
     ShogiPositionFeatures,
     stack_shogi_pair_relation_edges,
     stack_shogi_position_features,
-    validate_shogi_position_feature_structure,
+    validate_shogi_rich_position_feature_structure,
 )
-from intrep.representation.inputs.shogi_position_features.position_building import shogi_position_features_from_sfen
+from intrep.representation.inputs.shogi_position_features.position_rich_building import shogi_rich_position_features_from_sfen
 from intrep.domains.shogi.coordinates import (
     absolute_to_relative_square,
     king_relative_offset_bucket,

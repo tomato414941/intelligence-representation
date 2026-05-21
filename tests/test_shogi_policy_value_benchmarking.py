@@ -14,7 +14,7 @@ from intrep.problems.shogi_policy_value.benchmarking import (
 )
 from intrep.problems.shogi_policy_value.checkpoint import save_shogi_policy_value_checkpoint
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
-from intrep.representation.inputs.shogi_position_features.position_encoding import SHOGI_POSITION_FEATURE_MANIFEST_HASH, SHOGI_POSITION_INPUT_SCHEMA_ID
+from intrep.representation.inputs.shogi_position_features.position_rich import SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH, SHOGI_RICH_POSITION_INPUT_SCHEMA_ID
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 
 
@@ -52,8 +52,8 @@ class ShogiPolicyValueBenchmarkingTest(unittest.TestCase):
             result["schema_version"],
             "intrep.problems.shogi_policy_value.position_feature_generation_benchmark.v1",
         )
-        self.assertEqual(result["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
-        self.assertEqual(result["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
+        self.assertEqual(result["input_schema_id"], SHOGI_RICH_POSITION_INPUT_SCHEMA_ID)
+        self.assertEqual(result["input_feature_manifest_hash"], SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH)
         self.assertEqual(result["position_count"], 1)
         self.assertEqual(result["measured_position_count"], 1)
         self.assertGreater(result["latency_ms"]["min"], 0.0)
@@ -88,8 +88,8 @@ class ShogiPolicyValueBenchmarkingTest(unittest.TestCase):
             benchmark["schema_version"],
             "intrep.problems.shogi_policy_value.inference_batching_benchmark.v1",
         )
-        self.assertEqual(benchmark["input_schema_id"], SHOGI_POSITION_INPUT_SCHEMA_ID)
-        self.assertEqual(benchmark["input_feature_manifest_hash"], SHOGI_POSITION_FEATURE_MANIFEST_HASH)
+        self.assertEqual(benchmark["input_schema_id"], SHOGI_RICH_POSITION_INPUT_SCHEMA_ID)
+        self.assertEqual(benchmark["input_feature_manifest_hash"], SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH)
         self.assertTrue(benchmark["includes_feature_generation"])
         self.assertEqual([entry["batch_size"] for entry in benchmark["batch_results"]], [1, 2])
         self.assertGreater(benchmark["batch_results"][0]["latency_ms"]["min"], 0.0)
