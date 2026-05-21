@@ -11,7 +11,6 @@ Each entry should include:
 - topic
 - why it matters
 - possible project relevance
-- status
 
 ## Screening Is Enough
 
@@ -23,8 +22,18 @@ Each entry should include:
 - Possible project relevance: candidate for future shared-core architecture
   experiments, especially where the model should select relevant source
   elements rather than blend all elements.
-- Status: note only. Do not implement until the current data, evaluation, and
-  model-management basics are stable.
+
+## LeWorldModel
+
+- Source: https://arxiv.org/abs/2603.19312
+- Topic: joint-embedding predictive architecture; latent world model from pixels.
+- Why it matters: learns action-conditioned dynamics by predicting the next
+  observation's latent embedding instead of reconstructing raw pixels or relying
+  on task labels.
+- Possible project relevance: supports treating predictive representation as
+  latent-state prediction, especially for future action-conditioned world-model
+  work where the target is another encoded state rather than a human-authored
+  label.
 
 ## Modular Memory Is the Key to Continual Learning Agents
 
@@ -38,5 +47,3 @@ Each entry should include:
   source material, selecting Training Data Bundles from it, and considering future
   retrieval or memory-based use instead of forcing every experience directly
   into checkpoints.
-- Status: note only. Use as design context for source records, Training Data Bundle,
-  and continual-learning boundaries.
