@@ -39,7 +39,7 @@ class ShogiMinimalSplitGlobalPositionTest(unittest.TestCase):
         )
         self.assertEqual(SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST["feature_groups"], ["global", "square"])
         self.assertEqual(SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST["global_element_count"], 17)
-        self.assertEqual(SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST["square_features"], ["piece_identity"])
+        self.assertEqual(SHOGI_MINIMAL_SPLIT_GLOBAL_POSITION_FEATURE_MANIFEST["square_feature_groups"], ["piece_identity"])
 
     def test_encodes_piece_placement_as_one_square_feature(self) -> None:
         features = shogi_minimal_split_global_position_features_from_sfen("4k4/9/9/9/4R4/9/9/9/4K4 b - 1")

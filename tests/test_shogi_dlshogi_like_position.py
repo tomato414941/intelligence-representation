@@ -46,7 +46,7 @@ class ShogiDlshogiLikePositionTest(unittest.TestCase):
         )
         self.assertEqual(SHOGI_DLSHOGI_LIKE_POSITION_FEATURE_MANIFEST["feature_groups"], ["global", "square"])
         self.assertEqual(
-            SHOGI_DLSHOGI_LIKE_POSITION_FEATURE_MANIFEST["square_features"],
+            SHOGI_DLSHOGI_LIKE_POSITION_FEATURE_MANIFEST["square_feature_groups"],
             [
                 "own_piece_planes",
                 "opponent_piece_planes",

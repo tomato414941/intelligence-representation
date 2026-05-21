@@ -52,7 +52,7 @@ def shogi_dlshogi_like_position_feature_manifest() -> dict[str, object]:
         "square_feature_count": SHOGI_DLSHOGI_LIKE_SQUARE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square"],
-        "global_features": [
+        "global_feature_groups": [
             "state",
             "side_to_move",
             "in_check",
@@ -60,7 +60,7 @@ def shogi_dlshogi_like_position_feature_manifest() -> dict[str, object]:
             "own_hand_counts",
             "opponent_hand_counts",
         ],
-        "square_features": [
+        "square_feature_groups": [
             "own_piece_planes",
             "opponent_piece_planes",
             "own_attack_count",

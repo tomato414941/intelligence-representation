@@ -132,7 +132,7 @@ def shogi_rich_position_feature_manifest() -> dict[str, object]:
         "line_feature_count": SHOGI_RICH_POSITION_LINE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square", "piece", "line", "pair_relation_edges"],
-        "global_features": [
+        "global_feature_groups": [
             "state",
             "side_to_move",
             "in_check",
@@ -140,7 +140,7 @@ def shogi_rich_position_feature_manifest() -> dict[str, object]:
             "own_hand_counts",
             "opponent_hand_counts",
         ],
-        "square_features": [
+        "square_feature_groups": [
             "piece_identity",
             "own_attack_count",
             "opponent_attack_count",
@@ -156,7 +156,7 @@ def shogi_rich_position_feature_manifest() -> dict[str, object]:
             "opponent_drop_potential_after_losing_piece",
             "own_drop_potential_after_capturing_piece",
         ],
-        "piece_features": [
+        "piece_feature_fields": [
             "location_kind",
             "piece_identity",
             "relative_square",
@@ -168,7 +168,7 @@ def shogi_rich_position_feature_manifest() -> dict[str, object]:
             "opponent_drop_potential_after_losing_piece",
             "own_drop_potential_after_capturing_piece",
         ],
-        "line_features": [
+        "line_feature_fields": [
             "line_kind",
             "own_king_on_line",
             "opponent_king_on_line",

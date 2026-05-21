@@ -46,14 +46,14 @@ def shogi_minimal_split_global_position_feature_manifest() -> dict[str, object]:
         "square_feature_count": SHOGI_MINIMAL_SPLIT_GLOBAL_SQUARE_FEATURE_COUNT,
         "feature_vocab_size": SHOGI_POSITION_FEATURE_VOCAB_SIZE,
         "feature_groups": ["global", "square"],
-        "global_features": [
+        "global_feature_groups": [
             "state",
             "side_to_move",
             "move_count_bucket",
             "own_hand_counts",
             "opponent_hand_counts",
         ],
-        "square_features": ["piece_identity"],
+        "square_feature_groups": ["piece_identity"],
         "hand_piece_types": list(HAND_PIECE_TYPES),
     }
 
