@@ -34,12 +34,6 @@ Record enough context to explain latency and throughput:
 - `output_count`: number of output units produced or evaluated.
 - `output_per_sec`: `output_count / request_wall_time_sec`.
 
-## Purpose
-
-Measure one-game, one-move latency behavior. This is different from self-play
-generation throughput, where multiple games can be sharded across worker
-processes.
-
 ## Measurement Conditions
 
 Unless noted otherwise:
