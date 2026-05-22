@@ -16,14 +16,8 @@ The most relevant current Floodgate-like latency measurements are the
 Record enough context to explain latency and throughput:
 
 - inference path
-- model identity
-- environment
 - input shape
 - output shape
-- request definition
-- output unit definition
-- runtime settings
-- workload used for measurement
 
 ## Required Metrics
 
