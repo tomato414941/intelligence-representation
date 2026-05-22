@@ -25,20 +25,6 @@ Record enough context to explain training throughput:
 - training entrypoint
 - cache restore behavior
 
-## Required Metrics
-
-- `steps_per_second`: optimizer steps per second during the training loop.
-- `examples_per_second`: `steps_per_second * batch_size`.
-- `data_wait_seconds`: time spent waiting for the next batch.
-- `forward_backward_seconds`: model forward, loss, backward time.
-- `optimizer_seconds`: optimizer and scheduler update time.
-- `eval_seconds`: wall-clock time for one periodic eval.
-- `gpu_util`: observed GPU utilization during training.
-- `gpu_memory_used`: observed GPU memory during training.
-- `training_loop_runtime`: runtime for optimizer-loop work.
-- `end_to_end_runtime`: setup, cache restore, training, output sync, and
-  cleanup runtime.
-
 ## Measurement Conditions
 
 Unless noted otherwise:
@@ -58,6 +44,8 @@ Unless noted otherwise:
 ## Notes
 
 - Timing columns should be taken from training progress logs when available.
+- End-to-end runtime includes setup, cache restore, training, output sync, and
+  cleanup.
 - GPU utilization and memory should be sampled from the same pod while training
   is active.
 - Keep quality interpretation out of this document; this page is for runtime
