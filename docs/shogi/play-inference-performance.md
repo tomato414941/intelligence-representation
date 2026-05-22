@@ -6,11 +6,6 @@ not a run log, a model-quality report, or a cloud cost ledger.
 `runs/` is disposable. Measurements that should survive must be summarized here
 or in a promoted model note.
 
-## Current Reading
-
-The most relevant current Floodgate-like latency measurements are the
-2026-05-13 YaneuraOu one-game checks below.
-
 ## Required Context
 
 Record enough context to explain latency and throughput:
