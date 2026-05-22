@@ -34,6 +34,9 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
 from intrep.representation.inputs.shogi_position_features.position_features import ShogiPositionFeatures
 
 
+DEFAULT_SHOGI_POLICY_VALUE_EARLY_STOPPING_PATIENCE = 10
+
+
 @dataclass(frozen=True)
 class ShogiPolicyValueTrainingConfig:
     assembly_spec_id: str

@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.checkpoint import (
     load_shogi_policy_value_checkpoint,
     load_shogi_policy_value_checkpoint_identity,
 )
+from intrep.problems.shogi_policy_value.training import DEFAULT_SHOGI_POLICY_VALUE_EARLY_STOPPING_PATIENCE
 from intrep.problems.shogi_policy_value.data_selection import (
     load_shogi_policy_value_data_selection,
     load_shogi_policy_value_data_selection_examples,
@@ -441,6 +442,11 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
                 main()
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                metrics["config"]["early_stopping_patience"],
+                DEFAULT_SHOGI_POLICY_VALUE_EARLY_STOPPING_PATIENCE,
+            )
+            self.assertEqual(metrics["config"]["eval_every"], 1000)
             self.assertEqual(metrics["train_policy_target_summary"]["available_count"], 2)
             self.assertEqual(metrics["train_policy_target_summary"]["missing_count"], 0)
             self.assertEqual(metrics["train_policy_target_summary"]["available_ratio"], 1.0)

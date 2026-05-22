@@ -42,6 +42,8 @@ VALUE_LOSS_WEIGHT=${VALUE_LOSS_WEIGHT:-1.0}
 NUM_WORKERS=${NUM_WORKERS:-2}
 LOG_EVERY=${LOG_EVERY:-100}
 EVAL_EVERY=${EVAL_EVERY:-1000}
+EARLY_STOPPING_PATIENCE=${EARLY_STOPPING_PATIENCE:-10}
+DISABLE_EARLY_STOPPING=${DISABLE_EARLY_STOPPING:-0}
 CHECKPOINT_EVERY=${CHECKPOINT_EVERY:-1000}
 METRICS_EVERY=${METRICS_EVERY:-1000}
 KEEP_LAST_N_CHECKPOINTS=${KEEP_LAST_N_CHECKPOINTS:-3}
@@ -117,6 +119,11 @@ fi
 if [[ -n "$MAX_EVAL_EXAMPLES" ]]; then
   OPTIONAL_TRAIN_ARGS+=(--max-eval-examples "$MAX_EVAL_EXAMPLES")
 fi
+if [[ "$DISABLE_EARLY_STOPPING" == "1" ]]; then
+  OPTIONAL_TRAIN_ARGS+=(--disable-early-stopping)
+else
+  OPTIONAL_TRAIN_ARGS+=(--early-stopping-patience "$EARLY_STOPPING_PATIENCE")
+fi
 
 python3 "$RUNPOD_JOB" \
   --repo-root "$PWD" \
@@ -142,7 +149,7 @@ python3 "$RUNPOD_JOB" \
 echo \"restore_cache prefix=$R2_CACHE_PREFIX tensor_cache=$TENSOR_CACHE\"
 R2_ENV_FILE=\"$R2_REMOTE_ENV\" bash scripts/restore_r2_artifact.sh \"$R2_CACHE_PREFIX\" \"$TENSOR_CACHE\" | tee \"$OUTPUT_DIR/cache_restore_size.json\"
 du -sh \"$TENSOR_CACHE\" | tee \"$OUTPUT_DIR/cache_size.txt\"
-echo \"train_config assembly_spec=$ASSEMBLY_SPEC tensor_cache=$TENSOR_CACHE max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE\"
+echo \"train_config assembly_spec=$ASSEMBLY_SPEC tensor_cache=$TENSOR_CACHE max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE disable_early_stopping=$DISABLE_EARLY_STOPPING\"
 .venv/bin/python -u -m intrep.train_shogi_policy_value \
   --data-selection \"$DATA_SELECTION\" \
   --tensor-cache \"$TENSOR_CACHE\" \

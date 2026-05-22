@@ -27,6 +27,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
 )
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
 from intrep.problems.shogi_policy_value.training import (
+    DEFAULT_SHOGI_POLICY_VALUE_EARLY_STOPPING_PATIENCE,
     ShogiPolicyValuePhaseProgress,
     ShogiPolicyValueTrainingConfig,
     ShogiPolicyValueTrainingProgress,
@@ -62,8 +63,9 @@ def main() -> None:
     parser.add_argument("--max-train-eval-examples", type=int)
     parser.add_argument("--max-eval-examples", type=int)
     parser.add_argument("--log-every", type=int)
-    parser.add_argument("--eval-every", type=int)
-    parser.add_argument("--early-stopping-patience", type=int)
+    parser.add_argument("--eval-every", type=int, default=1000)
+    parser.add_argument("--early-stopping-patience", type=int, default=DEFAULT_SHOGI_POLICY_VALUE_EARLY_STOPPING_PATIENCE)
+    parser.add_argument("--disable-early-stopping", action="store_true")
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--checkpoint-every", type=int)
@@ -117,7 +119,7 @@ def main() -> None:
         max_eval_examples=args.max_eval_examples,
         log_every=args.log_every,
         eval_every=args.eval_every,
-        early_stopping_patience=args.early_stopping_patience,
+        early_stopping_patience=None if args.disable_early_stopping else args.early_stopping_patience,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         progress_every=_progress_every(args.log_every, args.checkpoint_every, args.metrics_every),
