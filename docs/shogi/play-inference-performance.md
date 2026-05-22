@@ -14,15 +14,6 @@ Record enough context to explain latency and throughput:
 - input shape
 - output shape
 
-## Required Metrics
-
-- `request_wall_time_sec`: end-to-end wall-clock time for one request.
-- `model_call_count`: number of model calls during one request.
-- `model_wall_time_sec`: total wall-clock time spent in model calls.
-- `non_model_wall_time_sec`: wall-clock time outside model calls.
-- `output_count`: number of output units produced or evaluated.
-- `output_per_sec`: `output_count / request_wall_time_sec`.
-
 ## Measurement Conditions
 
 Unless noted otherwise:
