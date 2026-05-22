@@ -1,6 +1,6 @@
 # Shogi Status
 
-Last updated: 2026-05-17.
+Last updated: 2026-05-22.
 
 This is the compact current-state document. Detailed experiment rows live in
 `learning-experiments.md`; runtime measurements live in the throughput and
@@ -8,7 +8,14 @@ inference-performance docs.
 
 ## Current Promoted Checkpoint
 
-No current promoted component checkpoint is stored in `models/`.
+The current loadable component checkpoint stored in `models/` is:
+
+```text
+models/shogi-minimal-split-global-action-plane/
+```
+
+It is a small component-format smoke checkpoint, not a playing-strength
+checkpoint.
 
 Historical measurements may refer to `d256-h1024-heads8-l6-shogi`, which was
 the previous single-file promoted checkpoint before checkpoint artifacts were

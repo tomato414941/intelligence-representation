@@ -55,10 +55,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            self.assertTrue((path / "input.pt").is_file())
-            self.assertTrue((path / "core.pt").is_file())
-            self.assertTrue((path / "policy_output.pt").is_file())
-            self.assertTrue((path / "value_output.pt").is_file())
+            self.assertTrue((path / "components" / "input.pt").is_file())
+            self.assertTrue((path / "components" / "core.pt").is_file())
+            self.assertTrue((path / "components" / "policy_output.pt").is_file())
+            self.assertTrue((path / "components" / "value_output.pt").is_file())
             self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
             self.assertNotIn("input", payload["config"])
             self.assertNotIn("core", payload["config"])
@@ -151,7 +151,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            (path / "core.pt").unlink()
+            (path / "components" / "core.pt").unlink()
 
             with self.assertRaisesRegex(ValueError, "component file"):
                 load_shogi_policy_value_checkpoint(path)

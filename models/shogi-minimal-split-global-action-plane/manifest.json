@@ -1,19 +1,19 @@
 {
   "components": {
     "core": {
-      "path": "core.pt",
+      "path": "components/core.pt",
       "sha256": "fbbd0656292ca111d5a431edc5d5f547403362039dbbc2d996379a2fe5cd7aeb"
     },
     "input": {
-      "path": "input.pt",
+      "path": "components/input.pt",
       "sha256": "966eab621f98c8679aae3b91c3d2bf0872b655323ccdaa1f96094925cb95f33a"
     },
     "policy_output": {
-      "path": "policy_output.pt",
+      "path": "components/policy_output.pt",
       "sha256": "7624f0a3eda4904eb6c9ac10e3b82f4df005a889847d5d459de2aceb4eefc383"
     },
     "value_output": {
-      "path": "value_output.pt",
+      "path": "components/value_output.pt",
       "sha256": "ee9fcee88223ca21daee1ab8133fde09f6285ae9bae657839a4628a7e41ccc2a"
     }
   },
@@ -29,8 +29,8 @@
       "value_output": "scalar_tanh_value_output"
     },
     "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
-    "checkpoint_id": "shogi-policy-value:sha256:c77f95cd4014fb16ba11a5c8a9541d6019a0e76d7b75cb37b6f7a19f43953c7f",
-    "checkpoint_sha256": "c77f95cd4014fb16ba11a5c8a9541d6019a0e76d7b75cb37b6f7a19f43953c7f",
+    "checkpoint_id": "shogi-policy-value:sha256:df00efc21055a762ee1e3a59c03df99b491bda8bf568b99541f2808f36e3f5e0",
+    "checkpoint_sha256": "df00efc21055a762ee1e3a59c03df99b491bda8bf568b99541f2808f36e3f5e0",
     "embedding_dim": 16,
     "hidden_dim": 32,
     "input_feature_manifest": {

@@ -22,10 +22,9 @@ in [datasets.md](datasets.md).
   checkpoints.
 - Evaluation metrics and match outputs belong under `runs/` unless explicitly
   promoted.
-- `models/<model-name>/checkpoint/` holds a long-lived loadable model
-  checkpoint artifact.
-- `checkpoint/` under `models/` must contain `manifest.json` and component
-  files for the model's input, core, and output modules.
+- `models/<model-name>/` holds a long-lived loadable model entry artifact.
+- A model entry under `models/` must contain `manifest.json` and
+  `components/` files for the model's input, core, and output modules.
 - Do not put metrics, run logs, player presets, or lineage registries under
   `models/`.
 - `tokenizers/<tokenizer-name>/tokenizer.json` holds a long-lived loadable text

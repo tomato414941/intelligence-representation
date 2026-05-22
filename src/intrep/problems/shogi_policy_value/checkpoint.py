@@ -22,11 +22,12 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
 SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA = "intrep.problems.shogi_policy_value.component_checkpoint.v1"
 SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX = "shogi-policy-value:sha256:"
 SHOGI_POLICY_VALUE_CHECKPOINT_MANIFEST = "manifest.json"
+SHOGI_POLICY_VALUE_COMPONENT_DIR = "components"
 SHOGI_POLICY_VALUE_COMPONENT_FILES = {
-    "input": "input.pt",
-    "core": "core.pt",
-    "policy_output": "policy_output.pt",
-    "value_output": "value_output.pt",
+    "input": f"{SHOGI_POLICY_VALUE_COMPONENT_DIR}/input.pt",
+    "core": f"{SHOGI_POLICY_VALUE_COMPONENT_DIR}/core.pt",
+    "policy_output": f"{SHOGI_POLICY_VALUE_COMPONENT_DIR}/policy_output.pt",
+    "value_output": f"{SHOGI_POLICY_VALUE_COMPONENT_DIR}/value_output.pt",
 }
 
 
@@ -67,6 +68,7 @@ def save_shogi_policy_value_component_checkpoint(
         if component_name not in components:
             raise ValueError(f"shogi checkpoint missing component: {component_name}")
         component_path = checkpoint_dir / file_name
+        component_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({"component": component_name, "state_dict": components[component_name]}, component_path)
         component_manifest[component_name] = {
             "path": file_name,
