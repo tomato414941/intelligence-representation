@@ -45,7 +45,10 @@ from intrep.representation.outputs.shogi_legal_move import (
     _legal_move_square_hidden,
 )
 from intrep.representation.outputs.shogi_action_plane_policy import ShogiActionPlanePolicyHead
-from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import (
+    SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+    SHOGI_ACTION_PLANE_POLICY_MOVE_TYPE_COUNT,
+)
 from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPositionFeatures,
     stack_shogi_position_features,
@@ -348,28 +351,67 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             embedding_dim=8,
             hidden_dim=16,
             action_count=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+            position_layout=ShogiPositionHiddenLayout(
+                state_element_index=0,
+                square_element_offset=1,
+                square_element_count=81,
+            ),
         )
-        position_embedding = torch.randn(2, 8)
-        legal_action_mask = torch.ones(2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.bool)
+        position_hidden = torch.randn(2, 82, 8)
 
-        logits = head(position_embedding, legal_action_mask)
+        logits = head(position_hidden)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
 
-    def test_action_plane_policy_head_masks_illegal_actions(self) -> None:
+    def test_action_plane_policy_head_does_not_mask_illegal_actions(self) -> None:
         head = ShogiActionPlanePolicyHead(
             embedding_dim=8,
             hidden_dim=16,
             action_count=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+            position_layout=ShogiPositionHiddenLayout(
+                state_element_index=0,
+                square_element_offset=1,
+                square_element_count=81,
+            ),
         )
-        position_embedding = torch.randn(2, 8)
-        legal_action_mask = torch.ones(2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.bool)
-        legal_action_mask[:, -1] = False
+        position_hidden = torch.randn(2, 82, 8)
 
-        logits = head(position_embedding, legal_action_mask)
+        logits = head(position_hidden)
 
-        self.assertLess(float(logits[0, -1].item()), -1e20)
-        self.assertLess(float(logits[1, -1].item()), -1e20)
+        self.assertTrue(torch.isfinite(logits[:, -1]).all())
+
+    def test_action_plane_policy_head_uses_square_hidden_for_destination_actions(self) -> None:
+        head = ShogiActionPlanePolicyHead(
+            embedding_dim=8,
+            hidden_dim=16,
+            action_count=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+            position_layout=ShogiPositionHiddenLayout(
+                state_element_index=0,
+                square_element_offset=1,
+                square_element_count=81,
+            ),
+        )
+        with torch.no_grad():
+            for parameter in head.parameters():
+                parameter.zero_()
+            head.square_move_type_scorer[0].weight[0, 0] = 1.0
+            head.square_move_type_scorer[2].weight[0, 0] = 1.0
+        position_hidden = torch.zeros(1, 82, 8)
+        changed_position_hidden = position_hidden.clone()
+        changed_square = 3
+        changed_position_hidden[:, 1 + changed_square, 0] = 2.0
+
+        base_logits = head(position_hidden)
+        changed_logits = head(changed_position_hidden)
+
+        changed_action = changed_square * SHOGI_ACTION_PLANE_POLICY_MOVE_TYPE_COUNT
+        self.assertGreater(
+            float(changed_logits[0, changed_action].detach()),
+            float(base_logits[0, changed_action].detach()),
+        )
+        unchanged_actions = torch.ones(SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT, dtype=torch.bool)
+        unchanged_actions[changed_action] = False
+        self.assertTrue(torch.equal(changed_logits[:, unchanged_actions], base_logits[:, unchanged_actions]))
 
     def test_action_plane_policy_model_returns_fixed_action_logits(self) -> None:
         position_features, legal_action_mask = _action_plane_policy_batch()
@@ -386,7 +428,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
 
-    def test_action_plane_policy_model_masks_illegal_actions(self) -> None:
+    def test_action_plane_policy_model_does_not_mask_illegal_actions_during_forward(self) -> None:
         position_features, legal_action_mask = _action_plane_policy_batch()
         legal_action_mask[:, -1] = False
         model = ActionPlanePolicyShogiPolicyValueModel(
@@ -400,7 +442,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
 
         logits = model(position_features, legal_action_mask)
 
-        self.assertLess(float(logits[0, -1].item()), -1e20)
+        self.assertTrue(torch.isfinite(logits[:, -1]).all())
 
     def test_action_plane_policy_model_returns_policy_and_value_with_one_core_forward(self) -> None:
         position_features, legal_action_mask = _action_plane_policy_batch()

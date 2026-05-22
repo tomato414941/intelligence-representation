@@ -67,12 +67,13 @@ def _build_state_summary_legal_move_output(
 
 def _build_action_plane_policy_output(
     config: ShogiPolicyOutputModuleConfig,
-    _position_layout: ShogiPositionHiddenLayout,
+    position_layout: ShogiPositionHiddenLayout,
 ) -> nn.Module:
     return ShogiActionPlanePolicyHead(
         embedding_dim=config.embedding_dim,
         hidden_dim=config.hidden_dim,
         action_count=SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT,
+        position_layout=position_layout,
     )
 
 

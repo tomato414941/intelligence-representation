@@ -143,8 +143,7 @@ class ActionPlanePolicyShogiPolicyValueModel(nn.Module):
 
     def forward(self, position_features: ShogiPositionFeatures, action_plane_policy_legal_mask: torch.Tensor) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
-        position_embedding = _state_element_hidden(position_hidden, self.position_layout)
-        return self.policy_output(position_embedding, action_plane_policy_legal_mask)
+        return self.policy_output(position_hidden)
 
     def forward_policy_value(
         self,
@@ -153,7 +152,7 @@ class ActionPlanePolicyShogiPolicyValueModel(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_element_hidden(position_hidden, self.position_layout)
-        logits = self.policy_output(position_embedding, action_plane_policy_legal_mask)
+        logits = self.policy_output(position_hidden)
         return logits, self.value_output(position_embedding)
 
     def predict_value(self, position_features: ShogiPositionFeatures) -> torch.Tensor:

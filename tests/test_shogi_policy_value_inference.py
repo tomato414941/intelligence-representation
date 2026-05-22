@@ -54,7 +54,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         with torch.no_grad():
             for parameter in model.parameters():
                 parameter.zero_()
-            model.policy_output.scorer[-1].bias[action_index] = 8.0
+            model.policy_output.action_logit_bias[action_index] = 8.0
 
         with tempfile.TemporaryDirectory() as directory:
             checkpoint_path = Path(directory) / "action-plane-policy.pt"
