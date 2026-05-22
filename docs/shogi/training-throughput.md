@@ -13,10 +13,10 @@ latency belongs in `docs/shogi/play-inference-performance.md`.
 
 ## Current Reading
 
-The current full RunPod training run is still in progress. It is using the
-minimal split-global shogi position input with action-plane policy/value output
-on an RTX 4000 Ada GPU. The latest observed training speed is about 3.09
-steps/sec with high GPU utilization and low data wait.
+The latest completed full RunPod training run used the minimal split-global
+shogi position input with action-plane policy/value output on an RTX 4000 Ada
+GPU. It sustained about 3.09 steps/sec with high GPU utilization and low data
+wait.
 
 ## Required Context
 
@@ -72,7 +72,7 @@ Unless noted otherwise:
 
 | Case | Date | Status | Model entry | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Input artifact | Output target | Batch | Steps | Eval cadence | Checkpoint cadence | DataLoader workers | Cache restore size | Cache restore time | Training loop runtime | End-to-end runtime | Steps/sec | Examples/sec | Data wait | Forward/backward | Optimizer | Eval time | GPU util | GPU memory used | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| `minimal_split_global_action_plane_rtx4000ada_100k` | 2026-05-22 | running | `shogi-policy-plane-minimal-split-global` | RTX 4000 Ada | not recorded | not recorded | not recorded | $0.20/hr | Qhapaq full packed tensor cache | action-plane policy/value | 512 | 100000 | 1000 steps | 1000 steps | 2 | about 2.0 GB | not recorded | running | running | about 3.09 | about 1582 | about 0.03-0.10s / 100 steps | about 11.3-11.8s / 100 steps | about 0.27-0.32s / 100 steps | about 12.7-13.0s | observed 98% | observed 7150 MiB / 20475 MiB | Running measurement; finalize after completion. |
+| `minimal_split_global_action_plane_rtx4000ada_100k` | 2026-05-22 | completed | `shogi-policy-plane-minimal-split-global` | RTX 4000 Ada | not recorded | not recorded | not recorded | $0.20/hr | Qhapaq full packed tensor cache | action-plane policy/value | 512 | 100000 | 1000 steps | 1000 steps | 2 | 2,085,103,500 bytes | not recorded | 8h59m07s | 9h01m33s | 3.091 | 1582 | about 0.03-0.10s / 100 steps | about 11.0-12.1s / 100 steps | about 0.22-0.33s / 100 steps | about 12.7-13.0s | observed 98% | observed 7150 MiB / 20475 MiB | `actual_steps=100000`; best eval loss at step 40000; final eval loss 3.6877. |
 
 ## Notes
 
