@@ -23,17 +23,7 @@ wait.
 Record enough context to explain training throughput:
 
 - training entrypoint
-- model entry
-- input artifact
-- output target representation
-- hardware
-- batch size
-- optimizer step count
-- eval and checkpoint cadence
 - cache restore behavior
-- DataLoader worker count
-- training-loop runtime
-- end-to-end runtime
 
 ## Required Metrics
 
