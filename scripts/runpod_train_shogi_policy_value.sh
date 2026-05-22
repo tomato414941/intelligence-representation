@@ -16,6 +16,7 @@ VOLUME_SIZE=${VOLUME_SIZE:-0}
 MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-720}
 WAIT_SECONDS=${WAIT_SECONDS:-600}
 SSH_WAIT_SECONDS=${SSH_WAIT_SECONDS:-180}
+REMOTE_POLL_SECONDS=${REMOTE_POLL_SECONDS:-30}
 SECURE_CLOUD=${SECURE_CLOUD:-0}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-}
 KEEP_POD=${KEEP_POD:-0}
@@ -129,6 +130,8 @@ python3 "$RUNPOD_JOB" \
   --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
   --wait-seconds "$WAIT_SECONDS" \
   --ssh-wait-seconds "$SSH_WAIT_SECONDS" \
+  --detached-remote \
+  --remote-poll-seconds "$REMOTE_POLL_SECONDS" \
   --allow-existing-pods \
   "${RETENTION_ARGS[@]}" \
   "${SYNC_ARGS[@]}" \
