@@ -28,6 +28,7 @@ from intrep.problems.shogi_policy_value.output_space import (
     SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY,
     shogi_policy_value_output_space_for_assembly_spec,
 )
+from intrep.problems.shogi_policy_value.position_input_identity import shogi_position_feature_builder_for_assembly_spec_id
 from intrep.problems.shogi_policy_value.training import evaluate_shogi_policy_value_metrics
 
 
@@ -80,12 +81,14 @@ def evaluate_shogi_policy_value_checkpoint(
     used_eval_examples = _limit_examples(eval_examples, max_eval_examples, label="max eval examples")
     checkpoint_config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
     output_space = shogi_policy_value_output_space_for_assembly_spec(checkpoint_config.assembly_spec_id)
+    position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(checkpoint_config.assembly_spec_id)
     model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
     train_metrics = evaluate_shogi_policy_value_metrics(
         model,
         _loader(
             used_train_examples,
             output_space=output_space,
+            position_features_from_sfen=position_features_from_sfen,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -96,6 +99,7 @@ def evaluate_shogi_policy_value_checkpoint(
         _loader(
             used_eval_examples,
             output_space=output_space,
+            position_features_from_sfen=position_features_from_sfen,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
@@ -124,15 +128,16 @@ def _loader(
     examples: list[ShogiPolicyValueDatasetItem],
     *,
     output_space: str,
+    position_features_from_sfen,
     batch_size: int,
     num_workers: int,
     pin_memory: bool,
 ) -> DataLoader:
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
-        dataset = ShogiActionPlanePolicyValueDataset(examples)
+        dataset = ShogiActionPlanePolicyValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
         collate_fn = collate_action_plane_policy_value_samples
     else:
-        dataset = ShogiLegalMovePolicyValueDataset(examples)
+        dataset = ShogiLegalMovePolicyValueDataset(examples, position_features_from_sfen=position_features_from_sfen)
         collate_fn = collate_legal_move_policy_value_samples
     return DataLoader(
         dataset,
