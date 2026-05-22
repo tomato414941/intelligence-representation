@@ -11,13 +11,6 @@ This document is about learning runtime behavior. Cost estimates belong in
 `docs/shogi/self-play-generation-throughput.md`, and play-time inference
 latency belongs in `docs/shogi/play-inference-performance.md`.
 
-## Current Reading
-
-The latest completed full RunPod training run used the minimal split-global
-shogi position input with action-plane policy/value output on an RTX 4000 Ada
-GPU. It sustained about 3.09 steps/sec with high GPU utilization and low data
-wait.
-
 ## Required Context
 
 Record enough context to explain training throughput:
