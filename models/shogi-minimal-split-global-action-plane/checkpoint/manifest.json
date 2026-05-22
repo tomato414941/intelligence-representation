@@ -1,0 +1,76 @@
+{
+  "components": {
+    "core": {
+      "path": "core.pt",
+      "sha256": "fbbd0656292ca111d5a431edc5d5f547403362039dbbc2d996379a2fe5cd7aeb"
+    },
+    "input": {
+      "path": "input.pt",
+      "sha256": "966eab621f98c8679aae3b91c3d2bf0872b655323ccdaa1f96094925cb95f33a"
+    },
+    "policy_output": {
+      "path": "policy_output.pt",
+      "sha256": "7624f0a3eda4904eb6c9ac10e3b82f4df005a889847d5d459de2aceb4eefc383"
+    },
+    "value_output": {
+      "path": "value_output.pt",
+      "sha256": "ee9fcee88223ca21daee1ab8133fde09f6285ae9bae657839a4628a7e41ccc2a"
+    }
+  },
+  "config": {
+    "allow_nonstandard_loss_weights": false,
+    "assembly": "shogi_policy_value",
+    "assembly_spec": {
+      "assembly": "shogi_policy_value",
+      "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
+      "core": "shared_transformer_core",
+      "input": "shogi_minimal_split_global_position_input",
+      "policy_output": "shogi_action_plane_policy_output",
+      "value_output": "scalar_tanh_value_output"
+    },
+    "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
+    "checkpoint_id": "shogi-policy-value:sha256:c77f95cd4014fb16ba11a5c8a9541d6019a0e76d7b75cb37b6f7a19f43953c7f",
+    "checkpoint_sha256": "c77f95cd4014fb16ba11a5c8a9541d6019a0e76d7b75cb37b6f7a19f43953c7f",
+    "embedding_dim": 16,
+    "hidden_dim": 32,
+    "input_feature_manifest": {
+      "coordinate_system": "side_to_move_relative_180_rotation",
+      "feature_groups": [
+        "global",
+        "square"
+      ],
+      "feature_vocab_size": 869,
+      "global_element_count": 17,
+      "global_feature_groups": [
+        "state",
+        "side_to_move",
+        "move_count_bucket",
+        "own_hand_counts",
+        "opponent_hand_counts"
+      ],
+      "hand_piece_types": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "input_schema_id": "shogi_minimal_split_global_position_features",
+      "representation_element_count": 98,
+      "square_element_count": 81,
+      "square_feature_groups": [
+        "piece_identity"
+      ],
+      "square_field_count": 1
+    },
+    "input_feature_manifest_hash": "5dd0169f8d1374a24029768809a2f97075745a497ac98c8afe63285a748ab208",
+    "input_schema_id": "shogi_minimal_split_global_position_features",
+    "num_heads": 2,
+    "num_layers": 1,
+    "policy_loss_weight": 1.0,
+    "value_loss_weight": 1.0
+  },
+  "schema_version": "intrep.problems.shogi_policy_value.component_checkpoint.v1"
+}
