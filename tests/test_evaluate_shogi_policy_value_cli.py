@@ -41,7 +41,7 @@ class EvaluateShogiPolicyValueCliTest(unittest.TestCase):
             train_games_path = root / "train-games.jsonl"
             eval_games_path = root / "eval-games.jsonl"
             data_selection_path = root / "data-selection.json"
-            checkpoint_path = root / "checkpoint.pt"
+            checkpoint_path = root / "checkpoint"
             metrics_path = root / "eval-metrics.json"
             write_shogi_game_records_jsonl(train_games_path, [_record(("7g7f", "3c3d"), "black")])
             write_shogi_game_records_jsonl(eval_games_path, [_record(("2g2f", "8c8d"), "white")])

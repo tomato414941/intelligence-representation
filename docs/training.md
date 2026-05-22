@@ -150,7 +150,7 @@ uv run python scripts/build_shogi_policy_value_tensor_cache.py \
 uv run python -m intrep.train_shogi_policy_value \
   --data-selection data/shogi/training-data-bundles/current/data-selection.json \
   --tensor-cache data/shogi/training-data-bundles/current/cache/shogi_policy_value_rich_position_transformer_legal_move_attention \
-  --checkpoint-path runs/shogi/checkpoint.pt \
+  --checkpoint-path runs/shogi/checkpoint \
   --metrics-path runs/shogi/metrics.json \
   --assembly-spec shogi_policy_value_rich_position_transformer_legal_move_attention
 ```

@@ -92,8 +92,8 @@ for worker_count in $WORKER_COUNTS; do
   .venv/bin/python -u -m intrep.train_shogi_policy_value \
     --data-selection \"$DATA_SELECTION\" \
     --tensor-cache \"$TENSOR_CACHE\" \
-    --checkpoint-path \"\$case_dir/checkpoint.pt\" \
-    --best-checkpoint-path \"\$case_dir/best_checkpoint.pt\" \
+    --checkpoint-path \"\$case_dir/checkpoint\" \
+    --best-checkpoint-path \"\$case_dir/best_checkpoint\" \
     --metrics-path \"\$case_dir/metrics.json\" \
     --max-steps \"$MAX_STEPS\" \
     --batch-size \"$BATCH_SIZE\" \

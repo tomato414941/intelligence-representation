@@ -22,9 +22,10 @@ in [datasets.md](datasets.md).
   checkpoints.
 - Evaluation metrics and match outputs belong under `runs/` unless explicitly
   promoted.
-- `models/<model-name>/checkpoint.pt` holds a long-lived loadable checkpoint.
-- `checkpoint.pt` under `models/` must contain the schema, model config, and
-  state dict needed to load it.
+- `models/<model-name>/checkpoint/` holds a long-lived loadable model
+  checkpoint artifact.
+- `checkpoint/` under `models/` must contain `manifest.json` and component
+  files for the model's input, core, and output modules.
 - Do not put metrics, run logs, player presets, or lineage registries under
   `models/`.
 - `tokenizers/<tokenizer-name>/tokenizer.json` holds a long-lived loadable text
@@ -55,7 +56,7 @@ or problem artifacts, not source game records.
 ## Saved File Formats
 
 File and artifact directory names identify the artifact's role, not its format
-version. Do not put a schema version in names such as `checkpoint.pt`,
+version. Do not put a schema version in names such as `checkpoint/`,
 `tokenizer.json`, `manifest.json`, `metrics.json`, or cache labels such as
 `legal-move`.
 

@@ -13,7 +13,7 @@ REPO_PARENT=${REPO_PARENT:-"$(cd "$PWD/../.." && pwd)"}
 PROJECT_REL=${PROJECT_REL:-projects/intelligence-representation}
 ARENA_REL=${ARENA_REL:-projects/shogi-arena-agent}
 
-CHECKPOINT=${CHECKPOINT:-models/d256-h1024-heads8-l6-shogi/checkpoint.pt}
+: "${CHECKPOINT:?Set CHECKPOINT to a shogi component checkpoint directory}"
 REPLAY_SEED_DATA_SELECTION=${REPLAY_SEED_DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
 TRAINING_EVAL_DATA_SELECTION=${TRAINING_EVAL_DATA_SELECTION:-data/shogi/training-data-bundles/qhapaq-full/data-selection.json}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/online-experience-replay-runpod-$(date -u +%Y%m%d-%H%M%S)}

@@ -1011,9 +1011,9 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             ), patch("sys.stdout", new_callable=StringIO):
                 main()
 
-            self.assertFalse((root / "checkpoint_step_1.pt").exists())
-            self.assertTrue((root / "checkpoint_step_2.pt").exists())
-            self.assertTrue((root / "checkpoint_step_3.pt").exists())
+            self.assertFalse((root / "checkpoint_step_1").exists())
+            self.assertTrue((root / "checkpoint_step_2" / "manifest.json").exists())
+            self.assertTrue((root / "checkpoint_step_3" / "manifest.json").exists())
             step_metrics_path = root / "metrics_step_2.json"
             self.assertTrue(step_metrics_path.exists())
             step_metrics = json.loads(step_metrics_path.read_text(encoding="utf-8"))

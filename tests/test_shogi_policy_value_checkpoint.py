@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -51,9 +52,13 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
+            self.assertTrue((path / "input.pt").is_file())
+            self.assertTrue((path / "core.pt").is_file())
+            self.assertTrue((path / "policy_output.pt").is_file())
+            self.assertTrue((path / "value_output.pt").is_file())
             self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
             self.assertNotIn("input", payload["config"])
             self.assertNotIn("core", payload["config"])
@@ -109,9 +114,9 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi-action-plane-policy.pt"
+            path = Path(directory) / "shogi-action-plane-policy"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
             self.assertNotIn("input", payload["config"])
             self.assertNotIn("core", payload["config"])
@@ -144,13 +149,11 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
-            payload["model_state_dict"].pop(next(iter(payload["model_state_dict"])))
-            torch.save(payload, path)
+            (path / "core.pt").unlink()
 
-            with self.assertRaisesRegex(ValueError, "checkpoint identity"):
+            with self.assertRaisesRegex(ValueError, "component file"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_checkpoint_identity(self) -> None:
@@ -167,11 +170,11 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"].pop("checkpoint_id")
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "checkpoint identity"):
                 load_shogi_policy_value_checkpoint(path)
@@ -190,12 +193,12 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"]["checkpoint_sha256"] = "0" * 64
             payload["config"]["checkpoint_id"] = f"{SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX}{'0' * 64}"
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "checkpoint identity"):
                 load_shogi_policy_value_checkpoint(path)
@@ -214,11 +217,11 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"].pop("input_schema_id")
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input schema"):
                 load_shogi_policy_value_checkpoint(path)
@@ -237,11 +240,11 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"].pop("input_feature_manifest_hash")
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input feature manifest"):
                 load_shogi_policy_value_checkpoint(path)
@@ -260,14 +263,14 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"]["input_feature_manifest"] = {
                 **payload["config"]["input_feature_manifest"],
                 "square_field_count": 999,
             }
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input feature manifest"):
                 load_shogi_policy_value_checkpoint(path)
@@ -286,13 +289,36 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"].pop("assembly_spec")
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "assembly spec"):
+                load_shogi_policy_value_checkpoint(path)
+
+    def test_load_rejects_missing_assembly(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
+        result = train_shogi_policy_value_model(
+            examples,
+            config=ShogiPolicyValueTrainingConfig(assembly_spec_id=SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
+                max_steps=1,
+                batch_size=2,
+                embedding_dim=8,
+                hidden_dim=16,
+                num_heads=2,
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shogi"
+            save_shogi_policy_value_checkpoint(path, result)
+            payload = _load_manifest(path)
+            payload["config"].pop("assembly")
+            _write_manifest(path, payload)
+
+            with self.assertRaisesRegex(ValueError, "assembly"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_changed_assembly_spec_id(self) -> None:
@@ -309,14 +335,25 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shogi.pt"
+            path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
-            payload = torch.load(path, weights_only=False)
+            payload = _load_manifest(path)
             payload["config"]["assembly_spec_id"] = SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID
-            torch.save(payload, path)
+            _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "assembly spec"):
                 load_shogi_policy_value_checkpoint(path)
+
+
+def _load_manifest(path: Path) -> dict[str, object]:
+    payload = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise AssertionError("manifest must be an object")
+    return payload
+
+
+def _write_manifest(path: Path, payload: dict[str, object]) -> None:
+    (path / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

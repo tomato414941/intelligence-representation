@@ -27,7 +27,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         model = build_shogi_policy_value_model(config)
 
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint_path = Path(directory) / "candidate.pt"
+            checkpoint_path = Path(directory) / "candidate"
             save_shogi_policy_value_model_checkpoint(checkpoint_path, model, config)
             evaluator = ShogiPolicyValueCheckpointEvaluator.from_checkpoint(checkpoint_path)
 
@@ -57,7 +57,7 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
             model.policy_output.action_logit_bias[action_index] = 8.0
 
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint_path = Path(directory) / "action-plane-policy.pt"
+            checkpoint_path = Path(directory) / "action-plane-policy"
             save_shogi_policy_value_model_checkpoint(checkpoint_path, model, config)
             evaluator = ShogiPolicyValueCheckpointEvaluator.from_checkpoint(checkpoint_path)
 

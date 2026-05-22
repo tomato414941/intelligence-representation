@@ -6,16 +6,13 @@ This is the compact current-state document. Detailed experiment rows live in
 `learning-experiments.md`; runtime measurements live in the throughput and
 inference-performance docs.
 
-## Current Model
+## Current Promoted Checkpoint
 
-The current promoted checkpoint is the online replay checkpoint from
-`online-experience-replay-runpod-20260517-171912`, iteration 4.
+No current promoted component checkpoint is stored in `models/`.
 
-It is promoted here:
-
-```text
-models/d256-h1024-heads8-l6-shogi/checkpoint.pt
-```
+Historical measurements may refer to `d256-h1024-heads8-l6-shogi`, which was
+the previous single-file promoted checkpoint before checkpoint artifacts were
+split into input, core, policy output, and value output components.
 
 ## Training Data
 

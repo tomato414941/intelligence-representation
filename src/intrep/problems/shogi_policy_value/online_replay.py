@@ -399,8 +399,8 @@ def _online_replay_iteration_artifacts(run_dir: Path, iteration_index: int) -> S
         generation_summary_path=iteration_dir / "generation-summary.json",
         generator_gate_games_jsonl=iteration_dir / "generator-gate-games.jsonl",
         generator_gate_result_path=iteration_dir / "generator-gate-result.json",
-        checkpoint_path=iteration_dir / "checkpoint.pt",
-        best_checkpoint_path=iteration_dir / "best-checkpoint.pt",
+        checkpoint_path=iteration_dir / "checkpoint",
+        best_checkpoint_path=iteration_dir / "best-checkpoint",
         metrics_path=iteration_dir / "metrics.json",
     )
 

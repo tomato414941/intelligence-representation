@@ -153,8 +153,8 @@ echo \"train_config assembly_spec=$ASSEMBLY_SPEC tensor_cache=$TENSOR_CACHE max_
 .venv/bin/python -u -m intrep.train_shogi_policy_value \
   --data-selection \"$DATA_SELECTION\" \
   --tensor-cache \"$TENSOR_CACHE\" \
-  --checkpoint-path \"$OUTPUT_DIR/checkpoint.pt\" \
-  --best-checkpoint-path \"$OUTPUT_DIR/best_checkpoint.pt\" \
+  --checkpoint-path \"$OUTPUT_DIR/checkpoint\" \
+  --best-checkpoint-path \"$OUTPUT_DIR/best_checkpoint\" \
   --metrics-path \"$OUTPUT_DIR/metrics.json\" \
   --max-steps \"$MAX_STEPS\" \
   --batch-size \"$BATCH_SIZE\" \

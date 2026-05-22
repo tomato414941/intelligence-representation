@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
@@ -281,7 +282,7 @@ class _ProgressArtifactWriter:
 
     def _write_checkpoint(self, progress: ShogiPolicyValueTrainingProgress) -> None:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        path = self.checkpoint_dir / f"checkpoint_step_{progress.step}.pt"
+        path = self.checkpoint_dir / f"checkpoint_step_{progress.step}"
         save_shogi_policy_value_model_checkpoint(path, progress.model, progress.config)
         self.saved_checkpoints.append(path)
         self._prune_checkpoints()
@@ -308,7 +309,10 @@ class _ProgressArtifactWriter:
             return
         while len(self.saved_checkpoints) > self.keep_last_n_checkpoints:
             path = self.saved_checkpoints.pop(0)
-            path.unlink(missing_ok=True)
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

@@ -19,8 +19,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         module = _load_script_module()
         result = ShogiOnlineReplayResult(
             run_dir=Path("/tmp/online"),
-            initial_checkpoint=Path("source.pt"),
-            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
+            initial_checkpoint=Path("source-checkpoint"),
+            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint"),
             next_checkpoint="best",
             replay_capacity=8,
             replay_seed_data_selection=None,
@@ -45,7 +45,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             module.main(
                 [
                     "--checkpoint",
-                    "source.pt",
+                    "source-checkpoint",
                     "--run-dir",
                     "online",
                     "--training-eval-data-selection",
@@ -69,8 +69,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         module = _load_script_module()
         result = ShogiOnlineReplayResult(
             run_dir=Path("/tmp/online"),
-            initial_checkpoint=Path("source.pt"),
-            final_checkpoint=Path("/tmp/online/iteration-0002/best-checkpoint.pt"),
+            initial_checkpoint=Path("source-checkpoint"),
+            final_checkpoint=Path("/tmp/online/iteration-0002/best-checkpoint"),
             next_checkpoint="best",
             replay_capacity=8,
             replay_seed_data_selection=None,
@@ -95,7 +95,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             module.main(
                 [
                     "--checkpoint",
-                    "source.pt",
+                    "source-checkpoint",
                     "--run-dir",
                     "online",
                     "--iterations",
@@ -171,7 +171,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             )
 
         config = run_replay.call_args.args[0]
-        self.assertEqual(config.checkpoint, Path("source.pt"))
+        self.assertEqual(config.checkpoint, Path("source-checkpoint"))
         self.assertEqual(config.run_dir, Path("online"))
         self.assertEqual(config.iterations, 2)
         self.assertTrue(config.resume)
@@ -230,8 +230,8 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
         module = _load_script_module()
         result = ShogiOnlineReplayResult(
             run_dir=Path("/tmp/online"),
-            initial_checkpoint=Path("source.pt"),
-            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint.pt"),
+            initial_checkpoint=Path("source-checkpoint"),
+            final_checkpoint=Path("/tmp/online/iteration-0001/checkpoint"),
             next_checkpoint="final",
             replay_capacity=8,
             replay_seed_data_selection=None,
@@ -256,7 +256,7 @@ class RunShogiOnlineReplayScriptTest(unittest.TestCase):
             module.main(
                 [
                     "--checkpoint",
-                    "source.pt",
+                    "source-checkpoint",
                     "--run-dir",
                     "online",
                     "--training-eval-data-selection",

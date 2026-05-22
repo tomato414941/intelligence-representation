@@ -13,7 +13,7 @@ REPO_PARENT=${REPO_PARENT:-"$(cd "$PWD/../.." && pwd)"}
 PROJECT_REL=${PROJECT_REL:-projects/intelligence-representation}
 ARENA_REL=${ARENA_REL:-projects/shogi-arena-agent}
 
-CHECKPOINT=${CHECKPOINT:-models/d256-h1024-heads8-l6-shogi/checkpoint.pt}
+: "${CHECKPOINT:?Set CHECKPOINT to a shogi component checkpoint directory}"
 OUTPUT_NAME=${OUTPUT_NAME:-generated-mix-$(date -u +%Y%m%d-%H%M%S)}
 OUTPUT_ROOT=${OUTPUT_ROOT:-data/shogi/records/$OUTPUT_NAME}
 
