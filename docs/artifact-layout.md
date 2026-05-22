@@ -22,7 +22,8 @@ in [datasets.md](datasets.md).
   checkpoints.
 - Evaluation metrics and match outputs belong under `runs/` unless explicitly
   promoted.
-- `models/<model-name>/` holds a long-lived loadable model entry artifact.
+- `models/<model-name>/` holds a long-lived loadable model entry artifact. See
+  [model-artifacts.md](model-artifacts.md) for the type/checkpoint split.
 - A model entry under `models/` must contain `manifest.json` and
   `components/` files for the model's input, core, and output modules.
 - Do not put metrics, run logs, player presets, or lineage registries under

@@ -63,6 +63,10 @@ def save_shogi_policy_value_component_checkpoint(
 ) -> None:
     checkpoint_dir = Path(path)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    config_payload = _checkpoint_config_payload(config)
+    assembly_spec = shogi_policy_value_assembly_spec_for_id(
+        _config_str(config_payload["assembly"], "assembly_spec_id")
+    )
     component_manifest: dict[str, dict[str, object]] = {}
     for component_name, file_name in SHOGI_POLICY_VALUE_COMPONENT_FILES.items():
         if component_name not in components:
@@ -71,19 +75,18 @@ def save_shogi_policy_value_component_checkpoint(
         component_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save({"component": component_name, "state_dict": components[component_name]}, component_path)
         component_manifest[component_name] = {
+            "module_id": assembly_spec[component_name],
             "path": file_name,
             "sha256": _file_sha256(component_path),
         }
 
-    config_payload = _checkpoint_config_payload(config)
     manifest = {
         "schema_version": SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA,
-        "config": config_payload,
+        **config_payload,
         "components": component_manifest,
     }
     checkpoint_sha256 = shogi_policy_value_checkpoint_content_sha256(manifest)
-    manifest["config"] = {
-        **config_payload,
+    manifest["checkpoint"] = {
         "checkpoint_id": shogi_policy_value_checkpoint_id_from_sha256(checkpoint_sha256),
         "checkpoint_sha256": checkpoint_sha256,
     }
@@ -98,14 +101,16 @@ def load_shogi_policy_value_checkpoint_identity(
     del device
     manifest = _load_checkpoint_manifest(path)
     _validate_checkpoint_manifest(Path(path), manifest)
-    config = _checkpoint_config(manifest)
+    checkpoint = _checkpoint_identity_payload(manifest)
+    assembly = _checkpoint_assembly_payload(manifest)
+    input_ = _checkpoint_input_payload(manifest)
     return ShogiPolicyValueCheckpointIdentity(
-        checkpoint_id=str(config["checkpoint_id"]),
-        checkpoint_sha256=str(config["checkpoint_sha256"]),
+        checkpoint_id=str(checkpoint["checkpoint_id"]),
+        checkpoint_sha256=str(checkpoint["checkpoint_sha256"]),
         schema_version=str(manifest["schema_version"]),
-        assembly=str(config["assembly"]),
-        assembly_spec_id=str(config["assembly_spec_id"]),
-        input_feature_manifest_hash=str(config["input_feature_manifest_hash"]),
+        assembly=str(assembly["assembly"]),
+        assembly_spec_id=str(assembly["assembly_spec_id"]),
+        input_feature_manifest_hash=str(input_["input_feature_manifest_hash"]),
     )
 
 
@@ -121,13 +126,14 @@ def load_shogi_policy_value_checkpoint_training_config(path: str | Path, *, devi
     _validate_checkpoint_manifest(Path(path), manifest)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig
 
-    config_payload = _checkpoint_config(manifest)
+    config_payload = _checkpoint_model_config(manifest)
+    assembly = _checkpoint_assembly_payload(manifest)
     return ShogiPolicyValueTrainingConfig(
         embedding_dim=int(config_payload["embedding_dim"]),
         hidden_dim=int(config_payload["hidden_dim"]),
         num_heads=int(config_payload["num_heads"]),
         num_layers=int(config_payload["num_layers"]),
-        assembly_spec_id=str(config_payload["assembly_spec_id"]),
+        assembly_spec_id=str(assembly["assembly_spec_id"]),
         policy_loss_weight=float(config_payload["policy_loss_weight"]),
         value_loss_weight=float(config_payload["value_loss_weight"]),
         allow_nonstandard_loss_weights=bool(config_payload["allow_nonstandard_loss_weights"]),
@@ -139,14 +145,15 @@ def load_shogi_policy_value_checkpoint(path: str | Path, *, device: str = "cpu")
     _validate_checkpoint_manifest(Path(path), manifest)
     from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, build_shogi_policy_value_model
 
-    config_payload = _checkpoint_config(manifest)
+    config_payload = _checkpoint_model_config(manifest)
+    assembly = _checkpoint_assembly_payload(manifest)
     model = build_shogi_policy_value_model(
         ShogiPolicyValueTrainingConfig(
             embedding_dim=int(config_payload["embedding_dim"]),
             hidden_dim=int(config_payload["hidden_dim"]),
             num_heads=int(config_payload["num_heads"]),
             num_layers=int(config_payload["num_layers"]),
-            assembly_spec_id=str(config_payload["assembly_spec_id"]),
+            assembly_spec_id=str(assembly["assembly_spec_id"]),
             policy_loss_weight=float(config_payload["policy_loss_weight"]),
             value_loss_weight=float(config_payload["value_loss_weight"]),
             allow_nonstandard_loss_weights=bool(config_payload["allow_nonstandard_loss_weights"]),
@@ -165,11 +172,7 @@ def shogi_policy_value_checkpoint_id_from_sha256(checkpoint_sha256: str) -> str:
 def shogi_policy_value_checkpoint_content_sha256(manifest: dict[str, object]) -> str:
     identity_manifest = {
         **manifest,
-        "config": {
-            key: value
-            for key, value in _checkpoint_config(manifest).items()
-            if key not in {"checkpoint_id", "checkpoint_sha256"}
-        },
+        "checkpoint": {},
     }
     return hashlib.sha256(
         json.dumps(identity_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
@@ -240,18 +243,25 @@ def _prefix_state_dict(prefix: str, state_dict: object) -> dict[str, object]:
 
 def _checkpoint_config_payload(config: object) -> dict[str, object]:
     assembly_spec = _checkpoint_assembly_spec(config)
+    input_identity = shogi_position_input_identity_for_assembly_spec_id(str(assembly_spec["assembly_spec_id"]))
     return {
-        **shogi_position_input_identity_for_assembly_spec_id(str(assembly_spec["assembly_spec_id"])),
-        "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
-        "assembly_spec_id": assembly_spec["assembly_spec_id"],
-        "assembly_spec": assembly_spec,
-        "embedding_dim": _config_int(config, "embedding_dim"),
-        "hidden_dim": _config_int(config, "hidden_dim"),
-        "num_heads": _config_int(config, "num_heads"),
-        "num_layers": _config_int(config, "num_layers"),
-        "policy_loss_weight": _config_float(config, "policy_loss_weight"),
-        "value_loss_weight": _config_float(config, "value_loss_weight"),
-        "allow_nonstandard_loss_weights": _config_bool(config, "allow_nonstandard_loss_weights"),
+        "assembly": {
+            "assembly": SHOGI_POLICY_VALUE_ASSEMBLY_ID,
+            "assembly_spec_id": assembly_spec["assembly_spec_id"],
+        },
+        "input": {
+            "input_schema_id": input_identity["input_schema_id"],
+            "input_feature_manifest_hash": input_identity["input_feature_manifest_hash"],
+        },
+        "model": {
+            "embedding_dim": _config_int(config, "embedding_dim"),
+            "hidden_dim": _config_int(config, "hidden_dim"),
+            "num_heads": _config_int(config, "num_heads"),
+            "num_layers": _config_int(config, "num_layers"),
+            "policy_loss_weight": _config_float(config, "policy_loss_weight"),
+            "value_loss_weight": _config_float(config, "value_loss_weight"),
+            "allow_nonstandard_loss_weights": _config_bool(config, "allow_nonstandard_loss_weights"),
+        },
     }
 
 
@@ -267,29 +277,28 @@ def _load_checkpoint_manifest(path: str | Path) -> dict[str, object]:
 def _validate_checkpoint_manifest(checkpoint_dir: Path, manifest: dict[str, object]) -> None:
     if manifest.get("schema_version") != SHOGI_POLICY_VALUE_CHECKPOINT_SCHEMA:
         raise ValueError("unsupported shogi policy value checkpoint schema")
-    _validate_checkpoint_input_schema_id(manifest)
     _validate_checkpoint_assembly_spec(manifest)
+    _validate_checkpoint_input_schema_id(manifest)
     _validate_checkpoint_components(checkpoint_dir, manifest)
     _validate_checkpoint_identity(manifest)
 
 
 def _validate_checkpoint_input_schema_id(manifest: dict[str, object]) -> None:
-    config = _checkpoint_config(manifest)
-    expected = shogi_position_input_identity_for_assembly_spec_id(_config_str(config, "assembly_spec_id"))
-    if config.get("input_schema_id") != expected["input_schema_id"]:
+    assembly = _checkpoint_assembly_payload(manifest)
+    input_ = _checkpoint_input_payload(manifest)
+    expected = shogi_position_input_identity_for_assembly_spec_id(_config_str(assembly, "assembly_spec_id"))
+    if input_.get("input_schema_id") != expected["input_schema_id"]:
         raise ValueError("unsupported shogi checkpoint input schema")
-    if config.get("input_feature_manifest_hash") != expected["input_feature_manifest_hash"]:
-        raise ValueError("unsupported shogi checkpoint input feature manifest")
-    if config.get("input_feature_manifest") != expected["input_feature_manifest"]:
+    if input_.get("input_feature_manifest_hash") != expected["input_feature_manifest_hash"]:
         raise ValueError("unsupported shogi checkpoint input feature manifest")
 
 
 def _validate_checkpoint_assembly_spec(manifest: dict[str, object]) -> None:
-    config = _checkpoint_config(manifest)
-    assembly_spec = _checkpoint_assembly_spec(config)
-    if config.get("assembly_spec") != assembly_spec:
-        raise ValueError("unsupported shogi checkpoint assembly spec")
-    if config.get("assembly_spec_id") != assembly_spec["assembly_spec_id"]:
+    assembly = _checkpoint_assembly_payload(manifest)
+    if assembly.get("assembly") != SHOGI_POLICY_VALUE_ASSEMBLY_ID:
+        raise ValueError("unsupported shogi checkpoint assembly")
+    assembly_spec = shogi_policy_value_assembly_spec_for_id(_config_str(assembly, "assembly_spec_id"))
+    if assembly.get("assembly_spec_id") != assembly_spec["assembly_spec_id"]:
         raise ValueError("unsupported shogi checkpoint assembly spec")
 
 
@@ -297,10 +306,14 @@ def _validate_checkpoint_components(checkpoint_dir: Path, manifest: dict[str, ob
     components = manifest.get("components")
     if not isinstance(components, dict):
         raise ValueError("shogi checkpoint components must be an object")
+    assembly = _checkpoint_assembly_payload(manifest)
+    assembly_spec = shogi_policy_value_assembly_spec_for_id(_config_str(assembly, "assembly_spec_id"))
     for component_name, file_name in SHOGI_POLICY_VALUE_COMPONENT_FILES.items():
         component = components.get(component_name)
         if not isinstance(component, dict):
             raise ValueError(f"shogi checkpoint missing component: {component_name}")
+        if component.get("module_id") != assembly_spec[component_name]:
+            raise ValueError(f"unsupported shogi checkpoint component module: {component_name}")
         if component.get("path") != file_name:
             raise ValueError(f"unsupported shogi checkpoint component path: {component_name}")
         component_path = checkpoint_dir / file_name
@@ -311,9 +324,9 @@ def _validate_checkpoint_components(checkpoint_dir: Path, manifest: dict[str, ob
 
 
 def _validate_checkpoint_identity(manifest: dict[str, object]) -> None:
-    config = _checkpoint_config(manifest)
-    checkpoint_sha256 = config.get("checkpoint_sha256")
-    checkpoint_id = config.get("checkpoint_id")
+    checkpoint = _checkpoint_identity_payload(manifest)
+    checkpoint_sha256 = checkpoint.get("checkpoint_sha256")
+    checkpoint_id = checkpoint.get("checkpoint_id")
     if not isinstance(checkpoint_sha256, str) or not checkpoint_sha256:
         raise ValueError("shogi checkpoint identity requires checkpoint_sha256")
     if checkpoint_id != shogi_policy_value_checkpoint_id_from_sha256(checkpoint_sha256):
@@ -343,11 +356,32 @@ def _load_component_state_dicts(
     return loaded
 
 
-def _checkpoint_config(manifest: dict[str, object]) -> dict[str, object]:
-    config = manifest.get("config")
-    if not isinstance(config, dict):
-        raise ValueError("shogi checkpoint config must be an object")
-    return config
+def _checkpoint_identity_payload(manifest: dict[str, object]) -> dict[str, object]:
+    checkpoint = manifest.get("checkpoint")
+    if not isinstance(checkpoint, dict):
+        raise ValueError("shogi checkpoint identity must be an object")
+    return checkpoint
+
+
+def _checkpoint_assembly_payload(manifest: dict[str, object]) -> dict[str, object]:
+    assembly = manifest.get("assembly")
+    if not isinstance(assembly, dict):
+        raise ValueError("shogi checkpoint assembly must be an object")
+    return assembly
+
+
+def _checkpoint_input_payload(manifest: dict[str, object]) -> dict[str, object]:
+    input_ = manifest.get("input")
+    if not isinstance(input_, dict):
+        raise ValueError("shogi checkpoint input must be an object")
+    return input_
+
+
+def _checkpoint_model_config(manifest: dict[str, object]) -> dict[str, object]:
+    model = manifest.get("model")
+    if not isinstance(model, dict):
+        raise ValueError("shogi checkpoint model config must be an object")
+    return model
 
 
 def _checkpoint_assembly_spec(config: object) -> dict[str, object]:

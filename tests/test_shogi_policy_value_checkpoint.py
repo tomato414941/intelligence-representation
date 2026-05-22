@@ -22,10 +22,10 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_ID,
     SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
-    shogi_policy_value_assembly_spec_for_id,
 )
 from intrep.problems.shogi_policy_value.training import ShogiPolicyValueTrainingConfig, train_shogi_policy_value_model
-from intrep.representation.inputs.shogi_position_features.position_rich import SHOGI_RICH_POSITION_FEATURE_MANIFEST, SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH
+from intrep.representation.inputs.shogi_position_module_ids import SHOGI_RICH_POSITION_INPUT_MODULE_ID
+from intrep.representation.inputs.shogi_position_features.position_rich import SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH
 
 
 class ShogiPolicyValueCheckpointTest(unittest.TestCase):
@@ -59,29 +59,26 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             self.assertTrue((path / "components" / "core.pt").is_file())
             self.assertTrue((path / "components" / "policy_output.pt").is_file())
             self.assertTrue((path / "components" / "value_output.pt").is_file())
-            self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
-            self.assertNotIn("input", payload["config"])
-            self.assertNotIn("core", payload["config"])
-            self.assertNotIn("policy_output", payload["config"])
-            self.assertNotIn("value_output", payload["config"])
-            self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
+            self.assertEqual(payload["components"]["input"]["module_id"], SHOGI_RICH_POSITION_INPUT_MODULE_ID)
+            self.assertEqual(payload["components"]["core"]["module_id"], "shared_transformer_core")
+            self.assertEqual(payload["components"]["policy_output"]["module_id"], "shogi_legal_move_attention_policy_output")
+            self.assertEqual(payload["components"]["value_output"]["module_id"], "scalar_tanh_value_output")
+            self.assertEqual(payload["assembly"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
+            self.assertEqual(payload["assembly"]["assembly_spec_id"], SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID)
+            self.assertNotIn("assembly_spec", payload)
+            self.assertNotIn("input_feature_manifest", payload["input"])
+            self.assertEqual(payload["input"]["input_feature_manifest_hash"], SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH)
+            self.assertTrue(payload["checkpoint"]["checkpoint_id"].startswith(SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX))
+            self.assertEqual(len(payload["checkpoint"]["checkpoint_sha256"]), 64)
             self.assertEqual(
-                payload["config"]["assembly_spec"],
-                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID),
-            )
-            self.assertEqual(payload["config"]["input_feature_manifest"], SHOGI_RICH_POSITION_FEATURE_MANIFEST)
-            self.assertEqual(payload["config"]["input_feature_manifest_hash"], SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH)
-            self.assertTrue(payload["config"]["checkpoint_id"].startswith(SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX))
-            self.assertEqual(len(payload["config"]["checkpoint_sha256"]), 64)
-            self.assertEqual(
-                payload["config"]["checkpoint_id"],
-                f"{SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX}{payload['config']['checkpoint_sha256']}",
+                payload["checkpoint"]["checkpoint_id"],
+                f"{SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX}{payload['checkpoint']['checkpoint_sha256']}",
             )
             identity = load_shogi_policy_value_checkpoint_identity(path)
-            self.assertEqual(identity.checkpoint_id, payload["config"]["checkpoint_id"])
-            self.assertEqual(identity.checkpoint_sha256, payload["config"]["checkpoint_sha256"])
+            self.assertEqual(identity.checkpoint_id, payload["checkpoint"]["checkpoint_id"])
+            self.assertEqual(identity.checkpoint_sha256, payload["checkpoint"]["checkpoint_sha256"])
             self.assertEqual(identity.assembly, SHOGI_POLICY_VALUE_ASSEMBLY_ID)
-            self.assertEqual(identity.assembly_spec_id, payload["config"]["assembly_spec_id"])
+            self.assertEqual(identity.assembly_spec_id, payload["assembly"]["assembly_spec_id"])
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -117,16 +114,9 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi-action-plane-policy"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            self.assertEqual(payload["config"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
-            self.assertNotIn("input", payload["config"])
-            self.assertNotIn("core", payload["config"])
-            self.assertNotIn("policy_output", payload["config"])
-            self.assertNotIn("value_output", payload["config"])
-            self.assertEqual(payload["config"]["assembly_spec_id"], payload["config"]["assembly_spec"]["assembly_spec_id"])
-            self.assertEqual(
-                payload["config"]["assembly_spec"],
-                shogi_policy_value_assembly_spec_for_id(SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID),
-            )
+            self.assertEqual(payload["assembly"]["assembly"], SHOGI_POLICY_VALUE_ASSEMBLY_ID)
+            self.assertEqual(payload["assembly"]["assembly_spec_id"], SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID)
+            self.assertNotIn("assembly_spec", payload)
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
@@ -173,7 +163,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"].pop("checkpoint_id")
+            payload["checkpoint"].pop("checkpoint_id")
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "checkpoint identity"):
@@ -196,8 +186,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"]["checkpoint_sha256"] = "0" * 64
-            payload["config"]["checkpoint_id"] = f"{SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX}{'0' * 64}"
+            payload["checkpoint"]["checkpoint_sha256"] = "0" * 64
+            payload["checkpoint"]["checkpoint_id"] = f"{SHOGI_POLICY_VALUE_CHECKPOINT_ID_PREFIX}{'0' * 64}"
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "checkpoint identity"):
@@ -220,7 +210,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"].pop("input_schema_id")
+            payload["input"].pop("input_schema_id")
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input schema"):
@@ -243,13 +233,13 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"].pop("input_feature_manifest_hash")
+            payload["input"].pop("input_feature_manifest_hash")
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input feature manifest"):
                 load_shogi_policy_value_checkpoint(path)
 
-    def test_load_rejects_changed_input_feature_manifest(self) -> None:
+    def test_load_rejects_changed_input_feature_manifest_hash(self) -> None:
         examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
         result = train_shogi_policy_value_model(
             examples,
@@ -266,10 +256,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"]["input_feature_manifest"] = {
-                **payload["config"]["input_feature_manifest"],
-                "square_field_count": 999,
-            }
+            payload["input"]["input_feature_manifest_hash"] = "0" * 64
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "input feature manifest"):
@@ -292,10 +279,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"].pop("assembly_spec")
+            payload["assembly"].pop("assembly_spec_id")
             _write_manifest(path, payload)
 
-            with self.assertRaisesRegex(ValueError, "assembly spec"):
+            with self.assertRaisesRegex(ValueError, "assembly_spec_id"):
                 load_shogi_policy_value_checkpoint(path)
 
     def test_load_rejects_missing_assembly(self) -> None:
@@ -315,7 +302,7 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"].pop("assembly")
+            payload["assembly"].pop("assembly")
             _write_manifest(path, payload)
 
             with self.assertRaisesRegex(ValueError, "assembly"):
@@ -338,10 +325,10 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             path = Path(directory) / "shogi"
             save_shogi_policy_value_checkpoint(path, result)
             payload = _load_manifest(path)
-            payload["config"]["assembly_spec_id"] = SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID
+            payload["assembly"]["assembly_spec_id"] = SHOGI_POLICY_VALUE_RICH_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID
             _write_manifest(path, payload)
 
-            with self.assertRaisesRegex(ValueError, "assembly spec"):
+            with self.assertRaisesRegex(ValueError, "component module"):
                 load_shogi_policy_value_checkpoint(path)
 
 

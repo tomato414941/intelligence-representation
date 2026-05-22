@@ -1,72 +1,42 @@
 {
+  "assembly": {
+    "assembly": "shogi_policy_value",
+    "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy"
+  },
+  "checkpoint": {
+    "checkpoint_id": "shogi-policy-value:sha256:3dc5709abe8175400a151dfd18c546277eba187a846382d012ae517f1e892a99",
+    "checkpoint_sha256": "3dc5709abe8175400a151dfd18c546277eba187a846382d012ae517f1e892a99"
+  },
   "components": {
     "core": {
+      "module_id": "shared_transformer_core",
       "path": "components/core.pt",
       "sha256": "fbbd0656292ca111d5a431edc5d5f547403362039dbbc2d996379a2fe5cd7aeb"
     },
     "input": {
+      "module_id": "shogi_minimal_split_global_position_input",
       "path": "components/input.pt",
       "sha256": "966eab621f98c8679aae3b91c3d2bf0872b655323ccdaa1f96094925cb95f33a"
     },
     "policy_output": {
+      "module_id": "shogi_action_plane_policy_output",
       "path": "components/policy_output.pt",
       "sha256": "7624f0a3eda4904eb6c9ac10e3b82f4df005a889847d5d459de2aceb4eefc383"
     },
     "value_output": {
+      "module_id": "scalar_tanh_value_output",
       "path": "components/value_output.pt",
       "sha256": "ee9fcee88223ca21daee1ab8133fde09f6285ae9bae657839a4628a7e41ccc2a"
     }
   },
-  "config": {
+  "input": {
+    "input_feature_manifest_hash": "5dd0169f8d1374a24029768809a2f97075745a497ac98c8afe63285a748ab208",
+    "input_schema_id": "shogi_minimal_split_global_position_features"
+  },
+  "model": {
     "allow_nonstandard_loss_weights": false,
-    "assembly": "shogi_policy_value",
-    "assembly_spec": {
-      "assembly": "shogi_policy_value",
-      "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
-      "core": "shared_transformer_core",
-      "input": "shogi_minimal_split_global_position_input",
-      "policy_output": "shogi_action_plane_policy_output",
-      "value_output": "scalar_tanh_value_output"
-    },
-    "assembly_spec_id": "shogi_policy_value_minimal_split_global_position_transformer_action_plane_policy",
-    "checkpoint_id": "shogi-policy-value:sha256:df00efc21055a762ee1e3a59c03df99b491bda8bf568b99541f2808f36e3f5e0",
-    "checkpoint_sha256": "df00efc21055a762ee1e3a59c03df99b491bda8bf568b99541f2808f36e3f5e0",
     "embedding_dim": 16,
     "hidden_dim": 32,
-    "input_feature_manifest": {
-      "coordinate_system": "side_to_move_relative_180_rotation",
-      "feature_groups": [
-        "global",
-        "square"
-      ],
-      "feature_vocab_size": 869,
-      "global_element_count": 17,
-      "global_feature_groups": [
-        "state",
-        "side_to_move",
-        "move_count_bucket",
-        "own_hand_counts",
-        "opponent_hand_counts"
-      ],
-      "hand_piece_types": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7
-      ],
-      "input_schema_id": "shogi_minimal_split_global_position_features",
-      "representation_element_count": 98,
-      "square_element_count": 81,
-      "square_feature_groups": [
-        "piece_identity"
-      ],
-      "square_field_count": 1
-    },
-    "input_feature_manifest_hash": "5dd0169f8d1374a24029768809a2f97075745a497ac98c8afe63285a748ab208",
-    "input_schema_id": "shogi_minimal_split_global_position_features",
     "num_heads": 2,
     "num_layers": 1,
     "policy_loss_weight": 1.0,

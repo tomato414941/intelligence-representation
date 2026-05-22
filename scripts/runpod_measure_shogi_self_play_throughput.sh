@@ -49,7 +49,7 @@ python3 "$RUNPOD_JOB" \
   --sync intelligence-representation/pyproject.toml \
   --sync intelligence-representation/README.md \
   --sync intelligence-representation/AGENTS.md \
-  --sync intelligence-representation/models/d256-h1024-heads8-l6-shogi \
+  --sync intelligence-representation/models/shogi-minimal-split-global-action-plane \
   --sync shogi-arena-agent/src \
   --sync shogi-arena-agent/scripts/generate_shogi_games.py \
   --sync shogi-arena-agent/pyproject.toml \
