@@ -11,6 +11,7 @@ from intrep.problems.shogi_policy_value.examples import (
     shogi_move_choice_example_from_board,
 )
 from intrep.problems.shogi_policy_value.samples import (
+    ShogiActionPlanePolicyValueDataset,
     ShogiLegalMovePolicyValueDataset,
     collate_legal_move_policy_value_samples,
 )
@@ -234,6 +235,15 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
         self.assertEqual(tuple(int(index.item()) for index in sample.target_action_indices), (first_index, second_index))
         self.assertEqual(tuple(float(weight.item()) for weight in sample.target_weights), (0.75, 0.25))
 
+    def test_action_plane_policy_dataset_does_not_scan_sequence_on_init(self) -> None:
+        examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d", "2g2f"))
+        sequence = _OnlyFirstItemSequence(examples)
+
+        dataset = ShogiActionPlanePolicyValueDataset(sequence)
+
+        self.assertEqual(len(dataset), 3)
+        self.assertEqual(sequence.requested_indices, [0])
+
     def test_action_plane_policy_sample_maps_policy_targets_to_fixed_action_space(self) -> None:
         board = shogi.Board()
         legal_moves = tuple(sorted(move.usi() for move in board.legal_moves))
@@ -263,6 +273,21 @@ class ShogiMoveChoiceExampleTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "missing policy_targets"):
             tensorize_action_plane_policy_value_example(example)
+
+
+class _OnlyFirstItemSequence:
+    def __init__(self, examples):
+        self.examples = tuple(examples)
+        self.requested_indices: list[int] = []
+
+    def __len__(self) -> int:
+        return len(self.examples)
+
+    def __getitem__(self, index: int):
+        if index != 0:
+            raise AssertionError(f"unexpected scan at index {index}")
+        self.requested_indices.append(index)
+        return self.examples[index]
 
 
 if __name__ == "__main__":

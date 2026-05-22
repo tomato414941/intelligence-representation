@@ -133,7 +133,7 @@ class ShogiActionPlanePolicyValueDataset(TorchDataset):
     ) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
-        if any(isinstance(example, LegalMovePolicyValueTensorSample) for example in examples):
+        if isinstance(examples[0], LegalMovePolicyValueTensorSample):
             raise ValueError("legal-move tensor samples cannot be used with ShogiActionPlanePolicyValueDataset")
         self.examples = examples
         self.position_features_from_sfen = position_features_from_sfen
