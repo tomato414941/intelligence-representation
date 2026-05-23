@@ -1,10 +1,9 @@
 # Shogi Status
 
-Last updated: 2026-05-22.
+Last updated: 2026-05-23.
 
-This is the compact current-state document. Detailed experiment rows live in
-`learning-experiments.md`; runtime measurements live in the throughput and
-inference-performance docs.
+This is the compact current-state document. Runtime measurements live in the
+throughput and inference-performance docs.
 
 ## Current Promoted Checkpoint
 
@@ -14,7 +13,7 @@ The current loadable component checkpoint stored in `models/` is:
 models/shogi-minimal-split-global-action-plane/
 ```
 
-It is a small component-format smoke checkpoint, not a playing-strength
+It is the latest full Qhapaq-trained minimal split-global action-plane
 checkpoint.
 
 Historical measurements may refer to `d256-h1024-heads8-l6-shogi`, which was
@@ -31,17 +30,29 @@ Current successful full training uses the Qhapaq full tensor cache:
 
 ## Latest Learning Result
 
-The latest online replay run trained for 4 iterations from the Qhapaq full-cache
-checkpoint. The final iteration improved fixed-eval policy/value metrics
-slightly:
+The latest full Qhapaq tensor-cache run trained the minimal split-global
+action-plane entry and stopped early:
 
-- eval loss: 1.8461 -> 1.8436
-- eval accuracy: 0.4495 -> 0.4512
+- actual steps: 61,000
+- best eval step: 51,000
+- best eval loss: 1.7726
+- final eval accuracy: 0.4620
+- final eval value loss: 0.8387
 
 ## Latest Playing-Strength Check
 
-Against the previous promoted checkpoint, with sampled checkpoint move selection,
-100 games, alternating sides, MCTS128, and batch64:
+Against YaneuraOu MaterialLv1 `go nodes 1`, with alternating sides, MCTS128,
+and NN leaf eval batch limit 64:
 
-- result: 53-39-8
-- average plies: 174.95
+- result: 16-0-0
+- illegal moves: 0
+- average plies: 133.375
+
+## Older Lessons
+
+- Small deterministic matches can repeat the same game lines. Sampled move
+  selection removed that artifact in the 2026-05-16 checks.
+- The 2026-05-17 Qhapaq policy/value winner-training run improved fixed eval
+  metrics, beat the previous promoted checkpoint 14-1-1, beat YaneuraOu
+  MaterialLv1 nodes1/10/100 in 16-game checks, and lost to nodes1000 by 37-61-2
+  over 100 games.
