@@ -41,12 +41,20 @@ action-plane entry and stopped early:
 
 ## Latest Playing-Strength Check
 
-Against YaneuraOu MaterialLv1 `go nodes 1`, with alternating sides, MCTS128,
+Against YaneuraOu MaterialLv1 `go nodes 1000`, with alternating sides, MCTS128,
 and NN leaf eval batch limit 64:
 
 - result: 16-0-0
 - illegal moves: 0
-- average plies: 133.375
+- average plies: 157.25
+
+Against Suisho5 `go nodes 1`, with alternating sides, MCTS128, and NN leaf eval
+batch limit 64:
+
+- result: 9-7-0
+- illegal moves: 0
+- average plies: 180.4375
+- side split: black 7-1, white 2-6
 
 ## Older Lessons
 
