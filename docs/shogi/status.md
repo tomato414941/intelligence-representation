@@ -16,10 +16,6 @@ models/shogi-minimal-split-global-action-plane/
 It is the latest full Qhapaq-trained minimal split-global action-plane
 checkpoint.
 
-Historical measurements may refer to `d256-h1024-heads8-l6-shogi`, which was
-the previous single-file promoted checkpoint before checkpoint artifacts were
-split into input, core, policy output, and value output components.
-
 ## Training Data
 
 Current successful full training uses the Qhapaq full tensor cache:
