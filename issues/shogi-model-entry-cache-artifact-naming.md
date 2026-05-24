@@ -38,6 +38,18 @@ like:
 These names are understandable, but they do not say that the first part is a
 position input representation.
 
+The same drift appears in adjacent human-facing names:
+
+- `models/shogi-minimal-split-global-action-plane`
+- `docs/shogi/training-throughput.md` model entries such as
+  `shogi-policy-plane-minimal-split-global`
+- `docs/shogi/play-inference-performance.md` model entries such as
+  `shogi-policy-plane-minimal-split-global`
+
+These names are not machine ids, but they are long-lived references for humans.
+They should follow the same naming policy as the evaluation roster and cache
+artifacts.
+
 ## Desired Naming Shape
 
 Keep machine ids and human labels separate.
@@ -77,6 +89,13 @@ The generated cache artifact names should be renamed or re-released under the
 same naming policy before they become long-lived references in docs, scripts,
 or training commands.
 
+The promoted model artifact directory should also follow the model entry naming
+policy. For example, `models/shogi-minimal-split-global-action-plane` should be
+renamed to `models/shogi-minimal-split-global-position-action-plane`.
+
+Performance documents should not keep older `policy-plane` labels when the
+model entry is now understood as an `action-plane` policy/value model.
+
 The default `action-plane-policy` cache name is too generic for long-lived
 artifacts. It is acceptable only as a local test fixture or short-lived
 temporary cache directory.
@@ -86,7 +105,10 @@ temporary cache directory.
 This issue can close when:
 
 - `docs/shogi/evaluation-roster.md` uses position-aware model entry names
+- promoted model artifact directories use the same position-aware names
 - RunPod/R2 cache release names use the same model-entry-style naming policy
+- shogi performance docs use the same model entry names and do not keep stale
+  `policy-plane` labels
 - scripts do not default long-lived shogi cache artifacts to `action-plane-policy`
 - docs and examples use the same names consistently
 - existing assembly spec ids are left alone unless a separate issue identifies a
