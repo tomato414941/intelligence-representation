@@ -4,7 +4,7 @@ This document records external sources that may influence future project design
 or experiments.
 
 Keep entries short. A note here is not an implementation decision.
-Project-facing follow-up notes for selected papers live under `docs/research/`.
+Longer notes for selected sources live next to this file.
 
 Each entry should include:
 
@@ -84,7 +84,7 @@ Each entry should include:
 - Possible project relevance: supports treating predictive representation as
   latent-state prediction, where the target can be another encoded observation
   rather than a human-authored label.
-- Project note: [docs/research/leworldmodel.md](research/leworldmodel.md)
+- Project note: [leworldmodel.md](leworldmodel.md)
 
 ## Modular Memory Is the Key to Continual Learning Agents
 

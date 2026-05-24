@@ -5,26 +5,27 @@ Source: https://arxiv.org/abs/2603.19312
 This document records the project-facing interpretation of LeWorldModel. It is
 not a paper summary and not an implementation decision.
 
-## Adopted Idea
+## Core Idea
 
 Predict a future observation's latent representation instead of reconstructing
 the future observation itself.
 
-In this project, that means a representation can be more than an intermediate
-value for a task head. It can also be a prediction target.
+For this project, the relevant question is whether a representation can be more
+than an intermediate value for a task head. It may also be useful as a
+prediction target.
 
 ```text
 observation_t + context
   -> representation_{t+1}
 ```
 
-The important part is not pixel reconstruction, text generation, or game
-outcome prediction. The important part is learning a representation space where
-future observations can be predicted.
+The important part is the representation-space prediction. Pixel
+reconstruction, text generation, and game outcome prediction are different
+questions.
 
 ## Project Interpretation
 
-The relevant boundary is:
+The relevant boundary to examine is:
 
 ```text
 source record
@@ -33,19 +34,16 @@ source record
   -> predicted representation
 ```
 
-This should stay separate from task-specific objectives such as classification,
-policy, value, or next-token prediction.
+This is separate from task-specific objectives such as classification, policy,
+value, or next-token prediction.
 
-The target representation may come from an encoder. The first experiments should
-make that target explicit, so failure can be attributed to the problem setting,
-encoder, predictor, loss, or data.
+The target representation may come from an encoder. The target should be
+explicit, so failure can be attributed to the problem setting, encoder,
+predictor, loss, or data.
 
-## First Problem Setting
+## Candidate Problem Setting
 
-Start outside shogi.
-
-The first problem should be small, cheap, and clearly learnable. A good first
-candidate is a language latent-prediction task:
+A small language latent-prediction task is a useful candidate:
 
 ```text
 previous sentence + next sentence
@@ -65,9 +63,9 @@ negative candidate sentences.
 This gives a small test of whether the model can predict a meaningful latent
 representation without turning the experiment into full language modeling.
 
-## Not First
+## Outside This Note
 
-Do not start with:
+This note does not cover:
 
 - shogi transition prediction
 - full language-model training
@@ -77,4 +75,4 @@ Do not start with:
 - control or planning
 
 Those may become relevant later, but they add too many causes of failure for the
-first latent-prediction experiment.
+small latent-prediction problem setting described here.
