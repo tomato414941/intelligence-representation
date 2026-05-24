@@ -1,6 +1,6 @@
 # Tensor Cache Input Output Boundary
 
-Status: open. Priority: low.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -52,3 +52,20 @@ rebuild time becomes a meaningful constraint.
 - block action-plane policy tensor cache creation
 - redesign Training Data Bundle
 - add generic cache abstractions before a concrete second need exists
+
+## Closure
+
+Closed on 2026-05-24.
+
+The unified tensor sample cache is the intended design for now. Recent shogi
+cache measurements showed that artifact size is dominated by input feature
+count, not duplicated output targets:
+
+- minimal single-global position input: about 400 bytes/sample
+- alpha-zero-like no-history position input: about 4774 bytes/sample
+- dlshogi-like no-entering-king position input: about 9636 bytes/sample
+
+Splitting input and output caches would add example-alignment complexity without
+solving the current bottleneck. Reopen or create a new issue only if repeated
+model-entry comparisons show that rebuilding unified caches is the real
+constraint.
