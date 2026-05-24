@@ -1,6 +1,6 @@
 # Long-Lived Artifact Home
 
-Status: open. Priority: low.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -34,3 +34,21 @@ artifact home.
 This issue can close when the project either chooses a long-lived artifact home
 or explicitly defers that choice until a concrete artifact crosses a defined
 threshold.
+
+## Closure
+
+Closed on 2026-05-24.
+
+Use Cloudflare R2 as the project's formal external storage home for long-lived
+large artifacts. Git remains for code, docs, and small metadata. Local disk and
+`runs/` remain disposable working locations, not durable artifact homes.
+
+R2 is the durable home for artifacts such as:
+
+- tensor caches
+- promoted checkpoints
+- datasets or dataset-derived bundles that are too large for Git
+- evaluation bundles that must survive local cleanup
+
+Keep artifact semantics in project manifests and docs. R2 is the storage layer,
+not a reason to couple project code to Cloudflare-specific APIs.
