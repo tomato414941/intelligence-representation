@@ -1,6 +1,6 @@
 # RunPod Network Volume Revisit
 
-Status: open. Priority: low. Verification needed.
+Status: closed. Priority: low.
 
 ## Issue
 
@@ -71,3 +71,25 @@ This issue can close when either:
   intentionally, or
 - network volumes are explicitly rejected for the current project phase with
   evidence that container disk plus sync remains simpler and sufficient.
+
+## Closure
+
+Closed on 2026-05-24.
+
+Use R2 as the durable artifact store and disposable RunPod container disks for
+execution. Do not introduce RunPod Network Volumes for the current project
+phase.
+
+Even the larger shogi tensor caches are still practical as R2 artifacts:
+
+- minimal single-global action-plane cache: about 2.0 GB
+- alpha-zero-like action-plane cache: about 24 GB
+- dlshogi-like action-plane cache: about 47 GB
+
+Network Volumes would reduce repeated restore work for same-cache sweeps, but
+they would also add volume lifecycle, placement, mount/readiness, cleanup, and
+stale-state concerns. That tradeoff is not justified while runs are mostly
+disposable and cache identity is still changing across model entries.
+
+Reopen only if repeated same-cache sweeps make R2 restore time the dominant
+cost for a concrete workload.
