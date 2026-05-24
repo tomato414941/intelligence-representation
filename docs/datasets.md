@@ -55,6 +55,7 @@ CIFAR-10 python batches and IDX image datasets can be converted into local JSONL
 records with:
 
 ```text
-intrep.datasets.vision.cifar10
-intrep.datasets.vision.idx
+intrep.problems.image_classification.dataset_builders
+intrep.problems.image_text_answer.dataset_builders
+intrep.problems.image_text_choice.dataset_builders
 ```

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.problems.image_classification.examples import FASHION_MNIST_LABELS
+from intrep.datasets.vision.idx import FASHION_MNIST_LABELS
 from intrep.problems.image_text_choice.examples import (
     ImageTextChoiceExample,
     image_text_choice_example_to_record,

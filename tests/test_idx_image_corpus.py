@@ -7,15 +7,14 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.datasets.vision.idx import (
-    main,
-    read_idx_images,
-    read_idx_labels,
-    write_idx_image_classification_jsonl,
-    write_idx_image_text_answer_jsonl,
-    write_idx_image_text_choice_jsonl,
-)
+from intrep.datasets.vision.idx import read_idx_images, read_idx_labels
 from intrep.domains.vision.io import read_portable_image
+from intrep.problems.image_classification.dataset_builders import (
+    main_idx,
+    write_idx_image_classification_jsonl,
+)
+from intrep.problems.image_text_answer.dataset_builders import write_idx_image_text_answer_jsonl
+from intrep.problems.image_text_choice.dataset_builders import write_idx_image_text_choice_jsonl
 
 
 class IDXImageCorpusTest(unittest.TestCase):
@@ -207,7 +206,7 @@ class IDXImageCorpusTest(unittest.TestCase):
             _write_idx_labels(labels_path, [3])
 
             with redirect_stdout(output):
-                main(
+                main_idx(
                     [
                         "--images-path",
                         str(images_path),
@@ -231,7 +230,7 @@ class IDXImageCorpusTest(unittest.TestCase):
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["label_index"], 3)
         self.assertEqual(loaded[0]["label_names"], [str(index) for index in range(10)])
-        self.assertIn("intrep idx image corpus", output.getvalue())
+        self.assertIn("intrep idx image classification dataset", output.getvalue())
         self.assertIn("label_set=mnist", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 

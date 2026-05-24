@@ -6,11 +6,10 @@ from tempfile import TemporaryDirectory
 import torch
 from PIL import Image
 
+from intrep.datasets.vision.cifar10 import CIFAR10_LABELS
+from intrep.datasets.vision.idx import FASHION_MNIST_LABELS, MNIST_LABELS
 from intrep.problems.image_classification.examples import (
-    CIFAR10_LABELS,
-    FASHION_MNIST_LABELS,
     ImageClassificationExample,
-    MNIST_LABELS,
     image_classification_example_to_record,
     load_image_classification_examples_jsonl,
 )

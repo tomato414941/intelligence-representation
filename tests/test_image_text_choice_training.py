@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.problems.image_classification.examples import FASHION_MNIST_LABELS
+from intrep.datasets.vision.idx import FASHION_MNIST_LABELS
 from intrep.problems.image_text_choice.examples import ImageTextChoiceExample
 from intrep.problems.image_text_choice.checkpoint import (
     load_image_text_choice_checkpoint,

@@ -5,35 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-FASHION_MNIST_LABELS = (
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot",
-)
-
-MNIST_LABELS = tuple(str(index) for index in range(10))
-
-CIFAR10_LABELS = (
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-    "ship",
-    "truck",
-)
-
-
 @dataclass(frozen=True)
 class ImageClassificationExample:
     image_path: Path

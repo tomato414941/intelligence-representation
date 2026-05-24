@@ -8,14 +8,14 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
-from intrep.datasets.vision.cifar10 import (
-    main,
-    read_cifar10_batch,
-    write_cifar10_image_classification_jsonl,
-    write_cifar10_image_text_answer_jsonl,
-    write_cifar10_image_text_choice_jsonl,
-)
+from intrep.datasets.vision.cifar10 import read_cifar10_batch
 from intrep.domains.vision.io import read_portable_image
+from intrep.problems.image_classification.dataset_builders import (
+    main_cifar10,
+    write_cifar10_image_classification_jsonl,
+)
+from intrep.problems.image_text_answer.dataset_builders import write_cifar10_image_text_answer_jsonl
+from intrep.problems.image_text_choice.dataset_builders import write_cifar10_image_text_choice_jsonl
 
 
 class CIFAR10ImageCorpusTest(unittest.TestCase):
@@ -124,7 +124,7 @@ class CIFAR10ImageCorpusTest(unittest.TestCase):
             _write_cifar_batch(batch_path, labels=[8])
 
             with redirect_stdout(output):
-                main(
+                main_cifar10(
                     [
                         "--batch-path",
                         str(batch_path),
@@ -143,7 +143,7 @@ class CIFAR10ImageCorpusTest(unittest.TestCase):
 
         self.assertEqual(len(loaded), 1)
         self.assertEqual(loaded[0]["label_index"], 8)
-        self.assertIn("intrep cifar10 image corpus", output.getvalue())
+        self.assertIn("intrep cifar10 image classification dataset", output.getvalue())
         self.assertIn("images=1", output.getvalue())
 
 

@@ -7,7 +7,8 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.problems.image_classification.examples import FASHION_MNIST_LABELS, ImageClassificationExample
+from intrep.datasets.vision.idx import FASHION_MNIST_LABELS
+from intrep.problems.image_classification.examples import ImageClassificationExample
 from intrep.problems.image_classification.training import (
     ImageClassificationConfig,
     train_image_classifier_with_result,

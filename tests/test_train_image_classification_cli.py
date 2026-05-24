@@ -9,7 +9,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from intrep import train_image_classification
-from intrep.problems.image_classification.examples import FASHION_MNIST_LABELS
+from intrep.datasets.vision.idx import FASHION_MNIST_LABELS
 from intrep.problems.image_classification.training import (
     ImageFolderClassificationDataset,
     ImageClassificationMetrics,
