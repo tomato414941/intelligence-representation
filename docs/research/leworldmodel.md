@@ -43,25 +43,27 @@ predictor, loss, or data.
 
 ## Candidate Problem Setting
 
-A small language latent-prediction task is a useful candidate:
+A small synthetic visual transition task is a useful candidate:
 
 ```text
-previous sentence + next sentence
-  -> missing sentence representation
+frame_t + action
+  -> representation(frame_t+1)
 ```
 
-The target is not the missing sentence text. The target is an embedding of the
-missing sentence.
+The source can be a tiny image with one moving dot. The action can be one of
+`stay`, `up`, `down`, `left`, or `right`. The target is not the next frame's
+pixels. The target is an embedding of the next frame.
 
-A simple evaluation is retrieval:
+A simple evaluation is next-frame retrieval:
 
 ```text
-Given the predicted representation, rank the true missing sentence against
-negative candidate sentences.
+Given the predicted representation, rank the true next frame against negative
+candidate frames.
 ```
 
 This gives a small test of whether the model can predict a meaningful latent
-representation without turning the experiment into full language modeling.
+representation without turning the experiment into image reconstruction or
+large-scale world-model training.
 
 ## Outside This Note
 
