@@ -1,5 +1,22 @@
 # Shogi Opponent Engine Preset Boundary
 
+Status: closed.
+
+Resolution: RunPod checkpoint-vs-YaneuraOu evaluation now selects the opponent
+with a small CLI preset in `shogi-arena-agent`:
+
+```text
+--opponent material-nodes1
+--opponent material-nodes1000
+--opponent suisho5-nodes1
+--opponent suisho5-nodes1000
+--opponent suisho5-byoyomi1000
+```
+
+Run-specific evaluation conditions are now CLI arguments instead of environment
+variables. Environment variables are reserved for local integration and secrets.
+No broad preset registry or class hierarchy was introduced.
+
 ## Problem
 
 Shogi playing-strength checks need repeatable opponent definitions such as
