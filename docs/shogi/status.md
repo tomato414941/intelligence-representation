@@ -1,6 +1,6 @@
 # Shogi Status
 
-Last updated: 2026-05-23.
+Last updated: 2026-05-24.
 
 This is the compact current-state document. Runtime measurements live in the
 throughput and inference-performance docs.
@@ -51,6 +51,14 @@ batch limit 64:
 - illegal moves: 0
 - average plies: 180.4375
 - side split: black 7-1, white 2-6
+
+Against Suisho5 `go nodes 1000`, with alternating sides, MCTS128, and NN leaf
+eval batch limit 64:
+
+- result: 7-9-0
+- illegal moves: 0
+- average plies: 141.1875
+- side split: black 3-5, white 4-4
 
 ## Older Lessons
 
