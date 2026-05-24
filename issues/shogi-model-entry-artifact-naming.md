@@ -1,4 +1,4 @@
-# Shogi Model Entry And Cache Artifact Naming
+# Shogi Model Entry And Artifact Naming
 
 Status: open. Priority: medium.
 
