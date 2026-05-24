@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.domains.vision.classification_checkpoint import load_image_classification_checkpoint
+from intrep.problems.image_classification.checkpoint import load_image_classification_checkpoint
 from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
 from intrep.core.training_utils import TrainingDevice, resolve_training_device

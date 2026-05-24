@@ -6,24 +6,25 @@ from tempfile import TemporaryDirectory
 import torch
 from PIL import Image
 
-from intrep.domains.vision.classification import (
+from intrep.problems.image_classification.examples import (
     CIFAR10_LABELS,
-    ClassificationHead,
     FASHION_MNIST_LABELS,
     ImageClassificationExample,
+    MNIST_LABELS,
+    image_classification_example_to_record,
+    load_image_classification_examples_jsonl,
+)
+from intrep.problems.image_classification.training import (
     ImageClassificationConfig,
     ImageClassificationDataset,
     ImageFolderClassificationDataset,
-    ImagePatchInputLayer,
-    MNIST_LABELS,
-    image_classification_example_to_record,
     image_classification_tensors_from_examples,
-    load_image_classification_examples_jsonl,
     train_image_classifier,
     train_image_classifier_with_result,
 )
-from intrep.representation.assemblies.image_classification import ImageClassificationModel
+from intrep.representation.assemblies.image_classification import ClassificationHead, ImageClassificationModel
 from intrep.representation.cores.transformer import SharedTransformerCore
+from intrep.representation.inputs.vision_patches.input_layer import ImagePatchInputLayer
 
 
 class ImageClassificationTest(unittest.TestCase):

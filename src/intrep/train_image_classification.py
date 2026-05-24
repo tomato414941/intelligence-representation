@@ -3,14 +3,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from intrep.domains.vision.classification import (
+from intrep.problems.image_classification.examples import load_image_classification_examples_jsonl
+from intrep.problems.image_classification.training import (
     ImageClassificationConfig,
     ImageFolderClassificationDataset,
-    load_image_classification_examples_jsonl,
     train_image_classifier_with_result,
     write_metrics,
 )
-from intrep.domains.vision.classification_checkpoint import save_image_classification_checkpoint
+from intrep.problems.image_classification.checkpoint import save_image_classification_checkpoint
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import Literal, TypeVar
 
 import torch
+from torch.utils.data import DataLoader, Dataset
 
 LearningRateSchedule = Literal["constant", "warmup_cosine"]
 TrainingDevice = Literal["auto", "cpu", "cuda"]
+T = TypeVar("T")
 
 
 def resolve_training_device(requested_device: TrainingDevice) -> torch.device:
@@ -15,6 +17,25 @@ def resolve_training_device(requested_device: TrainingDevice) -> torch.device:
     if requested_device == "cuda" and not torch.cuda.is_available():
         raise ValueError("CUDA device requested but torch.cuda.is_available() is false")
     return torch.device(requested_device)
+
+
+def seeded_data_loader(
+    dataset: Dataset[T],
+    *,
+    batch_size: int,
+    seed: int,
+    shuffle: bool,
+    device: torch.device,
+) -> DataLoader[T]:
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        generator=generator,
+        pin_memory=device.type == "cuda",
+    )
 
 
 def build_adamw(

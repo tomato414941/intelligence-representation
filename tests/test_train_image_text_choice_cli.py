@@ -7,19 +7,19 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from intrep.domains.vision.classification import (
-    FASHION_MNIST_LABELS,
+from intrep.problems.image_classification.examples import FASHION_MNIST_LABELS, ImageClassificationExample
+from intrep.problems.image_classification.training import (
     ImageClassificationConfig,
-    ImageClassificationExample,
     train_image_classifier_with_result,
 )
 from intrep.problems.image_text_choice.examples import (
     ImageTextChoiceExample,
     image_text_choice_example_to_record,
 )
-from intrep.domains.vision.classification_checkpoint import save_image_classification_checkpoint
+from intrep.problems.image_classification.checkpoint import save_image_classification_checkpoint
 from intrep.problems.image_text_answer.checkpoint import save_image_text_answer_checkpoint
-from intrep.problems.image_text_answer.training import ImageTextAnswerExample, ImageTextAnswerTrainingConfig, train_image_text_answer_model
+from intrep.problems.image_text_answer.examples import ImageTextAnswerExample
+from intrep.problems.image_text_answer.training import ImageTextAnswerTrainingConfig, train_image_text_answer_model
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
 from intrep.domains.language.tokenizer import build_text_tokenizer, save_text_tokenizer
 from intrep.train_image_text_choice import main

@@ -9,13 +9,15 @@ from intrep.problems.image_text_answer.checkpoint import (
     load_image_text_answer_checkpoint,
     save_image_text_answer_checkpoint,
 )
-from intrep.problems.image_text_answer.training import (
-    ImageTextAnswerDataset,
+from intrep.problems.image_text_answer.examples import (
     ImageTextAnswerExample,
-    ImageTextAnswerTrainingConfig,
-    generate_image_text_answer,
     image_text_answer_example_to_record,
     load_image_text_answer_examples_jsonl,
+)
+from intrep.problems.image_text_answer.training import (
+    ImageTextAnswerDataset,
+    ImageTextAnswerTrainingConfig,
+    generate_image_text_answer,
     train_image_text_answer_model,
 )
 from intrep.representation.assemblies.image_text_answer import ImageTextAnswerModel

@@ -5,9 +5,9 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from intrep.problems.image_text_answer.examples import load_image_text_answer_examples_jsonl
 from intrep.problems.image_text_answer.training import (
     ImageTextAnswerTrainingConfig,
-    load_image_text_answer_examples_jsonl,
     train_image_text_answer_model,
 )
 from intrep.problems.image_text_answer.checkpoint import save_image_text_answer_checkpoint

@@ -10,62 +10,25 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from intrep.domains.vision.input_layer import ImagePatchInputLayer
-from intrep.core.training_utils import resolve_training_device
+from intrep.core.training_utils import (
+    LearningRateSchedule,
+    build_adamw,
+    build_lr_scheduler,
+    clip_gradients,
+    resolve_training_device,
+    seeded_data_loader,
+)
 from intrep.domains.vision.io import read_portable_image
 from intrep.domains.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
-    seeded_data_loader,
 )
-from intrep.representation.assemblies.image_classification import ClassificationHead, ImageClassificationModel
-from intrep.core.training_utils import LearningRateSchedule, build_adamw, build_lr_scheduler, clip_gradients
-
-
-FASHION_MNIST_LABELS = (
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot",
+from intrep.problems.image_classification.examples import (
+    ImageClassificationExample,
+    class_count_from_examples,
 )
-
-MNIST_LABELS = tuple(str(index) for index in range(10))
-
-CIFAR10_LABELS = (
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-    "ship",
-    "truck",
-)
-
-
-@dataclass(frozen=True)
-class ImageClassificationExample:
-    image_path: Path
-    label_names: tuple[str, ...]
-    label_index: int
-
-    def __post_init__(self) -> None:
-        if not self.label_names:
-            raise ValueError("label_names must not be empty")
-        if not 0 <= self.label_index < len(self.label_names):
-            raise ValueError("label_index out of range")
-
-    @property
-    def label_text(self) -> str:
-        return self.label_names[self.label_index]
+from intrep.representation.assemblies.image_classification import ImageClassificationModel
+from intrep.representation.inputs.vision_patches.input_layer import ImagePatchInputLayer
 
 
 @dataclass(frozen=True)
@@ -148,7 +111,7 @@ class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __init__(self, examples: list[ImageClassificationExample]) -> None:
         if not examples:
             raise ValueError("examples must not be empty")
-        _class_count_from_examples(examples)
+        class_count_from_examples(examples)
         self.examples = tuple(examples)
         self.label_names = examples[0].label_names
         self.image_shape = tuple(int(value) for value in image_tensor_from_path(examples[0].image_path).shape)
@@ -370,81 +333,6 @@ def image_classification_tensors_from_examples(
     image_tensor = torch.tensor(np.stack(images).astype(np.float32) / 255.0, dtype=torch.float32)
     label_tensor = torch.tensor(labels, dtype=torch.long)
     return image_tensor, label_tensor
-
-
-def load_image_classification_examples_jsonl(path: str | Path) -> list[ImageClassificationExample]:
-    examples: list[ImageClassificationExample] = []
-    for line_number, line in enumerate(
-        Path(path).read_text(encoding="utf-8").splitlines(),
-        start=1,
-    ):
-        if not line.strip():
-            continue
-        try:
-            record = json.loads(line)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"Invalid image-classification JSONL at line {line_number}: {error.msg}") from error
-        examples.append(image_classification_example_from_record(record, line_number=line_number))
-    if not examples:
-        raise ValueError("image-classification JSONL must contain at least one example")
-    return examples
-
-
-def image_classification_example_from_record(
-    record: object,
-    *,
-    line_number: int,
-) -> ImageClassificationExample:
-    if not isinstance(record, dict):
-        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: expected object")
-    required = {"image_path", "label_names", "label_index"}
-    missing = required - record.keys()
-    if missing:
-        fields = ", ".join(sorted(missing))
-        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: missing fields: {fields}")
-    extra = set(record.keys()) - required
-    if extra:
-        fields = ", ".join(sorted(extra))
-        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: unsupported fields: {fields}")
-    image_path = record["image_path"]
-    label_names = record["label_names"]
-    label_index = record["label_index"]
-    if not isinstance(image_path, str) or not image_path:
-        raise ValueError(
-            f"Invalid image-classification JSONL at line {line_number}: image_path must be a string"
-        )
-    if not isinstance(label_names, list) or not all(isinstance(label_name, str) for label_name in label_names):
-        raise ValueError(
-            f"Invalid image-classification JSONL at line {line_number}: label_names must be a list of strings"
-        )
-    if not isinstance(label_index, int):
-        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: label_index must be an integer")
-    try:
-        return ImageClassificationExample(
-            image_path=Path(image_path),
-            label_names=tuple(label_names),
-            label_index=label_index,
-        )
-    except ValueError as error:
-        raise ValueError(f"Invalid image-classification JSONL at line {line_number}: {error}") from error
-
-
-def image_classification_example_to_record(example: ImageClassificationExample) -> dict[str, object]:
-    return {
-        "image_path": str(example.image_path),
-        "label_names": list(example.label_names),
-        "label_index": example.label_index,
-    }
-
-
-def _class_count_from_examples(examples: list[ImageClassificationExample]) -> int:
-    if not examples:
-        raise ValueError("examples must not be empty")
-    label_names = examples[0].label_names
-    for example in examples:
-        if example.label_names != label_names:
-            raise ValueError("all examples must use the same label_names")
-    return len(label_names)
 
 
 def write_metrics(path: str | Path, metrics: ImageClassificationMetrics) -> None:

@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 
-from intrep.domains.vision.cifar10_corpus import (
+from intrep.datasets.vision.cifar10 import (
     main,
     read_cifar10_batch,
     write_cifar10_image_classification_jsonl,

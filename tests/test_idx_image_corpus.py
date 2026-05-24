@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.domains.vision.idx_corpus import (
+from intrep.datasets.vision.idx import (
     main,
     read_idx_images,
     read_idx_labels,

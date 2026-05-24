@@ -10,14 +10,14 @@ from typing import Sequence
 
 import numpy as np
 
-from intrep.domains.vision.classification import (
+from intrep.problems.image_classification.examples import (
     FASHION_MNIST_LABELS,
     ImageClassificationExample,
     MNIST_LABELS,
     image_classification_example_to_record,
 )
 from intrep.problems.image_text_choice.examples import ImageTextChoiceExample, image_text_choice_example_to_record
-from intrep.problems.image_text_answer.training import ImageTextAnswerExample, image_text_answer_example_to_record
+from intrep.problems.image_text_answer.examples import ImageTextAnswerExample, image_text_answer_example_to_record
 
 
 @dataclass(frozen=True)

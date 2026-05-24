@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.domains.vision.classification import (
+from intrep.problems.image_classification.training import (
     ImageClassificationConfig,
     ImageClassificationTrainingResult,
 )

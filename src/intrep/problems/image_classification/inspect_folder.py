@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from intrep.domains.vision.classification import ImageFolderClassificationDataset
+from intrep.problems.image_classification.training import ImageFolderClassificationDataset
 
 
 def build_parser() -> argparse.ArgumentParser:
