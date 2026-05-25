@@ -5,16 +5,15 @@ Last updated: 2026-05-25.
 This is the compact current-state document. Runtime measurements live in the
 throughput and inference-performance docs.
 
-## Current Promoted Checkpoint
+## Shogi Checkpoints Under Evaluation
 
-The current loadable component checkpoint stored in `models/` is:
+Loadable component checkpoints currently used for shogi entry comparison:
 
-```text
-models/shogi-minimal-single-global-position-action-plane/
-```
+- minimal single-global action-plane:
+  `models/shogi-minimal-single-global-position-action-plane/`
 
-It is the latest full Qhapaq-trained minimal single-global action-plane
-checkpoint.
+- minimal split-global action-plane:
+  `models/shogi-minimal-split-global-action-plane/`
 
 ## Training Data
 
@@ -35,7 +34,7 @@ action-plane entry and stopped early:
 - final eval accuracy: 0.4543
 - final eval value loss: 0.8854
 
-## Latest Playing-Strength Check
+## Latest Single-Global Playing-Strength Check
 
 Against Suisho5 `go nodes 1000`, with alternating sides, MCTS128, and NN leaf
 eval batch limit 64:
