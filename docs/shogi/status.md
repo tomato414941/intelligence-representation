@@ -1,6 +1,6 @@
 # Shogi Status
 
-Last updated: 2026-05-24.
+Last updated: 2026-05-25.
 
 This is the compact current-state document. Runtime measurements live in the
 throughput and inference-performance docs.
@@ -10,10 +10,10 @@ throughput and inference-performance docs.
 The current loadable component checkpoint stored in `models/` is:
 
 ```text
-models/shogi-minimal-split-global-action-plane/
+models/shogi-minimal-single-global-position-action-plane/
 ```
 
-It is the latest full Qhapaq-trained minimal split-global action-plane
+It is the latest full Qhapaq-trained minimal single-global action-plane
 checkpoint.
 
 ## Training Data
@@ -26,16 +26,26 @@ Current successful full training uses the Qhapaq full tensor cache:
 
 ## Latest Learning Result
 
-The latest full Qhapaq tensor-cache run trained the minimal split-global
+The latest full Qhapaq tensor-cache run trained the minimal single-global
 action-plane entry and stopped early:
 
-- actual steps: 61,000
-- best eval step: 51,000
-- best eval loss: 1.7726
-- final eval accuracy: 0.4620
-- final eval value loss: 0.8387
+- actual steps: 68,000
+- best eval step: 58,000
+- best eval loss: 1.8352
+- final eval accuracy: 0.4543
+- final eval value loss: 0.8854
 
 ## Latest Playing-Strength Check
+
+Against Suisho5 `go nodes 1000`, with alternating sides, MCTS128, and NN leaf
+eval batch limit 64:
+
+- result: 4-12-0
+- illegal moves: 0
+- average plies: 107.375
+- side split: black 1-7, white 3-5
+
+## Previous Playing-Strength Check
 
 Against YaneuraOu MaterialLv1 `go nodes 1000`, with alternating sides, MCTS128,
 and NN leaf eval batch limit 64:
