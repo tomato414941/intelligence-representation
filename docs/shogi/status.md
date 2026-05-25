@@ -45,6 +45,18 @@ eval batch limit 64:
 - average plies: 107.375
 - side split: black 1-7, white 3-5
 
+## Latest Entry Comparison
+
+Minimal split-global action-plane vs minimal single-global action-plane, using
+8 seeded random-legal opening positions with both side assignments, MCTS128, and
+NN leaf eval batch limit 64:
+
+- result: split-global 8, single-global 7, draws 1
+- illegal moves: 0
+- average plies: 192.0625
+- split-global side split: black 5-3, white 3-4
+- start positions: seed 20260525, opening plies 8
+
 ## Previous Playing-Strength Check
 
 Against YaneuraOu MaterialLv1 `go nodes 1000`, with alternating sides, MCTS128,
