@@ -28,6 +28,7 @@ TENSOR_CACHE=${TENSOR_CACHE:-"$LOCAL_BUNDLE/cache/$ASSEMBLY_SPEC"}
 R2_CACHE_PREFIX=${R2_CACHE_PREFIX:-}
 R2_ENV_FILE=${R2_ENV_FILE:-"$HOME/.secrets/intrep-cloudflare-r2"}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-policy-value-train-$RUN_ID}
+INIT_CHECKPOINT=${INIT_CHECKPOINT:-}
 
 MAX_STEPS=${MAX_STEPS:-100000}
 BATCH_SIZE=${BATCH_SIZE:-512}
@@ -87,6 +88,24 @@ SYNC_ARGS=(
   --sync scripts/restore_r2_artifact.sh
   --sync "$DATA_SELECTION"
 )
+if [[ -n "$INIT_CHECKPOINT" ]]; then
+  if [[ ! -e "$INIT_CHECKPOINT" ]]; then
+    echo "INIT_CHECKPOINT not found: $INIT_CHECKPOINT" >&2
+    exit 1
+  fi
+  INIT_CHECKPOINT_ABS=$(realpath "$INIT_CHECKPOINT")
+  REPO_ABS=$(realpath "$PWD")
+  case "$INIT_CHECKPOINT_ABS" in
+    "$REPO_ABS"/*) INIT_CHECKPOINT_REMOTE=${INIT_CHECKPOINT_ABS#"$REPO_ABS"/} ;;
+    *)
+      echo "INIT_CHECKPOINT must be under the repository root so it can be synced: $INIT_CHECKPOINT_ABS" >&2
+      exit 1
+      ;;
+  esac
+  SYNC_ARGS+=(--sync "$INIT_CHECKPOINT_REMOTE")
+else
+  INIT_CHECKPOINT_REMOTE=
+fi
 
 R2_REMOTE_ENV="runs/shogi/.runpod-r2-env-$RUN_ID"
 cleanup_r2_remote_env() {
@@ -123,6 +142,9 @@ if [[ "$DISABLE_EARLY_STOPPING" == "1" ]]; then
   OPTIONAL_TRAIN_ARGS+=(--disable-early-stopping)
 else
   OPTIONAL_TRAIN_ARGS+=(--early-stopping-patience "$EARLY_STOPPING_PATIENCE")
+fi
+if [[ -n "$INIT_CHECKPOINT_REMOTE" ]]; then
+  OPTIONAL_TRAIN_ARGS+=(--init-checkpoint-path "$INIT_CHECKPOINT_REMOTE")
 fi
 
 python3 "$RUNPOD_JOB" \
