@@ -14,6 +14,7 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_return_targets_from_game_record,
     shogi_score_targets_from_engine_analysis,
     shogi_score_targets_from_game_record,
+    shogi_value_targets_from_game_record,
 )
 from intrep.problems.shogi_policy_value.samples import ShogiLegalMovePolicyValueDataset
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
@@ -163,6 +164,24 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
 
         self.assertEqual(targets, {"7g7f": 0.75, "2g2f": 0.25})
 
+    def test_builds_value_targets_from_mcts_root_mean_value(self) -> None:
+        record = _record(("7g7f",), "black")
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(
+                    action_usi="7g7f",
+                    decision_telemetry=ShogiDecisionTelemetry(
+                        search_evidence={"mcts_root_mean_value": 0.375},
+                    ),
+                ),
+            ),
+        )
+
+        targets = shogi_value_targets_from_game_record(record, source="mcts_root_mean_value")
+
+        self.assertEqual(targets, (0.375,))
+
     def test_loads_policy_value_examples_with_mcts_visit_target_source(self) -> None:
         record = _record(("7g7f",), "black")
         record = replace(
@@ -189,6 +208,36 @@ class ShogiPolicyValueDataTest(unittest.TestCase):
         self.assertEqual(examples[0].policy_targets, {"7g7f": 0.75, "2g2f": 0.25})
         self.assertEqual(examples[0].policy_target_source, "mcts_visit_counts")
         self.assertEqual(examples[0].value_target_source, "winner")
+
+    def test_loads_policy_value_examples_with_mcts_root_mean_value_target_source(self) -> None:
+        record = _record(("7g7f",), "black")
+        record = replace(
+            record,
+            moves=(
+                ShogiMoveRecord(
+                    action_usi="7g7f",
+                    decision_telemetry=ShogiDecisionTelemetry(
+                        search_evidence={
+                            "mcts_root_child_visit_counts": {"7g7f": 6, "2g2f": 2},
+                            "mcts_root_mean_value": -0.25,
+                        },
+                    ),
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "games.jsonl"
+            write_shogi_game_records_jsonl(path, [record])
+
+            examples = load_shogi_move_policy_value_examples_from_game_records_jsonl(
+                path,
+                policy_target_construction="mcts_visit_counts",
+                value_target_construction="mcts_root_mean_value",
+            )
+
+        self.assertEqual(examples[0].policy_targets, {"7g7f": 0.75, "2g2f": 0.25})
+        self.assertEqual(examples[0].value_target, -0.25)
+        self.assertEqual(examples[0].value_target_source, "mcts_root_mean_value")
 
     def test_mcts_visit_targets_tensorize_against_legal_move_order(self) -> None:
         record = _record(("7g7f",), "black")

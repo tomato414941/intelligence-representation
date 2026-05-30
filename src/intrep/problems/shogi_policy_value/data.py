@@ -249,6 +249,8 @@ def shogi_value_targets_from_game_trace(
         return shogi_score_targets_from_game_trace(trace, score_cp_scale=score_cp_scale)
     if source == "engine_analysis_score":
         return shogi_score_targets_from_engine_analysis(analyses_by_position or {}, trace, score_cp_scale=score_cp_scale)
+    if source == "mcts_root_mean_value":
+        return tuple(_mcts_root_mean_value_target(transition) for transition in trace.transitions)
     raise ValueError(f"unsupported shogi value target source: {source}")
 
 
@@ -432,6 +434,16 @@ def _policy_target_from_mcts_visit_counts(transition) -> dict[str, float] | None
         return None
     total = sum(targets.values())
     return {move: count / total for move, count in targets.items()}
+
+
+def _mcts_root_mean_value_target(transition) -> float | None:
+    telemetry = transition.decision_telemetry
+    if telemetry is None or telemetry.search_evidence is None:
+        return None
+    value = telemetry.search_evidence.get("mcts_root_mean_value")
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(float(value)):
+        return None
+    return max(-1.0, min(1.0, float(value)))
 
 
 def _score_target_from_info_lines(info_lines: Sequence[str], *, score_cp_scale: float) -> float | None:

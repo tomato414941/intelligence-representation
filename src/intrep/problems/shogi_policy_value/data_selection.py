@@ -176,8 +176,10 @@ def _validate_target_construction(selection: ShogiPolicyValueDataSelection) -> N
         raise ValueError(
             "target_construction.policy must be chosen_move, decision_usi_multipv, engine_analysis_multipv, or mcts_visit_counts"
         )
-    if construction.value not in {"winner", "decision_usi_score", "engine_analysis_score"}:
-        raise ValueError("target_construction.value must be winner, decision_usi_score, or engine_analysis_score")
+    if construction.value not in {"winner", "decision_usi_score", "engine_analysis_score", "mcts_root_mean_value"}:
+        raise ValueError(
+            "target_construction.value must be winner, decision_usi_score, engine_analysis_score, or mcts_root_mean_value"
+        )
     if (
         construction.policy == "engine_analysis_multipv" or construction.value == "engine_analysis_score"
     ) and not selection.analysis_sources:

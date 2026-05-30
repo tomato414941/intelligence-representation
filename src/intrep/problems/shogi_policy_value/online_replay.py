@@ -1074,9 +1074,15 @@ def _validate_experience_source(source: ShogiGeneratedExperienceSource) -> None:
             "experience source policy_target_construction must be chosen_move, "
             "decision_usi_multipv, engine_analysis_multipv, or mcts_visit_counts"
         )
-    if source.value_target_construction not in {"winner", "decision_usi_score", "engine_analysis_score"}:
+    if source.value_target_construction not in {
+        "winner",
+        "decision_usi_score",
+        "engine_analysis_score",
+        "mcts_root_mean_value",
+    }:
         raise ValueError(
-            "experience source value_target_construction must be winner, decision_usi_score, or engine_analysis_score"
+            "experience source value_target_construction must be winner, "
+            "decision_usi_score, engine_analysis_score, or mcts_root_mean_value"
         )
     _validate_generated_player(source.black_player, side="black")
     _validate_generated_player(source.white_player, side="white")
