@@ -17,6 +17,18 @@ Unless noted otherwise:
 
 ## Summary
 
+- The current MCTS128 self-play measurement is much slower than the older
+  light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
+  21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
+- The current MCTS128 measurement underfilled NN leaf evaluation batches:
+  average actual batch size was about 6.4 with a batch limit of 64.
+- Increasing per-process concurrency from 8 to 16 only helps if each worker has
+  enough games to keep active. In `w8_c16_s128_b64_g64_a40`, each of 8 workers
+  received only 8 games, so the effective per-worker concurrency stayed capped
+  at 8.
+- In the recorded MCTS128 measurements, larger per-worker batches did not
+  improve throughput: `w4_c16_s128_b64_g64_l4` filled batches better than
+  `w8_c8_s128_b64_g64_l4`, but had lower plies/sec.
 - Generation worker processes improved throughput materially in recorded
   light-search self-play measurements.
 - On the observed 6 vCPU Pod, worker 8 did not materially improve over worker 6.
@@ -38,12 +50,14 @@ Case IDs use
 
 | Case | Date | Players | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Runtime image | Total games | Concurrent games per process | Generation worker processes | MCTS simulations per move | NN leaf eval batch limit | Actual NN leaf eval batch avg | Actual NN leaf eval batch max | Actual NN leaf eval batch fill | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- | --- | --- | --- |
+| `w8_c8_s128_b64_g64_l4` | 2026-05-30 | checkpoint vs checkpoint | shogi-action-plane-policy-output-minimal-split-global | L4 | 16 vCPU, 94 GiB | secure | US-MO-2 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 8 | 128 | 64 | 6.41 | 8 | 10.02% | 126.8 | 1296.08 | 6.26 | 36.08% | 67.00% | avg 2105 MiB, max 2556 MiB / 23034 MiB | 7.69% | 11.68% | not recorded | 63 game_over, 1 max_plies. Extrapolates to about 46.1h and $18.0 for 8192 games on this Pod. |
+| `w4_c16_s128_b64_g64_l4` | 2026-05-30 | checkpoint vs checkpoint | shogi-action-plane-policy-output-minimal-split-global | L4 | 16 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 128 | 64 | 11.42 | 16 | 17.84% | 130.0 | 1614.05 | 5.16 | 19.39% | 58.00% | avg 1096 MiB, max 1368 MiB / 23034 MiB | 11.48% | 27.95% | not recorded | 60 game_over, 4 max_plies. Larger batches than `w8_c8_s128_b64_g64_l4`, but lower throughput; extrapolates to about 57.4h and $22.4 for 8192 games on this Pod. |
+| `w8_c16_s128_b64_g64_a40` | 2026-05-30 | checkpoint vs checkpoint | shogi-action-plane-policy-output-minimal-split-global | A40 | 9 vCPU, 50 GiB | secure | EU-SE-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 8 | 128 | 64 | 6.41 | 8 | 10.02% | 126.8 | 1223.29 | 6.63 | 41.66% | 75.00% | avg 2753 MiB, max 3294 MiB / 46068 MiB | 11.91% | 16.46% | not recorded | 63 game_over, 1 max_plies. `concurrent-games-per-process=16` did not increase actual batch size because 64 games across 8 workers leaves only 8 games per worker. Extrapolates to about 43.5h and $19.1 for 8192 games on this Pod. |
 | `w6_c8_s16_b32_g48_l4` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | L4 | 16 vCPU, 94 GiB | secure | US-MO-2 | $0.39/hr | not recorded | 48 | 8 | 6 | 16 | 32 | 6.32 | 8 | 19.75% | 209.6 | 125.92 | 79.88 | 52.96% | 79.00% | 2270 MiB / 23034 MiB | 694.01% | 1195.40% | 5841 MiB | 29 game_over, 19 max_plies. |
 | `w6_c8_s16_b64_g48_l4` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | L4 | 16 vCPU, 94 GiB | secure | US-MO-2 | $0.39/hr | not recorded | 48 | 8 | 6 | 16 | 64 | 6.34 | 8 | 9.91% | 189.9 | 140.40 | 64.91 | 41.48% | 76.00% | 2294 MiB / 23034 MiB | 665.20% | 1176.70% | 5851 MiB | 35 game_over, 13 max_plies. |
 | `w6_c16_s16_b32_g96` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | L4 | 16 vCPU, 94 GiB | secure | US-MO-2 | $0.39/hr | not recorded | 96 | 16 | 6 | 16 | 32 | 12.14 | 16 | 37.93% | 209.4 | 224.96 | 89.36 | 47.13% | 73.00% | 3562 MiB / 23034 MiB | 686.42% | 1190.40% | 6164 MiB | 58 game_over, 38 max_plies. |
 | `w6_c16_s16_b64_g96` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | L4 | 16 vCPU, 94 GiB | secure | US-MO-2 | $0.39/hr | not recorded | 96 | 16 | 6 | 16 | 64 | 11.75 | 16 | 18.35% | 171.7 | 181.91 | 90.61 | 48.65% | 75.00% | 3122 MiB / 23034 MiB | 705.50% | 1190.00% | 6060 MiB | 75 game_over, 21 max_plies. |
 | `w1_c8_s128_b64_g8` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | RTX A5000 | 9 vCPU, 50 GiB | secure | EU-SE-1 | $0.27/hr | not recorded | 8 | 8 | 1 | 128 | 64 | 5.09 | 8 | 7.95% | 151.9 | 378.39 | 3.21 | not recorded | not recorded | not recorded | not recorded | not recorded | not recorded | Completed. End reasons: 6 game_over, 2 max_plies. Result: black 5, white 1, draws 2. |
-| `w8_c8_s128_b64_g1024` | 2026-05-18 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | RTX 4090 | 8 vCPU, 46 GiB | secure | EU-RO-1 | $0.69/hr | not recorded | 1024 | 8 | 8 | 128 | 64 | not measured | not measured | not measured | not measured | not measured | not measured | not measured | not measured | not measured | not measured | not measured | not measured | Pending measurement. |
 | `w1_c16_s16_b32_g16` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | not recorded | 16 | 16 | 1 | 16 | 32 | not recorded | not recorded | not recorded | 212.1 | 266.82 | 12.72 | 4.37% | 11.00% | 640 MiB / 20475 MiB | 102.42% | 142.00% | 995 MiB | 2026-05-13 current-code profile. Measured phase share: expand 63.81%, selection 23.38%. |
 | `w2_c8_s16_b32_g16` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | not recorded | 16 | 8 | 2 | 16 | 32 | not recorded | not recorded | not recorded | 212.0 | 178.58 | 18.99 | 9.95% | 29.00% | 703 MiB / 20475 MiB | 172.32% | 308.30% | 1983 MiB | 2026-05-13 current-code profile. Measured phase share: expand 64.08%, selection 22.75%. |
 | `w4_c8_s16_b32_g32` | 2026-05-13 | checkpoint vs checkpoint | d256-h1024-heads8-l6-shogi | RTX 4000 Ada | 6 vCPU, 31 GiB | community | US | $0.20/hr | not recorded | 32 | 8 | 4 | 16 | 32 | not recorded | not recorded | not recorded | 247.0 | 193.87 | 40.77 | 24.60% | 51.00% | 1415 MiB / 20475 MiB | 356.25% | 498.10% | 3917 MiB | 2026-05-13 current-code profile. Measured phase share: expand 62.76%, selection 23.94%. |
