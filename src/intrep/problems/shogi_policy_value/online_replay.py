@@ -74,7 +74,7 @@ class ShogiGeneratedExperienceSource:
     black_player: ShogiGeneratedPlayerSpec
     white_player: ShogiGeneratedPlayerSpec
     policy_target_construction: str = "mcts_visit_counts"
-    value_target_construction: str = "winner"
+    value_target_construction: str = "mcts_root_mean_value"
 
 
 @dataclass(frozen=True)

@@ -165,7 +165,7 @@ def _experience_sources_from_args(args: argparse.Namespace) -> tuple[ShogiGenera
                     black_player=_checkpoint_player(args, name="black"),
                     white_player=_checkpoint_player(args, name="white"),
                     policy_target_construction="mcts_visit_counts",
-                    value_target_construction="winner",
+                    value_target_construction="mcts_root_mean_value",
                 )
             )
             continue

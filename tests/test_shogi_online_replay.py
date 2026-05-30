@@ -101,7 +101,7 @@ def _self_play_source(*, games: int, name: str = "self-play") -> ShogiGeneratedE
         black_player=checkpoint_generated_player("black"),
         white_player=checkpoint_generated_player("white"),
         policy_target_construction="mcts_visit_counts",
-        value_target_construction="winner",
+        value_target_construction="mcts_root_mean_value",
     )
 
 

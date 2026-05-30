@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--policy-mate-cp", type=float, default=100000.0)
     parser.add_argument(
         "--value-target-construction",
-        choices=("winner", "decision_usi_score", "engine_analysis_score"),
+        choices=("winner", "decision_usi_score", "engine_analysis_score", "mcts_root_mean_value"),
         default="winner",
     )
     parser.add_argument("--score-cp-scale", type=float, default=600.0)
