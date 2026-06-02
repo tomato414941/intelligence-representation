@@ -17,6 +17,11 @@ Unless noted otherwise:
 
 ## Summary
 
+- The checkpoint self-play central evaluator path was measured on 2026-06-02
+  with MCTS16 / 16 games on an A40 secure Pod. Increasing worker threads merged
+  model requests into larger central batches, but generator CPU stayed near one
+  core and GPU utilization remained very low. In this small run, `w2_c4` was the
+  fastest at 8.41 plies/sec; `w4_c4` and `w1_c16` were close but slower.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -50,6 +55,19 @@ Unless noted otherwise:
   container-visible `/proc/meminfo`; in these runs it exposed a larger memory
   total than the Pod settings. Use `Generator RSS` for process-scoped memory
   comparison.
+
+## Checkpoint Self-Play Central Evaluator Measurements
+
+These measurements use
+`shogi-arena-agent/scripts/generate_checkpoint_self_play_games.py`, where
+worker threads share one central checkpoint evaluator.
+
+| Case | Date | Model | GPU | Pod vCPU/RAM | Cloud | Data center | Rate | Runtime image | Total games | Self-play worker threads | Concurrent games per worker | MCTS simulations per move | NN leaf eval batch limit | Central batch avg | Central batch max | Central batch fill | Avg plies | Wall sec | Plies/sec | GPU util avg | GPU util max | GPU memory used | Generator CPU avg | Generator CPU max | Generator RSS | Notes |
+| --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | --- |
+| `central_w1_c4_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 4 | 16 | 32 | 3.65 | 4 | 11.40% | 174.4 | 409.33 | 6.82 | 3.50% | 9.00% | 393 MiB / 46068 MiB | 93.75% | 156.00% | 946 MiB | Baseline for the central evaluator path. |
+| `central_w2_c4_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 2 | 4 | 16 | 32 | 6.12 | 8 | 19.13% | 146.9 | 279.54 | 8.41 | 3.46% | 6.00% | 395 MiB / 46068 MiB | 98.05% | 162.00% | 976 MiB | Best plies/sec in this run. Central batches merged across two workers. |
+| `central_w4_c4_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 4 | 4 | 16 | 32 | 8.43 | 16 | 26.33% | 175.1 | 346.81 | 8.08 | 2.87% | 6.00% | 415 MiB / 46068 MiB | 100.92% | 160.00% | 967 MiB | Larger central batches than `central_w2_c4`, but lower plies/sec. |
+| `central_w1_c16_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 16 | 16 | 32 | 7.91 | 16 | 24.71% | 159.6 | 318.87 | 8.01 | 3.09% | 8.00% | 415 MiB / 46068 MiB | 98.75% | 144.00% | 942 MiB | Same active-game scale as `central_w4_c4`; similar throughput without multiple worker threads. |
 
 ## Detailed Measurements
 
