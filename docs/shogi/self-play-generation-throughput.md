@@ -22,6 +22,10 @@ Unless noted otherwise:
   model requests into larger central batches, but generator CPU stayed near one
   core and GPU utilization remained very low. In this small run, `w2_c4` was the
   fastest at 8.41 plies/sec; `w4_c4` and `w1_c16` were close but slower.
+- After specializing the checkpoint self-play tree, the 2026-06-02 L4 secure
+  Pod measurement still showed low GPU utilization and generator CPU near one
+  core. This is not a strict before/after comparison because the GPU and Pod
+  shape changed.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -68,6 +72,10 @@ worker threads share one central checkpoint evaluator.
 | `central_w2_c4_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 2 | 4 | 16 | 32 | 6.12 | 8 | 19.13% | 146.9 | 279.54 | 8.41 | 3.46% | 6.00% | 395 MiB / 46068 MiB | 98.05% | 162.00% | 976 MiB | Best plies/sec in this run. Central batches merged across two workers. |
 | `central_w4_c4_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 4 | 4 | 16 | 32 | 8.43 | 16 | 26.33% | 175.1 | 346.81 | 8.08 | 2.87% | 6.00% | 415 MiB / 46068 MiB | 100.92% | 160.00% | 967 MiB | Larger central batches than `central_w2_c4`, but lower plies/sec. |
 | `central_w1_c16_s16_b32_g16_a40` | 2026-06-02 | shogi-minimal-split-global-action-plane | A40 | 9 vCPU, 50 GiB | secure | CA-MTL-1 | $0.44/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 16 | 16 | 32 | 7.91 | 16 | 24.71% | 159.6 | 318.87 | 8.01 | 3.09% | 8.00% | 415 MiB / 46068 MiB | 98.75% | 144.00% | 942 MiB | Same active-game scale as `central_w4_c4`; similar throughput without multiple worker threads. |
+| `central_tree_w1_c4_s16_b32_g16_l4` | 2026-06-02 | shogi-minimal-split-global-action-plane | L4 | 12 vCPU, 201 GiB | secure | EUR-IS-2 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 4 | 16 | 32 | 3.48 | 4 | 10.89% | 171.9 | 356.21 | 7.72 | 4.90% | 20.00% | 302 MiB / 23034 MiB | 94.00% | 186.00% | 964 MiB | Specialized self-play tree; L4 run, not directly comparable to A40 baseline. |
+| `central_tree_w2_c4_s16_b32_g16_l4` | 2026-06-02 | shogi-minimal-split-global-action-plane | L4 | 12 vCPU, 201 GiB | secure | EUR-IS-2 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 2 | 4 | 16 | 32 | 6.21 | 8 | 19.40% | 189.1 | 434.38 | 6.96 | 3.86% | 16.00% | 304 MiB / 23034 MiB | 96.71% | 145.00% | 1001 MiB | Specialized self-play tree; L4 run, not directly comparable to A40 baseline. |
+| `central_tree_w4_c4_s16_b32_g16_l4` | 2026-06-02 | shogi-minimal-split-global-action-plane | L4 | 12 vCPU, 201 GiB | secure | EUR-IS-2 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 4 | 4 | 16 | 32 | 8.68 | 16 | 27.14% | 177.4 | 366.34 | 7.75 | 3.39% | 11.00% | 516 MiB / 23034 MiB | 100.88% | 187.00% | 990 MiB | Best plies/sec in this L4 run but only slightly above `central_tree_w1_c4`. |
+| `central_tree_w1_c16_s16_b32_g16_l4` | 2026-06-02 | shogi-minimal-split-global-action-plane | L4 | 12 vCPU, 201 GiB | secure | EUR-IS-2 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 16 | 16 | 32 | 9.23 | 16 | 28.83% | 185.9 | 400.51 | 7.43 | 3.05% | 15.00% | 324 MiB / 23034 MiB | 99.84% | 187.00% | 959 MiB | Same active-game scale as `central_tree_w4_c4`; still low GPU utilization. |
 
 ## Detailed Measurements
 
