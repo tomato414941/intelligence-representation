@@ -129,7 +129,7 @@ def load_summary(path: Path) -> dict[str, object]:
 
 def run_case(
     name: str,
-    worker_threads: int,
+    worker_processes: int,
     concurrent_games_per_worker: int,
     games: int,
     simulations: int,
@@ -146,7 +146,7 @@ def run_case(
         '--checkpoint-id', 'shogi-minimal-split-global-action-plane',
         '--out', str(records_path),
         '--games', str(games),
-        '--self-play-worker-threads', str(worker_threads),
+        '--self-play-worker-processes', str(worker_processes),
         '--concurrent-games-per-process', str(concurrent_games_per_worker),
         '--mcts-simulations', str(simulations),
         '--mcts-nn-leaf-eval-batch-limit', str(batch_limit),
@@ -185,7 +185,7 @@ def run_case(
     result = {
         'case': name,
         'total_games': games,
-        'self_play_worker_threads': worker_threads,
+        'self_play_worker_processes': worker_processes,
         'concurrent_games_per_worker': concurrent_games_per_worker,
         'mcts_simulations_per_move': simulations,
         'nn_leaf_eval_batch_limit': batch_limit,
