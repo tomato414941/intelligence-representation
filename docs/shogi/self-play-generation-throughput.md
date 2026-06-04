@@ -29,6 +29,10 @@ Unless noted otherwise:
 - The 2026-06-03 process-worker measurement on an L4 secure Pod improved
   central batch size as workers increased. `process_w4_c4` was best in that run
   at 8.29 plies/sec, but GPU utilization stayed below 4% on average.
+- The 2026-06-04 64-game process-worker measurement showed the same bottleneck
+  more clearly. Increasing workers from 4 to 16 improved central batch size and
+  plies/sec, but GPU utilization stayed around 2-3%; central model-call wall
+  time dominated generation wall time.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -83,6 +87,9 @@ workers share one central checkpoint evaluator.
 | `process_w2_c4_s16_b32_g16_l4` | 2026-06-03 | shogi-minimal-split-global-action-plane | L4 | 18 vCPU, 71 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 2 | 4 | 16 | 32 | 4.24 | 8 | 13.24% | 141.2 | 314.75 | 7.18 | 3.02% | 7.00% | 304 MiB / 23034 MiB | 96.18% | 234.00% | 948 MiB | Process workers improved over `process_w1_c4`, but still low GPU utilization. |
 | `process_w4_c4_s16_b32_g16_l4` | 2026-06-03 | shogi-minimal-split-global-action-plane | L4 | 18 vCPU, 71 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 4 | 4 | 16 | 32 | 6.60 | 16 | 20.61% | 177.1 | 342.05 | 8.29 | 2.90% | 7.00% | 324 MiB / 23034 MiB | 100.89% | 235.00% | 941 MiB | Best plies/sec in the 2026-06-03 process-worker run. |
 | `process_w1_c16_s16_b32_g16_l4` | 2026-06-03 | shogi-minimal-split-global-action-plane | L4 | 18 vCPU, 71 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 1 | 16 | 16 | 32 | 7.61 | 16 | 23.77% | 154.2 | 329.73 | 7.48 | 2.56% | 8.00% | 324 MiB / 23034 MiB | 103.37% | 269.00% | 939 MiB | Larger within-process batches did not beat `process_w4_c4`. |
+| `w4_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 9.06 | 16 | 28.30% | 174.4 | 1525.22 | 7.32 | 2.42% | 8.00% | 508 MiB / 23034 MiB | 97.06% | 218.00% | 1054 MiB | 64-game process-worker run. Central model wall 1449.56s of 1525.22s; queue wait avg 0.028s. |
+| `w8_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 4 | 16 | 32 | 13.63 | 32 | 42.61% | 161.0 | 1332.27 | 7.73 | 2.33% | 12.00% | 556 MiB / 23034 MiB | 100.52% | 240.00% | 1057 MiB | Larger central batches, but only a small throughput gain. Central model wall 1284.14s; queue wait avg 0.053s. |
+| `w16_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 16 | 32 | 18.79 | 32 | 58.72% | 158.1 | 1152.04 | 8.79 | 2.60% | 11.00% | 556 MiB / 23034 MiB | 102.21% | 250.00% | 1054 MiB | Best of this 64-game run, but still low GPU utilization. Central model wall 1112.99s; queue wait avg 0.120s. |
 
 ## Detailed Measurements
 
