@@ -77,10 +77,9 @@ CHECKPOINT = INTREP / 'models/shogi-minimal-split-global-action-plane'
 OUT = REMOTE / os.environ['MEASURE_OUT']
 
 CASES = [
-    ('w1_c4_s16_b32_g16', 1, 4, 16, 16, 32),
-    ('w2_c4_s16_b32_g16', 2, 4, 16, 16, 32),
-    ('w4_c4_s16_b32_g16', 4, 4, 16, 16, 32),
-    ('w1_c16_s16_b32_g16', 1, 16, 16, 16, 32),
+    ('w4_c4_s16_b32_g64', 4, 4, 64, 16, 32),
+    ('w8_c4_s16_b32_g64', 8, 4, 64, 16, 32),
+    ('w16_c4_s16_b32_g64', 16, 4, 64, 16, 32),
 ]
 
 
@@ -194,6 +193,12 @@ def run_case(
         'plies_per_sec': summary.get('plies_per_sec'),
         'central_model_call_count': central.get('model_call_count'),
         'central_model_wall_time_sec': central.get('model_wall_time_sec'),
+        'central_request_count': central.get('request_count'),
+        'central_batch_first_wait_sec': central.get('batch_first_wait_sec'),
+        'central_batch_fill_wait_sec': central.get('batch_fill_wait_sec'),
+        'central_response_send_wall_time_sec': central.get('response_send_wall_time_sec'),
+        'central_request_queue_wait_sec_avg': central.get('request_queue_wait_sec_avg'),
+        'central_request_queue_wait_sec_max': central.get('request_queue_wait_sec_max'),
         'central_batch_avg': central.get('actual_nn_leaf_eval_batch_size_avg'),
         'central_batch_max': central.get('actual_nn_leaf_eval_batch_size_max'),
         'central_batch_fill': central.get('actual_nn_leaf_eval_batch_size_fill_ratio_avg'),
