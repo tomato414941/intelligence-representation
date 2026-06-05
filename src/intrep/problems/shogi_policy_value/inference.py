@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from time import perf_counter
 
 import shogi
 import torch
@@ -49,22 +50,37 @@ class ShogiPolicyValueCheckpointEvaluator:
         evaluate_positions: Callable[[Sequence[PositionEvaluationRequest]], list[PositionEvaluation]],
     ) -> None:
         self.evaluate_positions = evaluate_positions
+        self.last_performance: dict[str, float] = {}
 
     def evaluate_batch(self, requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
-        return self.evaluate_positions(requests)
+        evaluations = self.evaluate_positions(requests)
+        self.last_performance = dict(getattr(self.evaluate_positions, "last_performance", {}))
+        return evaluations
 
 
 def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
+        total_started_at = perf_counter()
         if not requests:
+            evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
+        phase_started_at = perf_counter()
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
+        board_parse_sec = perf_counter() - phase_started_at
         max_legal_move_count = max(len(legal_moves) for _position_sfen, legal_moves in requests)
-        position_features = stack_shogi_position_features(
-            [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
-        ).to(torch_device)
+        phase_started_at = perf_counter()
+        position_feature_rows = [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_feature_build_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        position_features = stack_shogi_position_features(position_feature_rows)
+        position_feature_stack_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        position_features = position_features.to(torch_device)
+        _synchronize_torch_device(torch_device)
+        position_feature_to_device_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
         legal_move_feature_ids = torch.stack(
             [
                 shogi_legal_move_feature_ids(
@@ -74,24 +90,48 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
                 )
                 for board, (_position_sfen, legal_moves) in zip(boards, requests, strict=True)
             ]
-        ).to(torch_device)
+        )
         legal_move_mask = torch.zeros((len(requests), max_legal_move_count), dtype=torch.bool, device=torch_device)
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             legal_move_mask[index, : len(legal_moves)] = True
+        output_feature_build_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        legal_move_feature_ids = legal_move_feature_ids.to(torch_device)
+        _synchronize_torch_device(torch_device)
+        output_feature_to_device_sec = perf_counter() - phase_started_at
 
+        phase_started_at = perf_counter()
+        _synchronize_torch_device(torch_device)
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features, legal_move_feature_ids, legal_move_mask)
             else:
                 logits = model(position_features, legal_move_feature_ids, legal_move_mask)
                 values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
+        _synchronize_torch_device(torch_device)
+        model_forward_sec = perf_counter() - phase_started_at
 
+        phase_started_at = perf_counter()
         evaluations: list[PositionEvaluation] = []
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             move_logits = logits[index, : len(legal_moves)]
             evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
+        output_decode_sec = perf_counter() - phase_started_at
+        evaluate_batch.last_performance = {
+            "request_count": float(len(requests)),
+            "total_wall_time_sec": perf_counter() - total_started_at,
+            "board_parse_sec": board_parse_sec,
+            "position_feature_build_sec": position_feature_build_sec,
+            "position_feature_stack_sec": position_feature_stack_sec,
+            "position_feature_to_device_sec": position_feature_to_device_sec,
+            "output_feature_build_sec": output_feature_build_sec,
+            "output_feature_to_device_sec": output_feature_to_device_sec,
+            "model_forward_sec": model_forward_sec,
+            "output_decode_sec": output_decode_sec,
+        }
         return evaluations
 
+    evaluate_batch.last_performance = _empty_evaluation_performance()
     return evaluate_batch
 
 
@@ -99,21 +139,43 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
+        total_started_at = perf_counter()
         if not requests:
+            evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
+        phase_started_at = perf_counter()
         boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
-        position_features = stack_shogi_position_features(
-            [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
-        ).to(torch_device)
-        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards]).to(torch_device)
+        board_parse_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        position_feature_rows = [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_feature_build_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        position_features = stack_shogi_position_features(position_feature_rows)
+        position_feature_stack_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        position_features = position_features.to(torch_device)
+        _synchronize_torch_device(torch_device)
+        position_feature_to_device_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards])
+        output_feature_build_sec = perf_counter() - phase_started_at
+        phase_started_at = perf_counter()
+        legal_action_mask = legal_action_mask.to(torch_device)
+        _synchronize_torch_device(torch_device)
+        output_feature_to_device_sec = perf_counter() - phase_started_at
 
+        phase_started_at = perf_counter()
+        _synchronize_torch_device(torch_device)
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features, legal_action_mask)
             else:
                 logits = model(position_features, legal_action_mask)
                 values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
+        _synchronize_torch_device(torch_device)
+        model_forward_sec = perf_counter() - phase_started_at
 
+        phase_started_at = perf_counter()
         evaluations: list[PositionEvaluation] = []
         for index, (board, (_position_sfen, legal_moves)) in enumerate(zip(boards, requests, strict=True)):
             action_indices = torch.tensor(
@@ -123,9 +185,43 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
             )
             move_logits = logits[index].index_select(0, action_indices)
             evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
+        output_decode_sec = perf_counter() - phase_started_at
+        evaluate_batch.last_performance = {
+            "request_count": float(len(requests)),
+            "total_wall_time_sec": perf_counter() - total_started_at,
+            "board_parse_sec": board_parse_sec,
+            "position_feature_build_sec": position_feature_build_sec,
+            "position_feature_stack_sec": position_feature_stack_sec,
+            "position_feature_to_device_sec": position_feature_to_device_sec,
+            "output_feature_build_sec": output_feature_build_sec,
+            "output_feature_to_device_sec": output_feature_to_device_sec,
+            "model_forward_sec": model_forward_sec,
+            "output_decode_sec": output_decode_sec,
+        }
         return evaluations
 
+    evaluate_batch.last_performance = _empty_evaluation_performance()
     return evaluate_batch
+
+
+def _empty_evaluation_performance() -> dict[str, float]:
+    return {
+        "request_count": 0.0,
+        "total_wall_time_sec": 0.0,
+        "board_parse_sec": 0.0,
+        "position_feature_build_sec": 0.0,
+        "position_feature_stack_sec": 0.0,
+        "position_feature_to_device_sec": 0.0,
+        "output_feature_build_sec": 0.0,
+        "output_feature_to_device_sec": 0.0,
+        "model_forward_sec": 0.0,
+        "output_decode_sec": 0.0,
+    }
+
+
+def _synchronize_torch_device(torch_device: torch.device) -> None:
+    if torch_device.type == "cuda":
+        torch.cuda.synchronize(torch_device)
 
 
 def _move_priors(move_logits: torch.Tensor, legal_moves: tuple[str, ...]) -> dict[str, float]:

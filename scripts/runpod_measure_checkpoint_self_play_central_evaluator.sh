@@ -211,6 +211,7 @@ def run_case(
         'sample_count': len(samples),
         'summary': summary,
     }
+    result.update({f'central_{key}': value for key, value in central.items() if key.startswith('backend_')})
     (case_dir / 'measurement.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps(result, sort_keys=True), flush=True)
     return result
