@@ -7,7 +7,7 @@ from intrep.problems.shogi_policy_value.samples import (
     ShogiLegalMovePolicyValueDataset,
     collate_legal_move_policy_value_samples,
 )
-from intrep.problems.shogi_policy_value.tensorization import tensorize_action_plane_policy_value_examples
+from intrep.problems.shogi_policy_value.tensorization import tensorize_compact_action_plane_policy_value_examples
 from tests.shogi_test_helpers import shogi_move_policy_value_examples_from_test_moves
 from intrep.representation.outputs.shogi_legal_move_encoding import NO_FROM_SQUARE_ID
 from intrep.representation.assembly_specs.shogi_policy_value import (
@@ -414,7 +414,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         self.assertTrue(torch.equal(changed_logits[:, unchanged_actions], base_logits[:, unchanged_actions]))
 
     def test_action_plane_policy_model_returns_fixed_action_logits(self) -> None:
-        position_features, legal_action_mask = _action_plane_policy_batch()
+        position_features = _action_plane_policy_batch()
         model = ActionPlanePolicyShogiPolicyValueModel(
             ActionPlanePolicyShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -424,13 +424,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
 
-    def test_action_plane_policy_model_does_not_mask_illegal_actions_during_forward(self) -> None:
-        position_features, legal_action_mask = _action_plane_policy_batch()
-        legal_action_mask[:, -1] = False
+    def test_action_plane_policy_model_does_not_require_legal_mask_during_forward(self) -> None:
+        position_features = _action_plane_policy_batch()
         model = ActionPlanePolicyShogiPolicyValueModel(
             ActionPlanePolicyShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -440,12 +439,12 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             )
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
 
         self.assertTrue(torch.isfinite(logits[:, -1]).all())
 
     def test_action_plane_policy_model_returns_policy_and_value_with_one_core_forward(self) -> None:
-        position_features, legal_action_mask = _action_plane_policy_batch()
+        position_features = _action_plane_policy_batch()
         model = ActionPlanePolicyShogiPolicyValueModel(
             ActionPlanePolicyShogiPolicyValueModelConfig(
                 embedding_dim=8,
@@ -456,7 +455,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
         )
         model.encoder.core.forward = Mock(wraps=model.encoder.core.forward)
 
-        logits, values = model.forward_policy_value(position_features, legal_action_mask)
+        logits, values = model.forward_policy_value(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
         self.assertEqual(tuple(values.shape), (2,))
@@ -469,7 +468,6 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 shogi_alpha_zero_like_position_features_from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"),
             ]
         )
-        legal_action_mask = torch.ones((2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT), dtype=torch.bool)
         model = build_shogi_policy_value_model_for_assembly_spec(
             assembly_spec_id=SHOGI_POLICY_VALUE_ALPHA_ZERO_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
@@ -478,7 +476,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
         embeddings = model.encoder.input(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
@@ -495,7 +493,6 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 ),
             ]
         )
-        legal_action_mask = torch.ones((2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT), dtype=torch.bool)
         model = build_shogi_policy_value_model_for_assembly_spec(
             assembly_spec_id=SHOGI_POLICY_VALUE_DLSHOGI_LIKE_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
@@ -504,7 +501,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
         embeddings = model.encoder.input(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
@@ -517,7 +514,6 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 shogi_minimal_split_global_position_features_from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"),
             ]
         )
-        legal_action_mask = torch.ones((2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT), dtype=torch.bool)
         model = build_shogi_policy_value_model_for_assembly_spec(
             assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
@@ -526,7 +522,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
         embeddings = model.encoder.input(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
@@ -539,7 +535,6 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
                 shogi_minimal_single_global_position_features_from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"),
             ]
         )
-        legal_action_mask = torch.ones((2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT), dtype=torch.bool)
         model = build_shogi_policy_value_model_for_assembly_spec(
             assembly_spec_id=SHOGI_POLICY_VALUE_MINIMAL_SINGLE_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
             embedding_dim=8,
@@ -548,7 +543,7 @@ class ShogiPolicyValueModelTest(unittest.TestCase):
             num_layers=1,
         )
 
-        logits = model(position_features, legal_action_mask)
+        logits = model(position_features)
         embeddings = model.encoder.input(position_features)
 
         self.assertEqual(tuple(logits.shape), (2, SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT))
@@ -585,13 +580,10 @@ def _state_summary_legal_move_model() -> SharedCoreShogiPolicyValueModel:
     )
 
 
-def _action_plane_policy_batch() -> tuple[ShogiPositionFeatures, torch.Tensor]:
+def _action_plane_policy_batch() -> ShogiPositionFeatures:
     examples = shogi_move_policy_value_examples_from_test_moves(("7g7f", "3c3d"))
-    samples = tensorize_action_plane_policy_value_examples(examples)
-    return (
-        stack_shogi_position_features([sample.position_features for sample in samples]),
-        torch.stack([sample.action_plane_policy_legal_mask for sample in samples]),
-    )
+    samples = tensorize_compact_action_plane_policy_value_examples(examples)
+    return stack_shogi_position_features([sample.position_features for sample in samples])
 
 
 if __name__ == "__main__":

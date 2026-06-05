@@ -120,8 +120,8 @@ class ShogiPolicyValueCheckpointTest(unittest.TestCase):
             loaded = load_shogi_policy_value_checkpoint(path)
 
         with torch.no_grad():
-            expected = result.model(batch.position_features, batch.legal_action_mask)
-            actual = loaded(batch.position_features, batch.legal_action_mask)
+            expected = result.model(batch.position_features)
+            actual = loaded(batch.position_features)
 
         self.assertTrue(torch.allclose(actual, expected))
 

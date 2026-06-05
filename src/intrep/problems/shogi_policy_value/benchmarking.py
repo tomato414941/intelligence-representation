@@ -22,7 +22,6 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_input_identity_for_assembly_spec_id,
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
-from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_legal_mask
 from intrep.representation.inputs.shogi_position_features.position_rich import (
     SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,
     SHOGI_RICH_POSITION_INPUT_SCHEMA_ID,
@@ -245,15 +244,14 @@ def _run_policy_value_inference_batch(
     position_sfens: Sequence[str],
     device: torch.device,
 ) -> int:
-    boards = [shogi.Board(position_sfen) for position_sfen in position_sfens]
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
     position_features = stack_shogi_position_features(
         [position_features_from_sfen(position_sfen) for position_sfen in position_sfens]
     ).to(device)
     if output_space == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY:
-        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards]).to(device)
-        logits, values = model.forward_policy_value(position_features, legal_action_mask)
+        logits, values = model.forward_policy_value(position_features)
     else:
+        boards = [shogi.Board(position_sfen) for position_sfen in position_sfens]
         legal_moves_by_position = [tuple(move.usi() for move in board.legal_moves) for board in boards]
         max_legal_move_count = max(len(legal_moves) for legal_moves in legal_moves_by_position)
         legal_move_feature_ids = torch.stack(

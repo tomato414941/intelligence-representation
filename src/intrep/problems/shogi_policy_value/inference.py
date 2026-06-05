@@ -19,7 +19,7 @@ from intrep.problems.shogi_policy_value.position_input_identity import (
     shogi_position_feature_builder_for_assembly_spec_id,
 )
 from intrep.representation.outputs.shogi_legal_move_encoding import shogi_legal_move_feature_ids
-from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_action_index, shogi_action_plane_policy_legal_mask
+from intrep.representation.outputs.shogi_action_plane_policy_encoding import shogi_action_plane_policy_action_index
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
 
@@ -121,6 +121,7 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
             "request_count": float(len(requests)),
             "total_wall_time_sec": perf_counter() - total_started_at,
             "board_parse_sec": board_parse_sec,
+            "turn_decode_sec": 0.0,
             "position_feature_build_sec": position_feature_build_sec,
             "position_feature_stack_sec": position_feature_stack_sec,
             "position_feature_to_device_sec": position_feature_to_device_sec,
@@ -144,8 +145,8 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
             evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
         phase_started_at = perf_counter()
-        boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
-        board_parse_sec = perf_counter() - phase_started_at
+        turns = [_turn_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        turn_decode_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         position_feature_rows = [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
         position_feature_build_sec = perf_counter() - phase_started_at
@@ -157,44 +158,45 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
         _synchronize_torch_device(torch_device)
         position_feature_to_device_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
-        legal_action_mask = torch.stack([shogi_action_plane_policy_legal_mask(board) for board in boards])
-        output_feature_build_sec = perf_counter() - phase_started_at
-        phase_started_at = perf_counter()
-        legal_action_mask = legal_action_mask.to(torch_device)
-        _synchronize_torch_device(torch_device)
-        output_feature_to_device_sec = perf_counter() - phase_started_at
-
-        phase_started_at = perf_counter()
         _synchronize_torch_device(torch_device)
         with torch.no_grad():
             if hasattr(model, "forward_policy_value"):
-                logits, values = model.forward_policy_value(position_features, legal_action_mask)
+                logits, values = model.forward_policy_value(position_features)
             else:
-                logits = model(position_features, legal_action_mask)
+                logits = model(position_features)
                 values = model.predict_value(position_features) if hasattr(model, "predict_value") else None
         _synchronize_torch_device(torch_device)
         model_forward_sec = perf_counter() - phase_started_at
 
         phase_started_at = perf_counter()
-        evaluations: list[PositionEvaluation] = []
-        for index, (board, (_position_sfen, legal_moves)) in enumerate(zip(boards, requests, strict=True)):
-            action_indices = torch.tensor(
-                [shogi_action_plane_policy_action_index(move, turn=board.turn) for move in legal_moves],
+        legal_action_indices_by_request = [
+            torch.tensor(
+                [shogi_action_plane_policy_action_index(move, turn=turn) for move in legal_moves],
                 dtype=torch.long,
                 device=torch_device,
             )
+            for turn, (_position_sfen, legal_moves) in zip(turns, requests, strict=True)
+        ]
+        output_feature_build_sec = perf_counter() - phase_started_at
+
+        phase_started_at = perf_counter()
+        evaluations: list[PositionEvaluation] = []
+        for index, ((_position_sfen, legal_moves), action_indices) in enumerate(
+            zip(requests, legal_action_indices_by_request, strict=True)
+        ):
             move_logits = logits[index].index_select(0, action_indices)
             evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
             "total_wall_time_sec": perf_counter() - total_started_at,
-            "board_parse_sec": board_parse_sec,
+            "board_parse_sec": 0.0,
+            "turn_decode_sec": turn_decode_sec,
             "position_feature_build_sec": position_feature_build_sec,
             "position_feature_stack_sec": position_feature_stack_sec,
             "position_feature_to_device_sec": position_feature_to_device_sec,
             "output_feature_build_sec": output_feature_build_sec,
-            "output_feature_to_device_sec": output_feature_to_device_sec,
+            "output_feature_to_device_sec": 0.0,
             "model_forward_sec": model_forward_sec,
             "output_decode_sec": output_decode_sec,
         }
@@ -204,11 +206,23 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
     return evaluate_batch
 
 
+def _turn_from_sfen(position_sfen: str) -> int:
+    parts = position_sfen.split()
+    if len(parts) < 2:
+        raise ValueError("shogi SFEN must contain side to move")
+    if parts[1] == "b":
+        return shogi.BLACK
+    if parts[1] == "w":
+        return shogi.WHITE
+    raise ValueError(f"unsupported shogi SFEN side to move: {parts[1]}")
+
+
 def _empty_evaluation_performance() -> dict[str, float]:
     return {
         "request_count": 0.0,
         "total_wall_time_sec": 0.0,
         "board_parse_sec": 0.0,
+        "turn_decode_sec": 0.0,
         "position_feature_build_sec": 0.0,
         "position_feature_stack_sec": 0.0,
         "position_feature_to_device_sec": 0.0,

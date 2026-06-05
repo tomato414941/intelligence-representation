@@ -141,14 +141,13 @@ class ActionPlanePolicyShogiPolicyValueModel(nn.Module):
             hidden_dim=self.config.hidden_dim,
         )
 
-    def forward(self, position_features: ShogiPositionFeatures, action_plane_policy_legal_mask: torch.Tensor) -> torch.Tensor:
+    def forward(self, position_features: ShogiPositionFeatures) -> torch.Tensor:
         position_hidden = self.encoder(position_features)
         return self.policy_output(position_hidden)
 
     def forward_policy_value(
         self,
         position_features: ShogiPositionFeatures,
-        action_plane_policy_legal_mask: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         position_hidden = self.encoder(position_features)
         position_embedding = _state_element_hidden(position_hidden, self.position_layout)

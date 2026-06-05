@@ -571,7 +571,7 @@ def _forward_batch_policy(model: nn.Module, batch: ShogiPolicyValueBatch) -> tor
     if isinstance(batch, LegalMovePolicyValueBatch):
         return model(batch.position_features, batch.legal_move_feature_ids, batch.legal_move_mask)
     if isinstance(batch, ActionPlanePolicyValueBatch):
-        return model(batch.position_features, batch.legal_action_mask)
+        return model(batch.position_features)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
@@ -584,7 +584,7 @@ def _forward_batch_policy_value(model: nn.Module, batch: ShogiPolicyValueBatch) 
             batch.legal_move_mask,
         )
     if isinstance(batch, ActionPlanePolicyValueBatch):
-        return _forward_policy_value(model, batch.position_features, batch.legal_action_mask)
+        return _forward_policy_value(model, batch.position_features)
     raise TypeError(f"unsupported shogi policy/value batch: {type(batch).__name__}")
 
 
