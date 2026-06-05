@@ -33,6 +33,10 @@ Unless noted otherwise:
   more clearly. Increasing workers from 4 to 16 improved central batch size and
   plies/sec, but GPU utilization stayed around 2-3%; central model-call wall
   time dominated generation wall time.
+- The 2026-06-05 central evaluator phase profile found the main cost inside
+  output-side feature construction, not GPU forward. In `w4_c4_s16_b32_g64`,
+  output feature build took 1016.99s of 1254.33s backend time, while model
+  forward took 83.58s.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -90,6 +94,7 @@ workers share one central checkpoint evaluator.
 | `w4_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 9.06 | 16 | 28.30% | 174.4 | 1525.22 | 7.32 | 2.42% | 8.00% | 508 MiB / 23034 MiB | 97.06% | 218.00% | 1054 MiB | 64-game process-worker run. Central model wall 1449.56s of 1525.22s; queue wait avg 0.028s. |
 | `w8_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 4 | 16 | 32 | 13.63 | 32 | 42.61% | 161.0 | 1332.27 | 7.73 | 2.33% | 12.00% | 556 MiB / 23034 MiB | 100.52% | 240.00% | 1057 MiB | Larger central batches, but only a small throughput gain. Central model wall 1284.14s; queue wait avg 0.053s. |
 | `w16_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 16 | 32 | 18.79 | 32 | 58.72% | 158.1 | 1152.04 | 8.79 | 2.60% | 11.00% | 556 MiB / 23034 MiB | 102.21% | 250.00% | 1054 MiB | Best of this 64-game run, but still low GPU utilization. Central model wall 1112.99s; queue wait avg 0.120s. |
+| `w4_c4_s16_b32_g64_phase_profile` | 2026-06-05 | shogi-minimal-split-global-action-plane | L4 | 21 vCPU, 83 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 7.95 | 16 | 24.85% | 164.4 | 1347.12 | 7.81 | 2.57% | 8.00% | 516 MiB / 23034 MiB | 98.58% | 258.00% | 1045 MiB | Phase profile. Backend total 1254.33s: output feature build 1016.99s, model forward 83.58s, output decode 84.76s, position feature build 43.58s. |
 
 ## Detailed Measurements
 
