@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from functools import lru_cache
 from pathlib import Path
 from time import perf_counter
 
@@ -102,7 +103,7 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
 
         phase_started_at = perf_counter()
         _synchronize_torch_device(torch_device)
-        with torch.no_grad():
+        with torch.inference_mode():
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features, legal_move_feature_ids, legal_move_mask)
             else:
@@ -159,7 +160,7 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
         position_feature_to_device_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         _synchronize_torch_device(torch_device)
-        with torch.no_grad():
+        with torch.inference_mode():
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features)
             else:
@@ -169,23 +170,18 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
         model_forward_sec = perf_counter() - phase_started_at
 
         phase_started_at = perf_counter()
-        legal_action_indices_by_request = [
-            torch.tensor(
-                [shogi_action_plane_policy_action_index(move, turn=turn) for move in legal_moves],
-                dtype=torch.long,
-                device=torch_device,
-            )
-            for turn, (_position_sfen, legal_moves) in zip(turns, requests, strict=True)
-        ]
+        flat_action_indices, flat_batch_indices, offsets = _flat_legal_action_indices(requests, turns)
+        action_indices = torch.tensor(flat_action_indices, dtype=torch.long, device=torch_device)
+        batch_indices = torch.tensor(flat_batch_indices, dtype=torch.long, device=torch_device)
         output_feature_build_sec = perf_counter() - phase_started_at
 
         phase_started_at = perf_counter()
-        evaluations: list[PositionEvaluation] = []
-        for index, ((_position_sfen, legal_moves), action_indices) in enumerate(
-            zip(requests, legal_action_indices_by_request, strict=True)
-        ):
-            move_logits = logits[index].index_select(0, action_indices)
-            evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
+        flat_move_logits = logits[batch_indices, action_indices]
+        evaluations = []
+        for index, (_position_sfen, legal_moves) in enumerate(requests):
+            start = offsets[index]
+            end = offsets[index + 1]
+            evaluations.append((_move_priors(flat_move_logits[start:end], legal_moves), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -215,6 +211,25 @@ def _turn_from_sfen(position_sfen: str) -> int:
     if parts[1] == "w":
         return shogi.WHITE
     raise ValueError(f"unsupported shogi SFEN side to move: {parts[1]}")
+
+
+def _flat_legal_action_indices(
+    requests: Sequence[PositionEvaluationRequest],
+    turns: Sequence[int],
+) -> tuple[list[int], list[int], list[int]]:
+    action_indices: list[int] = []
+    batch_indices: list[int] = []
+    offsets = [0]
+    for batch_index, (turn, (_position_sfen, legal_moves)) in enumerate(zip(turns, requests, strict=True)):
+        action_indices.extend(_cached_action_plane_policy_action_index(move, turn) for move in legal_moves)
+        batch_indices.extend([batch_index] * len(legal_moves))
+        offsets.append(len(action_indices))
+    return action_indices, batch_indices, offsets
+
+
+@lru_cache(maxsize=65536)
+def _cached_action_plane_policy_action_index(move_usi: str, turn: int) -> int:
+    return shogi_action_plane_policy_action_index(move_usi, turn=turn)
 
 
 def _empty_evaluation_performance() -> dict[str, float]:
