@@ -3,25 +3,29 @@ from __future__ import annotations
 import hashlib
 import json
 
-import shogi
 import torch
 
 from intrep.representation.inputs.shogi_position_features.position_features import (
-    ShogiPairRelationEdges,
     ShogiPositionFeatures,
     validate_empty_pair_relation_edges,
     validate_integer_tensor_shape,
+)
+from intrep.representation.inputs.shogi_position_features.position_sfen import (
+    SHOGI_EMPTY_FEATURE_IDS,
+    SHOGI_EMPTY_PAIR_RELATION_EDGES,
+    shogi_hand_feature_ids_from_sfen,
+    shogi_square_piece_feature_id_rows_from_sfen,
+    split_shogi_sfen,
 )
 from intrep.representation.inputs.shogi_position_features.position_schema import (
     HAND_PIECE_TYPES,
     SHOGI_POSITION_FEATURE_VOCAB_SIZE,
     SHOGI_POSITION_STATE_FEATURE_ID,
+    SIDE_TO_MOVE_BLACK_FEATURE_ID,
+    SIDE_TO_MOVE_WHITE_FEATURE_ID,
 )
 from intrep.representation.inputs.shogi_position_features.position_square_features import (
-    hand_feature_ids,
     move_count_bucket_feature_id,
-    relative_square_feature_id,
-    side_to_move_feature_id,
 )
 
 
@@ -70,32 +74,28 @@ SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_FEATURE_MANIFEST_HASH = shogi_minimal_singl
 
 
 def shogi_minimal_single_global_position_features_from_sfen(position_sfen: str) -> ShogiPositionFeatures:
-    board = shogi.Board(position_sfen)
+    board_sfen, turn_sfen, hand_sfen, move_number_sfen = split_shogi_sfen(position_sfen)
+    own_is_black = turn_sfen == "b"
     global_feature_ids = torch.tensor(
         [
             [
                 SHOGI_POSITION_STATE_FEATURE_ID,
-                side_to_move_feature_id(board.turn),
-                move_count_bucket_feature_id(board.move_number),
-                *hand_feature_ids(board),
+                SIDE_TO_MOVE_BLACK_FEATURE_ID if own_is_black else SIDE_TO_MOVE_WHITE_FEATURE_ID,
+                move_count_bucket_feature_id(int(move_number_sfen)),
+                *shogi_hand_feature_ids_from_sfen(hand_sfen, own_is_black=own_is_black),
             ]
         ],
         dtype=torch.long,
     )
-    square_feature_ids = torch.tensor(
-        [[relative_square_feature_id(board, relative_square)] for relative_square in range(81)],
-        dtype=torch.long,
-    )
     return ShogiPositionFeatures(
         global_feature_ids=global_feature_ids,
-        square_feature_ids=square_feature_ids,
-        piece_feature_ids=torch.empty((0, 0), dtype=torch.long),
-        line_feature_ids=torch.empty((0, 0), dtype=torch.long),
-        pair_relation_edges=ShogiPairRelationEdges(
-            source_element_indices=torch.empty((0,), dtype=torch.long),
-            target_element_indices=torch.empty((0,), dtype=torch.long),
-            relation_ids=torch.empty((0,), dtype=torch.long),
+        square_feature_ids=torch.tensor(
+            shogi_square_piece_feature_id_rows_from_sfen(board_sfen, own_is_black=own_is_black),
+            dtype=torch.long,
         ),
+        piece_feature_ids=SHOGI_EMPTY_FEATURE_IDS,
+        line_feature_ids=SHOGI_EMPTY_FEATURE_IDS,
+        pair_relation_edges=SHOGI_EMPTY_PAIR_RELATION_EDGES,
     )
 
 

@@ -16,6 +16,7 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
     OWN_PIECE_OFFSET,
     SHOGI_POSITION_STATE_FEATURE_ID,
     SIDE_TO_MOVE_BLACK_FEATURE_ID,
+    SIDE_TO_MOVE_WHITE_FEATURE_ID,
 )
 from intrep.domains.shogi.coordinates import absolute_to_relative_square
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
@@ -72,6 +73,25 @@ class ShogiMinimalSingleGlobalPositionTest(unittest.TestCase):
         self.assertEqual(int(global_features[2].item()), MOVE_COUNT_BUCKET_OFFSET + 1)
         self.assertEqual(int(global_features[own_pawn_feature_index].item()), OWN_HAND_OFFSET + 1)
         self.assertEqual(int(global_features[opponent_bishop_feature_index].item()), OPPONENT_HAND_OFFSET + 2)
+
+    def test_white_to_move_uses_relative_pieces_and_hands(self) -> None:
+        features = shogi_minimal_single_global_position_features_from_sfen("4k4/9/9/9/4+R4/9/9/9/4K4 w 2P3p2B 221")
+        global_features = features.global_feature_ids[0]
+        relative_5a = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5a"), shogi.WHITE)
+        relative_5e = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5e"), shogi.WHITE)
+        relative_5i = absolute_to_relative_square(shogi.SQUARE_NAMES.index("5i"), shogi.WHITE)
+        own_pawn_feature_index = 3 + HAND_PIECE_TYPES.index(shogi.PAWN)
+        opponent_pawn_feature_index = 3 + len(HAND_PIECE_TYPES) + HAND_PIECE_TYPES.index(shogi.PAWN)
+        opponent_bishop_feature_index = 3 + len(HAND_PIECE_TYPES) + HAND_PIECE_TYPES.index(shogi.BISHOP)
+
+        self.assertEqual(int(global_features[1].item()), SIDE_TO_MOVE_WHITE_FEATURE_ID)
+        self.assertEqual(int(global_features[2].item()), MOVE_COUNT_BUCKET_OFFSET + 7)
+        self.assertEqual(int(global_features[own_pawn_feature_index].item()), OWN_HAND_OFFSET + 3)
+        self.assertEqual(int(global_features[opponent_pawn_feature_index].item()), OPPONENT_HAND_OFFSET + 2)
+        self.assertEqual(int(global_features[opponent_bishop_feature_index].item()), OPPONENT_HAND_OFFSET + 2)
+        self.assertEqual(int(features.square_feature_ids[relative_5a, 0].item()), OWN_PIECE_OFFSET + shogi.KING - 1)
+        self.assertEqual(int(features.square_feature_ids[relative_5e, 0].item()), OPPONENT_PIECE_OFFSET + shogi.PROM_ROOK - 1)
+        self.assertEqual(int(features.square_feature_ids[relative_5i, 0].item()), OPPONENT_PIECE_OFFSET + shogi.KING - 1)
 
     def test_input_layer_builds_82_element_sequence(self) -> None:
         features = stack_shogi_position_features(
