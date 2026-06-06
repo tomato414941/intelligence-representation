@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from contextlib import nullcontext
 from functools import lru_cache
 from pathlib import Path
 from time import perf_counter
@@ -35,16 +36,21 @@ class ShogiPolicyValueCheckpointEvaluator:
         checkpoint_path: str | Path,
         *,
         device: str = "cpu",
+        precision: str = "fp32",
+        compile_model: bool = False,
     ) -> ShogiPolicyValueCheckpointEvaluator:
         model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
         config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
         torch_device = torch.device(device)
+        _validate_inference_precision(precision)
+        if compile_model:
+            model = torch.compile(model)
         if (
             shogi_policy_value_output_space_for_assembly_spec(config.assembly_spec_id)
             == SHOGI_POLICY_VALUE_OUTPUT_SPACE_ACTION_PLANE_POLICY
         ):
-            return cls(_action_plane_policy_evaluator(model, torch_device, config.assembly_spec_id))
-        return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id))
+            return cls(_action_plane_policy_evaluator(model, torch_device, config.assembly_spec_id, precision=precision))
+        return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id, precision=precision))
 
     def __init__(
         self,
@@ -59,7 +65,13 @@ class ShogiPolicyValueCheckpointEvaluator:
         return evaluations
 
 
-def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
+def _legal_move_evaluator(
+    model: torch.nn.Module,
+    torch_device: torch.device,
+    assembly_spec_id: str,
+    *,
+    precision: str,
+):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
@@ -103,7 +115,7 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
 
         phase_started_at = perf_counter()
         _synchronize_torch_device(torch_device)
-        with torch.inference_mode():
+        with torch.inference_mode(), _autocast_context(torch_device, precision):
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features, legal_move_feature_ids, legal_move_mask)
             else:
@@ -137,7 +149,13 @@ def _legal_move_evaluator(model: torch.nn.Module, torch_device: torch.device, as
     return evaluate_batch
 
 
-def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.device, assembly_spec_id: str):
+def _action_plane_policy_evaluator(
+    model: torch.nn.Module,
+    torch_device: torch.device,
+    assembly_spec_id: str,
+    *,
+    precision: str,
+):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
     def evaluate_batch(requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
@@ -160,7 +178,7 @@ def _action_plane_policy_evaluator(model: torch.nn.Module, torch_device: torch.d
         position_feature_to_device_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         _synchronize_torch_device(torch_device)
-        with torch.inference_mode():
+        with torch.inference_mode(), _autocast_context(torch_device, precision):
             if hasattr(model, "forward_policy_value"):
                 logits, values = model.forward_policy_value(position_features)
             else:
@@ -230,6 +248,17 @@ def _flat_legal_action_indices(
 @lru_cache(maxsize=65536)
 def _cached_action_plane_policy_action_index(move_usi: str, turn: int) -> int:
     return shogi_action_plane_policy_action_index(move_usi, turn=turn)
+
+
+def _validate_inference_precision(precision: str) -> None:
+    if precision not in {"fp32", "bf16"}:
+        raise ValueError(f"unsupported shogi checkpoint inference precision: {precision}")
+
+
+def _autocast_context(torch_device: torch.device, precision: str):
+    if precision == "bf16" and torch_device.type == "cuda":
+        return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    return nullcontext()
 
 
 def _empty_evaluation_performance() -> dict[str, float]:
