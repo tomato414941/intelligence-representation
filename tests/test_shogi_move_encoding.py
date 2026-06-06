@@ -10,6 +10,7 @@ from intrep.representation.outputs.shogi_legal_move_encoding import (
     shogi_legal_move_feature_ids,
     shogi_move_feature_ids,
 )
+from intrep.domains.shogi.usi import shogi_usi_move_parts
 
 
 class ShogiMoveEncodingTest(unittest.TestCase):
@@ -45,6 +46,17 @@ class ShogiMoveEncodingTest(unittest.TestCase):
 
         self.assertEqual(int(white_feature_ids[0].item()), 80 - int(black_feature_ids[0].item()))
         self.assertEqual(int(white_feature_ids[1].item()), 80 - int(black_feature_ids[1].item()))
+
+    def test_usi_move_parts_match_python_shogi(self) -> None:
+        for move_usi in ("7g7f", "2b3c+", "P*5e", "8h2b+", "2i3g"):
+            parsed = shogi.Move.from_usi(move_usi)
+
+            from_square, to_square, promotion, drop_piece_type = shogi_usi_move_parts(move_usi)
+
+            self.assertEqual(from_square, None if parsed.from_square is None else int(parsed.from_square))
+            self.assertEqual(to_square, int(parsed.to_square))
+            self.assertEqual(promotion, bool(parsed.promotion))
+            self.assertEqual(drop_piece_type, None if parsed.drop_piece_type is None else int(parsed.drop_piece_type))
 
 
 if __name__ == "__main__":
