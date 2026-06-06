@@ -45,6 +45,9 @@ Unless noted otherwise:
   minimal-split-global input path. On an L4 secure Pod,
   `w16_c4_s16_b32_g64_direct_position_l4` reached 101.05 plies/sec, with
   position feature build down to 5.77s of 65.76s backend time.
+- Increasing the same direct-position measurement from 64 to 128 games improved
+  central batch fill from 62.50% to 71.06% and throughput from 101.05 to
+  110.30 plies/sec.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -109,6 +112,7 @@ workers share one central checkpoint evaluator.
 | `w4_c4_s16_b32_g64_direct_position_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 10.84 | 16 | 33.88% | 171.2 | 146.51 | 74.78 | 23.33% | 33.00% | 324 MiB / 23034 MiB | 74.61% | 100.00% | 1092 MiB | Direct SFEN position parser. Backend total 84.15s: output feature build 17.15s, model forward 45.29s, output decode 12.19s, position feature build 6.98s. |
 | `w8_c4_s16_b32_g64_direct_position_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 4 | 16 | 32 | 14.88 | 32 | 46.51% | 155.9 | 115.93 | 86.05 | 26.12% | 47.00% | 372 MiB / 23034 MiB | 92.56% | 122.00% | 1084 MiB | Direct SFEN position parser. Backend total 75.68s: output feature build 16.53s, model forward 38.45s, output decode 11.76s, position feature build 6.80s. |
 | `w16_c4_s16_b32_g64_direct_position_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 16 | 32 | 20.00 | 32 | 62.50% | 149.5 | 94.71 | 101.05 | 30.70% | 47.00% | 376 MiB / 23034 MiB | 104.34% | 112.00% | 1087 MiB | Direct SFEN position parser. Backend total 65.76s: output feature build 14.13s, model forward 34.10s, output decode 10.04s, position feature build 5.77s. |
+| `w16_c4_s16_b32_g128_direct_position_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 4 | 16 | 32 | 22.74 | 32 | 71.06% | 160.6 | 186.35 | 110.30 | 32.96% | 50.00% | 372 MiB / 23034 MiB | 105.44% | 114.00% | 1270 MiB | Direct SFEN position parser. Backend total 133.58s: output feature build 28.77s, model forward 69.18s, output decode 20.68s, position feature build 11.85s. |
 
 ## Detailed Measurements
 
