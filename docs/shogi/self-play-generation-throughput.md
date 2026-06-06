@@ -37,6 +37,10 @@ Unless noted otherwise:
   output-side feature construction, not GPU forward. In `w4_c4_s16_b32_g64`,
   output feature build took 1016.99s of 1254.33s backend time, while model
   forward took 83.58s.
+- The 2026-06-06 direct USI parser measurement improved the action-plane
+  self-play path. On an RTX 4000 Ada secure Pod,
+  `w16_c4_s16_b32_g64_direct_usi` reached 64.17 plies/sec. Output feature build
+  was no longer the dominant backend phase.
 - The current MCTS128 self-play measurement is much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -95,6 +99,9 @@ workers share one central checkpoint evaluator.
 | `w8_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 4 | 16 | 32 | 13.63 | 32 | 42.61% | 161.0 | 1332.27 | 7.73 | 2.33% | 12.00% | 556 MiB / 23034 MiB | 100.52% | 240.00% | 1057 MiB | Larger central batches, but only a small throughput gain. Central model wall 1284.14s; queue wait avg 0.053s. |
 | `w16_c4_s16_b32_g64` | 2026-06-04 | shogi-minimal-split-global-action-plane | L4 | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 16 | 32 | 18.79 | 32 | 58.72% | 158.1 | 1152.04 | 8.79 | 2.60% | 11.00% | 556 MiB / 23034 MiB | 102.21% | 250.00% | 1054 MiB | Best of this 64-game run, but still low GPU utilization. Central model wall 1112.99s; queue wait avg 0.120s. |
 | `w4_c4_s16_b32_g64_phase_profile` | 2026-06-05 | shogi-minimal-split-global-action-plane | L4 | 21 vCPU, 83 GiB | secure | EUR-IS-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 7.95 | 16 | 24.85% | 164.4 | 1347.12 | 7.81 | 2.57% | 8.00% | 516 MiB / 23034 MiB | 98.58% | 258.00% | 1045 MiB | Phase profile. Backend total 1254.33s: output feature build 1016.99s, model forward 83.58s, output decode 84.76s, position feature build 43.58s. |
+| `w4_c4_s16_b32_g64_direct_usi` | 2026-06-06 | shogi-minimal-split-global-action-plane | RTX 4000 Ada | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.26/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 4 | 4 | 16 | 32 | 8.93 | 16 | 27.91% | 160.5 | 227.41 | 45.18 | 15.04% | 21.00% | 289 MiB / 20475 MiB | 90.14% | 219.00% | 1066 MiB | Direct USI parser. Backend total 156.33s: output feature build 24.32s, model forward 70.66s, output decode 17.18s, position feature build 40.93s. |
+| `w8_c4_s16_b32_g64_direct_usi` | 2026-06-06 | shogi-minimal-split-global-action-plane | RTX 4000 Ada | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.26/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 8 | 4 | 16 | 32 | 14.91 | 32 | 46.58% | 166.6 | 181.72 | 58.69 | 17.23% | 24.00% | 337 MiB / 20475 MiB | 105.88% | 255.00% | 1053 MiB | Direct USI parser. Backend total 136.19s: output feature build 23.95s, model forward 48.84s, output decode 17.76s, position feature build 43.38s. |
+| `w16_c4_s16_b32_g64_direct_usi` | 2026-06-06 | shogi-minimal-split-global-action-plane | RTX 4000 Ada | 16 vCPU, 62 GiB | secure | EUR-IS-1 | $0.26/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 64 | 16 | 4 | 16 | 32 | 22.05 | 32 | 68.92% | 188.4 | 187.95 | 64.17 | 18.96% | 27.00% | 337 MiB / 20475 MiB | 108.66% | 219.00% | 1080 MiB | Direct USI parser. Backend total 145.37s: output feature build 28.60s, model forward 45.07s, output decode 20.32s, position feature build 49.48s. |
 
 ## Detailed Measurements
 
