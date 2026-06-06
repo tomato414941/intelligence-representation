@@ -56,6 +56,13 @@ Unless noted otherwise:
   `w16_c1_s16_b32_g128_fast_output_l4` reached 133.09 plies/sec. Backend
   output feature build fell from 18.23s to 8.77s, and output decode fell from
   16.24s to 12.88s.
+- With the same fast output path, increasing only the central evaluator batch
+  limit from 32 to 64 reached 150.76 plies/sec.
+- BF16 autocast was the strongest measured inference setting. It reached
+  222.89 plies/sec and reduced backend model forward time from 45.32s to
+  18.12s without changing the checkpoint.
+- `torch.compile` did not materially reduce model forward time in this run:
+  44.65s versus 45.32s for the fast-output FP32 baseline.
 - Earlier MCTS128 self-play measurements were much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -123,6 +130,9 @@ workers share one central checkpoint evaluator.
 | `w16_c4_s16_b32_g128_direct_position_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 4 | 16 | 32 | 22.74 | 32 | 71.06% | 160.6 | 186.35 | 110.30 | 32.96% | 50.00% | 372 MiB / 23034 MiB | 105.44% | 114.00% | 1270 MiB | Direct SFEN position parser. Backend total 133.58s: output feature build 28.77s, model forward 69.18s, output decode 20.68s, position feature build 11.85s. |
 | `w16_c1_s16_b32_g128_batched_mcts_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 30.37 | 32 | 94.91% | 104.2 | 117.79 | 113.28 | 32.41% | 42.00% | 356 MiB / 23034 MiB | 96.04% | 131.00% | 1091 MiB | Batched self-play MCTS. Backend total 90.17s: output feature build 18.23s, model forward 43.71s, output decode 16.24s, position feature build 9.78s. |
 | `w16_c1_s16_b32_g128_fast_output_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 30.53 | 32 | 95.41% | 107.9 | 103.76 | 133.09 | 39.38% | 57.00% | 357 MiB / 23034 MiB | 103.05% | 136.00% | 1062 MiB | Batched self-play MCTS with one-pass action-plane legal-logit gather. Backend total 78.85s: output feature build 8.77s, model forward 45.32s, output decode 12.88s, position feature build 9.81s. |
+| `w16_c1_s16_leaf32_central64_g128_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 51.25 | 64 | 80.07% | 99.7 | 84.64 | 150.76 | 46.43% | 65.00% | 424 MiB / 23034 MiB | 100.16% | 104.00% | 1032 MiB | Central evaluator batch limit 64, MCTS leaf batch limit 32. Backend total 64.03s: output feature build 4.82s, model forward 42.59s, output decode 8.42s, position feature build 7.21s. |
+| `w16_c1_s16_b32_g128_bf16_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 30.94 | 32 | 96.68% | 95.9 | 55.09 | 222.89 | 25.79% | 35.00% | 336 MiB / 23034 MiB | 101.33% | 106.00% | 1144 MiB | BF16 autocast. Backend total 38.65s: output feature build 4.23s, model forward 18.12s, output decode 8.21s, position feature build 6.89s. |
+| `w16_c1_s16_b32_g128_compile_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 29.84 | 32 | 93.26% | 109.4 | 95.75 | 146.24 | 41.44% | 59.00% | 354 MiB / 23034 MiB | 100.24% | 119.00% | 1215 MiB | `torch.compile`. Backend total 70.74s: output feature build 5.98s, model forward 44.65s, output decode 10.09s, position feature build 8.44s. |
 
 ## Detailed Measurements
 
