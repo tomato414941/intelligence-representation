@@ -27,14 +27,64 @@ Checked locally on 2026-05-03 with CPU runs.
 Metrics were written under `runs/local-checks/` and are treated as local
 generated artifacts.
 
+## Per-Action Diagnostic (2026-06-09)
+
+Ran the held-out sweep diagnostic
+(`intrep.problems.grid_step_prediction.diagnose_heldout`) over every valid
+agent cell with seeds 31/32/33, dumping per-action next-cell predictions for
+the held-out cell. Metrics were written under `runs/local-checks/`.
+
+Two model regimes were checked:
+
+| Model | Train Next-Cell Accuracy | Eval Next-Cell Accuracy |
+| --- | ---: | ---: |
+| `d256-h1024-heads8-l6` (current CLI default) | 0.20-0.25 (all 15 runs) | 0.00-0.20 |
+| `d32-h64-heads2-l1` (CLI default at the 2026-05-03 check) | 0.90-1.00 | 0.00-0.40 |
+
+The 2026-05-03 table above reproduces only with the small model. The current
+default `d256-h1024-heads8-l6` (changed in `0e9b794`, 2026-05-05) does not
+even fit the 20 train cases with the CLI's default optimization settings
+(lr 0.01, 200 steps, batch 5, no warmup), so its eval numbers say nothing
+about generalization.
+
+Per-action predictions in the small-model regime (75 held-out predictions)
+are systematic, not arbitrary:
+
+| Slice | Accuracy |
+| --- | ---: |
+| all held-out predictions | 10/75 (0.13) |
+| true next cell is a training-visible agent cell | 7/24 (0.29) |
+| true next cell is the held-out cell itself (blocked or stay) | 3/51 (0.06) |
+
+17 of 25 held-out (cell, action) cases have "stay at the current cell" as the
+true answer (edge/wall blocks plus `stay`), but the model predicted the
+current cell in only 4 of 75 predictions. The model avoids emitting the
+held-out cell id even though that cell still appears as a next-cell target
+for inbound training transitions. Errors often keep the action's general
+direction but mislocate the agent (for example held-out `(1, 2)` with
+`right` predicts `(0, 2)` in all three seeds).
+
+This points at the output formulation: next-cell prediction as a
+classification over absolute cell ids requires the model to associate "agent
+channel active at X" with "output class X" separately per cell, so the
+blocked/stay copy rule cannot transfer to an agent cell never seen as the
+current cell during training. Optimization is not the bottleneck in the
+small-model regime (train accuracy 0.90-1.00).
+
 ## Current Interpretation
 
 The current evidence document is not stale for this result. The held-out
-`(0, 2)` result still reproduces with the current code.
+`(0, 2)` result still reproduces with the current code in the small-model
+regime.
 
 Increasing training from 200 to 1000 steps did not improve held-out `(0, 2)`
 next-cell accuracy, so the failure is probably not just a short-training issue.
-Likely causes include:
+The 2026-06-09 per-action diagnostic narrows the likely causes: in the regime
+where training fits, errors concentrate on emitting the held-out cell id as
+output, which implicates the absolute-cell-id classification target rather
+than capacity or optimization.
+
+Earlier candidate causes for reference:
 
 | Area | Question |
 | --- | --- |
@@ -51,12 +101,12 @@ learning.
 
 Possible next checks:
 
-| Check | Purpose |
+| Check | Status |
 | --- | --- |
-| per-action predictions for held-out cells | See whether errors are systematic or arbitrary. |
-| simpler non-Transformer baseline | Test whether the task construction itself supports generalization. |
-| explicit coordinate features | Test whether position encoding is the bottleneck. |
-| multiple held-out cells and seeds | Avoid over-reading one split or initialization. |
+| per-action predictions for held-out cells | Done 2026-06-09: errors are systematic; the model avoids emitting the held-out cell id. |
+| multiple held-out cells and seeds | Done 2026-06-09: all 5 cells x 3 seeds; eval accuracy 0.00-0.40, mean near chance. |
+| simpler non-Transformer baseline | Open. |
+| explicit coordinate features | Open. The diagnostic suggests testing a relative-move or coordinate-delta output target before input-side changes. |
 
 ## Non-Goal
 
