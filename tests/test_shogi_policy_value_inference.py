@@ -33,8 +33,8 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
 
         priors, value = evaluator.evaluate_batch(((board.sfen(), legal_moves),))[0]
 
-        self.assertEqual(set(priors), set(legal_moves))
-        self.assertAlmostEqual(sum(priors.values()), 1.0, places=6)
+        self.assertEqual(len(priors), len(legal_moves))
+        self.assertAlmostEqual(sum(priors), 1.0, places=6)
         self.assertGreaterEqual(value, -1.0)
         self.assertLessEqual(value, 1.0)
 
@@ -63,9 +63,21 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
 
         priors, value = evaluator.evaluate_batch(((board.sfen(), legal_moves),))[0]
 
-        self.assertEqual(max(priors, key=priors.get), preferred_move)
-        self.assertEqual(set(priors), set(legal_moves))
-        self.assertAlmostEqual(sum(priors.values()), 1.0, places=6)
+        self.assertTrue(evaluator.accepts_action_indices)
+        self.assertEqual(legal_moves[max(range(len(priors)), key=lambda index: priors[index])], preferred_move)
+        self.assertEqual(len(priors), len(legal_moves))
+        self.assertAlmostEqual(sum(priors), 1.0, places=6)
+        self.assertEqual(value, 0.0)
+
+        action_indices = tuple(shogi_action_plane_policy_action_index(move, turn=board.turn) for move in legal_moves)
+        priors_from_indices, value = evaluator.evaluate_batch(((board.sfen(), (), action_indices),))[0]
+
+        self.assertEqual(len(priors_from_indices), len(action_indices))
+        self.assertEqual(
+            max(range(len(priors_from_indices)), key=lambda index: priors_from_indices[index]),
+            legal_moves.index(preferred_move),
+        )
+        self.assertAlmostEqual(sum(priors_from_indices), 1.0, places=6)
         self.assertEqual(value, 0.0)
 
 

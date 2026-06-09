@@ -27,7 +27,7 @@ from intrep.representation.inputs.shogi_position_features.position_features impo
 
 MovePriors = Mapping[str, float] | Sequence[float]
 PositionEvaluation = tuple[MovePriors, float]
-PositionEvaluationRequest = tuple[str, tuple[str, ...]]
+PositionEvaluationRequest = tuple[str, tuple[str, ...]] | tuple[str, tuple[str, ...], tuple[int, ...] | None]
 
 
 class ShogiPolicyValueCheckpointEvaluator:
@@ -56,15 +56,22 @@ class ShogiPolicyValueCheckpointEvaluator:
                     torch_device,
                     config.assembly_spec_id,
                     precision=precision,
-                )
+                ),
+                accepts_action_indices=True,
             )
-        return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id, precision=precision))
+        return cls(
+            _legal_move_evaluator(model, torch_device, config.assembly_spec_id, precision=precision),
+            accepts_action_indices=False,
+        )
 
     def __init__(
         self,
         evaluate_positions: Callable[[Sequence[PositionEvaluationRequest]], list[PositionEvaluation]],
+        *,
+        accepts_action_indices: bool = False,
     ) -> None:
         self.evaluate_positions = evaluate_positions
+        self.accepts_action_indices = accepts_action_indices
         self.last_performance: dict[str, float] = {}
 
     def evaluate_batch(self, requests: Sequence[PositionEvaluationRequest]) -> list[PositionEvaluation]:
@@ -88,11 +95,11 @@ def _legal_move_evaluator(
             evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
         phase_started_at = perf_counter()
-        boards = [shogi.Board(position_sfen) for position_sfen, _legal_moves in requests]
+        boards = [shogi.Board(_request_position_sfen(request)) for request in requests]
         board_parse_sec = perf_counter() - phase_started_at
-        max_legal_move_count = max(len(legal_moves) for _position_sfen, legal_moves in requests)
+        max_legal_move_count = max(len(_request_legal_moves(request)) for request in requests)
         phase_started_at = perf_counter()
-        position_feature_rows = [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_feature_rows = [position_features_from_sfen(_request_position_sfen(request)) for request in requests]
         position_feature_build_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         position_features = stack_shogi_position_features(position_feature_rows)
@@ -105,16 +112,16 @@ def _legal_move_evaluator(
         legal_move_feature_ids = torch.stack(
             [
                 shogi_legal_move_feature_ids(
-                    legal_moves,
+                    _request_legal_moves(request),
                     turn=board.turn,
                     max_legal_move_count=max_legal_move_count,
                 )
-                for board, (_position_sfen, legal_moves) in zip(boards, requests, strict=True)
+                for board, request in zip(boards, requests, strict=True)
             ]
         )
         legal_move_mask = torch.zeros((len(requests), max_legal_move_count), dtype=torch.bool, device=torch_device)
-        for index, (_position_sfen, legal_moves) in enumerate(requests):
-            legal_move_mask[index, : len(legal_moves)] = True
+        for index, request in enumerate(requests):
+            legal_move_mask[index, : len(_request_legal_moves(request))] = True
         output_feature_build_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         legal_move_feature_ids = legal_move_feature_ids.to(torch_device)
@@ -134,7 +141,8 @@ def _legal_move_evaluator(
 
         phase_started_at = perf_counter()
         evaluations: list[PositionEvaluation] = []
-        for index, (_position_sfen, legal_moves) in enumerate(requests):
+        for index, request in enumerate(requests):
+            legal_moves = _request_legal_moves(request)
             move_logits = logits[index, : len(legal_moves)]
             evaluations.append((_move_prior_probabilities(move_logits), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
@@ -172,10 +180,10 @@ def _action_plane_policy_evaluator(
             evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
         phase_started_at = perf_counter()
-        turns = [_turn_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        turns = [_turn_from_sfen(_request_position_sfen(request)) for request in requests]
         turn_decode_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
-        position_feature_rows = [position_features_from_sfen(position_sfen) for position_sfen, _legal_moves in requests]
+        position_feature_rows = [position_features_from_sfen(_request_position_sfen(request)) for request in requests]
         position_feature_build_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         position_features = stack_shogi_position_features(position_feature_rows)
@@ -204,7 +212,7 @@ def _action_plane_policy_evaluator(
         phase_started_at = perf_counter()
         flat_move_logits = logits[batch_indices, action_indices]
         evaluations = []
-        for index, (_position_sfen, legal_moves) in enumerate(requests):
+        for index, request in enumerate(requests):
             start = offsets[index]
             end = offsets[index + 1]
             evaluations.append((_move_prior_probabilities(flat_move_logits[start:end]), _value(values, index)))
@@ -246,11 +254,30 @@ def _flat_legal_action_indices(
     action_indices: list[int] = []
     batch_indices: list[int] = []
     offsets = [0]
-    for batch_index, (turn, (_position_sfen, legal_moves)) in enumerate(zip(turns, requests, strict=True)):
-        action_indices.extend(_cached_action_plane_policy_action_index(move, turn) for move in legal_moves)
-        batch_indices.extend([batch_index] * len(legal_moves))
+    for batch_index, (turn, request) in enumerate(zip(turns, requests, strict=True)):
+        request_action_indices = _request_action_indices(request)
+        if request_action_indices is None:
+            request_action_indices = tuple(
+                _cached_action_plane_policy_action_index(move, turn) for move in _request_legal_moves(request)
+            )
+        action_indices.extend(request_action_indices)
+        batch_indices.extend([batch_index] * len(request_action_indices))
         offsets.append(len(action_indices))
     return action_indices, batch_indices, offsets
+
+
+def _request_position_sfen(request: PositionEvaluationRequest) -> str:
+    return request[0]
+
+
+def _request_legal_moves(request: PositionEvaluationRequest) -> tuple[str, ...]:
+    return request[1]
+
+
+def _request_action_indices(request: PositionEvaluationRequest) -> tuple[int, ...] | None:
+    if len(request) < 3:
+        return None
+    return request[2]
 
 
 @lru_cache(maxsize=65536)
