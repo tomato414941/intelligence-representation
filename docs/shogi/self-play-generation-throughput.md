@@ -70,6 +70,10 @@ Unless noted otherwise:
   layout, `w16_c1_s256_b64_g16_bf16_compact_node_a4000` reached 13.83
   sec/game on an RTX A4000 community Pod. GPU utilization was still only
   25.95% on average, so generation was not GPU-compute dominated.
+- With aligned move priors and array-backed self-play MCTS child stats,
+  `w16_c1_s256_b64_g16_bf16_aligned_array_a4000` reduced expand time from
+  105.68s to 17.02s and reached 10.87 plies/sec. Wall time per game was higher
+  because average game length increased from 122.5 to 199.2 plies.
 - Earlier MCTS128 self-play measurements were much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -142,6 +146,7 @@ workers share one central checkpoint evaluator.
 | `w16_c1_s16_leaf32_central64_g128_bf16_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 53.74 | 64 | 83.97% | 107.9 | 62.59 | 220.61 | 28.53% | 40.00% | 399 MiB / 23034 MiB | 104.86% | 109.00% | 1167 MiB | BF16 autocast with central evaluator batch limit 64 and MCTS leaf batch limit 32. Backend total 43.10s: output feature build 4.69s, model forward 20.89s, output decode 8.89s, position feature build 7.45s. |
 | `w16_c1_s16_b32_g128_compile_l4` | 2026-06-06 | shogi-minimal-split-global-action-plane | L4 | 6 vCPU, 62 GiB | secure | EU-RO-1 | $0.39/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 128 | 16 | 1 | 16 | 32 | 29.84 | 32 | 93.26% | 109.4 | 95.75 | 146.24 | 41.44% | 59.00% | 354 MiB / 23034 MiB | 100.24% | 119.00% | 1215 MiB | `torch.compile`. Backend total 70.74s: output feature build 5.98s, model forward 44.65s, output decode 10.09s, position feature build 8.44s. |
 | `w16_c1_s256_b64_g16_bf16_compact_node_a4000` | 2026-06-09 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | 14 vCPU, 62 GiB | community | SE | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 59.60 | 64 | 93.13% | 122.5 | 221.21 | 8.86 | 25.95% | 38.00% | 367 MiB / 16376 MiB | 106.72% | 145.00% | 1052 MiB | Compact self-play MCTS node layout. Full legal expansion, no top-k pruning. Backend total 141.53s: expand 105.68s, selection 30.13s, model forward 60.73s, output decode 38.00s, output feature build 19.68s, position feature build 20.50s. |
+| `w16_c1_s256_b64_g16_bf16_aligned_array_a4000` | 2026-06-09 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | not recorded | community | not recorded | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 63.26 | 64 | 98.85% | 199.2 | 293.19 | 10.87 | 31.83% | 40.00% | 355 MiB / 16376 MiB | 107.67% | 164.00% | 1084 MiB | Aligned move priors plus array-backed self-play MCTS child stats. Full legal expansion, no top-k pruning. Backend total 218.18s: expand 17.02s, selection 63.50s, model forward 94.68s, output decode 54.20s, output feature build 34.28s, position feature build 31.91s. |
 
 ## Detailed Measurements
 

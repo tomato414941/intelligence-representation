@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import nullcontext
 from functools import lru_cache
 from pathlib import Path
@@ -25,7 +25,8 @@ from intrep.representation.outputs.shogi_action_plane_policy_encoding import sho
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 
 
-PositionEvaluation = tuple[dict[str, float], float]
+MovePriors = Mapping[str, float] | Sequence[float]
+PositionEvaluation = tuple[MovePriors, float]
 PositionEvaluationRequest = tuple[str, tuple[str, ...]]
 
 
@@ -135,7 +136,7 @@ def _legal_move_evaluator(
         evaluations: list[PositionEvaluation] = []
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             move_logits = logits[index, : len(legal_moves)]
-            evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
+            evaluations.append((_move_prior_probabilities(move_logits), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -206,7 +207,7 @@ def _action_plane_policy_evaluator(
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             start = offsets[index]
             end = offsets[index + 1]
-            evaluations.append((_move_priors(flat_move_logits[start:end], legal_moves), _value(values, index)))
+            evaluations.append((_move_prior_probabilities(flat_move_logits[start:end]), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -289,9 +290,9 @@ def _synchronize_torch_device(torch_device: torch.device) -> None:
         torch.cuda.synchronize(torch_device)
 
 
-def _move_priors(move_logits: torch.Tensor, legal_moves: tuple[str, ...]) -> dict[str, float]:
+def _move_prior_probabilities(move_logits: torch.Tensor) -> tuple[float, ...]:
     probabilities = torch.softmax(move_logits, dim=0).detach().cpu().tolist()
-    return {move: float(probabilities[move_index]) for move_index, move in enumerate(legal_moves)}
+    return tuple(float(probability) for probability in probabilities)
 
 
 def _value(values: torch.Tensor | None, index: int) -> float:
