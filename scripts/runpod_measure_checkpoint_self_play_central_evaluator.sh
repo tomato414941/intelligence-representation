@@ -8,11 +8,15 @@ RUNPOD_JOB=${RUNPOD_JOB:-"$RUNPOD_RUNNER_ROOT/scripts/run_job.py"}
 PROJECTS_ROOT=${PROJECTS_ROOT:-"$(dirname "$PWD")"}
 ARENA_REPO=${ARENA_REPO:-"$PROJECTS_ROOT/shogi-arena-agent"}
 OUTPUT_DIR=${OUTPUT_DIR:-"intelligence-representation/runs/shogi/checkpoint-self-play-central-evaluator-$(date -u +%Y%m%d-%H%M%S)"}
+CHECKPOINT_REL=${CHECKPOINT_REL:-models/shogi-minimal-split-global-position-action-plane-mcts256-full}
 GPU_TYPE=${GPU_TYPE:-"NVIDIA RTX 4000 Ada Generation"}
-MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-30}
+MAX_RUNTIME_MINUTES=${MAX_RUNTIME_MINUTES:-20}
+CASE_SET=${CASE_SET:-"mcts64-topk"}
+INFERENCE_PRECISION=${INFERENCE_PRECISION:-bf16}
 DATA_CENTER_IDS=${DATA_CENTER_IDS:-""}
 MIN_VCPU_PER_GPU=${MIN_VCPU_PER_GPU:-""}
 SECURE_CLOUD=${SECURE_CLOUD:-""}
+MCTS_MAX_EXPANDED_CHILDREN=${MCTS_MAX_EXPANDED_CHILDREN:-32}
 
 if [[ ! -d "$ARENA_REPO" ]]; then
   echo "shogi-arena-agent repo not found: $ARENA_REPO" >&2
@@ -48,7 +52,7 @@ python3 "$RUNPOD_JOB" \
   --sync intelligence-representation/pyproject.toml \
   --sync intelligence-representation/README.md \
   --sync intelligence-representation/AGENTS.md \
-  --sync intelligence-representation/models/shogi-minimal-split-global-action-plane \
+  --sync "intelligence-representation/$CHECKPOINT_REL" \
   --sync shogi-arena-agent/src \
   --sync shogi-arena-agent/scripts/generate_checkpoint_self_play_games.py \
   --sync shogi-arena-agent/pyproject.toml \
@@ -73,14 +77,33 @@ REMOTE = Path(os.environ['REMOTE_DIR'])
 INTREP = REMOTE / 'intelligence-representation'
 ARENA = REMOTE / 'shogi-arena-agent'
 PYTHON = INTREP / '.venv/bin/python'
-CHECKPOINT = INTREP / 'models/shogi-minimal-split-global-action-plane'
 OUT = REMOTE / os.environ['MEASURE_OUT']
+CASE_SET = os.environ.get('MEASURE_CASE_SET', 'mcts64-topk')
+INFERENCE_PRECISION = os.environ.get('INFERENCE_PRECISION', 'bf16')
+MCTS_MAX_EXPANDED_CHILDREN = os.environ.get('MCTS_MAX_EXPANDED_CHILDREN')
+TOPK_LABEL = MCTS_MAX_EXPANDED_CHILDREN or 'all'
+CHECKPOINT = INTREP / os.environ['MEASURE_CHECKPOINT_REL']
 
-CASES = [
-    ('w4_c4_s16_b32_g64', 4, 4, 64, 16, 32),
-    ('w8_c4_s16_b32_g64', 8, 4, 64, 16, 32),
-    ('w16_c4_s16_b32_g64', 16, 4, 64, 16, 32),
-]
+CASE_SETS = {
+    'mcts256-topk': [
+        (f'w16_c1_s256_b64_g16_topk{TOPK_LABEL}_{INFERENCE_PRECISION}', 16, 1, 16, 256, 64),
+    ],
+    'mcts128-topk': [
+        (f'w16_c1_s128_b64_g16_topk{TOPK_LABEL}_{INFERENCE_PRECISION}', 16, 1, 16, 128, 64),
+    ],
+    'mcts64-topk': [
+        (f'w16_c1_s64_b64_g16_topk{TOPK_LABEL}_{INFERENCE_PRECISION}', 16, 1, 16, 64, 64),
+    ],
+    'mcts16-scaling': [
+        ('w4_c4_s16_b32_g64', 4, 4, 64, 16, 32),
+        ('w8_c4_s16_b32_g64', 8, 4, 64, 16, 32),
+        ('w16_c4_s16_b32_g64', 16, 4, 64, 16, 32),
+    ],
+}
+try:
+    CASES = CASE_SETS[CASE_SET]
+except KeyError as exc:
+    raise ValueError(f'unknown MEASURE_CASE_SET: {CASE_SET}') from exc
 
 
 def gpu_sample() -> tuple[float | None, str | None]:
@@ -151,10 +174,13 @@ def run_case(
         '--mcts-nn-leaf-eval-batch-limit', str(batch_limit),
         '--central-evaluator-batch-size-limit', str(batch_limit),
         '--central-evaluator-flush-timeout-sec', '0.002',
+        '--inference-precision', INFERENCE_PRECISION,
         '--max-plies', '320',
         '--device', 'cuda',
         '--board-backend', 'cshogi',
     ]
+    if MCTS_MAX_EXPANDED_CHILDREN:
+        command += ['--mcts-max-expanded-children', MCTS_MAX_EXPANDED_CHILDREN]
     samples: list[dict[str, object]] = []
     started = time.monotonic()
     with stdout_path.open('w', encoding='utf-8') as stdout, stderr_path.open('w', encoding='utf-8') as stderr:
@@ -188,6 +214,8 @@ def run_case(
         'concurrent_games_per_worker': concurrent_games_per_worker,
         'mcts_simulations_per_move': simulations,
         'nn_leaf_eval_batch_limit': batch_limit,
+        'mcts_max_expanded_children': int(MCTS_MAX_EXPANDED_CHILDREN) if MCTS_MAX_EXPANDED_CHILDREN else None,
+        'inference_precision': INFERENCE_PRECISION,
         'average_plies': summary.get('average_plies'),
         'wall_sec': summary.get('generation_wall_time_sec', wall),
         'plies_per_sec': summary.get('plies_per_sec'),
@@ -238,5 +266,5 @@ def main() -> None:
 if __name__ == '__main__':
     main()
 PY
-REMOTE_DIR=\"\$REMOTE_DIR\" MEASURE_OUT=\"\$OUT\" \"intelligence-representation/.venv/bin/python\" /tmp/measure_checkpoint_self_play_central.py" \
+REMOTE_DIR=\"\$REMOTE_DIR\" MEASURE_OUT=\"\$OUT\" MEASURE_CASE_SET=\"$CASE_SET\" MEASURE_CHECKPOINT_REL=\"$CHECKPOINT_REL\" MCTS_MAX_EXPANDED_CHILDREN=\"$MCTS_MAX_EXPANDED_CHILDREN\" INFERENCE_PRECISION=\"$INFERENCE_PRECISION\" \"intelligence-representation/.venv/bin/python\" /tmp/measure_checkpoint_self_play_central.py" \
   "$@"
