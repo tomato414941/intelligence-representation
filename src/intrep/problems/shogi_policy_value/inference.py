@@ -38,10 +38,7 @@ class ShogiPolicyValueCheckpointEvaluator:
         device: str = "cpu",
         precision: str = "fp32",
         compile_model: bool = False,
-        max_prior_count: int | None = None,
     ) -> ShogiPolicyValueCheckpointEvaluator:
-        if max_prior_count is not None and max_prior_count <= 0:
-            raise ValueError("max_prior_count must be positive")
         model = load_shogi_policy_value_checkpoint(checkpoint_path, device=device)
         config = load_shogi_policy_value_checkpoint_training_config(checkpoint_path, device=device)
         torch_device = torch.device(device)
@@ -58,18 +55,9 @@ class ShogiPolicyValueCheckpointEvaluator:
                     torch_device,
                     config.assembly_spec_id,
                     precision=precision,
-                    max_prior_count=max_prior_count,
                 )
             )
-        return cls(
-            _legal_move_evaluator(
-                model,
-                torch_device,
-                config.assembly_spec_id,
-                precision=precision,
-                max_prior_count=max_prior_count,
-            )
-        )
+        return cls(_legal_move_evaluator(model, torch_device, config.assembly_spec_id, precision=precision))
 
     def __init__(
         self,
@@ -90,7 +78,6 @@ def _legal_move_evaluator(
     assembly_spec_id: str,
     *,
     precision: str,
-    max_prior_count: int | None,
 ):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
@@ -148,7 +135,7 @@ def _legal_move_evaluator(
         evaluations: list[PositionEvaluation] = []
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             move_logits = logits[index, : len(legal_moves)]
-            evaluations.append((_move_priors(move_logits, legal_moves, max_count=max_prior_count), _value(values, index)))
+            evaluations.append((_move_priors(move_logits, legal_moves), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -175,7 +162,6 @@ def _action_plane_policy_evaluator(
     assembly_spec_id: str,
     *,
     precision: str,
-    max_prior_count: int | None,
 ):
     position_features_from_sfen = shogi_position_feature_builder_for_assembly_spec_id(assembly_spec_id)
 
@@ -220,9 +206,7 @@ def _action_plane_policy_evaluator(
         for index, (_position_sfen, legal_moves) in enumerate(requests):
             start = offsets[index]
             end = offsets[index + 1]
-            evaluations.append(
-                (_move_priors(flat_move_logits[start:end], legal_moves, max_count=max_prior_count), _value(values, index))
-            )
+            evaluations.append((_move_priors(flat_move_logits[start:end], legal_moves), _value(values, index)))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -305,28 +289,9 @@ def _synchronize_torch_device(torch_device: torch.device) -> None:
         torch.cuda.synchronize(torch_device)
 
 
-def _move_priors(
-    move_logits: torch.Tensor,
-    legal_moves: tuple[str, ...],
-    *,
-    max_count: int | None,
-) -> dict[str, float]:
-    if max_count is not None and len(legal_moves) > max_count:
-        move_logits, legal_moves = _top_move_logits(move_logits, legal_moves, max_count=max_count)
+def _move_priors(move_logits: torch.Tensor, legal_moves: tuple[str, ...]) -> dict[str, float]:
     probabilities = torch.softmax(move_logits, dim=0).detach().cpu().tolist()
     return {move: float(probabilities[move_index]) for move_index, move in enumerate(legal_moves)}
-
-
-def _top_move_logits(
-    move_logits: torch.Tensor,
-    legal_moves: tuple[str, ...],
-    *,
-    max_count: int,
-) -> tuple[torch.Tensor, tuple[str, ...]]:
-    top_values, top_indices = torch.topk(move_logits, k=max_count)
-    selected_indices = top_indices.detach().cpu().tolist()
-    selected_moves = tuple(legal_moves[index] for index in selected_indices)
-    return top_values, selected_moves
 
 
 def _value(values: torch.Tensor | None, index: int) -> float:
