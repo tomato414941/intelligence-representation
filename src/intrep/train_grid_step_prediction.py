@@ -4,10 +4,10 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Sequence
 
-from intrep.domains.grid.world import GridExperienceTransition, GridWorldState, Position, generate_grid_world_transition_table
+from intrep.domains.grid.world import GridWorldState, Position, generate_grid_world_transition_table
 from intrep.problems.grid_step_prediction.checkpoint import save_grid_core_checkpoint
+from intrep.problems.grid_step_prediction.dataset import split_grid_transitions_by_agent_cell
 from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
 
 
@@ -106,24 +106,6 @@ def main(argv: list[str] | None = None) -> None:
         f" terminated_accuracy={result.terminated_accuracy:.4f}"
         f" eval_next_cell_accuracy={result.eval_next_cell_accuracy if result.eval_next_cell_accuracy is not None else 'none'}"
     )
-
-
-def split_grid_transitions_by_agent_cell(
-    examples: Sequence[GridExperienceTransition],
-    *,
-    held_out_cells: Sequence[Position],
-) -> tuple[list[GridExperienceTransition], list[GridExperienceTransition]]:
-    held_out = set(held_out_cells)
-    train_examples = []
-    eval_examples = []
-    for example in examples:
-        if example.observation.agent in held_out:
-            eval_examples.append(example)
-        else:
-            train_examples.append(example)
-    if not train_examples:
-        raise ValueError("train split must not be empty")
-    return train_examples, eval_examples
 
 
 def _held_out_cells(args: argparse.Namespace) -> list[Position]:

@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset
 
 from intrep.domains.grid.encoding import grid_action_to_id, grid_observation_to_tensor, grid_position_to_cell_id
-from intrep.domains.grid.world import GridExperienceTransition
+from intrep.domains.grid.world import GridExperienceTransition, Position
 
 
 class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
@@ -42,6 +42,24 @@ class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.
         reward_id = torch.tensor(grid_reward_to_id(example.reward), dtype=torch.long)
         terminated_id = torch.tensor(int(example.terminated), dtype=torch.long)
         return observation, action_id, next_cell_id, reward_id, terminated_id
+
+
+def split_grid_transitions_by_agent_cell(
+    examples: Sequence[GridExperienceTransition],
+    *,
+    held_out_cells: Sequence[Position],
+) -> tuple[list[GridExperienceTransition], list[GridExperienceTransition]]:
+    held_out = set(held_out_cells)
+    train_examples = []
+    eval_examples = []
+    for example in examples:
+        if example.observation.agent in held_out:
+            eval_examples.append(example)
+        else:
+            train_examples.append(example)
+    if not train_examples:
+        raise ValueError("train split must not be empty")
+    return train_examples, eval_examples
 
 
 def grid_reward_to_id(reward: float) -> int:
