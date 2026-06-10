@@ -29,10 +29,11 @@ generated artifacts.
 
 ## Per-Action Diagnostic (2026-06-09)
 
-Ran the held-out sweep diagnostic
-(`intrep.problems.grid_step_prediction.diagnose_heldout`) over every valid
-agent cell with seeds 31/32/33, dumping per-action next-cell predictions for
-the held-out cell. Metrics were written under `runs/local-checks/`.
+Ran a held-out sweep diagnostic over every valid agent cell with seeds
+31/32/33, dumping per-action next-cell predictions for the held-out cell.
+Metrics were written under `runs/local-checks/`. The diagnostic tool was
+temporary and has been removed after this check; it can be restored from
+commit `7db9e1d` (`intrep.problems.grid_step_prediction.diagnose_heldout`).
 
 Two model regimes were checked:
 
