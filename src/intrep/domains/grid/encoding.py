@@ -46,3 +46,20 @@ def grid_position_to_cell_id(position: Position, *, width: int) -> int:
     if width <= 0:
         raise ValueError("width must be positive")
     return position.row * width + position.col
+
+
+GRID_CELL_CLASSES = ("empty", "agent", "goal", "wall")
+
+_CELL_CHAR_TO_CLASS_ID = {".": 0, "A": 1, "*": 1, "G": 2, "#": 3}
+
+
+def grid_observation_to_cell_class_ids(observation: GridObservation) -> torch.Tensor:
+    if not observation.grid:
+        raise ValueError("observation grid must not be empty")
+    class_ids = []
+    for row in observation.grid:
+        for cell in row:
+            if cell not in _CELL_CHAR_TO_CLASS_ID:
+                raise ValueError(f"unknown grid observation cell: {cell}")
+            class_ids.append(_CELL_CHAR_TO_CLASS_ID[cell])
+    return torch.tensor(class_ids, dtype=torch.long)
