@@ -58,7 +58,7 @@ Read these first:
 - [World Model Centering](docs/world-model.md)
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
-- [Evidence](docs/evidence.md)
+- [Evaluation and Current Claims](docs/evaluation.md)
 
 ## Design Constraints
 

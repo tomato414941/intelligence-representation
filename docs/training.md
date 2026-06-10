@@ -16,11 +16,9 @@ intrep.train_image_text_answer
 intrep.train_shogi_policy_value
 ```
 
-The grid step prediction CLI was removed on 2026-06-10. It trained on a single
-hardcoded layout with a next-cell-id objective and mixed data definition,
-training, and evaluation in one command; recorded results stay in
-[evidence.md](evidence.md) and reproduce from git history. Its replacement is
-planned as separate train and evaluate commands over generated layouts; see
+The grid step prediction CLI was removed on 2026-06-10; recorded results
+reproduce from git history. Its replacement is planned as separate train and
+evaluate commands over generated layouts; see
 `issues/grid-next-observation-emergence.md`.
 
 Problem models compose task-specific input layers, the shared Transformer core

@@ -207,7 +207,7 @@ reward / error input interface:
 ## 現在の位置づけ
 
 現在のリポジトリは、`Predictive Representation System` を実現済みではない。
-実装状態の詳細は README と [Evidence](evidence.md) に置く。
+実装状態の詳細は README と [Evaluation](evaluation.md) の Current Claims に置く。
 
 現在の実験基盤は、次の形へ寄せている。
 
