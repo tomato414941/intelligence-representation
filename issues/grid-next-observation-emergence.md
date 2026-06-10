@@ -2,6 +2,17 @@
 
 Status: open.
 
+Implementation note (2026-06-10): a first implementation of the Design below
+(commits `c2cb8a8`, `f2fe516`, `ac7415b`) was reverted in `2597fed`. The
+evaluation design needs rework before reimplementation: headline metrics
+should make trivial strategies score zero by construction (for example,
+score only what changes), and the world's dynamics distribution (the current
+tiny grid makes "nothing moves" the answer in 17 of 25 transitions) is a
+design variable, not a given. Standing baseline comparisons that reinterpret
+an inflatable score treat the symptom; the measurement instrument itself
+should not award free points. Baselines remain useful as a design-time check
+that this holds.
+
 ## Question
 
 Does held-out generalization of transition rules emerge under a generic
