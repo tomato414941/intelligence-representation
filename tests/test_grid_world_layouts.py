@@ -1,10 +1,7 @@
 import unittest
 
-from intrep.domains.grid.world import (
-    generate_grid_world_layouts,
-    generate_grid_world_transition_table,
-    generate_random_grid_world_state,
-)
+from intrep.domains.grid.layouts import generate_grid_world_layouts, generate_random_grid_world_state
+from intrep.domains.grid.world import generate_grid_world_transition_table
 
 
 class GridWorldLayoutGenerationTest(unittest.TestCase):
