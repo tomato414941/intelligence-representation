@@ -1,6 +1,11 @@
 # Forms Package Boundary
 
-Status: open.
+Status: closed.
+
+Resolution: superseded. This issue assumed a choice between creating `forms/`
+and keeping source packages flat. Commit `22eafd8` (2026-05-21) moved all
+source packages under `domains/` instead, so the premise of this issue no
+longer exists.
 
 ## Issue
 
