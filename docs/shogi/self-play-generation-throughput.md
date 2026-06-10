@@ -77,6 +77,10 @@ Unless noted otherwise:
 - Removing the redundant self-play MCTS parent-edge list reduced selection
   time further. `w16_c1_s256_b64_g16_bf16_no_edge_parent_a4000` measured
   expand 13.09s and selection 53.02s with MCTS256 unchanged.
+- With legal-move phase profiling and cached cshogi action-index conversion,
+  `w16_c1_s256_b64_g16_bf16_cached_action_index_a4000` reached 11.39
+  plies/sec on a 14 vCPU RTX A4000 community Pod. `legal_moves` remained a
+  major CPU-side phase at 36.49s total, mostly action-index conversion.
 - Earlier MCTS128 self-play measurements were much slower than the older
   light-search MCTS16 measurements. On an L4 secure Pod, 64 games took about
   21.6 minutes, which extrapolates to about 46.1 hours for 8192 games.
@@ -152,6 +156,7 @@ workers share one central checkpoint evaluator.
 | `w16_c1_s256_b64_g16_bf16_aligned_array_a4000` | 2026-06-09 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | not recorded | community | not recorded | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 63.26 | 64 | 98.85% | 199.2 | 293.19 | 10.87 | 31.83% | 40.00% | 355 MiB / 16376 MiB | 107.67% | 164.00% | 1084 MiB | Aligned move priors plus array-backed self-play MCTS child stats. Full legal expansion, no top-k pruning. Backend total 218.18s: expand 17.02s, selection 63.50s, model forward 94.68s, output decode 54.20s, output feature build 34.28s, position feature build 31.91s. |
 | `w16_c1_s256_b64_g16_bf16_no_edge_parent_a4000` | 2026-06-09 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | 14 vCPU, 62 GiB | community | SE | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 60.11 | 64 | 93.92% | 170.0 | 251.69 | 10.81 | 31.32% | 40.00% | 355 MiB / 16376 MiB | 109.72% | 202.00% | 1076 MiB | Removed redundant parent-edge list from self-play MCTS selection/backprop. Full legal expansion, no top-k pruning. Backend total 183.59s: expand 13.09s, selection 53.02s, model forward 82.49s, output decode 44.75s, output feature build 26.33s, position feature build 27.27s. |
 | `w16_c1_s256_b64_g16_bf16_action_indices_a4000` | 2026-06-10 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | 6 vCPU, 62 GiB | community | SK | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 62.32 | 64 | 97.37% | 189.9 | 302.21 | 10.05 | 29.78% | 38.00% | 371 MiB / 16376 MiB | 101.79% | 136.00% | 1098 MiB | cshogi native moves plus precomputed action indices for action-plane inference. Full legal expansion, no top-k pruning. Phase totals: legal moves 162.17s, expand 16.16s, selection 95.91s. Backend totals: model forward 93.03s, output decode 61.98s, output feature build 25.52s, position feature build 48.91s. |
+| `w16_c1_s256_b64_g16_bf16_cached_action_index_a4000` | 2026-06-10 | shogi-minimal-split-global-position-action-plane-mcts256-full | RTX A4000 | 14 vCPU, 62 GiB | community | SE | $0.17/hr | runpod-torch-v280 / torch 2.8.0+cu128 | 16 | 16 | 1 | 256 | 64 | 61.73 | 64 | 96.45% | 164.1 | 230.52 | 11.39 | 33.04% | 40.00% | 367 MiB / 16376 MiB | 105.67% | 127.00% | 1065 MiB | Added legal-move phase breakdown and cached cshogi action-index conversion. Full legal expansion, no top-k pruning. Phase totals: legal moves 36.49s, action-index 29.71s, enumerate 6.25s, selection 63.58s, expand 13.49s. Backend totals: model forward 78.73s, output decode 42.80s, output feature build 14.09s, position feature build 26.98s. |
 
 ## Detailed Measurements
 
