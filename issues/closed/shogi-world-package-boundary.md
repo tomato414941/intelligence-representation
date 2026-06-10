@@ -1,6 +1,16 @@
 # Shogi World Package Boundary
 
-Status: open. Priority: low.
+Status: closed.
+
+Resolution: closed via acceptance criterion (b). The learning-data lifecycle
+code (`training_data_bundle`, `game_split`, `experience_stats`,
+`generated_record_archive`) moved out of the world package into
+`intrep.experience.shogi` as part of the 2026-06-10 source-package
+reorganization (`worlds/` + `sources/` + `experience/`). Board and move
+encoding had already moved to `representation/inputs` and
+`representation/outputs` on 2026-05-20. The world package
+(`intrep.worlds.shogi`) now holds world records, rules, and engine
+interfaces only.
 
 ## Issue
 
