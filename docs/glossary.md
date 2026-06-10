@@ -33,13 +33,17 @@ A source-side package holds source records, forms, IO, encodings, conversions,
 input preparation utilities, or world-like utilities for a source family or
 representation family.
 
-Current domain packages remain intentionally narrow:
+Source-side packages are split by the decisions they carry:
 
-- `domains/vision/` and `domains/language/` are form/input-oriented.
-- `domains/shogi/` and `domains/grid/` are rule-domain-oriented.
+- `worlds/shogi/` and `worlds/gridworld/` are rule systems that generate
+  experience and define ground truth.
+- `sources/vision/` and `sources/language/` are collected record families
+  without their own rule system.
+- `experience/` manages recorded interaction between generation and
+  consumption (storage, splitting, selection, statistics).
 
-Use `domain` for source families. A domain does not have to be an interactable
-world. It can be a rule system, a form family, or a recorded source family.
+`domain` remains usable informally for a source family, but it is no longer a
+package name.
 
 ### Problem Package
 

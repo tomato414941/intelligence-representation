@@ -14,7 +14,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_MINIMAL_SPLIT_GLOBAL_ACTION_PLANE_POLICY_ASSEMBLY_SPEC_ID,
     SHOGI_POLICY_VALUE_RICH_LEGAL_MOVE_ATTENTION_ASSEMBLY_SPEC_ID,
 )
-from intrep.domains.shogi.game_record import (
+from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     shogi_game_record_from_usi_moves,

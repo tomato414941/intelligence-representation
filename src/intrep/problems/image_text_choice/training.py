@@ -18,8 +18,8 @@ from intrep.core.training_utils import (
     trainable_parameter_count,
 )
 from intrep.core.shared_state_loading import load_compatible_module_state
-from intrep.domains.language.tokenizer import TextTokenizer, build_text_tokenizer
-from intrep.domains.vision.training_data import (
+from intrep.sources.language.tokenizer import TextTokenizer, build_text_tokenizer
+from intrep.sources.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
 )

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from intrep.domains.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)

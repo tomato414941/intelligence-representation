@@ -5,7 +5,7 @@ import torch
 from intrep.representation.inputs.vision_patches.input_layer import ImagePatchInputLayer
 from intrep.representation.assemblies.language_modeling import LanguageModelingModel, build_language_modeling_config
 from intrep.core.model_input import concatenate_input_embedding_sequences
-from intrep.domains.language.token_scoring import next_token_loss
+from intrep.sources.language.token_scoring import next_token_loss
 from intrep.representation.cores.transformer import SharedTransformerCore
 
 

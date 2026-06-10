@@ -13,11 +13,11 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
     ShogiPositionValueExample,
 )
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
-from intrep.domains.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
-from intrep.domains.shogi.game_trace import ShogiGameTrace, trace_shogi_game_record
-from intrep.domains.shogi.info_stats import parse_shogi_usi_info_line
-from intrep.domains.shogi.kif_io import load_shogi_game_record_from_kif_file
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
+from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import ShogiGameTrace, trace_shogi_game_record
+from intrep.worlds.shogi.info_stats import parse_shogi_usi_info_line
+from intrep.worlds.shogi.kif_io import load_shogi_game_record_from_kif_file
 
 
 def load_shogi_move_policy_value_examples_from_game_records_jsonl(

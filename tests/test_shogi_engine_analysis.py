@@ -4,7 +4,7 @@ from pathlib import Path
 
 import shogi
 
-from intrep.domains.shogi.engine_analysis import (
+from intrep.worlds.shogi.engine_analysis import (
     ShogiAnalysisPosition,
     ShogiEngineAnalysis,
     analyze_shogi_position_with_usi_session,
@@ -12,8 +12,8 @@ from intrep.domains.shogi.engine_analysis import (
     shogi_analysis_positions_from_game_records,
     write_shogi_engine_analysis_jsonl,
 )
-from intrep.domains.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 class ShogiEngineAnalysisTest(unittest.TestCase):

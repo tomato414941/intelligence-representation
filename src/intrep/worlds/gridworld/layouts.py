@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from intrep.domains.grid.world import GridWorldState, Position
+from intrep.worlds.gridworld.world import GridWorldState, Position
 
 
 def generate_random_grid_world_state(

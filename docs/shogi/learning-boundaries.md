@@ -5,7 +5,7 @@ generic world/problem framework for every future domain.
 
 ## Domain-Side Shogi Data
 
-`intrep.domains.shogi` owns source-side shogi data and formats:
+`intrep.worlds.shogi` owns source-side shogi data and formats:
 
 - `ShogiGameRecord`: lightweight recorded game facts such as actors, initial
   position, moves, result, end reason, and source metadata
@@ -13,12 +13,18 @@ generic world/problem framework for every future domain.
   side-to-move, next positions, rewards, and done flags
 - KIF / USI parsing and writing
 - legal shogi game records and source-derived game-record JSONL
-- Training Data Bundle creation
-- train/eval game-record splitting
 - engine-analysis source records
 
-Code belongs in `domains/shogi` when it preserves, organizes, validates,
-selects, or replays shogi experience before a specific learning target is
+`intrep.experience.shogi` owns shogi experience management between generation
+and consumption:
+
+- Training Data Bundle creation
+- train/eval game-record splitting
+- generated-record archiving and experience statistics
+
+Code belongs in `worlds/shogi` when it defines or replays the world's records
+and rules. Code belongs in `experience/shogi` when it preserves, organizes,
+selects, or measures shogi experience before a specific learning target is
 chosen.
 
 ## Policy/Value Problem Data

@@ -1,6 +1,6 @@
 import unittest
 
-from intrep.domains.language.byte_tokenizer import ByteTokenizer
+from intrep.sources.language.byte_tokenizer import ByteTokenizer
 
 
 class ByteTokenizerTest(unittest.TestCase):

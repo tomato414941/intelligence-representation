@@ -7,7 +7,7 @@ from typing import Iterator
 
 import shogi
 
-from intrep.domains.shogi.game_record import (
+from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     shogi_game_record_from_usi_moves,

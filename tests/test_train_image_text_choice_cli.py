@@ -22,7 +22,7 @@ from intrep.problems.image_text_answer.checkpoint import save_image_text_answer_
 from intrep.problems.image_text_answer.examples import ImageTextAnswerExample
 from intrep.problems.image_text_answer.training import ImageTextAnswerTrainingConfig, train_image_text_answer_model
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
-from intrep.domains.language.tokenizer import build_text_tokenizer, save_text_tokenizer
+from intrep.sources.language.tokenizer import build_text_tokenizer, save_text_tokenizer
 from intrep.train_image_text_choice import main
 
 

@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.domains.shogi.info_stats import inspect_shogi_usi_info_jsonl, write_shogi_usi_info_stats_json
+from intrep.worlds.shogi.info_stats import inspect_shogi_usi_info_jsonl, write_shogi_usi_info_stats_json
 
 
 def main() -> None:

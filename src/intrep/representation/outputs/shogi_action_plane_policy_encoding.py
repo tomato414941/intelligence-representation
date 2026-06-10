@@ -3,12 +3,12 @@ from __future__ import annotations
 import shogi
 import torch
 
-from intrep.domains.shogi.coordinates import (
+from intrep.worlds.shogi.coordinates import (
     SHOGI_SQUARE_COUNT,
     absolute_to_relative_square,
     relative_to_absolute_square,
 )
-from intrep.domains.shogi.usi import SHOGI_USI_DROP_PIECE_TYPES_BY_CODE, shogi_usi_square_to_absolute_square
+from intrep.worlds.shogi.usi import SHOGI_USI_DROP_PIECE_TYPES_BY_CODE, shogi_usi_square_to_absolute_square
 
 
 DIRECTION_DELTAS = (

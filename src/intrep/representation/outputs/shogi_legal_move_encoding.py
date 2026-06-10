@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import torch
 
-from intrep.domains.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
-from intrep.domains.shogi.usi import shogi_usi_move_parts
+from intrep.worlds.shogi.coordinates import SHOGI_SQUARE_COUNT, absolute_to_relative_square
+from intrep.worlds.shogi.usi import shogi_usi_move_parts
 
 
 SHOGI_MOVE_FIELD_COUNT = 4

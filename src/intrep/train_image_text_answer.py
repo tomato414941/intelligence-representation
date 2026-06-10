@@ -12,7 +12,7 @@ from intrep.problems.image_text_answer.training import (
 )
 from intrep.problems.image_text_answer.checkpoint import save_image_text_answer_checkpoint
 from intrep.transfer.shared_core import load_shared_core_initialization
-from intrep.domains.language.tokenizer import load_text_tokenizer
+from intrep.sources.language.tokenizer import load_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:

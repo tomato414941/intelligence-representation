@@ -10,7 +10,7 @@ from intrep.representation.outputs.shogi_legal_move_encoding import (
     shogi_legal_move_feature_ids,
     shogi_move_feature_ids,
 )
-from intrep.domains.shogi.usi import shogi_usi_move_parts
+from intrep.worlds.shogi.usi import shogi_usi_move_parts
 
 
 class ShogiMoveEncodingTest(unittest.TestCase):

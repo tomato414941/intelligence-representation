@@ -15,7 +15,7 @@ from intrep.core.training_utils import (
     resolve_training_device,
     seeded_data_loader,
 )
-from intrep.domains.grid.world import GridExperienceTransition
+from intrep.worlds.gridworld.world import GridExperienceTransition
 from intrep.problems.grid_step_prediction.dataset import GridStepPredictionDataset
 from intrep.representation.assemblies.grid_step_prediction import GridStepPredictionModel
 

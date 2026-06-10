@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep.datasets.vision.idx import read_idx_images, read_idx_labels
-from intrep.domains.vision.io import read_portable_image
+from intrep.sources.vision.io import read_portable_image
 from intrep.problems.image_classification.dataset_builders import (
     main_idx,
     write_idx_image_classification_jsonl,

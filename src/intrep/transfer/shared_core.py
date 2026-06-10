@@ -9,7 +9,7 @@ from intrep.problems.image_classification.checkpoint import load_image_classific
 from intrep.problems.image_text_answer.checkpoint import load_image_text_answer_checkpoint
 from intrep.problems.image_text_choice.checkpoint import load_image_text_choice_checkpoint
 from intrep.core.training_utils import TrainingDevice, resolve_training_device
-from intrep.domains.language.tokenizer import TextTokenizer
+from intrep.sources.language.tokenizer import TextTokenizer
 
 
 @dataclass(frozen=True)

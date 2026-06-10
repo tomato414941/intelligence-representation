@@ -35,7 +35,7 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
     SHOGI_POSITION_STATE_FEATURE_ID,
     SIDE_TO_MOVE_BLACK_FEATURE_ID,
 )
-from intrep.domains.shogi.coordinates import absolute_to_relative_square
+from intrep.worlds.shogi.coordinates import absolute_to_relative_square
 
 
 class ShogiDlshogiLikePositionTest(unittest.TestCase):

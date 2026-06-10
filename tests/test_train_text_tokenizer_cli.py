@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from intrep import train_text_tokenizer
-from intrep.domains.language.tokenizer import BytePairTokenizer, load_text_tokenizer
+from intrep.sources.language.tokenizer import BytePairTokenizer, load_text_tokenizer
 
 
 class TrainTextTokenizerCLITest(unittest.TestCase):

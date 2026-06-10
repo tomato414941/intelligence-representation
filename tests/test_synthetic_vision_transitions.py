@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from intrep.domains.vision.synthetic_transitions import (
+from intrep.sources.vision.synthetic_transitions import (
     MOVING_DOT_ACTIONS,
     MovingDotTransitionDataset,
     moving_dot_frame,

@@ -1,7 +1,7 @@
 import unittest
 
-from intrep.domains.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
-from intrep.domains.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
+from intrep.worlds.shogi.game_record import ShogiActorSpec, ShogiGameRecord, shogi_game_record_from_usi_moves
+from intrep.worlds.shogi.game_replay import replay_shogi_game_record, validate_shogi_game_record
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})

@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from intrep.datasets.vision.cifar10 import read_cifar10_batch
-from intrep.domains.vision.io import read_portable_image
+from intrep.sources.vision.io import read_portable_image
 from intrep.problems.image_classification.dataset_builders import (
     main_cifar10,
     write_cifar10_image_classification_jsonl,

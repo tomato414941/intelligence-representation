@@ -26,17 +26,24 @@ Use [Glossary](glossary.md) for the current boundary terms.
 ## Package Responsibilities
 
 - `core/`: domain-agnostic representation computation and shared utilities.
-- `domains/`: source-side packages for domain-specific records, forms, IO,
-  encodings, conversions, replay, observations, actions, transitions, and
-  world-like utilities. Current packages include `domains/shogi/`,
-  `domains/grid/`, `domains/vision/`, and `domains/language/`.
+- `worlds/`: rule systems that generate experience and define ground truth,
+  including states, transitions, observations, records, and replay. Current
+  packages are `worlds/shogi/` and `worlds/gridworld/`.
+- `sources/`: collected record families without their own rule system, such as
+  `sources/vision/` and `sources/language/`.
+- `experience/`: management of recorded interaction between generation and
+  consumption: storage, archiving, splitting, selection, and statistics.
+  Currently `experience/shogi/`.
 - `problems/`: problem-oriented model surfaces that bind model input
   construction, shared cores, output heads, losses, metrics, and evaluation when
   those pieces are tightly tied to one input/target/output shape.
 - `transfer/`: reuse of learned state across problem models.
 
-`domains/` is the package for source families. Some domains are rule-oriented
-such as shogi and grid; others are form-oriented such as vision and language.
+The split follows the decisions each package carries: worlds answer what is
+true and what can be held out; sources answer what data with what provenance;
+experience answers what the model gets to train on; representation inputs and
+outputs declare the injected structure; problems answer what is learned and
+how it is scored.
 
 ## Problem Layer
 

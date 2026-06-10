@@ -5,8 +5,8 @@ from torch import nn
 
 from intrep.core.model_input import concatenate_input_embedding_sequences
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.domains.language.input_layer import TextTokenInputLayer
-from intrep.domains.language.output_layer import TokenOutputHead
+from intrep.sources.language.input_layer import TextTokenInputLayer
+from intrep.sources.language.output_layer import TokenOutputHead
 from intrep.representation.inputs.vision_patches.input_layer import ImagePatchInputLayer
 
 

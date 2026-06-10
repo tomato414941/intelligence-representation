@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from intrep.domains.language.corpus import read_text_corpora
-from intrep.domains.language.tokenizer import TextTokenizerKind, build_text_tokenizer, save_text_tokenizer
+from intrep.sources.language.corpus import read_text_corpora
+from intrep.sources.language.tokenizer import TextTokenizerKind, build_text_tokenizer, save_text_tokenizer
 
 
 def build_parser() -> argparse.ArgumentParser:

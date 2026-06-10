@@ -36,15 +36,15 @@ from intrep.problems.shogi_policy_value.tensor_cache import (
     load_shogi_policy_value_tensor_cache,
     write_shogi_policy_value_tensor_cache_manifest,
 )
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
-from intrep.domains.shogi.game_record import (
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
+from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     ShogiMoveRecord,
     shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 from intrep.representation.inputs.shogi_position_features.position_rich import (
     SHOGI_RICH_POSITION_FEATURE_MANIFEST,
     SHOGI_RICH_POSITION_FEATURE_MANIFEST_HASH,

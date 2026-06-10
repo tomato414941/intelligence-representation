@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import random
 
-from intrep.domains.shogi.game_record import ShogiGameRecord
+from intrep.worlds.shogi.game_record import ShogiGameRecord
 
 
 def main() -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from intrep.domains.grid.world import GRID_ACTIONS, GridAction, GridObservation, Position, coerce_action
+from intrep.worlds.gridworld.world import GRID_ACTIONS, GridAction, GridObservation, Position, coerce_action
 
 
 def grid_action_to_id(action: GridAction | str) -> int:

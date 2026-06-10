@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Protocol, Sequence
 
-from intrep.domains.shogi.game_record import (
+from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
     shogi_actor_spec_from_json,
     shogi_actor_spec_to_json,
 )
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 @dataclass(frozen=True)

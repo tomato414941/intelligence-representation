@@ -45,7 +45,7 @@ Large Hugging Face text datasets can be sampled into a local text corpus before
 training:
 
 ```sh
-python -m intrep.domains.language.prepare_hf_text_slice \
+python -m intrep.sources.language.prepare_hf_text_slice \
   --dataset-name HuggingFaceFW/fineweb-edu \
   --output-path data/external/fineweb_edu_sample.txt \
   --max-bytes 1000000

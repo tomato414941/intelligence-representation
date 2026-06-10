@@ -18,8 +18,8 @@ from intrep.core.training_utils import (
     resolve_training_device,
     seeded_data_loader,
 )
-from intrep.domains.vision.io import read_portable_image
-from intrep.domains.vision.training_data import (
+from intrep.sources.vision.io import read_portable_image
+from intrep.sources.vision.training_data import (
     channel_count_from_image_shape,
     image_tensor_from_path,
 )

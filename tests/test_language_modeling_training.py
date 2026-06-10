@@ -4,7 +4,7 @@ from pathlib import Path
 
 import torch
 
-from intrep.domains.language.byte_tokenizer import ByteTokenizer
+from intrep.sources.language.byte_tokenizer import ByteTokenizer
 from intrep.representation.assemblies.language_modeling import LanguageModelingModel, LanguageModelingConfig
 from intrep.problems.language_modeling.training import (
     LanguageModelingDataset,
@@ -15,10 +15,10 @@ from intrep.problems.language_modeling.training import (
     train_language_modeling_with_artifacts,
     _train_text_corpus_with_artifacts,
 )
-from intrep.domains.grid.world import generate_grid_world_experience
-from intrep.domains.grid.text import language_modeling_examples_from_grid_experience
-from intrep.domains.language.examples import LanguageModelingExample
-from intrep.domains.language.tokenizer import train_byte_pair_tokenizer
+from intrep.worlds.gridworld.world import generate_grid_world_experience
+from intrep.worlds.gridworld.text import language_modeling_examples_from_grid_experience
+from intrep.sources.language.examples import LanguageModelingExample
+from intrep.sources.language.tokenizer import train_byte_pair_tokenizer
 
 
 class LanguageModelingTrainingTest(unittest.TestCase):

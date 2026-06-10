@@ -7,8 +7,8 @@ import torch
 from torch import nn
 
 from intrep.representation.cores.transformer import SharedTransformerCore
-from intrep.domains.language.input_layer import TextTokenInputLayer
-from intrep.domains.language.output_layer import TokenOutputHead
+from intrep.sources.language.input_layer import TextTokenInputLayer
+from intrep.sources.language.output_layer import TokenOutputHead
 
 
 @dataclass(frozen=True)

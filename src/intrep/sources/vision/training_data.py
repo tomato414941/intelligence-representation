@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from intrep.domains.vision.io import read_portable_image
+from intrep.sources.vision.io import read_portable_image
 
 
 def image_tensor_from_path(path: Path) -> torch.Tensor:

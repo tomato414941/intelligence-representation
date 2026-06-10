@@ -5,8 +5,8 @@ from typing import Sequence
 import torch
 from torch.utils.data import Dataset
 
-from intrep.domains.grid.encoding import grid_action_to_id, grid_observation_to_tensor, grid_position_to_cell_id
-from intrep.domains.grid.world import GridExperienceTransition, Position
+from intrep.worlds.gridworld.encoding import grid_action_to_id, grid_observation_to_tensor, grid_position_to_cell_id
+from intrep.worlds.gridworld.world import GridExperienceTransition, Position
 
 
 class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):

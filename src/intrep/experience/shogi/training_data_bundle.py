@@ -17,7 +17,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
     write_shogi_move_policy_value_examples_jsonl,
 )
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
 from intrep.experience.shogi.experience_stats import (
     shogi_actor_pair,
     shogi_actor_pair_counts,
@@ -25,8 +25,8 @@ from intrep.experience.shogi.experience_stats import (
     shogi_position_stats,
     shogi_train_eval_position_stats,
 )
-from intrep.domains.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_record import ShogiGameRecord, iter_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 ShogiEvalPositionPolicy = Literal["allow_overlap", "exclude_train_position_games"]
 

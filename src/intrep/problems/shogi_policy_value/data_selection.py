@@ -13,7 +13,7 @@ from intrep.problems.shogi_policy_value.examples import (
     ShogiMovePolicyValueExample,
     load_shogi_move_policy_value_examples_jsonl,
 )
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 
 
 @dataclass(frozen=True)

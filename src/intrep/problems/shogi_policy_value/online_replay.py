@@ -54,7 +54,7 @@ from intrep.problems.shogi_policy_value.training import (
     train_shogi_policy_value_model,
     validate_shogi_policy_value_loss_weights,
 )
-from intrep.domains.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
+from intrep.worlds.shogi.game_record import ShogiGameRecord, load_shogi_game_records_jsonl
 
 DEFAULT_REPLAY_CAPACITY = 2_097_152
 DEFAULT_SAMPLED_EXAMPLES_PER_ITERATION = 524_288

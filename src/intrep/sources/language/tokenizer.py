@@ -12,7 +12,7 @@ from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 
-from intrep.domains.language.byte_tokenizer import ByteTokenizer
+from intrep.sources.language.byte_tokenizer import ByteTokenizer
 
 
 TextTokenizerKind = Literal["byte", "byte-pair"]
@@ -90,7 +90,7 @@ def text_tokenizer_from_payload(payload: dict[str, object] | None) -> TextTokeni
 def save_text_tokenizer(path: Path, tokenizer: TextTokenizer) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": "intrep.domains.language_tokenizer.v1",
+        "schema_version": "intrep.sources.language_tokenizer.v1",
         "tokenizer": text_tokenizer_to_payload(tokenizer),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -98,7 +98,7 @@ def save_text_tokenizer(path: Path, tokenizer: TextTokenizer) -> None:
 
 def load_text_tokenizer(path: Path) -> TextTokenizer:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != "intrep.domains.language_tokenizer.v1":
+    if payload.get("schema_version") != "intrep.sources.language_tokenizer.v1":
         raise ValueError("unsupported text tokenizer schema version")
     tokenizer_payload = payload.get("tokenizer")
     if not isinstance(tokenizer_payload, dict):

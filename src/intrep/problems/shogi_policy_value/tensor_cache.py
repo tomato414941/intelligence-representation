@@ -46,7 +46,7 @@ from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_MINIMAL_SINGLE_GLOBAL_POSITION_INPUT_MODULE_ID,
     SHOGI_RICH_POSITION_INPUT_MODULE_ID,
 )
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
 from intrep.representation.inputs.shogi_position_features.position_features import (
     ShogiPairRelationEdges,
     ShogiPositionFeatures,

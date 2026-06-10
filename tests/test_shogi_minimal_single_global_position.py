@@ -18,7 +18,7 @@ from intrep.representation.inputs.shogi_position_features.position_schema import
     SIDE_TO_MOVE_BLACK_FEATURE_ID,
     SIDE_TO_MOVE_WHITE_FEATURE_ID,
 )
-from intrep.domains.shogi.coordinates import absolute_to_relative_square
+from intrep.worlds.shogi.coordinates import absolute_to_relative_square
 from intrep.representation.inputs.shogi_position_features.position_features import stack_shogi_position_features
 from intrep.representation.inputs.shogi_position_features.position_minimal_single_global import (
     SHOGI_MINIMAL_SINGLE_GLOBAL_ELEMENT_COUNT,

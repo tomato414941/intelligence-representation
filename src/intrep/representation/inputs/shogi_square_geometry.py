@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from intrep.domains.shogi.coordinates import SHOGI_SQUARE_COUNT
+from intrep.worlds.shogi.coordinates import SHOGI_SQUARE_COUNT
 
 SHOGI_SQUARE_RELATIVE_POSITION_BUCKET_COUNT = 17 * 17
 

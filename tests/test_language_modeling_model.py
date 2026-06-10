@@ -6,7 +6,7 @@ import torch
 
 from intrep.representation.cores.transformer import SharedTransformerCore
 from intrep.representation.assemblies.language_modeling import LanguageModelingModel, build_language_modeling_config
-from intrep.domains.language.output_layer import TokenOutputHead
+from intrep.sources.language.output_layer import TokenOutputHead
 
 
 class LanguageModelingModelConfigTest(unittest.TestCase):

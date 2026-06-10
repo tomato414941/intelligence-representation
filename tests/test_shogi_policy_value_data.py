@@ -17,8 +17,8 @@ from intrep.problems.shogi_policy_value.data import (
     shogi_value_targets_from_game_record,
 )
 from intrep.problems.shogi_policy_value.samples import ShogiLegalMovePolicyValueDataset
-from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis
-from intrep.domains.shogi.game_record import (
+from intrep.worlds.shogi.engine_analysis import ShogiEngineAnalysis
+from intrep.worlds.shogi.game_record import (
     ShogiActorSpec,
     ShogiDecisionTelemetry,
     ShogiGameRecord,
@@ -27,7 +27,7 @@ from intrep.domains.shogi.game_record import (
     shogi_game_record_to_json,
     write_shogi_game_records_jsonl,
 )
-from intrep.domains.shogi.game_trace import trace_shogi_game_record
+from intrep.worlds.shogi.game_trace import trace_shogi_game_record
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={"checkpoint": "black.pt"})

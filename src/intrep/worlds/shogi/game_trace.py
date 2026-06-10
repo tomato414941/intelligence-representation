@@ -5,7 +5,7 @@ from typing import Sequence
 
 import shogi
 
-from intrep.domains.shogi.game_record import ShogiDecisionTelemetry, ShogiGameRecord, ShogiMoveRecord
+from intrep.worlds.shogi.game_record import ShogiDecisionTelemetry, ShogiGameRecord, ShogiMoveRecord
 
 
 @dataclass(frozen=True)

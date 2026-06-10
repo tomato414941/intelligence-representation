@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from intrep.domains.vision.io import read_portable_image
+from intrep.sources.vision.io import read_portable_image
 
 
 class ImageIoTest(unittest.TestCase):

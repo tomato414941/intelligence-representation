@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from intrep.domains.grid.world import GridWorldState, Position, generate_grid_world_transition_table
+from intrep.worlds.gridworld.world import GridWorldState, Position, generate_grid_world_transition_table
 from intrep.problems.grid_step_prediction.checkpoint import save_grid_core_checkpoint
 from intrep.problems.grid_step_prediction.dataset import split_grid_transitions_by_agent_cell
 from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
