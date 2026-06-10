@@ -108,5 +108,26 @@ class TrainGridStepPredictionCLITest(unittest.TestCase):
         self.assertEqual(checkpoint.metrics["train_case_count"], 25)
 
 
+class TrainGridStepPredictionDefaultFitTest(unittest.TestCase):
+    def test_default_config_fits_transition_table(self) -> None:
+        """Anchor for recorded claims: the CLI defaults must fit training.
+
+        Guards against silent behavioral drift in defaults or shared training
+        code invalidating recorded results (as happened on 2026-05-05).
+        """
+        with TemporaryDirectory() as directory:
+            metrics_path = Path(directory) / "grid-default-fit.json"
+
+            with redirect_stdout(io.StringIO()):
+                train_grid_step_prediction.main(
+                    ["--metrics-path", str(metrics_path), "--device", "cpu"]
+                )
+
+            payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+
+        self.assertGreaterEqual(payload["result"]["next_agent_cell_accuracy"], 0.9)
+        self.assertGreaterEqual(payload["result"]["per_cell_accuracy"], 0.95)
+
+
 if __name__ == "__main__":
     unittest.main()
