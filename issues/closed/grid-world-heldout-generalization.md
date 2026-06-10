@@ -1,6 +1,15 @@
 # GridWorld Held-Out Generalization
 
-Status: open.
+Status: closed.
+
+Resolution: the failure is explained by two compounding causes, the absolute
+next-cell-id output formulation and insufficient data support, confirmed by
+the 2026-06-09 and 2026-06-10 diagnostics below. Capacity, schedule, and model
+size were ruled out. Follow-up work continues in
+[grid-next-observation-emergence](../grid-next-observation-emergence.md), which
+replaces the question "how to fix this failure" with "does rule learning
+emerge under a generic next-observation objective as experience diversity
+scales".
 
 ## Issue
 
@@ -167,19 +176,23 @@ Earlier candidate causes for reference:
 | split design | Is holding out a full agent cell too strict for the current tiny table? |
 | evaluation target | Should next-cell prediction be complemented with action-sensitive ranking diagnostics? |
 
-## Candidate Direction
+## Direction Decision
 
-The diagnostics are done. The remaining decision is whether to promote the
-findings into the main grid step prediction path:
+An earlier draft of this section recommended promoting the relative-move
+target into the main training path. That recommendation is withdrawn: the
+relative-move head encodes the world's translation-invariant movement rule
+into the output formulation, so its held-out accuracy no longer measures
+whether the model acquired the rule. It pre-answers the question the
+evaluation surface exists to ask.
 
-- Switch the next-cell training target to relative-move classification
-  (decode to a next cell for evaluation), or add it alongside the absolute
-  target.
-- Use a larger grid (for example 4x5) for the held-out generalization
-  evidence run, since the 2x3 table cannot support rule learning.
-- Optionally add coordinate input channels for the secondary gain.
-- Fix or document the grid CLI default mismatch: `d256` defaults need
-  lr 0.001, warmup, and more steps to fit this task.
+The relative-move result (eval 0.80, move cases 0.93 on the 4x5 grid) is kept
+as a reference point: the structure-injected upper bound. The absolute-id
+result is the structure-destroying lower reference. The main path moves to a
+generic next-observation objective instead; see
+[grid-next-observation-emergence](../grid-next-observation-emergence.md).
+
+The grid CLI default mismatch (`d256` defaults need lr 0.001, warmup, and
+more steps to fit this task) is handled as part of that follow-up.
 
 Diagnostic check log:
 
@@ -190,7 +203,7 @@ Diagnostic check log:
 | explicit coordinate features | Done 2026-06-10: helps, but secondary to the output formulation. |
 | relative-move output target | Done 2026-06-10: removes the structural blocker; generalizes with enough data support. |
 | larger transition table | Done 2026-06-10: 4x5 grid with relative output reaches eval 0.80 (move cases 0.93). |
-| simpler non-Transformer baseline | Open. Less urgent now that the Transformer generalizes under the relative formulation. |
+| simpler non-Transformer baseline | Dropped. It was meant to test whether the task construction supports generalization at all; the relative-move result answered that, and the follow-up issue replaces the task construction anyway. |
 
 ## Non-Goal
 
