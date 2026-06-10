@@ -9,7 +9,7 @@ from intrep.domains.shogi.game_record import (
     shogi_game_record_from_usi_moves,
     write_shogi_game_records_jsonl,
 )
-from intrep.domains.shogi.game_split import split_shogi_game_records_jsonl
+from intrep.experience.shogi.game_split import split_shogi_game_records_jsonl
 
 
 BLACK_ACTOR = ShogiActorSpec(kind="checkpoint", name="black-model", settings={})

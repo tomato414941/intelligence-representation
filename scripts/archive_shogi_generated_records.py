@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intrep.domains.shogi.generated_record_archive import archive_shogi_generated_records
+from intrep.experience.shogi.generated_record_archive import archive_shogi_generated_records
 
 
 def main(argv: list[str] | None = None) -> None:

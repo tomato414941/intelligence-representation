@@ -14,7 +14,7 @@ import shogi
 from intrep.problems.shogi_policy_value.data_selection import load_shogi_policy_value_data_selection
 from intrep.problems.shogi_policy_value.examples import load_shogi_move_policy_value_examples_jsonl
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, write_shogi_engine_analysis_jsonl
-from intrep.domains.shogi.generated_record_archive import archive_shogi_generated_records
+from intrep.experience.shogi.generated_record_archive import archive_shogi_generated_records
 from intrep.domains.shogi.game_record import (
     ShogiActorSpec,
     ShogiGameRecord,
@@ -23,7 +23,7 @@ from intrep.domains.shogi.game_record import (
     write_shogi_game_records_jsonl,
 )
 from intrep.domains.shogi.game_trace import trace_shogi_game_record
-from intrep.domains.shogi.training_data_bundle import create_shogi_training_data_bundle
+from intrep.experience.shogi.training_data_bundle import create_shogi_training_data_bundle
 
 
 BLACK_ACTOR = ShogiActorSpec(

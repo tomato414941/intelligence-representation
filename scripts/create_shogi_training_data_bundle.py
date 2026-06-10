@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from intrep.domains.shogi.training_data_bundle import create_shogi_training_data_bundle, parse_shogi_actor_pair_ratios
+from intrep.experience.shogi.training_data_bundle import create_shogi_training_data_bundle, parse_shogi_actor_pair_ratios
 
 
 def main(argv: list[str] | None = None) -> None:

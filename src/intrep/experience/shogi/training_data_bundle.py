@@ -18,7 +18,7 @@ from intrep.problems.shogi_policy_value.examples import (
     write_shogi_move_policy_value_examples_jsonl,
 )
 from intrep.domains.shogi.engine_analysis import ShogiEngineAnalysis, load_shogi_engine_analysis_jsonl
-from intrep.domains.shogi.experience_stats import (
+from intrep.experience.shogi.experience_stats import (
     shogi_actor_pair,
     shogi_actor_pair_counts,
     shogi_checkpoint_actor_summaries,
