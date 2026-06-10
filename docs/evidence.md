@@ -157,6 +157,10 @@ generated outputs:
 
 ### World / Action
 
+The CLI used for the GridWorld runs below was removed on 2026-06-10
+(single hardcoded layout, next-cell-id objective); the numbers remain valid
+records and reproduce from git history.
+
 GridWorld transition table:
 
 ```text
