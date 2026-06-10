@@ -13,7 +13,7 @@ from intrep.representation.cores.transformer import SharedTransformerCore
 
 
 class GridWorldPredictionTest(unittest.TestCase):
-    def test_dataset_returns_grid_tensor_action_id_and_next_observation_target(self) -> None:
+    def test_dataset_returns_grid_tensor_action_id_and_next_cell_target(self) -> None:
         examples = generate_grid_world_experience(
             actions=("right",),
             initial_state=GridWorldState(
@@ -25,16 +25,15 @@ class GridWorldPredictionTest(unittest.TestCase):
         )
 
         dataset = GridStepPredictionDataset(examples)
-        observation, action_id, next_observation_classes, reward_id, terminated_id = dataset[0]
+        observation, action_id, next_cell_id, reward_id, terminated_id = dataset[0]
 
         self.assertEqual(tuple(observation.shape), (3, 2, 3))
         self.assertEqual(int(action_id.item()), 3)
-        # After moving right the agent is at cell 1; the goal stays at cell 5.
-        self.assertEqual(next_observation_classes.tolist(), [0, 1, 0, 0, 0, 2])
+        self.assertEqual(int(next_cell_id.item()), 1)
         self.assertEqual(int(reward_id.item()), 1)
         self.assertEqual(int(terminated_id.item()), 0)
 
-    def test_predictor_returns_per_cell_logits(self) -> None:
+    def test_predictor_returns_step_logits(self) -> None:
         model = GridStepPredictionModel(
             height=2,
             width=3,
@@ -44,28 +43,12 @@ class GridWorldPredictionTest(unittest.TestCase):
             num_layers=1,
         )
 
-        next_observation_logits, reward_logits, terminated_logits = model(
+        next_cell_logits, reward_logits, terminated_logits = model(
             torch.zeros((2, 3, 2, 3)),
             torch.tensor([3, 4], dtype=torch.long),
         )
 
-        self.assertEqual(tuple(next_observation_logits.shape), (2, 6, 4))
-        self.assertEqual(tuple(reward_logits.shape), (2, 3))
-        self.assertEqual(tuple(terminated_logits.shape), (2, 2))
-
-    def test_predictor_accepts_missing_action(self) -> None:
-        model = GridStepPredictionModel(
-            height=2,
-            width=3,
-            embedding_dim=8,
-            num_heads=2,
-            hidden_dim=16,
-            num_layers=1,
-        )
-
-        next_observation_logits, reward_logits, terminated_logits = model(torch.zeros((2, 3, 2, 3)))
-
-        self.assertEqual(tuple(next_observation_logits.shape), (2, 6, 4))
+        self.assertEqual(tuple(next_cell_logits.shape), (2, 6))
         self.assertEqual(tuple(reward_logits.shape), (2, 3))
         self.assertEqual(tuple(terminated_logits.shape), (2, 2))
 
@@ -86,13 +69,15 @@ class GridWorldPredictionTest(unittest.TestCase):
             core=core,
         )
 
-        next_observation_logits, _, _ = model(
+        next_cell_logits, reward_logits, terminated_logits = model(
             torch.zeros((2, 3, 2, 3)),
             torch.tensor([3, 4], dtype=torch.long),
         )
 
         self.assertIs(model.core, core)
-        self.assertEqual(tuple(next_observation_logits.shape), (2, 6, 4))
+        self.assertEqual(tuple(next_cell_logits.shape), (2, 6))
+        self.assertEqual(tuple(reward_logits.shape), (2, 3))
+        self.assertEqual(tuple(terminated_logits.shape), (2, 2))
 
     def test_training_runs_on_grid_experience(self) -> None:
         examples = generate_grid_world_transition_table(
@@ -123,17 +108,16 @@ class GridWorldPredictionTest(unittest.TestCase):
         self.assertEqual(result.train_case_count, 25)
         self.assertGreater(result.initial_loss, 0.0)
         self.assertLess(result.final_loss, result.initial_loss)
-        self.assertGreater(result.final_next_observation_loss, 0.0)
+        self.assertGreater(result.final_next_cell_loss, 0.0)
         self.assertGreater(result.final_reward_loss, 0.0)
         self.assertGreater(result.final_terminated_loss, 0.0)
         self.assertAlmostEqual(
             result.final_loss,
-            result.final_next_observation_loss + result.final_reward_loss + result.final_terminated_loss,
+            result.final_next_cell_loss + result.final_reward_loss + result.final_terminated_loss,
             places=5,
         )
-        self.assertGreaterEqual(result.per_cell_accuracy, 0.8)
-        self.assertGreaterEqual(result.next_agent_cell_accuracy, 0.6)
-        self.assertGreaterEqual(result.reward_accuracy, 0.7)
+        self.assertGreaterEqual(result.next_cell_accuracy, 0.7)
+        self.assertGreaterEqual(result.reward_accuracy, 0.8)
         self.assertGreaterEqual(result.terminated_accuracy, 0.8)
 
 
