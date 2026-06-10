@@ -96,7 +96,7 @@ see [RunPod](docs/runpod.md).
 
 ## Current Training Entrypoints
 
-The current prototype includes text, image, image/text, grid, and shogi
+The current prototype includes text, image, image/text, and shogi
 training entrypoints. See [Training](docs/training.md) for command examples,
 tokenizer reuse, and checkpoint initialization notes.
 
@@ -106,7 +106,6 @@ intrep.train_language_model
 intrep.train_image_classification
 intrep.train_image_text_choice
 intrep.train_image_text_answer
-intrep.train_grid_step_prediction
 intrep.train_shogi_policy_value
 ```
 
