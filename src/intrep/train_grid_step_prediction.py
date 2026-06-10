@@ -4,15 +4,23 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Sequence
 
-from intrep.domains.grid.world import GridWorldState, Position, generate_grid_world_transition_table
+from intrep.domains.grid.world import GridExperienceTransition, GridWorldState, Position, generate_grid_world_transition_table
+from intrep.problems.grid_step_prediction.baselines import (
+    copy_baseline,
+    fit_per_cell_majority,
+    naive_action_apply_baseline,
+    per_cell_majority_baseline,
+)
 from intrep.problems.grid_step_prediction.checkpoint import save_grid_core_checkpoint
 from intrep.problems.grid_step_prediction.dataset import split_grid_transitions_by_agent_cell
+from intrep.problems.grid_step_prediction.metrics import next_observation_metrics
 from intrep.problems.grid_step_prediction.training import GridStepPredictionConfig, train_grid_step_predictor_with_artifacts
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train a grid step predictor on a generated transition table.")
+    parser = argparse.ArgumentParser(description="Train a grid next-observation predictor on a generated transition table.")
     parser.add_argument("--metrics-path", type=Path, required=True)
     parser.add_argument("--core-checkpoint-path", type=Path)
     parser.add_argument("--max-steps", type=int, default=200)
@@ -74,8 +82,12 @@ def main(argv: list[str] | None = None) -> None:
         config=config,
     )
     result = artifacts.result
+    baselines = {
+        "train": _baseline_metrics(train_examples, train_examples, width=state.width),
+        "eval": _baseline_metrics(train_examples, eval_examples, width=state.width) if eval_examples else None,
+    }
     payload = {
-        "schema_version": "intrep.grid_step_prediction_run.v1",
+        "schema_version": "intrep.grid_step_prediction_run.v2",
         "world": {
             "kind": "grid_world",
             "width": state.width,
@@ -83,13 +95,14 @@ def main(argv: list[str] | None = None) -> None:
             "goal": asdict(state.goal),
             "walls": [asdict(wall) for wall in sorted(state.walls, key=lambda position: (position.row, position.col))],
         },
-        "objective": "predict next agent cell, reward class, and terminated flag from full grid observation and action id",
+        "objective": "predict the next observation per cell, plus reward class and terminated flag, from the full grid observation and action id",
         "held_out_agent_cells": [asdict(position) for position in sorted(_held_out_cells(args), key=lambda p: (p.row, p.col))],
         "train_case_count": len(train_examples),
         "eval_case_count": len(eval_examples),
         "training_config": asdict(config),
         "core_checkpoint_path": str(args.core_checkpoint_path) if args.core_checkpoint_path is not None else None,
         "result": asdict(result),
+        "baselines": baselines,
     }
     args.metrics_path.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -101,11 +114,36 @@ def main(argv: list[str] | None = None) -> None:
         f" eval_cases={result.eval_case_count}"
         f" initial_loss={result.initial_loss:.4f}"
         f" final_loss={result.final_loss:.4f}"
-        f" next_cell_accuracy={result.next_cell_accuracy:.4f}"
-        f" reward_accuracy={result.reward_accuracy:.4f}"
-        f" terminated_accuracy={result.terminated_accuracy:.4f}"
-        f" eval_next_cell_accuracy={result.eval_next_cell_accuracy if result.eval_next_cell_accuracy is not None else 'none'}"
+        f" next_agent_cell_accuracy={result.next_agent_cell_accuracy:.4f}"
+        f" changed_cell_accuracy={result.changed_cell_accuracy if result.changed_cell_accuracy is not None else 'none'}"
+        f" eval_next_agent_cell_accuracy={result.eval_next_agent_cell_accuracy if result.eval_next_agent_cell_accuracy is not None else 'none'}"
     )
+    if baselines["eval"] is not None:
+        copy_eval = baselines["eval"]["copy"]
+        print(
+            "baseline eval next_agent_cell_accuracy:"
+            f" copy={copy_eval['next_agent_cell_accuracy']:.4f}"
+            f" naive_action_apply={baselines['eval']['naive_action_apply']['next_agent_cell_accuracy']:.4f}"
+            f" per_cell_majority={baselines['eval']['per_cell_majority']['next_agent_cell_accuracy']:.4f}"
+        )
+
+
+def _baseline_metrics(
+    train_examples: Sequence[GridExperienceTransition],
+    examples: Sequence[GridExperienceTransition],
+    *,
+    width: int,
+) -> dict[str, dict[str, float | None]]:
+    majority_table = fit_per_cell_majority(train_examples)
+    predictions = {
+        "copy": copy_baseline(examples, width=width),
+        "naive_action_apply": naive_action_apply_baseline(examples, width=width),
+        "per_cell_majority": per_cell_majority_baseline(majority_table, examples),
+    }
+    return {
+        name: asdict(next_observation_metrics(prediction.class_ids, prediction.agent_scores, examples, width=width))
+        for name, prediction in predictions.items()
+    }
 
 
 def _held_out_cells(args: argparse.Namespace) -> list[Position]:

@@ -32,16 +32,17 @@ class TrainGridStepPredictionCLITest(unittest.TestCase):
             payload = json.loads(metrics_path.read_text(encoding="utf-8"))
 
         self.assertIn("intrep train grid step prediction", output.getvalue())
-        self.assertEqual(payload["schema_version"], "intrep.grid_step_prediction_run.v1")
+        self.assertEqual(payload["schema_version"], "intrep.grid_step_prediction_run.v2")
         self.assertEqual(payload["world"]["kind"], "grid_world")
         self.assertEqual(payload["train_case_count"], 25)
         self.assertEqual(payload["eval_case_count"], 0)
         self.assertEqual(payload["training_config"]["max_steps"], 1)
         self.assertEqual(payload["result"]["train_case_count"], 25)
         self.assertEqual(payload["result"]["eval_case_count"], 0)
-        self.assertIn("final_next_cell_loss", payload["result"])
+        self.assertIn("final_next_observation_loss", payload["result"])
         self.assertIn("final_reward_loss", payload["result"])
         self.assertIn("final_terminated_loss", payload["result"])
+        self.assertIn("copy", payload["baselines"]["train"])
 
     def test_can_hold_out_agent_cell_for_eval(self) -> None:
         output = io.StringIO()
@@ -73,7 +74,8 @@ class TrainGridStepPredictionCLITest(unittest.TestCase):
         self.assertEqual(payload["eval_case_count"], 5)
         self.assertEqual(payload["result"]["train_case_count"], 20)
         self.assertEqual(payload["result"]["eval_case_count"], 5)
-        self.assertIsNotNone(payload["result"]["eval_next_cell_accuracy"])
+        self.assertIsNotNone(payload["result"]["eval_next_agent_cell_accuracy"])
+        self.assertIn("next_agent_cell_accuracy", payload["baselines"]["eval"]["copy"])
 
     def test_can_save_grid_core_checkpoint(self) -> None:
         with TemporaryDirectory() as directory:

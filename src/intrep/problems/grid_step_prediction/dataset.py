@@ -5,16 +5,21 @@ from typing import Sequence
 import torch
 from torch.utils.data import Dataset
 
-from intrep.domains.grid.encoding import grid_action_to_id, grid_observation_to_tensor, grid_position_to_cell_id
+from intrep.domains.grid.encoding import (
+    grid_action_to_id,
+    grid_observation_to_cell_class_ids,
+    grid_observation_to_tensor,
+)
 from intrep.domains.grid.world import GridExperienceTransition, Position
 
 
 class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]):
-    """Returns deterministic transition-prediction samples from grid experience.
+    """Returns next-observation prediction samples from grid experience.
 
-    The next-cell, reward, and terminated targets are cheap to derive from each
-    transition, so this dataset materializes them as runtime samples instead of
-    storing separate Training Example records.
+    The target is the next observation as per-cell class ids. Reward and
+    terminated targets are cheap to derive from each transition, so this
+    dataset materializes them as runtime samples instead of storing separate
+    Training Example records.
     """
 
     def __init__(self, examples: Sequence[GridExperienceTransition]) -> None:
@@ -35,13 +40,10 @@ class GridStepPredictionDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.
         if tuple(observation.shape) != self.grid_shape:
             raise ValueError("all grid observations must have the same shape")
         action_id = torch.tensor(grid_action_to_id(example.action), dtype=torch.long)
-        next_cell_id = torch.tensor(
-            grid_position_to_cell_id(example.next_observation.agent, width=self.width),
-            dtype=torch.long,
-        )
+        next_observation_classes = grid_observation_to_cell_class_ids(example.next_observation)
         reward_id = torch.tensor(grid_reward_to_id(example.reward), dtype=torch.long)
         terminated_id = torch.tensor(int(example.terminated), dtype=torch.long)
-        return observation, action_id, next_cell_id, reward_id, terminated_id
+        return observation, action_id, next_observation_classes, reward_id, terminated_id
 
 
 def split_grid_transitions_by_agent_cell(
