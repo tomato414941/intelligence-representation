@@ -1,6 +1,15 @@
 # Grid Next-Observation Generalization Emergence
 
-Status: open.
+Status: closed.
+
+Resolution: the central question is answered affirmatively. With no rule
+injected into the formulation, rule acquisition emerges from next-observation
+prediction practice alone as experience grows, and is complete in the
+cellular setting by N=1024 unseen-state-verified across three seeds (see the
+Cellular Measurement section below; claim recorded in
+`docs/evaluation.md` Current Claims). Follow-up work is tracked as work, not
+as issues: wiring gridworld onto the same prediction head, and the genuinely
+open next question of held-out-rule inference.
 
 Implementation note (2026-06-10): a first implementation of the Design below
 (commits `c2cb8a8`, `f2fe516`, `ac7415b`) was reverted in `2597fed`. The

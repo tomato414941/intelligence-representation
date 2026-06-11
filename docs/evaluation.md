@@ -166,7 +166,7 @@ metric を増やすだけで主張を明確にしない
 - 規則を注入していない次観測予測モデルが、Life (6x6) のランダム盤面の
   予測練習だけから更新規則を獲得する。N=16 では暗記のみ、N=1024 で
   未見盤面のズル耐性スコア両方がほぼ 1.0(3 seed で確認)
-  (issues/grid-next-observation-emergence.md)
+  (issues/closed/grid-next-observation-emergence.md)
 ```
 
 まだ主張できないこと:
