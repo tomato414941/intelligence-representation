@@ -88,16 +88,51 @@ cells): absolute next-cell-id classification (structure-destroying lower
 reference, eval 0.03 at 1500 steps) and relative-move classification
 (structure-injected upper bound, eval 0.80, move cases 0.93).
 
+## Cellular Measurement (2026-06-11)
+
+The question was answered first on the cellular world instead of gridworld:
+no action, no reward, no goal, so nothing but the update rule remains. The
+measurement instrument is the score pair changed-cell accuracy (a copy
+strategy scores 0) and unchanged-cell accuracy (an all-flip strategy scores
+0), evaluated on initial states never used in training (seed-range overlap is
+rejected mechanically).
+
+Life (B3/S23), 6x6, dead borders, `d256-h1024-heads8-l6`, 1000 steps,
+evaluated on 64 unseen states (seed 100000). Training fits perfectly at every
+N, so train scores carry no information; only the unseen-state scores
+separate memorization from rule acquisition:
+
+| Train states N | Eval changed-cell | Eval unchanged-cell |
+| ---: | ---: | ---: |
+| 16 | 0.485 | 0.716 |
+| 64 | 0.547 | 0.727 |
+| 256 | 0.898 | 0.926 |
+| 1024 | 1.000 | 0.999 |
+
+N=1024 confirmed across model seeds 31/32/33 (changed 1.000 in all three,
+unchanged 0.999-1.000). Commands: `intrep.train_cellular_step_prediction`
+and `intrep.problems.cellular_step_prediction.evaluate`; run artifacts under
+`runs/local-checks/cellular-life-*`.
+
+Conclusion: with no rule injected into the formulation, rule acquisition
+emerges from prediction practice alone as experience grows, and is complete
+within this setting by N=1024. Replicating across random rules of the family
+was considered and skipped as near-certain given this result; the genuinely
+open follow-up is held-out-rule inference (training across rules and
+predicting under a rule never trained on, which requires conditioning on
+example transitions).
+
 ## Plan
 
 | Step | Status |
 | --- | --- |
-| trivial baseline battery with shared metrics | Open. |
-| next-observation objective (dataset, per-cell head, derived metrics) | Open. |
-| layout sampler with provenance and held-out layout split | Open. |
-| train-fit smoke anchor for CLI defaults (drift protection) | Open. |
-| emergence sweep over layout count and data quantity, baselines alongside | Open. |
-| cellular automaton rule-family world as a data generator | Open. |
+| cellular automaton rule-family world as a data generator | Done 2026-06-11. |
+| cheat-resistant score pair + train/eval overlap rejection | Done 2026-06-11 (replaces the baseline-battery step; the instrument awards no free points by construction). |
+| separate train and evaluate commands, data declared by seeds | Done 2026-06-11 (cellular). |
+| emergence sweep over experience quantity | Done 2026-06-11 (table above). |
+| layout sampler with provenance | Done 2026-06-10 (`worlds/gridworld/layouts.py`); held-out layout split for gridworld remains open. |
+| gridworld wired onto the same prediction head (action token) | Open. |
+| held-out-rule inference across the rule family | Open. The genuinely uncertain question. |
 
 ## Non-Goal
 

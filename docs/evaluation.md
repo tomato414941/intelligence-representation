@@ -163,6 +163,10 @@ metric を増やすだけで主張を明確にしない
 - GridWorld の held-out セル汎化の失敗は、絶対セル ID 出力形式と
   データ支持不足の複合として説明済み
   (issues/closed/grid-world-heldout-generalization.md)
+- 規則を注入していない次観測予測モデルが、Life (6x6) のランダム盤面の
+  予測練習だけから更新規則を獲得する。N=16 では暗記のみ、N=1024 で
+  未見盤面のズル耐性スコア両方がほぼ 1.0(3 seed で確認)
+  (issues/grid-next-observation-emergence.md)
 ```
 
 まだ主張できないこと:
