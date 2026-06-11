@@ -1,7 +1,10 @@
 # Predictive Representation System
 
 Use [Glossary](glossary.md) as the source of truth for short boundary-term
-definitions. This document describes the broader project hypothesis.
+definitions. This document describes the broader project hypothesis. It is
+not the source of truth for implementation state or claims; see
+[Evaluation](evaluation.md) Current Claims for what may currently be
+asserted.
 
 ## 中心文
 
@@ -203,39 +206,6 @@ reward / error input interface:
 新しい input interface を追加することは、新しい感覚器や行動器を追加することに近い。
 ただし、追加すれば即座に使えるわけではなく、既存表現との alignment、
 行動や観測との因果関係、評価対象との対応を学習または検証する必要がある。
-
-## 現在の位置づけ
-
-現在のリポジトリは、`Predictive Representation System` を実現済みではない。
-実装状態の詳細は README と [Evaluation](evaluation.md) の Current Claims に置く。
-
-現在の実験基盤は、次の形へ寄せている。
-
-```text
-source records or experience
-  -> modality-specific input interfaces / input embedding modules
-  -> input embedding sequence
-  -> shared Transformer core
-  -> output head / decoder
-  -> model output and evaluation
-```
-
-現時点でまだ示していないものは次である。
-
-```text
-large-scale multimodal representation learning
-vision / audio integration at scale
-learned latent predictive state
-robust action-conditioned future prediction
-belief update
-memory read/write learning
-large-scale tool-use outcome prediction
-reward / error based adaptation
-planning or control
-```
-
-したがって、今の実験結果は `Predictive Representation System` の証拠ではない。
-それに向かうために、入力側の形式を無理に共通化せず、共有できる予測計算へ接続するための最小実験を進めている段階である。
 
 ## まとめ
 

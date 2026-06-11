@@ -1,6 +1,6 @@
 # intelligence-representation
 
-This repository explores representation for intelligence through a small,
+This repository explores representation for intelligence through a
 testable research prototype.
 
 The conceptual center is:
