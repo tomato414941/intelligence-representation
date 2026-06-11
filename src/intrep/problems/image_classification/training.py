@@ -18,17 +18,17 @@ from intrep.core.training_utils import (
     resolve_training_device,
     seeded_data_loader,
 )
-from intrep.sources.vision.io import read_portable_image
-from intrep.representation.inputs.image_tensor import (
-    channel_count_from_image_shape,
-    image_tensor_from_path,
-)
+from intrep.sources.vision.io import channel_count_from_image_shape, normalized_image_from_path, read_portable_image
 from intrep.problems.image_classification.examples import (
     ImageClassificationExample,
     class_count_from_examples,
 )
 from intrep.representation.assemblies.image_classification import ImageClassificationModel
 from intrep.representation.inputs.vision_patches.input_layer import ImagePatchInputLayer
+
+def _image_tensor(path) -> torch.Tensor:
+    return torch.tensor(normalized_image_from_path(path), dtype=torch.float32)
+
 
 
 @dataclass(frozen=True)
@@ -114,7 +114,7 @@ class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         class_count_from_examples(examples)
         self.examples = tuple(examples)
         self.label_names = examples[0].label_names
-        self.image_shape = tuple(int(value) for value in image_tensor_from_path(examples[0].image_path).shape)
+        self.image_shape = tuple(int(value) for value in _image_tensor(examples[0].image_path).shape)
         self.channel_count = channel_count_from_image_shape(self.image_shape)
 
     def __len__(self) -> int:
@@ -122,7 +122,7 @@ class ImageClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         example = self.examples[index]
-        image = image_tensor_from_path(example.image_path)
+        image = _image_tensor(example.image_path)
         if tuple(image.shape) != self.image_shape:
             raise ValueError("all images must have the same shape")
         label = torch.tensor(example.label_index, dtype=torch.long)

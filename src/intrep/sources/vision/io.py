@@ -70,3 +70,19 @@ def _skip_ppm_whitespace_and_comments(data: bytes, index: int) -> int:
             continue
         break
     return index
+
+
+def normalized_image_from_path(path: str | Path) -> np.ndarray:
+    """Read a portable image as float32 values in 0..1."""
+    image = read_portable_image(path)
+    if image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3):
+        return image.astype(np.float32) / 255.0
+    raise ValueError("image payload must be grayscale or RGB")
+
+
+def channel_count_from_image_shape(image_shape: tuple[int, ...]) -> int:
+    if len(image_shape) == 2:
+        return 1
+    if len(image_shape) == 3:
+        return image_shape[2]
+    raise ValueError("image shape must be [height, width] or [height, width, channels]")

@@ -6,22 +6,19 @@ import torch
 from torch.utils.data import TensorDataset
 
 from intrep.core.training_utils import seeded_data_loader
-from intrep.representation.inputs.image_tensor import (
-    channel_count_from_image_shape,
-    image_tensor_from_path,
-)
+from intrep.sources.vision.io import channel_count_from_image_shape, normalized_image_from_path
 
 
 class ImageTrainingDataTest(unittest.TestCase):
-    def test_image_tensor_from_path_normalizes_pixels(self) -> None:
+    def test_normalized_image_from_path_scales_pixels(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "image.pgm"
             path.write_bytes(b"P5\n2 1\n255\n" + bytes([0, 255]))
 
-            image = image_tensor_from_path(path)
+            image = normalized_image_from_path(path)
 
-        self.assertEqual(image.shape, torch.Size([1, 2]))
-        self.assertEqual(image.dtype, torch.float32)
+        self.assertEqual(image.shape, (1, 2))
+        self.assertEqual(image.dtype.name, "float32")
         self.assertEqual(image.tolist(), [[0.0, 1.0]])
 
     def test_channel_count_from_image_shape(self) -> None:

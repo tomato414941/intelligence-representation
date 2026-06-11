@@ -21,13 +21,13 @@ from intrep.core.training_utils import (
 from intrep.core.shared_state_loading import load_compatible_module_state
 from intrep.sources.language.token_scoring import next_token_loss
 from intrep.sources.language.tokenizer import TextTokenizer, build_text_tokenizer
-from intrep.sources.vision.io import read_portable_image
-from intrep.representation.inputs.image_tensor import (
-    channel_count_from_image_shape,
-    image_tensor_from_path,
-)
+from intrep.sources.vision.io import channel_count_from_image_shape, normalized_image_from_path, read_portable_image
 from intrep.problems.image_text_answer.examples import ImageTextAnswerExample
 from intrep.representation.assemblies.image_text_answer import ImageTextAnswerModel
+
+def _image_tensor(path) -> torch.Tensor:
+    return torch.tensor(normalized_image_from_path(path), dtype=torch.float32)
+
 
 
 @dataclass(frozen=True)
@@ -90,14 +90,14 @@ class ImageTextAnswerDataset(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         self.examples = tuple(examples)
         self.text_token_ids = text_token_ids
         self.loss_mask = loss_mask
-        self.image_shape = tuple(int(value) for value in image_tensor_from_path(examples[0].image_path).shape)
+        self.image_shape = tuple(int(value) for value in _image_tensor(examples[0].image_path).shape)
         self.channel_count = channel_count_from_image_shape(self.image_shape)
 
     def __len__(self) -> int:
         return len(self.examples)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        image = image_tensor_from_path(self.examples[index].image_path)
+        image = _image_tensor(self.examples[index].image_path)
         if tuple(image.shape) != self.image_shape:
             raise ValueError("all images must have the same shape")
         return image, self.text_token_ids[index], self.loss_mask[index]
