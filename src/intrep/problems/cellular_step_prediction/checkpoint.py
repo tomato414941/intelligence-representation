@@ -22,6 +22,7 @@ class CellularStepPredictionCheckpoint:
     config: CellularStepPredictionConfig
     grid_size: tuple[int, int]
     rule: CellularRule
+    train_data: dict[str, object]
 
 
 def save_cellular_step_checkpoint(
@@ -29,7 +30,10 @@ def save_cellular_step_checkpoint(
     artifacts: CellularStepTrainingArtifacts,
     *,
     rule: CellularRule,
+    train_data: dict[str, object],
 ) -> None:
+    """`train_data` declares the training-data generation parameters (count,
+    seed, alive_probability) so evaluation can reject train/eval overlap."""
     checkpoint_path = Path(path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -39,6 +43,7 @@ def save_cellular_step_checkpoint(
             "config": asdict(artifacts.config),
             "grid_size": artifacts.grid_size,
             "rule": {"birth": sorted(rule.birth), "survival": sorted(rule.survival)},
+            "train_data": dict(train_data),
         },
         checkpoint_path,
     )
@@ -73,4 +78,5 @@ def load_cellular_step_checkpoint(
             birth=frozenset(rule_payload["birth"]),
             survival=frozenset(rule_payload["survival"]),
         ),
+        train_data=payload["train_data"],
     )

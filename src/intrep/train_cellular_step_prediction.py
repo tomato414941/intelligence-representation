@@ -71,7 +71,12 @@ def main(argv: list[str] | None = None) -> None:
         device=args.device,
     )
     artifacts = train_cellular_step_predictor(transitions, config=config)
-    save_cellular_step_checkpoint(args.checkpoint_path, artifacts, rule=rule)
+    train_data = {
+        "count": args.train_count,
+        "seed": args.train_seed,
+        "alive_probability": args.alive_probability,
+    }
+    save_cellular_step_checkpoint(args.checkpoint_path, artifacts, rule=rule, train_data=train_data)
     result = artifacts.result
     payload = {
         "schema_version": "intrep.cellular_step_prediction_run.v1",
@@ -82,11 +87,7 @@ def main(argv: list[str] | None = None) -> None:
             "rule": {"birth": sorted(rule.birth), "survival": sorted(rule.survival)},
             "rule_seed": args.rule_seed,
         },
-        "train_data": {
-            "count": args.train_count,
-            "seed": args.train_seed,
-            "alive_probability": args.alive_probability,
-        },
+        "train_data": train_data,
         "objective": "predict the next cellular observation per cell from the current observation",
         "training_config": asdict(config),
         "checkpoint_path": str(args.checkpoint_path),
