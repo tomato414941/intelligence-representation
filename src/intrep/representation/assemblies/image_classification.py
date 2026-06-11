@@ -36,6 +36,7 @@ class ImageClassificationModel(nn.Module):
         num_classes: int,
         channel_count: int = 1,
         dropout: float = 0.0,
+        core: SharedTransformerCore | None = None,
     ) -> None:
         super().__init__()
         self.image_input_layer = ImagePatchInputLayer(
@@ -44,7 +45,7 @@ class ImageClassificationModel(nn.Module):
             embedding_dim=embedding_dim,
             channel_count=channel_count,
         )
-        self.core = SharedTransformerCore(
+        self.core = core or SharedTransformerCore(
             embedding_dim=embedding_dim,
             num_heads=num_heads,
             hidden_dim=hidden_dim,

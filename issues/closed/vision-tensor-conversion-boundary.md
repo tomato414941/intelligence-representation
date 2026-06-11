@@ -1,5 +1,13 @@
 # Vision tensor conversion boundary
 
+Status: closed.
+
+Resolution: solved on 2026-06-11 by splitting the conversion. Image
+normalization and shape logic stay in `sources/vision/io.py` as plain numpy,
+removing the torch dependency from the vision source package; each image
+problem wraps the array into a tensor with a one-line local helper at its
+dataset edge. No new shared package was introduced.
+
 ## Issue
 
 `src/intrep/domains/vision/training_data.py` converts image files into `torch.Tensor`.
