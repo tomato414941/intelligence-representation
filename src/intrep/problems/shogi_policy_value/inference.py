@@ -204,18 +204,22 @@ def _action_plane_policy_evaluator(
         model_forward_sec = perf_counter() - phase_started_at
 
         phase_started_at = perf_counter()
-        flat_action_indices, flat_batch_indices, offsets = _flat_legal_action_indices(requests, turns)
-        action_indices = torch.tensor(flat_action_indices, dtype=torch.long, device=torch_device)
-        batch_indices = torch.tensor(flat_batch_indices, dtype=torch.long, device=torch_device)
+        action_indices, legal_action_mask, action_counts = _padded_legal_action_indices(
+            requests,
+            turns,
+            device=torch_device,
+        )
         output_feature_build_sec = perf_counter() - phase_started_at
 
         phase_started_at = perf_counter()
-        flat_move_logits = logits[batch_indices, action_indices]
+        legal_logits = logits.gather(dim=1, index=action_indices)
+        legal_probabilities = torch.softmax(legal_logits.masked_fill(~legal_action_mask, -torch.inf), dim=1)
+        legal_probabilities = legal_probabilities.masked_fill(~legal_action_mask, 0.0).detach().cpu().tolist()
+        value_rows = _value_rows(values, len(requests))
         evaluations = []
-        for index, request in enumerate(requests):
-            start = offsets[index]
-            end = offsets[index + 1]
-            evaluations.append((_move_prior_probabilities(flat_move_logits[start:end]), _value(values, index)))
+        for index, action_count in enumerate(action_counts):
+            priors = tuple(float(value) for value in legal_probabilities[index][:action_count])
+            evaluations.append((priors, value_rows[index]))
         output_decode_sec = perf_counter() - phase_started_at
         evaluate_batch.last_performance = {
             "request_count": float(len(requests)),
@@ -247,23 +251,31 @@ def _turn_from_sfen(position_sfen: str) -> int:
     raise ValueError(f"unsupported shogi SFEN side to move: {parts[1]}")
 
 
-def _flat_legal_action_indices(
+def _padded_legal_action_indices(
     requests: Sequence[PositionEvaluationRequest],
     turns: Sequence[int],
-) -> tuple[list[int], list[int], list[int]]:
-    action_indices: list[int] = []
-    batch_indices: list[int] = []
-    offsets = [0]
-    for batch_index, (turn, request) in enumerate(zip(turns, requests, strict=True)):
+    *,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor, list[int]]:
+    rows: list[tuple[int, ...]] = []
+    action_counts: list[int] = []
+    max_action_count = 0
+    for turn, request in zip(turns, requests, strict=True):
         request_action_indices = _request_action_indices(request)
         if request_action_indices is None:
             request_action_indices = tuple(
                 _cached_action_plane_policy_action_index(move, turn) for move in _request_legal_moves(request)
             )
-        action_indices.extend(request_action_indices)
-        batch_indices.extend([batch_index] * len(request_action_indices))
-        offsets.append(len(action_indices))
-    return action_indices, batch_indices, offsets
+        rows.append(request_action_indices)
+        action_counts.append(len(request_action_indices))
+        max_action_count = max(max_action_count, len(request_action_indices))
+    padded_rows = [row + (0,) * (max_action_count - len(row)) for row in rows]
+    mask_rows = [(True,) * len(row) + (False,) * (max_action_count - len(row)) for row in rows]
+    return (
+        torch.tensor(padded_rows, dtype=torch.long, device=device),
+        torch.tensor(mask_rows, dtype=torch.bool, device=device),
+        action_counts,
+    )
 
 
 def _request_position_sfen(request: PositionEvaluationRequest) -> str:
@@ -326,3 +338,9 @@ def _value(values: torch.Tensor | None, index: int) -> float:
     if values is None:
         return 0.0
     return float(values[index].detach().cpu().item())
+
+
+def _value_rows(values: torch.Tensor | None, batch_size: int) -> list[float]:
+    if values is None:
+        return [0.0] * batch_size
+    return [float(value) for value in values.detach().flatten().cpu().tolist()]

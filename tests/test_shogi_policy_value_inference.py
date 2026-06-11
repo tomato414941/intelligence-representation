@@ -80,6 +80,21 @@ class ShogiPolicyValueInferenceTest(unittest.TestCase):
         self.assertAlmostEqual(sum(priors_from_indices), 1.0, places=6)
         self.assertEqual(value, 0.0)
 
+        next_board = shogi.Board()
+        next_board.push_usi("7g7f")
+        next_legal_moves = tuple(sorted(move.usi() for move in next_board.legal_moves))
+        batch_results = evaluator.evaluate_batch(
+            (
+                (board.sfen(), (), action_indices),
+                (next_board.sfen(), next_legal_moves),
+            )
+        )
+
+        self.assertEqual(len(batch_results[0][0]), len(action_indices))
+        self.assertEqual(len(batch_results[1][0]), len(next_legal_moves))
+        self.assertAlmostEqual(sum(batch_results[0][0]), 1.0, places=6)
+        self.assertAlmostEqual(sum(batch_results[1][0]), 1.0, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()
