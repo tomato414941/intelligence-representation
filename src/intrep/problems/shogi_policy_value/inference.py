@@ -180,7 +180,11 @@ def _action_plane_policy_evaluator(
             evaluate_batch.last_performance = _empty_evaluation_performance()
             return []
         phase_started_at = perf_counter()
-        turns = [_turn_from_sfen(_request_position_sfen(request)) for request in requests]
+        turns = (
+            []
+            if all(_request_action_indices(request) is not None for request in requests)
+            else [_turn_from_sfen(_request_position_sfen(request)) for request in requests]
+        )
         turn_decode_sec = perf_counter() - phase_started_at
         phase_started_at = perf_counter()
         position_feature_rows = [position_features_from_sfen(_request_position_sfen(request)) for request in requests]
@@ -260,9 +264,10 @@ def _padded_legal_action_indices(
     rows: list[tuple[int, ...]] = []
     action_counts: list[int] = []
     max_action_count = 0
-    for turn, request in zip(turns, requests, strict=True):
+    for index, request in enumerate(requests):
         request_action_indices = _request_action_indices(request)
         if request_action_indices is None:
+            turn = turns[index]
             request_action_indices = tuple(
                 _cached_action_plane_policy_action_index(move, turn) for move in _request_legal_moves(request)
             )
@@ -270,12 +275,10 @@ def _padded_legal_action_indices(
         action_counts.append(len(request_action_indices))
         max_action_count = max(max_action_count, len(request_action_indices))
     padded_rows = [row + (0,) * (max_action_count - len(row)) for row in rows]
-    mask_rows = [(True,) * len(row) + (False,) * (max_action_count - len(row)) for row in rows]
-    return (
-        torch.tensor(padded_rows, dtype=torch.long, device=device),
-        torch.tensor(mask_rows, dtype=torch.bool, device=device),
-        action_counts,
-    )
+    action_indices = torch.tensor(padded_rows, dtype=torch.long, device=device)
+    action_lengths = torch.tensor(action_counts, dtype=torch.long, device=device)
+    legal_action_mask = torch.arange(max_action_count, device=device).unsqueeze(0) < action_lengths.unsqueeze(1)
+    return action_indices, legal_action_mask, action_counts
 
 
 def _request_position_sfen(request: PositionEvaluationRequest) -> str:
