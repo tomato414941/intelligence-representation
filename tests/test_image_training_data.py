@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import TensorDataset
 
 from intrep.core.training_utils import seeded_data_loader
-from intrep.sources.vision.training_data import (
+from intrep.representation.inputs.image_tensor import (
     channel_count_from_image_shape,
     image_tensor_from_path,
 )
