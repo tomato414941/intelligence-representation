@@ -179,6 +179,26 @@ class ImageClassificationTest(unittest.TestCase):
 
         self.assertEqual(logits.shape, torch.Size([3, 10]))
 
+    def test_image_classification_model_accepts_shared_core(self) -> None:
+        core = SharedTransformerCore(embedding_dim=8, num_heads=2, hidden_dim=16, num_layers=1)
+        model = ImageClassificationModel(
+            vocab_size=1,
+            text_context_length=1,
+            image_size=(4, 4),
+            patch_size=2,
+            embedding_dim=8,
+            num_heads=2,
+            hidden_dim=16,
+            num_layers=1,
+            num_classes=10,
+            core=core,
+        )
+
+        logits = model.class_logits(torch.zeros((3, 4, 4), dtype=torch.float32))
+
+        self.assertIs(model.core, core)
+        self.assertEqual(logits.shape, torch.Size([3, 10]))
+
     def test_image_classification_tensors_from_examples_preserves_rgb_images(self) -> None:
         with TemporaryDirectory() as directory:
             image_path = Path(directory) / "a.ppm"
