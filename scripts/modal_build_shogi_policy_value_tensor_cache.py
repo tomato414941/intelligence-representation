@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
+from intrep.problems.shogi_policy_value.tensor_cache_tasks import build_shogi_policy_value_tensor_cache_tasks
 from intrep.representation.assembly_specs.shogi_policy_value import shogi_policy_value_input_for_assembly_spec_id
 
 try:
@@ -270,35 +271,25 @@ def _build_tasks(
     input_module: str,
     cache_name: str,
 ) -> list[dict[str, object]]:
-    payload = json.loads(local_data_selection_path.read_text(encoding="utf-8"))
-    local_bundle = local_data_selection_path.parent
     tasks: list[dict[str, object]] = []
-    split_names = ("train", "eval") if split == "all" else (split,)
-    for split_name in split_names:
-        sources = _object_list(payload[f"{split_name}_sources"])
-        for source_index, source in enumerate(sources):
-            source_payload = _object_dict(source)
-            source_path = _local_source_path(local_bundle, source_payload)
-            example_count = _count_jsonl_records(source_path)
-            if "max_examples" in source_payload:
-                example_count = min(example_count, int(source_payload["max_examples"]))
-            shard_index = 0
-            for start in range(0, example_count, shard_examples):
-                end = min(start + shard_examples, example_count)
-                tasks.append(
-                    {
-                        "remote_bundle": remote_bundle,
-                        "cache_name": cache_name,
-                        "input_module": input_module,
-                        "output_space": output_space,
-                        "split": split_name,
-                        "source_index": source_index,
-                        "source_example_start_index": start,
-                        "source_example_end_index": end,
-                        "shard_index": shard_index,
-                    }
-                )
-                shard_index += 1
+    for task in build_shogi_policy_value_tensor_cache_tasks(
+        data_selection_path=local_data_selection_path,
+        shard_examples=shard_examples,
+        split=split,
+    ):
+        tasks.append(
+            {
+                "remote_bundle": remote_bundle,
+                "cache_name": cache_name,
+                "input_module": input_module,
+                "output_space": output_space,
+                "split": task["split"],
+                "source_index": task["source_index"],
+                "source_example_start_index": task["source_example_start_index"],
+                "source_example_end_index": task["source_example_end_index"],
+                "shard_index": task["shard_index"],
+            }
+        )
     return tasks
 
 
@@ -422,34 +413,6 @@ def _release_remote_cache_to_local(
         "remote_cache": remote_cache,
         "local_cache": str(local_cache),
     }
-
-
-def _local_source_path(local_bundle: Path, source: dict[str, object]) -> Path:
-    path = Path(str(source["path"]))
-    if path.is_absolute():
-        return path
-    return local_bundle / path
-
-
-def _count_jsonl_records(path: Path) -> int:
-    count = 0
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                count += 1
-    return count
-
-
-def _object_dict(value: object) -> dict[str, object]:
-    if not isinstance(value, dict):
-        raise ValueError("expected object")
-    return value
-
-
-def _object_list(value: object) -> list[object]:
-    if not isinstance(value, list):
-        raise ValueError("expected list")
-    return value
 
 
 if __name__ == "__main__":

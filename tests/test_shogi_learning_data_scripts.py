@@ -594,6 +594,116 @@ class ShogiLearningDataScriptsTest(unittest.TestCase):
         )
         volume.listdir.assert_called_once_with("/qhapaq-full/cache/action-plane-policy", recursive=True)
 
+    def test_parallel_tensor_cache_builder_counts_game_record_moves_as_examples(self) -> None:
+        builder = _load_script_module("build_shogi_policy_value_tensor_cache_parallel")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            examples_path = root / "examples.jsonl"
+            eval_examples_path = root / "eval-examples.jsonl"
+            games_path = root / "games.jsonl"
+            examples_path.write_text("{}\n{}\n{}\n", encoding="utf-8")
+            eval_examples_path.write_text("{}\n", encoding="utf-8")
+            games_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"transitions": [{}, {}]}),
+                        json.dumps({"transitions": [{}, {}, {}]}),
+                        json.dumps({"moves": ["7g7f", "3c3d", "2g2f", "8c8d"]}),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            data_selection_path = root / "data-selection.json"
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test",
+                        "objective": "shogi_policy_value",
+                        "target_construction": {
+                            "policy": "mcts_visit_counts",
+                            "value": "mcts_root_mean_value",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [
+                            {"kind": "shogi_policy_value_examples_jsonl", "path": "examples.jsonl"},
+                            {"kind": "game_records_jsonl", "path": "games.jsonl", "max_games": 2},
+                        ],
+                        "eval_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "eval-examples.jsonl"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            tasks = builder._build_tasks(data_selection_path=data_selection_path, shard_examples=2)
+
+            game_tasks = [task for task in tasks if task["split"] == "train" and task["source_index"] == 1]
+            self.assertEqual(
+                [
+                    (task["source_example_start_index"], task["source_example_end_index"], task["sample_count"])
+                    for task in game_tasks
+                ],
+                [(0, 2, 2), (2, 4, 2), (4, 5, 1)],
+            )
+
+    def test_modal_tensor_cache_builder_uses_game_record_example_counts(self) -> None:
+        modal_builder = _load_script_module("modal_build_shogi_policy_value_tensor_cache")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            games_path = root / "games.jsonl"
+            eval_examples_path = root / "eval-examples.jsonl"
+            games_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"transitions": [{}, {}]}),
+                        json.dumps({"transitions": [{}, {}, {}]}),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            eval_examples_path.write_text("{}\n", encoding="utf-8")
+            data_selection_path = root / "data-selection.json"
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test",
+                        "objective": "shogi_policy_value",
+                        "target_construction": {
+                            "policy": "mcts_visit_counts",
+                            "value": "mcts_root_mean_value",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": "games.jsonl", "max_examples": 4}],
+                        "eval_sources": [{"kind": "shogi_policy_value_examples_jsonl", "path": "eval-examples.jsonl"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            tasks = modal_builder._build_tasks(
+                local_data_selection_path=data_selection_path,
+                remote_bundle="remote",
+                shard_examples=2,
+                split="train",
+                output_space="action_plane_policy",
+                input_module="minimal_split_global_position",
+                cache_name="cache",
+            )
+
+            self.assertEqual(
+                [
+                    (task["source_example_start_index"], task["source_example_end_index"])
+                    for task in tasks
+                ],
+                [(0, 2), (2, 4)],
+            )
+            self.assertTrue(all(task["remote_bundle"] == "remote" for task in tasks))
+
 
 def _load_script_module(name: str) -> ModuleType:
     script_path = Path(__file__).resolve().parents[1] / "scripts" / f"{name}.py"

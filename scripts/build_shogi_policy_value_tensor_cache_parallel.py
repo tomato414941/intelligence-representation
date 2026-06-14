@@ -5,13 +5,13 @@ import json
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any
 
 from intrep.problems.shogi_policy_value.output_space import shogi_policy_value_output_space_for_assembly_spec
 from intrep.problems.shogi_policy_value.tensor_cache import (
     build_shogi_policy_value_tensor_cache_shard,
     write_shogi_policy_value_tensor_cache_manifest,
 )
+from intrep.problems.shogi_policy_value.tensor_cache_tasks import build_shogi_policy_value_tensor_cache_tasks
 from intrep.representation.assembly_specs.shogi_policy_value import (
     SHOGI_POLICY_VALUE_ASSEMBLY_SPEC_IDS,
     shogi_policy_value_input_for_assembly_spec_id,
@@ -183,35 +183,10 @@ def _build_shard_task(
 
 
 def _build_tasks(*, data_selection_path: Path, shard_examples: int) -> list[dict[str, int | str]]:
-    if shard_examples <= 0:
-        raise ValueError("shard_examples must be positive")
-    payload = json.loads(data_selection_path.read_text(encoding="utf-8"))
-    root = data_selection_path.parent
-    tasks: list[dict[str, int | str]] = []
-    for split in ("train", "eval"):
-        for source_index, source in enumerate(_object_list(payload[f"{split}_sources"])):
-            source_payload = _object_dict(source)
-            source_path = Path(str(source_payload["path"]))
-            if not source_path.is_absolute():
-                source_path = root / source_path
-            example_count = _count_jsonl_records(source_path)
-            if "max_examples" in source_payload:
-                example_count = min(example_count, int(source_payload["max_examples"]))
-            shard_index = 0
-            for start in range(0, example_count, shard_examples):
-                end = min(start + shard_examples, example_count)
-                tasks.append(
-                    {
-                        "split": split,
-                        "source_index": source_index,
-                        "source_example_start_index": start,
-                        "source_example_end_index": end,
-                        "shard_index": shard_index,
-                        "sample_count": end - start,
-                    }
-                )
-                shard_index += 1
-    return tasks
+    return build_shogi_policy_value_tensor_cache_tasks(
+        data_selection_path=data_selection_path,
+        shard_examples=shard_examples,
+    )
 
 
 def _shard_cache_bytes(cache_dir: Path, relative_path: str) -> int:
@@ -229,27 +204,6 @@ def _pt_cache_bytes(cache_dir: Path) -> int:
 
 def _rate(numerator: int | float, denominator: int | float) -> float:
     return float(numerator) / float(denominator) if denominator else 0.0
-
-
-def _count_jsonl_records(path: Path) -> int:
-    count = 0
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                count += 1
-    return count
-
-
-def _object_dict(value: object) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise ValueError("expected object")
-    return value
-
-
-def _object_list(value: object) -> list[object]:
-    if not isinstance(value, list):
-        raise ValueError("expected list")
-    return value
 
 
 if __name__ == "__main__":
