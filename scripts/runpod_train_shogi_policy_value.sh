@@ -29,6 +29,7 @@ R2_CACHE_PREFIX=${R2_CACHE_PREFIX:-}
 R2_ENV_FILE=${R2_ENV_FILE:-"$HOME/.secrets/intrep-cloudflare-r2"}
 OUTPUT_DIR=${OUTPUT_DIR:-runs/shogi/runpod-policy-value-train-$RUN_ID}
 INIT_CHECKPOINT=${INIT_CHECKPOINT:-}
+INIT_CHECKPOINT_R2_PREFIX=${INIT_CHECKPOINT_R2_PREFIX:-}
 
 MAX_STEPS=${MAX_STEPS:-100000}
 BATCH_SIZE=${BATCH_SIZE:-512}
@@ -57,6 +58,10 @@ if [[ -z "$ASSEMBLY_SPEC" ]]; then
 fi
 if [[ -z "$R2_CACHE_PREFIX" ]]; then
   R2_CACHE_PREFIX="shogi/tensor-caches/$(basename "$LOCAL_BUNDLE")/$ASSEMBLY_SPEC"
+fi
+if [[ -n "$INIT_CHECKPOINT" && -n "$INIT_CHECKPOINT_R2_PREFIX" ]]; then
+  echo "set only one of INIT_CHECKPOINT or INIT_CHECKPOINT_R2_PREFIX" >&2
+  exit 1
 fi
 if [[ ! -f "$R2_ENV_FILE" ]]; then
   echo "R2_ENV_FILE not found: $R2_ENV_FILE" >&2
@@ -103,6 +108,8 @@ if [[ -n "$INIT_CHECKPOINT" ]]; then
       ;;
   esac
   SYNC_ARGS+=(--sync "$INIT_CHECKPOINT_REMOTE")
+elif [[ -n "$INIT_CHECKPOINT_R2_PREFIX" ]]; then
+  INIT_CHECKPOINT_REMOTE=models/init-checkpoint
 else
   INIT_CHECKPOINT_REMOTE=
 fi
@@ -170,6 +177,10 @@ python3 "$RUNPOD_JOB" \
   --remote "set -euo pipefail; cd \"\$REMOTE_DIR\"; mkdir -p \"$OUTPUT_DIR\"
 echo \"restore_cache prefix=$R2_CACHE_PREFIX tensor_cache=$TENSOR_CACHE\"
 R2_ENV_FILE=\"$R2_REMOTE_ENV\" bash scripts/restore_r2_artifact.sh \"$R2_CACHE_PREFIX\" \"$TENSOR_CACHE\" | tee \"$OUTPUT_DIR/cache_restore_size.json\"
+if [[ -n \"$INIT_CHECKPOINT_R2_PREFIX\" ]]; then
+  echo \"restore_init_checkpoint prefix=$INIT_CHECKPOINT_R2_PREFIX init_checkpoint=$INIT_CHECKPOINT_REMOTE\"
+  R2_ENV_FILE=\"$R2_REMOTE_ENV\" bash scripts/restore_r2_artifact.sh \"$INIT_CHECKPOINT_R2_PREFIX\" \"$INIT_CHECKPOINT_REMOTE\" | tee \"$OUTPUT_DIR/init_checkpoint_restore_size.json\"
+fi
 du -sh \"$TENSOR_CACHE\" | tee \"$OUTPUT_DIR/cache_size.txt\"
 echo \"train_config assembly_spec=$ASSEMBLY_SPEC tensor_cache=$TENSOR_CACHE max_steps=$MAX_STEPS batch_size=$BATCH_SIZE learning_rate=$LEARNING_RATE eval_every=$EVAL_EVERY early_stopping_patience=$EARLY_STOPPING_PATIENCE disable_early_stopping=$DISABLE_EARLY_STOPPING\"
 .venv/bin/python -u -m intrep.train_shogi_policy_value \
