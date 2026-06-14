@@ -208,7 +208,7 @@ def _player_command_args(prefix: str, player: ShogiPlayingStrengthPlayer, config
             f"--{prefix}-kind",
             "checkpoint",
             f"--{prefix}-checkpoint",
-            str(player.checkpoint),
+            str(player.checkpoint.resolve()),
             f"--{prefix}-move-selection-profile",
             "max-visit",
             f"--{prefix}-move-selector",

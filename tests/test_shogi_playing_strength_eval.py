@@ -40,6 +40,8 @@ class ShogiPlayingStrengthEvalTest(unittest.TestCase):
         self.assertEqual(command[command.index("--opening-plies") + 1], "12")
         self.assertEqual(command[command.index("--player-a-move-selection-profile") + 1], "max-visit")
         self.assertEqual(command[command.index("--player-b-move-selection-profile") + 1], "max-visit")
+        self.assertEqual(command[command.index("--player-a-checkpoint") + 1], str(Path("candidate").resolve()))
+        self.assertEqual(command[command.index("--player-b-checkpoint") + 1], str(Path("baseline").resolve()))
         self.assertNotIn("visit-sampling", command)
         self.assertEqual(command[command.index("--out") + 1], "/out/match/games.jsonl")
 
