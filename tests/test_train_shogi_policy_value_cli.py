@@ -806,6 +806,54 @@ class TrainShogiPolicyValueCliTest(unittest.TestCase):
             self.assertEqual(manifest["eval_count"], 2)
             self.assertTrue((tensor_cache_path / "manifest.json").exists())
 
+    def test_tensor_cache_game_record_range_loads_only_requested_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            train_games_path = root / "train-games.jsonl"
+            eval_games_path = root / "eval-games.jsonl"
+            data_selection_path = root / "data-selection.json"
+            write_shogi_game_records_jsonl(
+                train_games_path,
+                [
+                    _record(("7g7f", "3c3d"), "black"),
+                    _record(("2g2f", "8c8d", "2f2e"), "white"),
+                ],
+            )
+            write_shogi_game_records_jsonl(eval_games_path, [_record(("7g7f",), "black")])
+            data_selection_path.write_text(
+                json.dumps(
+                    {
+                        "name": "test-shogi-policy-value",
+                        "objective": "shogi policy-value",
+                        "target_construction": {
+                            "policy": "chosen_move",
+                            "policy_temperature_cp": 100.0,
+                            "policy_mate_cp": 100000.0,
+                            "value": "winner",
+                            "score_cp_scale": 600.0,
+                        },
+                        "train_sources": [{"kind": "game_records_jsonl", "path": str(train_games_path)}],
+                        "eval_sources": [{"kind": "game_records_jsonl", "path": str(eval_games_path)}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            selection = load_shogi_policy_value_data_selection(data_selection_path)
+
+            examples = tensor_cache_module._source_examples_for_range(
+                selection.train_sources[0],
+                data_selection=selection,
+                analyses_by_position={},
+                start_index=1,
+                end_index=4,
+            )
+
+            self.assertEqual(
+                [(example.game_index, example.ply_index, example.chosen_move) for example in examples],
+                [(0, 1, "3c3d"), (1, 0, "2g2f"), (1, 1, "8c8d")],
+            )
+
     def test_tensor_cache_records_untraceable_games_as_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

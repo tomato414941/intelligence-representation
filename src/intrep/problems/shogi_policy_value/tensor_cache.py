@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Sequence, overload
 
@@ -10,6 +10,7 @@ import torch
 from intrep.problems.shogi_policy_value.data import (
     load_shogi_engine_analysis_by_position_jsonl,
     load_shogi_move_policy_value_examples_from_game_records_jsonl_with_engine_analysis,
+    shogi_move_policy_value_examples_from_game_record,
 )
 from intrep.problems.shogi_policy_value.data_selection import (
     ShogiPolicyValueDataSelection,
@@ -72,6 +73,7 @@ from intrep.representation.inputs.shogi_position_features.position_minimal_singl
     validate_shogi_minimal_single_global_position_feature_structure,
 )
 from intrep.representation.outputs.shogi_action_plane_policy_encoding import SHOGI_ACTION_PLANE_POLICY_ACTION_COUNT
+from intrep.worlds.shogi.game_record import iter_shogi_game_records_jsonl
 
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SCHEMA = "intrep.shogi_policy_value_tensor_cache"
 SHOGI_POLICY_VALUE_TENSOR_CACHE_SHARD_SCHEMA = "intrep.shogi_policy_value_tensor_cache_shard"
@@ -759,14 +761,21 @@ def _source_examples_for_range(
     start_index: int,
     end_index: int,
 ) -> list[ShogiMovePolicyValueExample]:
+    if source.max_examples is not None:
+        end_index = min(end_index, source.max_examples)
+    if end_index <= start_index:
+        return []
     if source.kind == "shogi_policy_value_examples_jsonl":
-        max_examples = source.max_examples
-        if max_examples is not None:
-            end_index = min(end_index, max_examples)
-        if end_index <= start_index:
-            return []
         return _load_shogi_move_policy_value_examples_jsonl_range(
             source.path,
+            start_index=start_index,
+            end_index=end_index,
+        )
+    if source.kind == "game_records_jsonl":
+        return _load_shogi_move_policy_value_examples_from_game_records_jsonl_range(
+            source,
+            data_selection=data_selection,
+            analyses_by_position=analyses_by_position,
             start_index=start_index,
             end_index=end_index,
         )
@@ -801,6 +810,47 @@ def _load_shogi_move_policy_value_examples_jsonl_range(
             if index >= start_index:
                 examples.append(shogi_move_policy_value_example_from_json(json.loads(stripped)))
             index += 1
+    return examples
+
+
+def _load_shogi_move_policy_value_examples_from_game_records_jsonl_range(
+    source: ShogiPolicyValueDataSelectionSource,
+    *,
+    data_selection: ShogiPolicyValueDataSelection,
+    analyses_by_position: dict[str, ShogiEngineAnalysis],
+    start_index: int,
+    end_index: int,
+) -> list[ShogiMovePolicyValueExample]:
+    if data_selection.target_construction is None:
+        raise ValueError("target_construction is required for game_records_jsonl sources")
+    examples: list[ShogiMovePolicyValueExample] = []
+    source_example_index = 0
+    for game_index, record in enumerate(iter_shogi_game_records_jsonl(source.path)):
+        if source.max_games is not None and game_index >= source.max_games:
+            break
+        game_examples = shogi_move_policy_value_examples_from_game_record(
+            record,
+            policy_target_construction=data_selection.target_construction.policy,
+            value_target_construction=data_selection.target_construction.value,
+            analyses_by_position=analyses_by_position,
+            policy_temperature_cp=data_selection.target_construction.policy_temperature_cp,
+            policy_mate_cp=data_selection.target_construction.policy_mate_cp,
+            score_cp_scale=data_selection.target_construction.score_cp_scale,
+        )
+        next_source_example_index = source_example_index + len(game_examples)
+        if next_source_example_index <= start_index:
+            source_example_index = next_source_example_index
+            continue
+        for ply_index, example in enumerate(game_examples):
+            current_index = source_example_index + ply_index
+            if current_index < start_index:
+                continue
+            if current_index >= end_index:
+                return examples
+            examples.append(replace(example, game_index=game_index, ply_index=ply_index))
+        source_example_index = next_source_example_index
+        if source_example_index >= end_index:
+            break
     return examples
 
 
