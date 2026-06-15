@@ -103,7 +103,23 @@ fi
 
 mapfile -t INPUT_FILES < <(
   .venv/bin/python -m intrep.problems.shogi_policy_value.training_inputs \
-    --data-selection "$DATA_SELECTION"
+    --data-selection "$DATA_SELECTION" |
+    .venv/bin/python -c '
+import sys
+from pathlib import Path
+
+root = Path.cwd().resolve()
+for line in sys.stdin:
+    value = line.strip()
+    if not value:
+        continue
+    path = Path(value)
+    resolved = path.resolve()
+    try:
+        print(resolved.relative_to(root))
+    except ValueError:
+        print(path)
+'
 )
 
 SYNC_ARGS=()
