@@ -23,9 +23,14 @@ MAX_PLIES=${MAX_PLIES:-320}
 BOARD_BACKEND=${BOARD_BACKEND:-cshogi}
 SEED=${SEED:-7}
 PROGRESS_EVERY_PLIES=${PROGRESS_EVERY_PLIES:-100}
+START_POSITION_SET=${START_POSITION_SET:-startpos}
+OPENING_PLIES=${OPENING_PLIES:-12}
+START_POSITION_SEED=${START_POSITION_SEED:-$SEED}
 
 CHECKPOINT_SIMULATIONS=${CHECKPOINT_SIMULATIONS:-128}
 CHECKPOINT_NN_LEAF_EVAL_BATCH_LIMIT=${CHECKPOINT_NN_LEAF_EVAL_BATCH_LIMIT:-64}
+CHECKPOINT_MOVE_SELECTION_TEMPERATURE=${CHECKPOINT_MOVE_SELECTION_TEMPERATURE:-1.0}
+CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES=${CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES:-40}
 CHECKPOINT_WORKER_PROCESSES=${CHECKPOINT_WORKER_PROCESSES:-8}
 CHECKPOINT_CONCURRENT_GAMES_PER_PROCESS=${CHECKPOINT_CONCURRENT_GAMES_PER_PROCESS:-8}
 ENGINE_WORKER_PROCESSES=${ENGINE_WORKER_PROCESSES:-8}
@@ -135,6 +140,10 @@ PYTHON=\"\$REMOTE_DIR/$PROJECT_REL/.venv/bin/python\"
 ARENA=\"\$REMOTE_DIR/$ARENA_REL\"
 ENGINE=/root/YaneuraOu/source/YaneuraOu-nnue-runpod
 CHECKPOINT_PATH=\"$CHECKPOINT\"
+START_POSITION_ARGS=(--start-position-set \"$START_POSITION_SET\" --opening-plies \"$OPENING_PLIES\")
+if [[ \"$START_POSITION_SET\" == \"random-legal-opening\" ]]; then
+  START_POSITION_ARGS+=(--start-position-seed \"$START_POSITION_SEED\")
+fi
 
 run_generation() {
   local name=\"\$1\"
@@ -149,6 +158,7 @@ run_generation() {
     --max-plies \"$MAX_PLIES\" \
     --board-backend \"$BOARD_BACKEND\" \
     --progress-every-plies \"$PROGRESS_EVERY_PLIES\" \
+    \"\${START_POSITION_ARGS[@]}\" \
     \"\$@\" | tee \"\$OUT/\$name/summary.json\"
 }
 
@@ -159,6 +169,8 @@ checkpoint_args() {
     --\"\$side\"-checkpoint \"\$CHECKPOINT_PATH\" \
     --\"\$side\"-checkpoint-id current-promoted \
     --\"\$side\"-move-selection-profile visit-sampling \
+    --\"\$side\"-move-selection-temperature \"$CHECKPOINT_MOVE_SELECTION_TEMPERATURE\" \
+    --\"\$side\"-move-selection-temperature-plies \"$CHECKPOINT_MOVE_SELECTION_TEMPERATURE_PLIES\" \
     --\"\$side\"-move-selector mcts \
     --\"\$side\"-mcts-simulations \"$CHECKPOINT_SIMULATIONS\" \
     --\"\$side\"-mcts-nn-leaf-eval-batch-limit \"$CHECKPOINT_NN_LEAF_EVAL_BATCH_LIMIT\" \
