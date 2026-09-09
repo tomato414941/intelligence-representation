@@ -141,7 +141,7 @@ example transitions).
 | emergence sweep over experience quantity | Done 2026-06-11 (table above). |
 | layout sampler with provenance | Done 2026-06-10 (`worlds/gridworld/layouts.py`); held-out layout split for gridworld remains open. |
 | gridworld wired onto the same prediction head (action token) | Open. |
-| held-out-rule inference across the rule family | Open. The genuinely uncertain question. |
+| held-out-rule inference across the rule family | Measured 2026-09-09: unseen-rule accuracy improves from 54.09% with no examples to 98.86% with eight. See [protocol, controls and limits](../../docs/research/cellular-rule-inference.md). |
 
 ## Non-Goal
 

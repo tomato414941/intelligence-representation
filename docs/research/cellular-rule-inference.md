@@ -105,5 +105,50 @@ state; the learning-rate schedule is linear warmup followed by a constant rate.
 
 ## Results
 
-The first full run is pending. Do not infer model quality from unit-test or CPU
-timing-smoke results.
+Measured 2026-09-09 with the protocol above, model seed 31, learning rate
+0.0003, batch 16 and 6000 steps. No checkpoint or hyperparameter was selected
+using final-test results. Training used CUDA bfloat16 autocast; final evaluation
+used float32. The final test contains 512 query boards / 18,432 cells.
+
+| Demonstrations | Correct context | Wrong context / original target | Frequency baseline | Family-aware lookup | Evidence coverage |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 54.09% | 54.09% | 54.09% | 54.09% | 0.00% |
+| 1 | 83.37% | 55.16% | 61.45% | 84.66% | 64.24% |
+| 4 | 97.07% | 55.26% | 64.16% | 98.25% | 95.56% |
+| 8 | 98.86% | 55.47% | 64.92% | 99.70% | 99.34% |
+
+At eight demonstrations:
+
+- Correct-context accuracy: 98.86%, rule-bootstrap 95% CI 98.62–99.08%.
+- Paired gain over zero context: +44.77 percentage points, CI +41.10–48.32.
+- Correct-minus-wrong context: +43.39 points, CI +39.61–47.05.
+- Donor-target accuracy after replacing demonstration outputs: 98.71%.
+  Predictions follow the demonstrated alternate rule, not simply the original
+  query or the original rule.
+- Changed-cell accuracy 98.77%, unchanged-cell accuracy 98.94%.
+- Evidence-covered cell accuracy 99.13%; uncovered cell accuracy 58.20%.
+  Only 122 cells remain uncovered at eight demonstrations, so that last
+  percentage has very limited support.
+
+Interpretation: within this cellular family, the model learned to use observed
+transitions to predict under unseen rules without weight updates. Its advantage
+over the frequency baseline supports spatially specific inference. More
+demonstrations mainly expose more of the local conditions needed for the query;
+already-covered conditions are predicted well even with one demonstration
+(98.07%). This is not evidence of predicting unconstrained, unobserved rule bits.
+
+Limits: one training seed, one rule family, 6x6 boards, fully observed states,
+and explicitly aligned before/after cell pairs. Cross-family inference, new
+board sizes, noisy or partial observations, and training-seed robustness remain
+unmeasured. The oracle's family knowledge must not be attributed to the model.
+
+The checkpoint, configuration, training log, validation/test JSON, timing
+records and PNG/PDF/SVG/CSV figure are preserved locally under
+`models/cellular-rule-inference-20260909-seed31/`; generated artifacts are not
+versioned. Checkpoint SHA256:
+`76b03efd956697b470623c8aac19c638f10e2c26d8ac5ae04fea18bdeb37ed29`.
+
+Implementation checks: 466 unit tests passed, including eight new tests for
+world parity, rule-identity splits, query leakage, coverage, counterfactual
+contexts, family lookup, context gradients and exact CPU resume. Ruff and shell
+syntax checks passed. The figure was rendered and visually inspected.

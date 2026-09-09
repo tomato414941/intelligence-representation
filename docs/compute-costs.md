@@ -63,3 +63,16 @@ pricing page before using these rows for future cost estimates.
 
 Self-play generation throughput and cost notes are tracked in
 `docs/shogi/self-play-generation-throughput.md`.
+
+## Cellular Rule Inference Sizing Reference
+
+For future 6x6 rule-inference runs with up to eight demonstrations and
+d256/h1024/heads8/l6, batch 16: the 2026-09-09 A5000 measurement took 247 seconds
+for 6000 training steps (about 24 steps/s). The disposable job, including setup,
+validation/test evaluation and output retrieval, took 325 seconds. A local
+8-vCPU machine with four Torch threads needed 14 seconds for a 20-step probe.
+
+At the [published A5000 Secure Cloud rate of $0.27/hr](https://www.runpod.io/articles/guides/ai-server-cost),
+325 seconds corresponds to about $0.025 of GPU time, excluding disk charges.
+This is a sizing estimate, not an invoice. Check current pricing before future
+runs; context length and board size affect attention cost.

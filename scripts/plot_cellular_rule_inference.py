@@ -23,7 +23,7 @@ def main() -> None:
     data = json.loads(args.evaluation.read_text())
     rows = data["summaries"]
     counts = [r["context_count"] for r in rows]
-    positions = np.arange(len(counts))
+    positions = np.asarray(counts)
     cfg = data["training_config"]
     args.output_prefix.parent.mkdir(parents=True, exist_ok=True)
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10, "axes.spines.top": False,
