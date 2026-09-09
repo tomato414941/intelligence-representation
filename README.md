@@ -59,6 +59,7 @@ Read these first:
 - [Bitter Lesson Correction](docs/bitter-lesson.md)
 - [Evaluation](docs/evaluation.md)
 - [Evaluation and Current Claims](docs/evaluation.md)
+- [Unseen Cellular Rule Inference](docs/research/cellular-rule-inference.md)
 
 ## Design Constraints
 
