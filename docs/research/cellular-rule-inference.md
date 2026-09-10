@@ -1,6 +1,8 @@
 # Unseen Cellular Rule Inference
 
 This is a bounded experiment in learning from observations at inference time.
+The [noise and regime-change follow-up](cellular-rule-stress.md) extends this
+protocol with training-seed replication and contradictory or stale evidence.
 It follows the single-rule Life result in
 [the previous experiment](../../issues/closed/grid-next-observation-emergence.md).
 It is an experimental problem, not a new general-purpose world/model framework.

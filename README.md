@@ -60,6 +60,7 @@ Read these first:
 - [Evaluation](docs/evaluation.md)
 - [Evaluation and Current Claims](docs/evaluation.md)
 - [Unseen Cellular Rule Inference](docs/research/cellular-rule-inference.md)
+- [Cellular Rule Noise And Regime Changes](docs/research/cellular-rule-stress.md)
 
 ## Design Constraints
 

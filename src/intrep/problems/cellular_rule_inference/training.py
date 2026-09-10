@@ -20,6 +20,7 @@ from intrep.representation.assemblies.cellular_rule_inference import (
     CellularRuleInferenceModel,
     CellularRuleInferenceModelConfig,
 )
+from intrep.worlds.cellular.arrays import step_grids
 
 SCHEMA = "intrep.cellular_rule_inference_checkpoint.v1"
 
@@ -35,6 +36,8 @@ class RuleInferenceTrainingConfig:
     batch_size: int = 16
     learning_rate: float = 0.0003
     warmup_steps: int = 100
+    observation_noise: bool = False
+    rule_change_probability: float = 0.0
 
 
 def load_checkpoint(path: Path, device: str = "cpu") -> tuple[CellularRuleInferenceModel, dict]:
@@ -51,9 +54,12 @@ def train(config: RuleInferenceTrainingConfig, run_dir: Path, *, device: str = "
         raise ValueError("invalid training budget or learning rate")
     if config.model.max_context != 8:
         raise ValueError("this experiment uses the fixed context sweep 0, 1, 4, 8")
+    if not 0 <= config.rule_change_probability <= 1 or (config.rule_change_probability and config.train_rule_count < 2):
+        raise ValueError("rule-change probability must be in [0,1] with at least two training rules")
     resolved = resolve_training_device(device)
     torch.manual_seed(config.model_seed)
     rng = np.random.default_rng(config.data_seed)
+    augmentation_rng = np.random.default_rng(config.data_seed + 100_000)
     run_dir.mkdir(parents=True, exist_ok=True)
     path = run_dir / "checkpoint.pt"
     serialized_config = asdict(config)
@@ -67,6 +73,8 @@ def train(config: RuleInferenceTrainingConfig, run_dir: Path, *, device: str = "
             raise ValueError("resume may change only max_steps, not the experiment configuration")
         rules = deserialize_rules(payload["train_rules"])
         rng.bit_generator.state = payload["numpy_rng_state"]
+        if config.observation_noise or config.rule_change_probability:
+            augmentation_rng.bit_generator.state = payload["augmentation_rng_state"]
         torch.set_rng_state(payload["torch_rng_state"])
         start_step = payload["step"]
     else:
@@ -85,7 +93,24 @@ def train(config: RuleInferenceTrainingConfig, run_dir: Path, *, device: str = "
         count = int(rng.choice([0, 1, 1, 4, 4, 8, 8, 8]))
         batch_rules = [rules[int(index)] for index in rng.integers(len(rules), size=config.batch_size)]
         episodes = sample_episodes(batch_rules, rng, height=config.model.height, width=config.model.width, context_count=count)
-        support = torch.as_tensor(episodes.support, dtype=torch.float32, device=resolved)
+        observed = episodes.support.copy()
+        if config.rule_change_probability and count >= 2:
+            donor_rules = []
+            for current_rule in batch_rules:
+                donor = rules[int(augmentation_rng.integers(len(rules)))]
+                while donor == current_rule:
+                    donor = rules[int(augmentation_rng.integers(len(rules)))]
+                donor_rules.append(donor)
+            old_outputs = step_grids(observed[:, :, 0], donor_rules)
+            old_counts = augmentation_rng.integers(1, count, size=config.batch_size)
+            old_counts *= augmentation_rng.random(config.batch_size) < config.rule_change_probability
+            old_mask = np.arange(count)[None, :] < old_counts[:, None]
+            observed[:, :, 1] = np.where(old_mask[:, :, None, None], old_outputs, observed[:, :, 1])
+        if config.observation_noise:
+            rates = augmentation_rng.choice([0.0, 0.05, 0.1, 0.2], size=(config.batch_size, 1, 1, 1))
+            flips = augmentation_rng.random(observed[:, :, 1].shape) < rates
+            observed[:, :, 1] ^= flips.astype(observed.dtype)
+        support = torch.as_tensor(observed, dtype=torch.float32, device=resolved)
         query = torch.as_tensor(episodes.query, dtype=torch.float32, device=resolved)
         targets = torch.as_tensor(episodes.targets, dtype=torch.long, device=resolved)
         learning_rate = config.learning_rate * min(1.0, step / max(1, config.warmup_steps))
@@ -112,6 +137,7 @@ def train(config: RuleInferenceTrainingConfig, run_dir: Path, *, device: str = "
             checkpoint = {"schema_version": SCHEMA, "config": serialized_config, "step": step,
                           "train_rules": serialize_rules(rules), "model": model.state_dict(),
                           "optimizer": optimizer.state_dict(), "numpy_rng_state": rng.bit_generator.state,
+                          "augmentation_rng_state": augmentation_rng.bit_generator.state,
                           "torch_rng_state": torch.get_rng_state(), "device": str(resolved),
                           "autocast_dtype": "bfloat16" if resolved.type == "cuda" else "float32"}
             temporary = path.with_suffix(".tmp")
