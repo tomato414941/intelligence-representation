@@ -38,7 +38,7 @@ identities from the final test. All models use the same evaluation pairs.
   Under changing rules its stationary assumption is deliberately misspecified.
   At zero noise, inconsistent histories use the limiting majority vote.
 - The same family method with only the most recent two or four examples.
-- The neural model using all eight examples, only the most recent two,
+- The neural model using all eight examples, only the most recent two or four,
   reversed example order, and only examples after the true change point.
   That last control has privileged boundary information and measures the cost
   of stale history; it is not an implementable unknown-boundary detector.
@@ -51,6 +51,11 @@ targets (NLL probabilities clipped to [1e-7, 1-1e-7]). For changes, separately
 count cells where old/new targets differ, and the subset whose local condition
 has appeared after the change. Accuracy confidence intervals resample whole
 disjoint rule pairs. They do not measure training-seed variation.
+The JSON fields named `identifiable_affected_*` count this evidence-covered
+subset; a noisy observation does not make its underlying rule bit certain.
+Two- and six-example neural controls use context lengths not sampled during
+training (which uses 0/1/4/8). In particular, the recent-two control is not enough
+to establish an advantage over a model using a familiar fixed window.
 
 ## Bounded Follow-up Training
 
@@ -104,3 +109,20 @@ observations, full-history accuracy was 69.21%; the current-only control reached
 No final stress-test result was used for those decisions. Both augmented
 variants will use one 6000-step run from seed 31, without a hyperparameter sweep.
 Final results and durable artifact hashes will be recorded after verification.
+
+## Clean Replication Results
+
+Measured 2026-09-10 on the original 64-rule / 512-query test. Seed 31 was the
+original A5000 run; the two new seeds used A40. Training architecture, rules,
+episodes, optimizer and 6000-step budget were fixed. Small CUDA numerical
+differences between hardware types are not excluded by this replication.
+
+| Model seed | 0 examples | 1 example | 4 examples | 8 examples | Donor-target accuracy, 8 examples |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 31 | 54.09% | 83.37% | 97.07% | 98.86% | 98.71% |
+| 32 | 54.09% | 83.37% | 96.89% | 98.63% | 98.70% |
+| 33 | 54.09% | 83.71% | 97.31% | 98.68% | 98.90% |
+
+The eight-example range is 98.63–98.86%. All three models follow the alternate
+demonstrated rule. This establishes repeatability over these three initial
+seeds with the same training rule pool; it does not test training-pool variation.

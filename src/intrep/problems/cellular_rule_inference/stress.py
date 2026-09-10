@@ -164,6 +164,7 @@ def evaluate_stress(checkpoint: Path, *, rule_count: int = 64, queries_per_rule:
                         support[:, -recent:], new.query, rate)["family_bayes"]
                 probabilities["model"] = stable_predictions[rate] if count == 8 else predict(support, new.query)
                 probabilities["model_recent2"] = predict(support[:, -2:], new.query)
+                probabilities["model_recent4"] = predict(support[:, -4:], new.query)
                 # Privileged boundary control; the main model never receives the boundary.
                 probabilities["model_current_only"] = predict(current, new.query)
                 probabilities["model_stable"] = stable_predictions[rate]
