@@ -99,3 +99,22 @@ evaluated 710,400 model queries in 142 seconds. Total disposable-job time was
 189 seconds, or about $0.026 of GPU time at the published $0.49/hr rate above,
 excluding disk charges. No training was required. Timing and resource records
 are retained with the [control results](research/cellular-rule-control.md).
+
+## Recurrent Multimodal Agent Sizing Reference
+
+The 2026-09-10 integrated agent used one A40 at the observed $0.49/hr rate.
+The 5.10-million-parameter model (d256/h1024/heads8/l6, 32 memory vectors)
+jointly learned action values, text and image/audio/feedback forecasts, unrolling
+six observations per sampled episode. With batch 16, bf16 and four Torch CPU
+threads, 3,000 updates took 1,469 seconds, about 2.04 updates/s. A subsequent
+100-update mixed-replay run, including some eight-action episodes, took 52 seconds.
+Memory peaked at 2,548 MiB on the GPU; sampled GPU utilization averaged 23%.
+
+The complete job, including setup, evaluation, actor experience collection,
+retrieval and deletion, took 1,656 seconds. At the rate above this is about
+$0.225 of GPU time, excluding disk charges. The earlier 16-update execution
+probe took 76 seconds end to end, bringing the two jobs to about $0.236 of GPU
+time. These are sizing estimates rather than invoices. The recurrent unroll
+and several shared-core calls per step make these updates much more expensive
+than the single-pass cellular predictor. Detailed timings are retained with
+the [multimodal agent artifacts](multimodal-agent.md#artifacts-and-verification).
