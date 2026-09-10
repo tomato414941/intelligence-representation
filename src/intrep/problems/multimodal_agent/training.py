@@ -177,6 +177,7 @@ def train(
     output.mkdir(parents=True, exist_ok=True)
     path = output / "checkpoint.pt"
     start_step, payload, initialization = 0, None, None
+    training_history = list(source_records)
     if resume:
         model, payload = load_checkpoint(path, device=device)
         old = {key: value for key, value in payload["config"].items() if key != "steps"}
@@ -187,6 +188,7 @@ def train(
         if config.steps < start_step:
             raise ValueError("resume step budget cannot precede the saved checkpoint")
         initialization = payload.get("initialization")
+        training_history = payload.get("training_history", payload["sources"])
         generator.set_state(payload["replay_rng"])
         torch.set_rng_state(payload["torch_rng"])
     else:
@@ -200,6 +202,12 @@ def train(
                 raise ValueError("initialization model configuration differs")
             initialization = {"checkpoint_sha256": hashlib.sha256(initialize.read_bytes()).hexdigest(),
                               "step": initialized["step"]}
+            for source in initialized.get("training_history", initialized["sources"]):
+                if source not in training_history:
+                    training_history.append(source)
+            inherited_worlds = {world for source in training_history for world in source["world_ids"]}
+            if any(split != "train" and world in inherited_worlds for world, split in world_partitions.items()):
+                raise ValueError("initialization already learned a declared evaluation world")
     target_model = copy.deepcopy(model).eval()
     target_model.requires_grad_(False)
     optimizer = build_adamw(model, learning_rate=config.learning_rate, weight_decay=0.01)
@@ -242,6 +250,7 @@ def train(
         if step % 250 == 0 or step == config.steps:
             state = {
                 "schema_version": SCHEMA, "config": asdict(config), "step": step, "sources": source_records,
+                "training_history": training_history,
                 "initialization": initialization,
                 "model": model.state_dict(), "target_model": target_model.state_dict(), "optimizer": optimizer.state_dict(),
                 "replay_rng": generator.get_state(), "torch_rng": torch.get_rng_state(),

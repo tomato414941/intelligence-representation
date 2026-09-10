@@ -16,7 +16,7 @@ from intrep.experience.multimodal.records import (
     write_audio,
     write_selection,
 )
-from intrep.problems.multimodal_agent.cli import prepare
+from intrep.problems.multimodal_agent.cli import evaluate, prepare
 from intrep.problems.multimodal_agent.runtime import rollout
 from intrep.problems.multimodal_agent.training import (
     MultimodalTrainingConfig,
@@ -129,6 +129,27 @@ class MultimodalExperienceTest(unittest.TestCase):
             self.assertEqual(restored.actions, episode.actions)
             self.assertEqual(len(restored.observations), 4)
             self.assertEqual(restored.observations[-1].feedback[2], 1)
+
+    def test_initialization_preserves_training_history_after_replay_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = prepare(root / "first", train_count=2, validation_count=1, test_count=1, seed=310, horizon=2)
+            second = prepare(root / "second", train_count=2, validation_count=1, test_count=1, seed=410, horizon=2)
+            config = MultimodalTrainingConfig(model=tiny_config(), steps=1, batch_size=2, warmup_steps=0)
+            initial = train([first], root / "initial", config, device="cpu")
+            continued = train([second], root / "continued", config, device="cpu", initialize=initial)
+            payload = load_checkpoint(continued)[1]
+            self.assertEqual(len(payload["sources"]), 1)
+            self.assertEqual(len(payload["training_history"]), 2)
+            records = json.loads(first.read_text())["episodes"]
+            prior_train = [first.parent / row["path"] for row in records if row["split"] == "train"]
+            other_records = json.loads(second.read_text())["episodes"]
+            other_train = [second.parent / row["path"] for row in other_records if row["split"] == "train"]
+            reclassified = write_selection(root, {"train": other_train, "test": prior_train})
+            with self.assertRaisesRegex(ValueError, "included in training"):
+                evaluate(continued, reclassified, split="test", device="cpu")
+            with self.assertRaisesRegex(ValueError, "already learned"):
+                train([reclassified], root / "leaked", config, device="cpu", initialize=initial)
 
     def test_collected_experience_is_mixed_into_learning_and_can_resume(self) -> None:
         from intrep.problems.multimodal_agent.online import collect_and_learn

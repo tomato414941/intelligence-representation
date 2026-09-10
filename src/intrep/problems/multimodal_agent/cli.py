@@ -62,8 +62,9 @@ def evaluate(checkpoint: Path, selection: Path, *, split: str, device: str, limi
         if limit < 1:
             raise ValueError("evaluation limit must be positive")
         episodes = episodes[:limit]
-    training_ids = {name for source in payload["sources"] for name in source.get("episode_ids", [])}
-    training_worlds = {name for source in payload["sources"] for name in source.get("world_ids", [])}
+    training_history = payload.get("training_history", payload["sources"])
+    training_ids = {name for source in training_history for name in source.get("episode_ids", [])}
+    training_worlds = {name for source in training_history for name in source.get("world_ids", [])}
     if split != "train" and (training_ids.intersection(episode.id for episode in episodes)
                              or training_worlds.intersection(episode.world_id for episode in episodes)):
         raise ValueError("evaluation episodes or worlds were included in training")
