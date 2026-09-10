@@ -107,8 +107,7 @@ observations, full-history accuracy was 69.21%; the current-only control reached
 92.84%. This 23.63-point stale-history penalty triggered change training.
 
 No final stress-test result was used for those decisions. Both augmented
-variants will use one 6000-step run from seed 31, without a hyperparameter sweep.
-Final results and durable artifact hashes will be recorded after verification.
+variants used one 6000-step run from seed 31, without a hyperparameter sweep.
 
 ## Clean Replication Results
 
@@ -126,3 +125,145 @@ differences between hardware types are not excluded by this replication.
 The eight-example range is 98.63–98.86%. All three models follow the alternate
 demonstrated rule. This establishes repeatability over these three initial
 seeds with the same training rule pool; it does not test training-pool variation.
+
+## Final Stress Results
+
+Measured 2026-09-10 on 64 disjoint rule pairs, eight queries per pair:
+512 boards / 18,432 cells per condition. These are different rules from the
+original clean replication test. All five checkpoints were fixed before this
+test and use the same final rule identities, boards and corruption draws.
+
+### Stationary Rule With Noisy Observations
+
+Accuracy with eight demonstrations:
+
+| Training | 0% noise | 5% noise | 10% noise | 20% noise |
+| --- | ---: | ---: | ---: | ---: |
+| Clean, seed 31 | 98.56% | 97.56% | 95.90% | 89.45% |
+| Clean, seed 32 | 98.65% | 97.68% | 96.32% | 91.10% |
+| Clean, seed 33 | 98.60% | 98.08% | 97.08% | 93.35% |
+| Noise, seed 31 | 98.64% | 98.29% | 98.00% | 96.48% |
+| Noise + change, seed 31 | 97.03% | 96.24% | 95.33% | 90.88% |
+
+At 10% noise, noise training improves on clean seed 31 by 2.11 percentage
+points (paired rule-pair bootstrap 95% CI +1.56 to +2.67). At 20%, the improvement
+is 7.03 points (CI +5.83 to +8.40). The three clean seeds agree closely on clean
+data but differ more under corruption; clean performance alone does not certify
+robustness. Even the strongest clean seed reaches only 93.35% at 20% noise.
+
+Noise training improves probability quality at 10% corruption: Brier score
+0.0335 to 0.0169, NLL 0.1308 to 0.0654. The family-aware Bayesian baseline reaches
+99.40% accuracy, versus 63.90% for the geometry-free frequency baseline.
+The neural model remains below the baseline that explicitly knows the family
+and noise rate.
+
+On the separate original clean test, eight-example accuracy is 98.71% for noise
+training and 97.36% for noise + change training, versus the original 98.86%.
+
+### Changing Rule With 10% Observation Noise
+
+All rows use an eight-example window. Zero new-rule examples is omitted from
+this adaptation table because the change is then unobservable.
+
+| Training | 1 new example | 2 new examples | 4 new examples | 6 new examples | 8 new examples / stable |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Clean, seed 31 | 55.91% | 60.68% | 72.37% | 83.71% | 95.90% |
+| Noise, seed 31 | 53.51% | 57.30% | 73.90% | 92.13% | 98.00% |
+| Noise + change, seed 31 | 74.70% | 85.48% | 93.02% | 95.31% | 95.33% |
+| Family Bayes, recent 2 | 72.08% | 90.73% | 90.73% | 90.73% | 90.73% |
+| Family Bayes, recent 4 | 58.85% | 73.11% | 96.84% | 96.84% | 96.84% |
+
+At four new examples, change training improves on noise-only training by
+19.11 points (paired CI +16.86 to +21.51), and on original clean seed 31 by
+20.64 points (CI +18.16 to +23.34). On cells whose answers actually differ
+between the old and new rules, accuracy is 90.17%, versus 47.97% with noise-only
+training. Thus the gain is not explained by cells unaffected by the change.
+
+Reversing demonstration order reduces the change-trained model's accuracy from
+93.02% to 53.62% at this condition. The 39.39-point paired order effect
+(CI +36.19 to +42.52) supports use of chronology. Noise-only training changes
+from 73.90% to 76.29% under reversal and does not acquire the same behavior.
+
+There is a material stability tradeoff. On a stable rule with 10% noise, the
+change-trained model scores 95.33%, below noise-only training's 98.00% by
+2.67 points (paired CI -3.20 to -2.17). It adapts to changed rules more quickly
+but does not retain the best stationary evidence aggregation.
+
+### Fixed-Window Control Added During Analysis
+
+After the first final evaluation, the recent-two neural control was identified
+as using a context length absent from training. A recent-four neural control
+was therefore added and all five frozen models were reevaluated with the same
+protocol. No weights, data split, training settings or selected checkpoints
+changed. Initial result JSON files are retained separately. This additional
+control is exploratory; it was not part of the original validation triggers.
+
+All previously reported metrics were exactly unchanged in that reevaluation.
+At 10% observation noise:
+
+| Neural method | 1 new example | 2 new examples | 4 new examples | 8 new examples / stable |
+| --- | ---: | ---: | ---: | ---: |
+| Noise training, all 8 | 53.51% | 57.30% | 73.90% | 98.00% |
+| Noise training, recent 4 | 60.93% | 72.88% | 95.05% | 95.05% |
+| Noise + change training, all 8 | 74.70% | 85.48% | 93.02% | 95.33% |
+| Noise + change training, recent 4 | 77.43% | 87.98% | 88.97% | 88.97% |
+
+The full change-trained model beats the noise-trained fixed-four window early
+after the change, but loses once four new examples fill that window. Its own
+recent-four variant is also better during the first two new examples, while
+using all eight is better later and in the stable condition. Learned chronology
+helps early adaptation; these results do not show one learned policy dominating
+all fixed-window alternatives.
+Against the noise-trained recent-four control, the full change-trained model
+gains 12.59 points at two new examples (paired CI +10.83 to +14.37), loses
+2.03 points at four (CI -2.86 to -1.21), and differs by only +0.28 points in the
+stable condition (CI -0.46 to +1.00).
+
+### Interpretation And Limits
+
+These experiments support repeatable clean in-context inference, learned
+robustness to erroneous observations, and learned use of chronological evidence
+after a rule change. They do not establish an optimal change detector, a
+calibrated internal belief representation, or persistent memory. Fixed-window
+baselines remain important: even a family-aware recent-four baseline exceeds
+the change-trained model after four new examples and in stable environments.
+
+Both augmented models have only one training seed. The world family, board
+size, aligned inputs and eight-example cap remain fixed. Only outputs have
+sensor noise; missing states, noisy inputs, longer histories and unseen rule
+families are not tested. Multiple independent changes and long-term memory
+retention also remain outside this bounded experiment.
+
+## Artifacts And Verification
+
+Durable local artifacts live in `models/cellular-rule-followup-20260910/`:
+five model subdirectories with checkpoints and final evaluations;
+`stress-validation.json`, `decisions.json`, `summary.json`, `manifest.json`;
+original stress evaluations under `initial-stress-evaluation/`; RunPod timing
+and resource records; and `followup.png`, `.pdf`, `.svg`, `.csv`.
+Generated artifacts are not versioned. Regenerate the figure with:
+
+```sh
+uv run --no-project --with matplotlib python scripts/plot_cellular_rule_stress.py \
+  --artifact-dir models/cellular-rule-followup-20260910
+```
+
+Clean training implementation: commit `01c10b1`. Augmented training and initial
+stress evaluation: commit `41820bf`. The additional recent-four evaluation
+control: commit `6fc121b`. `manifest.json` records full
+checkpoint hashes and configurations. Verified all five checkpoints' hashes
+against their evaluations, the identical base-data RNG state after training,
+identical training rule pools, and disjoint final rule identities. Every final
+condition has 512 query boards / 18,432 cells.
+
+| Checkpoint | SHA256 |
+| --- | --- |
+| Clean seed 31 | `76b03efd956697b470623c8aac19c638f10e2c26d8ac5ae04fea18bdeb37ed29` |
+| Clean seed 32 | `ac81e7c34143f29fa018dde325b1c308215254b1e83b0dda6a9ea1f0a9877b66` |
+| Clean seed 33 | `e6888402307591308f06af4f19a7b728eb2b0e0a72ad72685a344c8c218deb5f` |
+| Noise seed 31 | `dd28e61b56c418990164e42f807b69b54e21c417a8fc1a7be0caa6e6d612c391` |
+| Noise + change seed 31 | `967079ae08f62eb040354e04662fc41df662699ca21db09f96dd15d806a03d12` |
+
+472 unit tests passed after the training changes. All six stress tests passed
+again after the recent-four evaluation addition. Ruff and diff checks passed;
+the plot was rendered and visually inspected. All disposable pods were deleted.

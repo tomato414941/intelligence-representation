@@ -76,3 +76,18 @@ At the [published A5000 Secure Cloud rate of $0.27/hr](https://www.runpod.io/art
 325 seconds corresponds to about $0.025 of GPU time, excluding disk charges.
 This is a sizing estimate, not an invoice. Check current pricing before future
 runs; context length and board size affect attention cost.
+
+The 2026-09-10 noise/change follow-up used A40 after A5000 had no available
+instances. With the same model and batch size, 6000-step training took
+202–269 seconds per run. Two clean replications took 611 seconds including
+transport and evaluation; two augmented training runs plus five stress
+evaluations took 625 seconds. Reevaluating the five fixed checkpoints with an
+additional recent-four control took 220 seconds. This makes a small additional
+control much cheaper than retraining.
+
+Across those three disposable jobs, elapsed time was 1456 seconds. At the
+observed A40 pod rate of $0.49/hr (also listed in the
+[published rate guide](https://www.runpod.io/articles/guides/ai-server-cost)),
+this is approximately $0.20 of GPU time, excluding disk charges, not an invoice.
+Durable timing and resource records accompany the
+[experiment artifacts](research/cellular-rule-stress.md#artifacts-and-verification).
