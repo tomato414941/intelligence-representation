@@ -47,6 +47,10 @@ data, learns a new checkpoint and repeats. Inference memory starts afresh at
 each episode boundary; replay reconstructs it from the recorded inputs under
 the current model weights.
 
+New checkpoints retain the cumulative training-source history across weight
+initialization, even when replay selections are replaced. Evaluation checks
+that history rather than treating omitted old replay episodes as unseen data.
+
 This use of replay and a separate target network follows the established
 [DQN approach](https://doi.org/10.1038/nature14236); it is not a novelty claim.
 
@@ -79,6 +83,55 @@ replay sampling, checkpoint restoration and actual actor-environment execution.
 End-to-end measurements report what the trained checkpoint can do, independently
 of whether a particular interface has been implemented.
 
+The input diagnostic replays identical held-out histories with empty text,
+blank images, silent audio, or memory reset at every observation. It measures
+the frozen model's dependence on those inputs, including the distribution
+shift from perturbation. It does not substitute for training matched models
+without a modality. Forecast measurements also include copying the previous
+image and predicting silence as simple reference predictions.
+
+```sh
+uv run python scripts/evaluate_multimodal_inputs.py \
+  --checkpoint models/multimodal-agent-20260910/cycle/round-000/learning/checkpoint.pt \
+  --selection data/multimodal-navigation-20260910/selection.json \
+  --output models/multimodal-agent-20260910/input-diagnostics.json
+```
+
+## Initial Integration Run
+
+The initial integration run uses the following fixed settings:
+
+| Item | Setting |
+| --- | --- |
+| Model | 5,095,054 parameters; d256 / h1024 / 8 heads / 6 layers |
+| Recurrent memory | 32 vectors of dimension 256 |
+| Inputs | UTF-8 text, RGB pixels, 128-sample waveform chunks, action and feedback embeddings |
+| Data | 1,024 training, 64 validation and 128 test episodes; disjoint initial layouts |
+| Recorded episode length | 6 actions |
+| Pretraining | 3,000 updates; batches of 16 whole episodes; seed 41 |
+| Joint losses | Teacher action CE, reward TD, text CE, image/audio MSE, feedback regression and flag BCE |
+| Experience cycle | 16 additional actor episodes of 8 actions; epsilon 0.15; 100 mixed-replay updates |
+| Model selection | Fixed final update, without choosing a checkpoint using test scores |
+
+All training episodes are replayed from their first observation. The control
+mode and language instruction appear initially and when changed, while their
+effects continue on subsequent steps. A mode change or target change occurs at
+the midpoint with independent probability 0.35. The train/validation/test split
+groups worlds by their dimensions, initial agent position and two marker
+positions; changing only the goal or control mode cannot cross the split.
+
+The teacher supplies one shortest-path action, with a fixed ordering to break
+ties. Reported teacher agreement therefore differs from the rate of choosing
+any optimal action. The actor reports count being on the current target at
+each step, including remaining there; this is not an episode success rate.
+
+The continued checkpoint uses the same retained 1,024 source episodes together
+with 16 newly collected episodes. Only the retained source episodes contain
+teacher actions and target-word labels. New experience contributes its executed
+actions, observed image/audio outcomes and rewards, not the evaluator's hidden
+world annotations. This run checks that collection and replay learning operate;
+a single short cycle cannot establish a general improvement from online learning.
+
 ## Commands
 
 The CLI is `python -m intrep.problems.multimodal_agent.cli`. Its subcommands are:
@@ -96,11 +149,11 @@ An inference call can use any available combination of input modalities:
 
 ```sh
 uv run python -m intrep.problems.multimodal_agent.cli infer \
-  --checkpoint models/multimodal-agent/checkpoint.pt \
+  --checkpoint models/multimodal-agent-20260910/cycle/round-000/learning/checkpoint.pt \
   --text "Find the blue marker." \
   --image observation.png --audio cue.wav --output runs/agent-turn-1
 uv run python -m intrep.problems.multimodal_agent.cli infer \
-  --checkpoint models/multimodal-agent/checkpoint.pt \
+  --checkpoint models/multimodal-agent-20260910/cycle/round-000/learning/checkpoint.pt \
   --session runs/agent-turn-1/session.pt \
   --image next-observation.png --audio result.wav \
   --previous-action 3 --feedback 0.1 0 0 --output runs/agent-turn-2
@@ -115,6 +168,6 @@ Saved actor traces can be reviewed without running a model in the browser:
 
 ```sh
 uv run python scripts/render_multimodal_replay.py \
-  --input models/multimodal-agent-results/after \
-  --output models/multimodal-agent-results/replay.html
+  --input models/multimodal-agent-20260910/after \
+  --output models/multimodal-agent-20260910/replay.html
 ```
