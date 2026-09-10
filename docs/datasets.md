@@ -27,6 +27,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | iNaturalist 2021 | image | large | candidate | A fine-grained species image dataset with many biological categories. |
 | Qhapaq computer shogi KIF records | game / shogi | 39,740 games | supported | Computer-shogi game records from Qhapaq Research Lab, downloaded as KIF archives and converted to local source-record JSONL for shogi move-choice experiments. |
 | Synthetic cellular rule episodes | binary grids / before-after examples | generated stream | experimental | Multiple outer-totalistic rules, with disjoint training/validation/test rule identities; [generation and evaluation protocol](research/cellular-rule-inference.md), [noisy outputs and chronological rule changes](research/cellular-rule-stress.md). |
+| Synthetic cellular control tasks | initial grids / independent goal grids / executed interventions | generated trials | experimental | Nine tasks per unfamiliar rule; disjoint one-flip candidate pools, only executed transitions carried forward; [control protocol](research/cellular-rule-control.md). |
 
 ## Notes
 

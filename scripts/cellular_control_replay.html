@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>経験は、次の一手に残るか。</title>
+<style>
+:root{--paper:#f6f4ed;--white:#fffefa;--ink:#24342e;--muted:#65756a;--line:#d6dbce;--green:#25685b;--amber:#cf843b;--soft:#e7ece2}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.75 "Noto Sans CJK JP",sans-serif}main{max-width:1160px;margin:auto;padding:42px 36px 64px}h1,h2,p{margin:0}h1{font:600 clamp(27px,3.2vw,43px)/1.5 "Noto Serif CJK JP",serif;letter-spacing:-.04em;margin:14px 0}h2{font-size:18px;font-weight:600}.eyebrow{font:12px/1.5 "DejaVu Sans Mono",monospace;letter-spacing:.16em;color:var(--green)}.intro{max-width:660px;color:var(--muted)}.hero{display:grid;grid-template-columns:1.6fr 1fr;gap:44px;align-items:end;padding-bottom:32px;border-bottom:1px solid var(--ink)}.summary-title{font-size:12px;color:var(--muted)}.stats{display:flex;gap:26px;margin:12px 0 8px}.stat strong{display:block;font:42px/1.1 "DejaVu Sans Mono",monospace;letter-spacing:-.07em}.stat:first-child strong{color:var(--green)}.stat span{font-size:12px}.footnote{font-size:11px;color:var(--muted)}.workbench{margin-top:28px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px}.selects{display:flex;gap:12px;flex-wrap:wrap}label{font-size:12px;color:var(--muted)}select{display:block;font:inherit;font-size:13px;border:0;border-bottom:1px solid var(--line);padding:5px 24px 5px 0;color:var(--ink);background:transparent;cursor:pointer}button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--amber);outline-offset:4px}.stepbuttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:24px 0 18px}.stepbuttons button{padding:12px 8px;background:transparent;border:0;border-bottom:2px solid var(--line);font-size:13px}.stepbuttons button[aria-pressed=true]{background:var(--soft);border-color:var(--green);color:var(--green);font-weight:700}.readout{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.readout p{font-size:14px}.readout small{display:block;color:var(--muted);font-size:12px}.arrowbuttons{display:flex;gap:8px}.arrowbuttons button{width:40px;height:38px;background:var(--white);border:1px solid var(--line);font-size:20px}.arrowbuttons button:disabled{opacity:.3;cursor:default}.boards{display:grid;grid-template-columns:repeat(4,1fr);gap:25px;padding:24px;background:var(--white);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.board-title{font-size:12px;display:flex;justify-content:space-between;gap:4px;margin-bottom:10px}.board-title span{color:var(--muted);font:11px/1.8 "DejaVu Sans Mono",monospace}.board{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;aspect-ratio:1;background:#e1e6dc;padding:3px;max-width:216px;width:100%;margin:auto}.cell{aspect-ratio:1;background:#fffefa;position:relative}.cell.on{background:var(--ink)}.cell.chosen{outline:3px solid var(--amber);outline-offset:-3px;z-index:1}.board-note{font-size:11px;color:var(--muted);min-height:2em;margin-top:8px}.decision{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:24px;padding:23px 0;align-items:start}.decision .caption{font-size:11px;color:var(--muted);display:block;margin-bottom:4px}.decision .action{font-size:17px;font-weight:600}.decision .value{font:25px/1.4 "DejaVu Sans Mono",monospace}.decision .value small{font:12px "Noto Sans CJK JP",sans-serif;letter-spacing:0}.decision .benefit{color:var(--green)}details{border-top:1px solid var(--line);padding:15px 0}summary{cursor:pointer;font-size:13px;list-style:none}summary::before{content:"＋";color:var(--green);margin-right:10px}details[open]>summary::before{content:"−"}.memory{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:20px}.memory-item{font-size:11px;color:var(--muted)}.memory-pair{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:center;margin-top:6px}.memory-pair .board{gap:1px;padding:2px}.memory-pair .cell{min-width:0}.empty{padding:16px 0;color:var(--muted);font-size:13px}.counterfactual{max-width:400px;margin:18px 0;display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}.scope{font-size:12px;color:var(--muted);max-width:850px;padding:12px 0}.aggregate{margin-top:38px}.aggregate img{width:100%;height:auto;margin-top:18px;border:1px solid var(--line)}footer{border-top:1px solid var(--ink);padding-top:17px;margin-top:38px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:20px}.legend{display:flex;gap:16px;font-size:11px;color:var(--muted);padding:10px 0}.legend i{display:inline-block;width:9px;height:9px;background:var(--ink);margin-right:5px}.legend i.action{background:transparent;outline:2px solid var(--amber)}
+@media(max-width:760px){main{padding:24px 18px 40px}.hero{grid-template-columns:1fr;gap:24px}.stats{gap:40px}.toolbar{align-items:start}.boards{grid-template-columns:repeat(2,1fr);gap:18px;padding:16px}.decision{grid-template-columns:1fr 1fr;gap:12px}.decision>div:first-child{grid-column:1/-1}.memory{grid-template-columns:repeat(2,1fr)}h1{font-size:29px}.stepbuttons{gap:3px}.stepbuttons button{font-size:11px;padding:10px 3px}footer{display:block}footer span{display:block}.selects{gap:8px}}
+@media(max-width:760px){.board-title span{display:none}}
+</style>
+<main>
+  <header class="hero">
+    <div><div class="eyebrow">OBSERVE · PREDICT · ACT</div><h1>経験は、<wbr>次の一手に残るか。</h1><p class="intro">ルールを知らないAIが、盤面を1か所変えて、次の盤面を目標に近づけます。選んだ結果を覚えて、次の課題で使います。</p></div>
+    <div><p class="summary-title">8回の経験後、最良の行動を選んだ割合</p><div class="stats"><div class="stat"><strong id="experience-rate"></strong><span>経験を使う</span></div><div class="stat"><strong id="forgetful-rate"></strong><span>毎回忘れる</span></div></div><p class="footnote" id="population"></p></div>
+  </header>
+  <section class="workbench" aria-label="行動の記録">
+    <div class="toolbar"><div><h2>次の一手を見る</h2><p class="footnote">同じルールで9つの課題を解いた記録</p></div><div class="selects"><label>モデル<select id="model-select" aria-label="モデルを選択"></select></label><label>世界<select id="world-select" aria-label="世界を選択"></select></label></div></div>
+    <div class="stepbuttons" role="group" aria-label="経験の回数"><button data-step="0" aria-pressed="true">初回・経験なし</button><button data-step="1" aria-pressed="false">1回の経験</button><button data-step="2" aria-pressed="false">4回の経験</button><button data-step="3" aria-pressed="false">8回の経験</button></div>
+    <div class="readout"><div role="status" aria-live="polite"><p id="task-caption"></p><small>開始盤面も目標も、課題ごとに変わります。</small></div><div class="arrowbuttons"><button id="previous" aria-label="前の記録">←</button><button id="next" aria-label="次の記録">→</button></div></div>
+    <div class="boards">
+      <div><div class="board-title">開始盤面<span>01 / INPUT</span></div><div class="board" id="board-start" role="img" aria-label="開始盤面"></div><p class="board-note" id="intervention-caption"></p></div>
+      <div><div class="board-title">目標<span>02 / GOAL</span></div><div class="board" id="board-goal" role="img" aria-label="目標の盤面"></div><p class="board-note">一致するセルを、できるだけ増やす</p></div>
+      <div><div class="board-title">AIの予測<span>03 / PREDICT</span></div><div class="board" id="board-predicted" role="img" aria-label="選んだ行動の後の予測盤面"></div><p class="board-note">濃いセルほど、1になると予測</p></div>
+      <div><div class="board-title">実行した結果<span>04 / OBSERVE</span></div><div class="board" id="board-observed" role="img" aria-label="実際に観測した盤面"></div><p class="board-note" id="match-caption"></p></div>
+    </div>
+    <div class="legend"><span><i></i>値が1のセル</span><span><i class="action"></i>反転するセル</span></div>
+    <div class="decision"><div><span class="caption">選んだ操作</span><span class="action" id="action-caption"></span></div><div><span class="caption">経験を使った選択・最良との差</span><span class="value benefit" id="experience-regret"></span></div><div><span class="caption">毎回忘れた場合・最良との差</span><span class="value" id="forgetful-regret"></span></div></div>
+    <details id="memory-details" open><summary id="memory-caption">今回使った経験</summary><div class="memory" id="memory"></div></details>
+    <details><summary>毎回忘れた場合の結果を見る</summary><div class="counterfactual"><div class="board" id="board-forgetful" role="img" aria-label="経験を使わず選んだ行動の結果"></div><p class="scope" id="forgetful-caption"></p></div></details>
+    <details><summary>この実験で確認すること</summary><p class="scope">この表示は実験記録の再生です。AIが学習したのは、観測例から盤面の変化を予測することです。37通りの操作を比べ、目標への近さで選ぶ部分はプログラムが行います。実験中にモデルの重みは変えず、実行して得た経験だけを持ち越します。</p><p class="scope">「最良との差」は、選べた中で最も良い操作に比べて、目標との一致が何セル少なかったかを表します。0なら最良の選択です。すべての操作が同点の課題は、全体の成績から除いています。目標への完全一致が可能とは限りません。</p><p class="scope">表示する世界は評価順の最初の4つ、記録はそれぞれの最初の連続試行です。結果の良し悪しで選んだ例ではありません。</p><p class="scope" id="model-provenance"></p></details>
+  </section>
+  <section class="aggregate" id="aggregate" hidden><h2>全体の結果</h2><p class="footnote">横軸は実行して得た経験の数。左は最良との差、右は最良の行動を選んだ割合です。</p><img id="result-figure" alt="経験の回数に対する行動の改善と比較条件のグラフ"></section>
+  <footer><span>INTELLIGENCE REPRESENTATION · 行動と経験の実験</span><span>予測に使える理解を、次の判断へ。</span></footer>
+</main>
+<script id="control-data" type="application/json">__CONTROL_DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('control-data').textContent);
+const steps = [0,1,4,8];
+let selectedModel = 0, selectedWorld = 0, step = 0;
+const $ = id => document.getElementById(id);
+const modelSelect = $('model-select'), worldSelect = $('world-select');
+DATA.models.forEach((model,index) => modelSelect.add(new Option(model.name, index)));
+function populateWorlds(){
+  worldSelect.replaceChildren();
+  DATA.models[selectedModel].worlds.forEach((world,index) => worldSelect.add(new Option(`世界 ${index+1}`,index)));
+  selectedWorld = Math.min(selectedWorld,worldSelect.options.length-1);
+  worldSelect.value = selectedWorld;
+}
+function actionText(action){return action===0?'セルを変えずに待つ':`${Math.floor((action-1)/6)+1}行 ${((action-1)%6)+1}列のセルを反転`;}
+function paint(element,values,action=0,probability=false){
+  element.replaceChildren();
+  values.flat().forEach((value,index)=>{
+    const cell=document.createElement('span'); cell.className='cell';
+    if(probability){cell.style.backgroundColor=`rgb(${Math.round(255-219*value)},${Math.round(254-202*value)},${Math.round(250-204*value)})`;cell.title=`1になる確率 ${(value*100).toFixed(1)}%`;}
+    else if(value===1){cell.classList.add('on');}
+    if(action===index+1)cell.classList.add('chosen');
+    element.append(cell);
+  });
+}
+function render(){
+  const model=DATA.models[selectedModel], world=model.worlds[selectedWorld], turn=steps[step], trace=world.steps[turn];
+  $('experience-rate').textContent=(100*model.experience_rate).toFixed(1)+'%';
+  $('forgetful-rate').textContent=(100*model.forgetful_rate).toFixed(1)+'%';
+  $('population').textContent=`${model.world_count}世界 × ${model.trials}回の連続試行。同じ課題で比較。`;
+  $('task-caption').textContent=`課題 ${turn+1} / 9　·　使う経験 ${trace.context_count}件`;
+  paint($('board-start'),trace.board,trace.experience_action);
+  paint($('board-goal'),trace.goal);
+  paint($('board-predicted'),trace.predicted_probability,0,true);
+  paint($('board-observed'),trace.observed);
+  paint($('board-forgetful'),trace.forgetful_observed);
+  const best=Math.max(...trace.action_scores), actual=trace.action_scores[trace.experience_action], forgotten=trace.action_scores[trace.forgetful_action];
+  $('action-caption').textContent=actionText(trace.experience_action);
+  $('intervention-caption').textContent=trace.experience_action===0?'セルを変えずに、世界が1回進む':'枠のセルを反転してから、世界が1回進む';
+  $('match-caption').textContent=`目標との一致 ${actual} / 36セル（選べた最良は${best}セル）`;
+  $('experience-regret').innerHTML=`${best-actual} <small>セル</small>`;
+  $('forgetful-regret').innerHTML=`${best-forgotten} <small>セル</small>`;
+  $('forgetful-caption').textContent=`${actionText(trace.forgetful_action)}。目標と${forgotten}セル一致します。こちらの操作は実行せず、比較のために結果を計算しています。`;
+  $('memory-caption').textContent=`今回使った経験（${trace.context_count}件）`;
+  const memory=$('memory');memory.replaceChildren();
+  if(trace.used_experience_rounds.length===0){const empty=document.createElement('p');empty.className='empty';empty.textContent='まだ、この世界での経験はありません。';memory.append(empty);}
+  for(const prior of trace.used_experience_rounds){
+    const past=world.steps[prior], item=document.createElement('div');item.className='memory-item';
+    const caption=document.createElement('p');caption.textContent=`課題 ${prior+1} で観測した変化`;
+    const pair=document.createElement('div');pair.className='memory-pair';
+    const before=document.createElement('div'),after=document.createElement('div');before.className=after.className='board';
+    before.setAttribute('role','img');before.setAttribute('aria-label',`課題${prior+1}、操作直後の盤面`);
+    after.setAttribute('role','img');after.setAttribute('aria-label',`課題${prior+1}、世界が進んだ結果`);
+    const arrow=document.createElement('span');arrow.textContent='→';
+    paint(before,past.intervened_board);paint(after,past.observed);
+    pair.append(before,arrow,after);item.append(caption,pair);memory.append(item);
+  }
+  document.querySelectorAll('[data-step]').forEach(button=>button.setAttribute('aria-pressed',Number(button.dataset.step)===step?'true':'false'));
+  $('previous').disabled=step===0;$('next').disabled=step===steps.length-1;
+}
+modelSelect.addEventListener('change',()=>{selectedModel=Number(modelSelect.value);populateWorlds();render();});
+worldSelect.addEventListener('change',()=>{selectedWorld=Number(worldSelect.value);render();});
+document.querySelectorAll('[data-step]').forEach(button=>button.addEventListener('click',()=>{step=Number(button.dataset.step);render();}));
+$('previous').addEventListener('click',()=>{step=Math.max(0,step-1);render();});
+$('next').addEventListener('click',()=>{step=Math.min(steps.length-1,step+1);render();});
+if(DATA.figure){$('aggregate').hidden=false;$('result-figure').src=DATA.figure;}
+$('model-provenance').textContent='モデルとグラフの対応：'+DATA.models.map(model=>`${model.name} = seed ${model.seed}`).join('、')+'。学習時の乱数が異なり、評価する世界と課題は共通です。';
+populateWorlds();render();
+</script>
+</html>

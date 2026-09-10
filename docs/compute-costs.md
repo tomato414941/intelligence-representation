@@ -91,3 +91,11 @@ observed A40 pod rate of $0.49/hr (also listed in the
 this is approximately $0.20 of GPU time, excluding disk charges, not an invoice.
 Durable timing and resource records accompany the
 [experiment artifacts](research/cellular-rule-stress.md#artifacts-and-verification).
+
+The subsequent fixed-checkpoint control evaluation used A40 for three models,
+each with 64 worlds, four nine-task trials per world and 37 action candidates.
+Including empty-context and wrong-context decision controls, the workload
+evaluated 710,400 model queries in 142 seconds. Total disposable-job time was
+189 seconds, or about $0.026 of GPU time at the published $0.49/hr rate above,
+excluding disk charges. No training was required. Timing and resource records
+are retained with the [control results](research/cellular-rule-control.md).

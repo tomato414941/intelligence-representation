@@ -136,3 +136,101 @@ OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 uv run python \
 For RunPod use the existing disposable command runner and setup procedure in
 [RunPod](../runpod.md). Retain needed evaluation JSON and traces outside `runs/`.
 Checkpoints remain in their existing durable model directories.
+
+## Results (2026-09-10)
+
+Protocol and implementation were committed as `9dfe0ed` before the final
+evaluation. All three existing clean checkpoints completed the same 64-world,
+four-trial protocol. Each model executed 2304 tasks; 256 tasks occur at each
+round. At the primary endpoint, one task had identical utilities for all
+actions, leaving 255 decision tasks. Training weights were unchanged.
+
+### Optimal Action Selection
+
+| Previously executed tasks | Seed 31 | Seed 32 | Seed 33 |
+| ---: | ---: | ---: | ---: |
+| 0 | 14.84% | 8.20% | 16.02% |
+| 1 | 56.64% | 57.81% | 60.94% |
+| 4 | 89.06% | 89.84% | 90.62% |
+| 8 | 91.76% | 94.12% | 93.33% |
+
+Different rows contain different tasks. The paired evidence is the comparison
+with controls on the same final tasks:
+
+| On the ninth task | Seed 31 | Seed 32 | Seed 33 |
+| --- | ---: | ---: | ---: |
+| Experience: optimal action | 91.76% | 94.12% | 93.33% |
+| Forgetful: optimal action | 13.73% | 7.06% | 13.33% |
+| Wrong context: optimal action | 10.59% | 9.80% | 9.41% |
+| Known-family baseline: optimal action | 98.82% | 98.82% | 98.82% |
+| Random action: expected optimal rate | 5.99% | 5.99% | 5.99% |
+| Experience: mean regret, cells | 0.090 | 0.067 | 0.094 |
+| Forgetful: mean regret, cells | 2.804 | 3.231 | 2.882 |
+
+The primary paired regret reduction against forgetting was:
+
+- Seed 31: **2.714 cells**, 95% rule-pair bootstrap interval **[2.398, 3.059]**.
+- Seed 32: **3.165 cells**, interval **[2.824, 3.510]**.
+- Seed 33: **2.788 cells**, interval **[2.463, 3.135]**.
+
+These intervals resample evaluation worlds, not training runs. The model seeds
+are separate replications. They share task inputs but can accumulate different
+executed histories because their actions differ.
+
+### Interpretation
+
+The existing predictions are useful for decisions: a frozen Transformer can
+use its own previous executed transitions to select a near-best intervention
+on a new board with a new goal. Empty and wrong-world contexts remove most of
+that advantage. This extends the earlier prediction-accuracy result to measured
+control performance under an explicit one-step planner.
+
+The known-family baseline remains stronger: it has 98.82% optimal action rate
+and 0.012-cell mean regret after eight experiences. The learned model is not
+shown to be a better inference algorithm than this privileged reference.
+Experience is useful within the trained cellular rule family; the result does
+not establish transfer between different kinds of problems or long-horizon
+planning. The choice to collect an observation is not learned or optimized for
+information gain.
+
+## Artifacts And Verification
+
+Durable outputs are in `models/cellular-control-20260910/`:
+
+- `clean-seed31.json`, `clean-seed32.json`, `clean-seed33.json`: metrics,
+  bootstrap intervals, rule identities and recorded action traces.
+- `pilot.json`: the engineering pilot, excluded from the final worlds.
+- `manifest.json`: checkpoint references, hashes and evaluation provenance.
+- `control.png`, `.pdf`, `.svg`, `.csv`: scientific figure and plotted values.
+- `replay.html`: self-contained interactive replay, with no model execution or
+  network dependency in the browser.
+- `runpod_timings.json` and resource records: the completed A40 evaluation job.
+
+The existing checkpoints remain in
+`models/cellular-rule-followup-20260910/clean-seed{31,32,33}/checkpoint.pt`.
+All checkpoint hashes matched the evaluation records. All three evaluations
+have identical task hashes and identical held-out rule identities. Every final
+rule identity is disjoint from training and all declared earlier evaluations.
+
+Seven new tests check intervention semantics, disjoint candidate pools,
+probability-based action choice, inference-batch alignment, executed-only
+experience, resistance to static scoring gains, frozen reproducibility and
+identity exclusions. The full suite passed **479 tests**. Python lint passed.
+The replay was checked in a browser at desktop and mobile widths, including
+experience selection, model/world switching and browser errors.
+
+The disposable A40 job completed in 189 seconds, with 142 seconds in the
+evaluation workload. Its pod was deleted after outputs were retrieved.
+
+Rebuild the displays from the retained measurements:
+
+```sh
+uv run --no-project --with matplotlib python scripts/plot_cellular_rule_control.py \
+  --artifact-dir models/cellular-control-20260910
+uv run python scripts/render_cellular_control_replay.py \
+  models/cellular-control-20260910/clean-seed31.json \
+  models/cellular-control-20260910/clean-seed32.json \
+  models/cellular-control-20260910/clean-seed33.json \
+  --figure models/cellular-control-20260910/control.png \
+  --output models/cellular-control-20260910/replay.html
+```
