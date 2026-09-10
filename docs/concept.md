@@ -7,6 +7,7 @@
 
 詳細は次の文書に置く。
 
+- [Multimodal Predictive Agent](multimodal-agent.md)
 - [Predictive Representation System](predictive-representation-system.md)
 - [Glossary](glossary.md)
 - [Model Boundaries](model-boundaries.md)

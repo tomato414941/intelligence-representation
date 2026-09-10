@@ -47,6 +47,7 @@ docs/
 Read these first:
 
 - [Concept](docs/concept.md)
+- [Multimodal Predictive Agent](docs/multimodal-agent.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Boundaries](docs/model-boundaries.md)
 - [Learning Data Boundaries](docs/learning-data-boundaries.md)

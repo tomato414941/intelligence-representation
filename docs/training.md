@@ -112,6 +112,31 @@ uv run python -m intrep.train_image_text_answer \
 
 ## Checkpoint Initialization
 
+The integrated [Multimodal Predictive Agent](multimodal-agent.md) has a separate
+CLI for source preparation, joint training, evaluation, streaming inference and
+interaction/replay cycles:
+
+```sh
+uv run python -m intrep.problems.multimodal_agent.cli prepare \
+  --output data/multimodal-navigation
+uv run python -m intrep.problems.multimodal_agent.cli train \
+  --selection data/multimodal-navigation/selection.json \
+  --output models/multimodal-agent --device cuda
+uv run python -m intrep.problems.multimodal_agent.cli cycle \
+  --checkpoint models/multimodal-agent/checkpoint.pt \
+  --selection data/multimodal-navigation/selection.json \
+  --output models/multimodal-agent-cycle --device cuda
+```
+
+The cycle saves its executed episodes and explicit selection alongside the
+resulting checkpoint. It retains the selected earlier data in replay. Use
+`--resume` for an exact continuation with unchanged selections and settings,
+or `--initialize` for a new learning run from an existing model. Inference
+memory snapshots are bound to their checkpoint, separately from training
+checkpoints and replay records.
+
+## Image/Text Checkpoint Initialization
+
 Image/text training commands accept `--init-checkpoint-path` for compatible
 checkpoints. Checkpoint initialization loads compatible model weights
 independent of the source task name.

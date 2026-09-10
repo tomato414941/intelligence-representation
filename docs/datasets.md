@@ -28,6 +28,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | Qhapaq computer shogi KIF records | game / shogi | 39,740 games | supported | Computer-shogi game records from Qhapaq Research Lab, downloaded as KIF archives and converted to local source-record JSONL for shogi move-choice experiments. |
 | Synthetic cellular rule episodes | binary grids / before-after examples | generated stream | experimental | Multiple outer-totalistic rules, with disjoint training/validation/test rule identities; [generation and evaluation protocol](research/cellular-rule-inference.md), [noisy outputs and chronological rule changes](research/cellular-rule-stress.md). |
 | Synthetic cellular control tasks | initial grids / independent goal grids / executed interventions | generated trials | experimental | Nine tasks per unfamiliar rule; disjoint one-flip candidate pools, only executed transitions carried forward; [control protocol](research/cellular-rule-control.md). |
+| Multimodal navigation episodes | text / RGB images / PCM audio / actions / feedback | generated episodes | experimental | Text identifies a target, sound identifies control mode, and images show the world; recurrent memory connects successive observations. Native PNG/WAV media, explicit episode/world splits and replay selections; [integrated agent](multimodal-agent.md). |
 
 ## Notes
 
