@@ -110,7 +110,8 @@ ninety strict language probes retain their original exact-match scoring.
 
 BoolQ has no identical question/passage pair across its official train/development
 splits, but 720 distinct passages occur in both. Results must distinguish new
-passages from new questions about passages appearing in training. Likewise,
+passages from new questions about passages appearing in the training population,
+and separately identify passages actually consumed during each condition. Likewise,
 image test splits already used for development are not untouched final tests.
 Shogi agreement is not playing strength; recorded native action accuracy is not
 successful interaction. No new environment rollouts are collected in this run.

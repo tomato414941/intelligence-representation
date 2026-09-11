@@ -78,7 +78,7 @@ def language_scores(report):
     return result
 
 
-def summarize_report(report, training_passages):
+def summarize_report(report, training_passages, consumed_passages=None):
     report = copy.deepcopy(report)
     # Keep punctuation/case exact for explicit text copying and the 90 strict
     # language probes. Class/yes-no answers also get a narrowly normalized score.
@@ -100,14 +100,18 @@ def summarize_report(report, training_passages):
         item = {"original": averages([row for row in rows if row["form"] == "original"]),
                 "forms": forms, "paired_answers": paired_answers(rows)}
         if name == "boolq":
-            item["passage_cohorts"] = {}
-            for seen in (False, True):
-                selected = [row for row in rows if (row["group"] in training_passages) == seen]
-                item["passage_cohorts"]["seen_training_passage" if seen else "new_passage"] = {
-                    "distinct_passages": len({row["group"] for row in selected}),
-                    "original": averages([row for row in selected if row["form"] == "original"]),
-                    "paired_answers": paired_answers(selected),
-                }
+            cohorts = [("passage_cohorts", training_passages, ("new_passage", "passage_in_training_population"))]
+            if consumed_passages is not None:
+                cohorts.append(("consumption_cohorts", consumed_passages, ("not_read_during_training", "read_during_training")))
+            for field, known, labels in cohorts:
+                item[field] = {}
+                for seen in (False, True):
+                    selected = [row for row in rows if (row["group"] in known) == seen]
+                    item[field][labels[seen]] = {
+                        "distinct_passages": len({row["group"] for row in selected}),
+                        "original": averages([row for row in selected if row["form"] == "original"]),
+                        "paired_answers": paired_answers(selected),
+                    }
         omitted = report.get("question_without_observations", {}).get(name, {}).get("rows", [])
         if omitted:
             complete = {row["key"]: row for row in rows}
@@ -281,7 +285,8 @@ def main():
     parser.add_argument("--data-root", type=Path, default=Path("."))
     args = parser.parse_args()
     train = args.data_root / "data/question-learning-20260911/boolq/train.jsonl"
-    passages = {hashlib.sha256(json.loads(line)["passage"].encode()).hexdigest() for line in train.read_text().splitlines()}
+    passage_sequence = [hashlib.sha256(json.loads(line)["passage"].encode()).hexdigest() for line in train.read_text().splitlines()]
+    passages = set(passage_sequence)
     conditions, curves, panel, initial_hash = {}, {}, None, None
     for mode in ("fixed", "varied"):
         root = args.root / mode
@@ -292,7 +297,13 @@ def main():
         panel, initial_hash = current_panel, result["initial_parameters_sha256"]
         reports = [read_json(path) for path in sorted((root / "evaluation").glob("step-*.json"))]
         curves[mode] = reports
-        item = {"before": summarize_report(reports[0], passages), "after": summarize_report(reports[-1], passages),
+        # BoolQ traverses complete records in file order, one per update. A
+        # passage in the available population has not necessarily been read.
+        boolq_records = result["source_progress"]["boolq"]["reader"]["records"]
+        if boolq_records != result["completed_steps"]:
+            raise ValueError("BoolQ exposure differs from its one-record-per-update schedule")
+        consumed_passages = set(passage_sequence[:boolq_records])
+        item = {"before": summarize_report(reports[0], passages, consumed_passages), "after": summarize_report(reports[-1], passages, consumed_passages),
                 "completed_steps": result["completed_steps"], "training_seconds": result["training_seconds"],
                 "trainable_parameters": result["trainable_parameters"], "cuda_peak_allocated_mib": result["cuda_peak_allocated_mib"],
                 "source_progress": result["source_progress"], "consumed_records": {
