@@ -10,6 +10,9 @@ prioritizes recent work and reusable capabilities. The earlier
 [literature and implementation comparison](research/language-training-literature-20260911.md)
 remains background.
 
+The [CPU model review](research/cpu-language-models-20260911.md) distinguishes
+CPU fine-tuning from inference and evaluates pretrained shared-core candidates.
+
 ## Research Used In The Implementation
 
 | Primary source | Method applied here | Boundary of the evidence |
