@@ -208,3 +208,42 @@ records narrow improvements and substantial instruction-response deterioration.
 Timing and resource samples accompany the durable
 `models/question-learning-20260911/` artifacts. Full generated-answer evaluation
 and checkpoint retrieval are material overheads when planning another run.
+
+## Instruction Retention And Remote Checkpoint Storage
+
+The 2026-09-11 three-condition retention pilot used one A40 at the observed
+$0.49/hour rate, one LFM2.5-350M body, 358.23M trainable attached parameters,
+FP32 AdamW at `1e-5` and four Torch CPU threads. Each condition ran 300 joint
+updates with all twelve sources. Assistant supervision retained up to 2,048
+conversation tokens with 1,024-token overlap; other source batch sizes matched
+the twelve-source comparison above.
+
+| Conversation condition | Updates | Measured training time | Seconds/update | Peak Torch CUDA allocation |
+| --- | ---: | ---: | ---: | ---: |
+| 128-token all-role stream | 300 | 275.9 s | 0.920 | 7,956 MiB |
+| Assistant targets with context | 300 | 286.9 s | 0.956 | 11,713 MiB |
+| Assistant targets, source weight 8 | 300 | 288.2 s | 0.961 | 11,713 MiB |
+
+The optimizer-update time totals 851.0 seconds; it excludes full generated-answer
+evaluation, checkpoint serialization, CPU restoration and storage transfer.
+Each full AdamW checkpoint is about 4.3 GB. The job uploads it to project R2
+storage and downloads the object for byte comparison before starting the next
+condition. This sequence keeps the GPU allocated during storage work, so
+training time alone substantially understates its cost.
+
+The complete disposable job took 3,539.5 seconds (58m59s), including
+provisioning, input transfer, evaluation, CPU verification, R2 upload/readback,
+result retrieval and pod deletion. At the observed rate this is about $0.482
+of GPU time, excluding disk charges, not an invoice. Peak externally sampled
+GPU memory was 15,167 MiB; mean GPU utilization was 27.0% over the monitored
+remote workload, including storage waits. Future budgets should account for
+this storage overhead as well as the 14m11s spent in optimizer updates.
+
+Three checkpoints occupy about 12.9 GB. At the
+[published R2 Standard rate of $0.015/GB-month](https://developers.cloudflare.com/r2/pricing/),
+keeping them for a full month is about $0.20 before account-level free allowances
+and request charges. This is a storage estimate, not an invoice; check current
+rates and existing account usage when planning retention. The
+[comparison report](instruction-retention-evaluation.md) and its durable
+`reports/instruction-retention-20260911/` artifacts contain model-quality,
+environment, archive and timing records.

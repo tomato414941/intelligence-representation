@@ -6,6 +6,9 @@ whether preserving conversation context and supervising assistant answers,
 then increasing their loss weight, limits that decline while the other tasks
 continue to learn. It does not assume that either change will solve forgetting.
 
+The [completed comparison](instruction-retention-evaluation.md) reports the
+300-update results, paired retention counts, task tradeoffs and verified archives.
+
 ## Prespecified comparison
 
 All conditions start from the same pinned LFM2.5-350M checkpoint, with the same

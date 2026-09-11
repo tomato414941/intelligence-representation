@@ -21,7 +21,9 @@ The [instruction retention pilot](instruction-retention.md) compares that
 conversation objective with assistant-only supervision over longer context,
 then increases its source loss weight. All conditions retain one trainable
 body and the same twelve sources, with frequent development generation probes
-and a separate fresh prompt group.
+and a separate fresh prompt group. The [completed results](instruction-retention-evaluation.md)
+show that neither change preserved instruction responses in this short run;
+fresh extraction gains coexist with substantial loss of previously correct answers.
 
 ## The Learning Contract
 
