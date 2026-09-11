@@ -1,7 +1,9 @@
 # Recent Language, World And Action Research
 
 Research window: **2026-03-11 through 2026-09-11**, checked on 2026-09-11.
-This is the primary shortlist for deciding the next project direction. The
+The [broader shared-learning review](shared-learning-design-space-20260911.md)
+is now the entry point for deciding the next project direction, including
+architecture, CPU adaptation, memory and evaluation. The
 [earlier review](language-training-literature-20260911.md) supplies historical
 background and implementation comparisons, not a current-frontier shortlist.
 

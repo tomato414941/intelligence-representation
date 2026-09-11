@@ -5,8 +5,10 @@ model training methods to the existing multimodal core. It does not load a
 pretrained language model. Language and native tasks still update the same
 5,095,054 parameters.
 
-The current [six-month research review](research/recent-language-world-action-20260911.md)
-prioritizes recent work and reusable capabilities. The earlier
+The current [shared-learning design review](research/shared-learning-design-space-20260911.md)
+compares reusable models, architectures, adaptation, memory and evaluation.
+The [six-month language/world/action review](research/recent-language-world-action-20260911.md)
+provides a narrower source comparison. The earlier
 [literature and implementation comparison](research/language-training-literature-20260911.md)
 remains background.
 
