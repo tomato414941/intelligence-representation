@@ -52,6 +52,22 @@ class LanguageAgentModel(MultimodalAgentModel):
             raise ValueError('conversation batch must not be empty')
         return torch.stack([self.answer_loss(row.prompt(), row.answer) for row in examples]).mean()
 
+    def pretraining_loss(self, blocks: torch.Tensor) -> torch.Tensor:
+        if blocks.ndim != 2 or min(blocks.shape) < 1:
+            raise ValueError('pretraining requires a nonempty batch of token blocks')
+        memory = self.new_memory(len(blocks))
+        logits = self.text_logits(memory, blocks[:, :-1].tolist())
+        return F.cross_entropy(torch.cat(logits), blocks.to(memory.device).flatten())
+
+    def _answer_prefix(self, prompt: list[int], answer: list[int]) -> list[int]:
+        start = len(answer) // self.context_bytes * self.context_bytes
+        return (prompt + answer[:start])[-self.context_bytes:] + answer[start:]
+
+    @torch.no_grad()
+    def complete(self, prefix: str, *, max_new_tokens: int = 256) -> str:
+        return self._generate(ByteTokenizer().encode(prefix)[-self.context_bytes:],
+                              self.new_memory(), max_new_tokens=max_new_tokens)
+
     @torch.no_grad()
     def chat(self, messages: Sequence[dict[str, str]], *, memory: torch.Tensor | None = None,
              max_new_tokens: int = 256) -> str:
@@ -59,10 +75,15 @@ class LanguageAgentModel(MultimodalAgentModel):
             raise ValueError('generation budget must be positive')
         prompt = self.prompt_ids(messages)
         memory = self.conversation_memory(prompt, memory)
+        return self._generate(prompt, memory, max_new_tokens=max_new_tokens)
+
+    def _generate(self, prompt: list[int], memory: torch.Tensor, *, max_new_tokens: int) -> str:
+        if max_new_tokens < 1:
+            raise ValueError('generation budget must be positive')
         answer = []
         pending, lower, upper = 0, 0x80, 0xBF
         for index in range(max_new_tokens):
-            scores = self.text_logits(memory, [(prompt + answer)[-self.context_bytes:]])[0][-1]
+            scores = self.text_logits(memory, [self._answer_prefix(prompt, answer)])[0][-1]
             logits = torch.full_like(scores, float('-inf'))
             if pending:
                 logits[lower:upper + 1] = scores[lower:upper + 1]

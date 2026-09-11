@@ -139,6 +139,35 @@ class LanguageAgentTests(unittest.TestCase):
         self.assertEqual(three.encode('utf-8'), bytes([0xED, 0x80, 0xA0]))
 
 
+    def test_training_and_generation_prefix_match_across_context_boundaries(self):
+        model = tiny_model().eval()
+        model.context_bytes = 3
+        prompt = model.prompt_ids([{'role': 'user', 'content': 'hi'}])
+        target = list(b'abcdefgh')
+        memory = model.conversation_memory(prompt)
+        for start in range(0, len(target), 3):
+            labels = target[start:start + 3]
+            prefix = (prompt + target[:start])[-3:]
+            logits = model.text_logits(memory, [prefix + labels[:-1]])[0][len(prefix):]
+            for offset in range(len(labels)):
+                generated_prefix = model._answer_prefix(prompt, target[:start + offset])
+                actual = model.text_logits(memory, [generated_prefix])[0][-1]
+                torch.testing.assert_close(actual, logits[offset], rtol=1e-5, atol=1e-6)
+
+    def test_pretraining_shift_causality_and_shared_core(self):
+        model = tiny_model()
+        blocks = torch.tensor([list(b'abcdef'), list(b'ghijkl')])
+        with patch.object(model, 'observe', side_effect=AssertionError('targets must not enter memory')):
+            loss = model.pretraining_loss(blocks)
+        loss.backward()
+        self.assertGreater(float(model.core.layers[0].attention.in_proj_weight.grad.abs().sum()), 0)
+        logits = model.text_logits(model.new_memory(2), blocks[:, :-1].tolist())
+        expected = torch.nn.functional.cross_entropy(torch.cat(logits), blocks.flatten())
+        torch.testing.assert_close(loss, expected)
+        changed = model.text_logits(model.new_memory(2), [[97, 98, 99, 0, 0], list(b'ghijk')])
+        torch.testing.assert_close(logits[0][:4], changed[0][:4])
+
+
 class ConversationSourceTests(unittest.TestCase):
     def test_tree_split_rejects_related_conversations(self):
         messages = (ChatMessage('user', 'hi'), ChatMessage('assistant', 'hello'))
@@ -176,11 +205,22 @@ class LanguageTrainingTests(unittest.TestCase):
                                                          'messages': [{'role': 'user', 'content': 'hi'},
                                                                       {'role': 'assistant', 'content': 'hello'}]}) + '\n'
                                              for index in (1, 2)))
-            config = LanguageTrainingConfig(steps=2, batch_size=2)
+            import hashlib
+
+            import numpy as np
+            corpus = root / 'corpus'
+            corpus.mkdir()
+            np.savez(corpus / 'tokens.npz', train=np.array([*b'abcdefghij'] * 3), validation=np.array([*b'klmnopqr']))
+            (corpus / 'provenance.json').write_text(json.dumps({
+                'token_sha256': hashlib.sha256((corpus / 'tokens.npz').read_bytes()).hexdigest(),
+                'train': {'document_hashes': ['train'], 'tokens': 30},
+                'validation': {'document_hashes': ['validation'], 'tokens': 8}}))
+            config = LanguageTrainingConfig(steps=2, batch_size=2, text_batch_size=2, text_block_bytes=4,
+                                            warmup_steps=1, decay_steps=5, beta2=0.95)
             with patch('intrep.problems.language_agent.training.read_native_base', return_value=tiny_native_base()):
-                full = train([selection], conversations, root / 'full', config, native_checkpoint=root / 'native.pt')
-                train([selection], conversations, root / 'resumed', dataclasses.replace(config, steps=1), native_checkpoint=root / 'native.pt')
-                resumed = train([selection], conversations, root / 'resumed', config, resume=True)
+                full = train([selection], conversations, root / 'full', config, native_checkpoint=root / 'native.pt', corpus=corpus)
+                train([selection], conversations, root / 'resumed', dataclasses.replace(config, steps=1), native_checkpoint=root / 'native.pt', corpus=corpus)
+                resumed = train([selection], conversations, root / 'resumed', config, resume=True, corpus=corpus)
             expected = torch.load(full, weights_only=True)
             actual = torch.load(resumed, weights_only=True)
             self.assertEqual(expected['step'], 2)

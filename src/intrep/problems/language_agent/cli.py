@@ -50,6 +50,7 @@ def main():
         if command in ('train', 'cycle'):
             sub.add_argument('--selection', type=Path, action='append', required=True)
             sub.add_argument('--conversations', type=Path, required=True)
+            sub.add_argument('--corpus', type=Path)
             sub.add_argument('--steps', type=int, default=300)
             sub.add_argument('--batch-size', type=int, default=2)
         if command == 'evaluate':
@@ -74,7 +75,7 @@ def main():
                                         learning_rate=args.learning_rate)
         print(train(args.selection, args.conversations, args.output, config,
                     device=args.device, initialize=args.initialize, resume=args.resume,
-                    native_checkpoint=args.native_checkpoint))
+                    native_checkpoint=args.native_checkpoint, corpus=args.corpus))
         return
     model, payload = load_checkpoint(args.checkpoint, device=args.device)
     identity = checkpoint_identity(args.checkpoint)
@@ -133,7 +134,7 @@ def main():
         if args.device == 'cuda':
             torch.cuda.empty_cache()
         print(train([*args.selection, selection], args.conversations, args.output / 'learning',
-                    config, device=args.device, initialize=args.checkpoint))
+                    config, device=args.device, initialize=args.checkpoint, corpus=args.corpus))
     else:
         print(selection)
 
