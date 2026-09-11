@@ -15,6 +15,7 @@ from intrep.core.training_utils import build_adamw, resolve_training_device
 from intrep.experience.multimodal.records import MultimodalEpisode, selected_episodes
 from intrep.learning.replay_buffer import ReplayBuffer
 from intrep.representation.assemblies.multimodal_agent import (
+    MultimodalAgentBase,
     MultimodalAgentConfig,
     MultimodalAgentModel,
 )
@@ -51,7 +52,7 @@ class MultimodalTrainingConfig:
 
 
 @torch.no_grad()
-def target_values(model: MultimodalAgentModel, episodes: Sequence[MultimodalEpisode]) -> list[list[torch.Tensor]]:
+def target_values(model: MultimodalAgentBase, episodes: Sequence[MultimodalEpisode]) -> list[list[torch.Tensor]]:
     memory = model.new_memory(len(episodes))
     result: list[list[torch.Tensor]] = [[] for _ in episodes]
     for step in range(max(len(episode.observations) for episode in episodes)):
@@ -66,14 +67,17 @@ def target_values(model: MultimodalAgentModel, episodes: Sequence[MultimodalEpis
 
 
 def episode_loss(
-    model: MultimodalAgentModel, episodes: Sequence[MultimodalEpisode], config: MultimodalTrainingConfig,
-    *, target_model: MultimodalAgentModel | None = None,
+    model: MultimodalAgentBase, episodes: Sequence[MultimodalEpisode], config: MultimodalTrainingConfig,
+    *, target_model: MultimodalAgentBase | None = None,
+    bootstrap_values: list[list[torch.Tensor]] | None = None,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     if not episodes:
         raise ValueError("training batch must contain episodes")
     for episode in episodes:
         episode.validate()
-    targets = target_values(target_model, episodes) if target_model is not None else None
+    if target_model is not None and bootstrap_values is not None:
+        raise ValueError("choose either a target model or precomputed bootstrap values")
+    targets = target_values(target_model, episodes) if target_model is not None else bootstrap_values
     memory = model.new_memory(len(episodes))
     device = memory.device
     components: dict[str, list[torch.Tensor]] = {key: [] for key in ("teacher", "value", "text", "image", "audio", "feedback")}

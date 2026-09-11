@@ -14,7 +14,7 @@ from intrep.experience.multimodal.records import (
     write_image,
 )
 from intrep.representation.assemblies.multimodal_agent import (
-    MultimodalAgentModel,
+    MultimodalAgentBase,
     PredictedOutcome,
 )
 from intrep.representation.inputs.multimodal_observation import MultimodalObservation
@@ -36,7 +36,7 @@ class AgentDecision:
 class AgentSession:
     """Streaming inference memory is independent of training replay storage."""
 
-    def __init__(self, model: MultimodalAgentModel, *, checkpoint_id: str, seed: int = 0) -> None:
+    def __init__(self, model: MultimodalAgentBase, *, checkpoint_id: str, seed: int = 0) -> None:
         self.model = model.eval()
         self.checkpoint_id = checkpoint_id
         self.generator = torch.Generator().manual_seed(seed)
@@ -106,7 +106,7 @@ def save_decision(directory: Path, decision: AgentDecision, *, sample_rate: int)
 
 @torch.no_grad()
 def rollout(
-    model: MultimodalAgentModel, *, checkpoint_id: str, seed: int, source_root: Path | None = None,
+    model: MultimodalAgentBase, *, checkpoint_id: str, seed: int, source_root: Path | None = None,
     display_root: Path | None = None, horizon: int = 8, epsilon: float = 0.0,
 ) -> tuple[MultimodalEpisode, dict]:
     if model.config.action_count != len(GRID_ACTIONS):

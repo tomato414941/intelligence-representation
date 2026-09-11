@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -47,17 +48,17 @@ class PredictedOutcome:
     feedback: torch.Tensor  # reward, termination logit, truncation logit
 
 
-class MultimodalAgentModel(nn.Module):
-    """One shared predictive core for perception, memory, language and action."""
+class MultimodalAgentBase(nn.Module, ABC):
+    """Shared native observation, recurrent memory, policy and forecast operations."""
 
-    def __init__(self, config: MultimodalAgentConfig) -> None:
+    def __init__(self, config: MultimodalAgentConfig, *, shared_core: nn.Module | None = None) -> None:
         super().__init__()
         self.config = config
         dim = config.embedding_dim
         self.observation_input = MultimodalObservationInput(
             dim, config.action_count, config.image_patch_size, config.audio_chunk_size,
         )
-        self.core = SharedTransformerCore(
+        self.core = shared_core if shared_core is not None else SharedTransformerCore(
             embedding_dim=dim, hidden_dim=config.hidden_dim,
             num_heads=config.num_heads, num_layers=config.num_layers,
         )
@@ -70,7 +71,14 @@ class MultimodalAgentModel(nn.Module):
         self.image_output = nn.Linear(dim, 3 * config.image_patch_size**2)
         self.audio_output = nn.Linear(dim, config.audio_chunk_size)
         self.feedback_output = nn.Linear(dim, 3)
-        self.text_output = nn.Linear(dim, TEXT_VOCAB_SIZE)
+
+    @abstractmethod
+    def text_loss(self, memory: torch.Tensor, targets: Sequence[str]) -> torch.Tensor:
+        """Train the assembly's text head on observation-grounded answers."""
+
+    @abstractmethod
+    def generate_text(self, memory: torch.Tensor, *, max_bytes: int = 128) -> list[str]:
+        """Generate observation-grounded text using the assembly's vocabulary."""
 
     def new_memory(self, batch_size: int = 1) -> torch.Tensor:
         if batch_size < 1:
@@ -156,6 +164,13 @@ class MultimodalAgentModel(nn.Module):
         waves = self.audio_output(audio_hidden).tanh().flatten(1)[:, :audio_samples]
         feedback = self.feedback_output(torch.stack([row[-1] for row in hidden]))
         return PredictedOutcome(images, waves, feedback)
+
+class MultimodalAgentModel(MultimodalAgentBase):
+    """The original byte-level native-modality experiment."""
+
+    def __init__(self, config: MultimodalAgentConfig) -> None:
+        super().__init__(config)
+        self.text_output = nn.Linear(config.embedding_dim, TEXT_VOCAB_SIZE)
 
     def text_logits(self, memory: torch.Tensor, prefixes: Sequence[Sequence[int]]) -> list[torch.Tensor]:
         self._memory(memory)
