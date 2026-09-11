@@ -170,15 +170,19 @@ class LanguageTrainingTests(unittest.TestCase):
             root = Path(temporary)
             base = root / 'base'
             base.mkdir()
-            selection = write_selection(root / 'data', {'train': [
-                save_episode(root / 'data' / 'episodes', generate_episode(seed, size=(3, 3), horizon=2))
-                for seed in (231, 232)
-            ]})
+            paths = [save_episode(root / 'data' / 'episodes', generate_episode(seed, size=(3, 3), horizon=2))
+                     for seed in range(231, 239)]
+            actor = generate_episode(239, size=(3, 3), horizon=2)
+            actor.teacher_actions, actor.answers = [], []
+            actor.provenance['actor_checkpoint'] = 'test-actor'
+            paths.append(save_episode(root / 'data' / 'episodes', actor))
+            selection = write_selection(root / 'data', {'train': paths})
             conversations = root / 'chat.jsonl'
-            conversations.write_text(json.dumps({'id': 'chat1', 'group_id': 'tree1', 'source': 'test',
-                                                  'messages': [{'role': 'user', 'content': 'hi'},
-                                                               {'role': 'assistant', 'content': 'hello'}]}) + '\n')
-            config = LanguageTrainingConfig(steps=2, batch_size=1, rank=2)
+            conversations.write_text(''.join(json.dumps({'id': f'chat{index}', 'group_id': f'tree{index}', 'source': 'test',
+                                                         'messages': [{'role': 'user', 'content': 'hi'},
+                                                                      {'role': 'assistant', 'content': 'hello'}]}) + '\n'
+                                             for index in (1, 2)))
+            config = LanguageTrainingConfig(steps=2, batch_size=2, rank=2)
             with patch('intrep.problems.language_agent.training.LanguageAgentModel.from_pretrained',
                        side_effect=lambda *args, **kwargs: tiny_model()), patch(
                            'intrep.problems.language_agent.training.read_native_base', return_value=tiny_native_base()):
@@ -190,7 +194,9 @@ class LanguageTrainingTests(unittest.TestCase):
             self.assertEqual(expected['step'], 2)
             for key, value in expected['model'].items():
                 torch.testing.assert_close(value, actual['model'][key], rtol=0, atol=0)
-            self.assertEqual(expected['sources']['conversations']['conversation_ids'], ['chat1'])
+            self.assertEqual(expected['sources']['conversations']['conversation_ids'], ['chat1', 'chat2'])
+            sampled = [json.loads(line)['actor_episodes'] for line in (root / 'full' / 'training.jsonl').read_text().splitlines()]
+            self.assertEqual(sampled, [1, 1])
             self.assertTrue(any(not torch.equal(value, tiny_model().learned_state()[key])
                                 for key, value in expected['model'].items() if 'lora_' in key))
 

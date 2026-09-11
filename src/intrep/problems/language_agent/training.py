@@ -154,8 +154,12 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
         torch.set_rng_state(payload['torch_rng'])
         if device == 'cuda':
             torch.cuda.set_rng_state_all(payload['cuda_rng'])
-    replay = ReplayBuffer(capacity=len(episodes))
-    replay.extend(episodes)
+    actor_episodes = [episode for episode in episodes if episode.provenance.get('actor_checkpoint')]
+    retained_episodes = [episode for episode in episodes if not episode.provenance.get('actor_checkpoint')]
+    actor_replay = ReplayBuffer(capacity=max(1, len(actor_episodes)))
+    actor_replay.extend(actor_episodes)
+    retained_replay = ReplayBuffer(capacity=max(1, len(retained_episodes)))
+    retained_replay.extend(retained_episodes)
     language = ReplayBuffer(capacity=len(examples))
     language.extend(examples)
     output.mkdir(parents=True, exist_ok=True)
@@ -165,7 +169,18 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
     model.train()
     started = time.perf_counter()
     for step in range(start + 1, config.steps + 1):
-        batch = replay.sample(config.batch_size, generator=generator)
+        if not actor_episodes:
+            batch = retained_replay.sample(config.batch_size, generator=generator)
+        elif not retained_episodes:
+            batch = actor_replay.sample(config.batch_size, generator=generator)
+        elif config.batch_size == 1:
+            replay = actor_replay if step % 2 else retained_replay
+            batch = replay.sample(1, generator=generator)
+        else:
+            actor_count = min(len(actor_episodes), max(1, config.batch_size // 2))
+            actor_count = max(actor_count, config.batch_size - len(retained_episodes))
+            batch = (actor_replay.sample(actor_count, generator=generator)
+                     + retained_replay.sample(config.batch_size - actor_count, generator=generator))
         conversation_batch = language.sample(config.batch_size, generator=generator)
         optimizer.zero_grad(set_to_none=True)
         with target_parameters(model, target):
@@ -190,6 +205,7 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
             for name, value in params.items():
                 target[name].lerp_(value, config.target_rate)
         row = {'step': step, 'elapsed_seconds': time.perf_counter() - started,
+               'actor_episodes': sum(bool(episode.provenance.get('actor_checkpoint')) for episode in batch),
                'native_loss': native_value, 'language_loss': float(language_loss.detach()), **metrics}
         with (output / 'training.jsonl').open('a') as handle:
             handle.write(json.dumps(row) + '\n')
