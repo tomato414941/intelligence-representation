@@ -133,16 +133,24 @@ def plot_results(root, conditions):
     axes[0].grid(axis="y", alpha=.15)
     axes[0].legend(frameon=False, fontsize=9)
     baseline = next(iter(conditions.values()))["holdout_before"]
-    labels = ["Initial", *[names[name] for name in conditions]]
-    values = [100 * baseline["correct"] / baseline["questions"]]
-    values.extend(100 * row["holdout_after"]["correct"] / row["holdout_after"]["questions"] for row in conditions.values())
-    bars = axes[1].bar(range(4), values, color=["#babcc0", *colors.values()], width=.65)
-    for bar, value in zip(bars, values):
+    retained = [100 * baseline["correct"] / baseline["questions"]]
+    acquired = [0.]
+    for condition in conditions.values():
+        score = condition["holdout_after"]
+        retained.append(100 * score["paired"]["retained_correct"] / score["questions"])
+        acquired.append(100 * score["paired"]["newly_correct"] / score["questions"])
+    bars = axes[1].bar(range(4), retained, color=["#babcc0", *colors.values()], width=.65)
+    axes[1].bar(range(4), acquired, bottom=retained, color="white", edgecolor=["#babcc0", *colors.values()],
+                width=.65, hatch="////", label="Newly correct after training")
+    for bar, value in zip(bars, [old + new for old, new in zip(retained, acquired)]):
         axes[1].text(bar.get_x() + bar.get_width() / 2, value + 2, f"{value:.1f}%", ha="center", fontsize=9)
     axes[1].set(title="Fresh bilingual prompts: final models", ylabel="Held-out exact match (%)", ylim=(0, 100))
     axes[1].set_xticks(range(4), ["Initial", "All-role", "Assistant", "Assistant\nweight 8"])
     axes[1].grid(axis="y", alpha=.15)
     axes[1].set_axisbelow(True)
+    axes[1].legend(frameon=False, fontsize=8, loc="upper right")
+    axes[1].text(.98, .82, "Solid: initially correct answers retained", transform=axes[1].transAxes,
+                 ha="right", fontsize=8, color="#55585e")
     figure.suptitle("One shared LFM2.5-350M · all parameters trained · 300 updates per condition", fontsize=12)
     figure.savefig(root / "instruction-retention.png", dpi=200)
     figure.savefig(root / "instruction-retention.pdf")
@@ -166,6 +174,19 @@ def main():
     panels = [read_json(args.root / name / "evaluation-panel.json") for name in CONDITIONS]
     if not panels[0] == panels[1] == panels[2]:
         raise ValueError("validation panel locations differ")
+    for source, progress in conditions["assistant"]["source_progress"].items():
+        if conditions["assistant_weighted"]["source_progress"][source] != progress:
+            raise ValueError(f"the weight-only contrast consumed different data: {source}")
+        if source != "conversations" and conditions["chunked"]["source_progress"][source] != progress:
+            raise ValueError(f"non-conversation training exposure differs: {source}")
+    assistant_recipe = read_json(args.root / "assistant/recipe.json")
+    weighted_recipe = read_json(args.root / "assistant_weighted/recipe.json")
+    conversation = next(row for row in weighted_recipe["sources"] if row["name"] == "conversations")
+    if conversation["weight"] != 8:
+        raise ValueError("the weighted condition does not use its prespecified coefficient")
+    conversation["weight"] = 1.
+    if weighted_recipe != assistant_recipe:
+        raise ValueError("the weight-only contrast changed another recipe setting")
     for name in CONDITIONS[1:]:
         if initials[name]["generations"] != initials[CONDITIONS[0]]["generations"]:
             raise ValueError("initial instruction responses differ")
@@ -178,7 +199,9 @@ def main():
         "schema_version": "intrep.instruction-retention-comparison.v1",
         "conditions": conditions, "native_baselines": native, "completion_baselines": completions,
         "controls_verified": {"initial_parameters": True, "initial_generations": True,
-                              "initial_non_conversation_evaluations": True, "panel_locations": True},
+                              "initial_non_conversation_evaluations": True, "panel_locations": True,
+                              "non_conversation_training_exposure": True,
+                              "assistant_weight_only_recipe_and_exposure": True},
         "limitations": [
             "One training seed, small fixed panels, and a short pilot; no long-term retention conclusion.",
             "The first contrast changes conversation context and labels together; consumed records and tokens differ.",
