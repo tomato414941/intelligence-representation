@@ -1,0 +1,14 @@
+[
+  {"prompt": "Explain why ice melts in one sentence."},
+  {"prompt": "氷が溶ける理由を日本語で一文で説明してください。"},
+  {"prompt": "Compute 7 + 8. Output only the number.", "expected": "15", "max_tokens": 16},
+  {"prompt": "7に8を足すといくつですか。数字だけで答えてください。", "expected": "15", "max_tokens": 16},
+  {"prompt": "There are 12 apples. Five are eaten. Output only the number of apples remaining.", "expected": "7", "max_tokens": 16},
+  {"prompt": "りんごが12個あり、5個食べました。残りの個数を数字だけで答えてください。", "expected": "7", "max_tokens": 16},
+  {"prompt": "Convert cat to uppercase. Output only the converted text.", "expected": "CAT", "max_tokens": 16},
+  {"prompt": "「かきく」を逆の順番に並べてください。並べ替えた文字だけで答えてください。", "expected": "くきか", "max_tokens": 16},
+  {"prompt": "From the list red, blue, green, output only the second item.", "expected": "blue", "max_tokens": 16},
+  {"prompt": "「赤、青、緑」の2番目の項目だけを答えてください。", "expected": "青", "max_tokens": 16},
+  {"prompt": "Rule: when the signal is blue choose left, otherwise choose right. The signal is red. Output only left or right.", "expected": "right", "max_tokens": 16},
+  {"prompt": "規則：信号が青なら左、それ以外なら右を選びます。信号は赤です。「左」か「右」だけで答えてください。", "expected": "右", "max_tokens": 16}
+]

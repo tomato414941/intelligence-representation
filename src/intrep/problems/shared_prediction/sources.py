@@ -89,6 +89,8 @@ class Source:
         self.model, self.tokenizer, self.config, self.root = model, tokenizer, config, root
         self.device = next(model.parameters()).device
         self.dtype = next(model.parameters()).dtype
+        self.last_metrics = {}
+        self.last_group = None
 
     def path(self, key):
         return (self.root / self.config[key]).resolve()
@@ -129,7 +131,9 @@ class TextSource(Source):
         self.tokens += count
         hidden = self.model(self.model.encode("text", tokens[:, :-1]))
         logits = self.model.decode("text", hidden)
-        return F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
+        loss = F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
+        self.last_metrics = {"token_accuracy": (logits.detach().argmax(-1) == tokens[:, 1:]).float().mean()}
+        return loss
 
     def state_dict(self):
         return {"stream": self.stream.state_dict(), "pending": list(self.pending), "tokens": self.tokens}
@@ -170,7 +174,9 @@ class ClassificationSource(Source):
         image = torch.tensor(pixels, dtype=self.dtype, device=self.device) / 255
         hidden = self.model(self.model.encode("rgb", image))
         logits = self.model.decode(self.config["name"], hidden[:, -1:])[:, 0]
-        return F.cross_entropy(logits, torch.tensor([int(self.labels[index])], device=self.device))
+        target = torch.tensor([int(self.labels[index])], device=self.device)
+        self.last_metrics = {"accuracy": (logits.detach().argmax(-1) == target).float().mean()}
+        return F.cross_entropy(logits, target)
 
     def state_dict(self):
         return self.sampler.state_dict()
@@ -194,6 +200,7 @@ class ShogiSource(Source):
 
     def loss(self):
         example = shogi_move_policy_value_example_from_json(json.loads(self.stream.next()))
+        self.last_group = f"game:{example.game_index}" if example.game_index is not None else None
         board = shogi.Board(example.position_sfen)
         features = stack_shogi_position_features([
             shogi_minimal_single_global_position_features_from_sfen(example.position_sfen),
@@ -208,9 +215,13 @@ class ShogiSource(Source):
         target = logits.new_tensor([probabilities.get(move, 0) for move in moves])
         target = target / target.sum()
         loss = -(target * logits[indices].log_softmax(-1)).sum()
+        predicted = logits.detach()[indices].argmax()
+        self.last_metrics = {"policy_nll": loss.detach(), "policy_accuracy": (predicted == target.argmax()).float()}
         if example.value_target is not None:
             value = self.model.decode("shogi_value", hidden)[0, 0, 0].tanh()
-            loss = loss + (value - example.value_target).square()
+            value_loss = (value - example.value_target).square()
+            self.last_metrics["value_mse"] = value_loss.detach()
+            loss = loss + value_loss
         return loss
 
     def state_dict(self):
@@ -247,6 +258,7 @@ class NativeSource(Source):
         self.transition = 0
         self.episode = None
         self.transitions_seen = 0
+        self.omitted_inputs = set()
 
     def _load(self, index):
         entry = self.entries[index]
@@ -274,11 +286,11 @@ class NativeSource(Source):
         sequence = []
         for step, observation in enumerate(observations):
             sequence.append(self._query("observation_time", torch.tensor([[step]])))
-            if observation.text:
+            if observation.text and "text" not in self.omitted_inputs:
                 sequence.append(self.model.encode("text", self.ids(self.text_ids(observation.text))))
-            if observation.image is not None:
+            if observation.image is not None and "image" not in self.omitted_inputs:
                 sequence.append(self.model.encode("rgb", observation.image.to(device=self.device, dtype=self.dtype)))
-            if observation.audio is not None:
+            if observation.audio is not None and "audio" not in self.omitted_inputs:
                 sequence.append(self.model.encode("waveform", observation.audio.to(device=self.device, dtype=self.dtype),
                                                   observation.sample_rate))
             if observation.previous_action is not None:
@@ -320,21 +332,33 @@ class NativeSource(Source):
         action = episode.actions[index] if teacher is None else teacher
         logits = self.model.decode("action", hidden[:, policy_position:policy_position + 1])[:, 0]
         loss = F.cross_entropy(logits, torch.tensor([action], device=self.device))
+        self.last_group = episode.world_id
+        self.last_metrics = {"action_nll": loss.detach(),
+                             "action_accuracy": (logits.detach().argmax(-1) == action).float().mean()}
         if image_count:
             patches = self.model.decode("next_image", hidden[:, offset:offset + image_count])[0].sigmoid()
             predicted = patches_to_image(patches, tuple(future.image.shape[:2]), patch)
-            loss = loss + F.mse_loss(predicted, future.image.to(predicted))
+            image_loss = F.mse_loss(predicted, future.image.to(predicted))
+            self.last_metrics["image_mse"] = image_loss.detach()
+            loss = loss + image_loss
         offset += image_count
         if audio_count:
             predicted = self.model.decode("next_audio", hidden[:, offset:offset + audio_count]).tanh().flatten()[:len(future.audio)]
-            loss = loss + F.mse_loss(predicted, future.audio.to(predicted))
+            audio_loss = F.mse_loss(predicted, future.audio.to(predicted))
+            self.last_metrics["audio_mse"] = audio_loss.detach()
+            loss = loss + audio_loss
         offset += audio_count
         feedback = self.model.decode("next_feedback", hidden[:, offset:offset + 1])[0, 0]
         target = future.feedback.to(feedback)
-        loss = loss + (feedback[0] - target[0]).square() + F.binary_cross_entropy_with_logits(feedback[1:], target[1:])
+        feedback_loss = (feedback[0] - target[0]).square() + F.binary_cross_entropy_with_logits(feedback[1:], target[1:])
+        self.last_metrics["feedback_loss"] = feedback_loss.detach()
+        loss = loss + feedback_loss
         if text_targets:
             logits = self.model.decode("text", hidden[:, offset + 1:])[0]
-            loss = loss + F.cross_entropy(logits, self.ids(text_targets)[0])
+            language_loss = F.cross_entropy(logits, self.ids(text_targets)[0])
+            self.last_metrics["answer_nll"] = language_loss.detach()
+            self.last_metrics["answer_token_accuracy"] = (logits.detach().argmax(-1) == self.ids(text_targets)[0]).float().mean()
+            loss = loss + language_loss
         return loss
 
     def state_dict(self):

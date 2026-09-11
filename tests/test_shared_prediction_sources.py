@@ -135,14 +135,17 @@ class SourceIntegrationTests(unittest.TestCase):
                 source.load_state_dict(state)
                 second = source.loss().detach()
                 torch.testing.assert_close(first, second, rtol=0, atol=0)
-            from intrep.problems.shared_prediction.training import evaluate
+            from intrep.problems.shared_prediction.evaluation import (
+                evaluate_panel,
+                make_panel,
+            )
             original_loss = sources["pictures"].loss
             def augmented_loss():
                 torch.rand(5)
                 return original_loss()
             sources["pictures"].loss = augmented_loss
             rng = torch.get_rng_state().clone()
-            evaluate(model, {"pictures": sources["pictures"]})
+            evaluate_panel(model, {"pictures": sources["pictures"]}, make_panel({"pictures": sources["pictures"]}, 2))
             torch.testing.assert_close(torch.get_rng_state(), rng, rtol=0, atol=0)
             invalid = copy.deepcopy(recipe)
             invalid["sources"][0]["evaluation"]["path"] = "train.txt"

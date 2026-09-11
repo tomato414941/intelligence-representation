@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import os
@@ -12,6 +11,11 @@ from pathlib import Path
 import torch
 
 from intrep.learning.joint import JointTrainer
+from intrep.problems.shared_prediction.evaluation import (
+    evaluate_panel,
+    make_panel,
+    paired_comparison,
+)
 from intrep.problems.shared_prediction.recipe import (
     evaluation_recipe,
     validate_extension,
@@ -97,24 +101,6 @@ class GradientAudit:
 
 
 @torch.no_grad()
-def evaluate(model, sources):
-    states = {name: copy.deepcopy(source.state_dict()) for name, source in sources.items()}
-    torch_rng = torch.get_rng_state()
-    cuda_rng = torch.cuda.get_rng_state_all() if next(model.parameters()).device.type == "cuda" else []
-    previous_mode = model.training
-    model.eval()
-    try:
-        return {name: float(source.loss()) for name, source in sources.items()}
-    finally:
-        for name, state in states.items():
-            sources[name].load_state_dict(state)
-        torch.set_rng_state(torch_rng)
-        if cuda_rng:
-            torch.cuda.set_rng_state_all(cuda_rng)
-        model.train(previous_mode)
-
-
-@torch.no_grad()
 def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
     device = next(model.parameters()).device
     ids = tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=True,
@@ -137,10 +123,12 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
 
 def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int,
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
-          resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100):
+          resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
+          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None):
     from transformers import AutoTokenizer
 
-    if steps < 1 or checkpoint_interval < 1 or (base is None) == (resume is None) or (extend and resume is None):
+    if (steps < 1 or checkpoint_interval < 1 or evaluation_examples < 1 or evaluation_interval < 0
+            or (base is None) == (resume is None) or (extend and resume is None)):
         raise ValueError("choose a local base or a resume checkpoint and a positive total step budget")
     validate_recipe(recipe, root)
     checkpoint_path = output / "checkpoint.pt"
@@ -191,9 +179,41 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     (output / "provenance.json").write_text(json.dumps({"training": provenance, "evaluation": evaluation_provenance},
                                                       ensure_ascii=False, indent=2) + "\n")
     before = parameter_digests(model)
-    before_evaluation = evaluate(model, evaluation_sources)
-    prompts = ["Explain why ice melts in one sentence.", "氷が溶ける理由を日本語で一文で説明してください。"]
-    before_text = {prompt: generate_text(model, tokenizer, prompt) for prompt in prompts}
+    panel = make_panel(evaluation_sources, evaluation_examples)
+    (output / "evaluation-panel.json").write_text(json.dumps(panel, ensure_ascii=False, indent=2) + "\n")
+    prompts = prompts if prompts is not None else [
+        {"prompt": "Explain why ice melts in one sentence."},
+        {"prompt": "氷が溶ける理由を日本語で一文で説明してください。"},
+    ]
+
+    def measure(*, controls=False, generations=False):
+        measured = evaluate_panel(model, evaluation_sources, panel)
+        report = {"step": trainer.steps, "sources": measured}
+        if controls and native_controls:
+            from intrep.problems.shared_prediction.sources import NativeSource
+            native_panel = {name: cases for name, cases in panel.items() if isinstance(evaluation_sources[name], NativeSource)}
+            report["native_input_controls"] = {}
+            for omission in (None, "image", "audio", "text"):
+                report["native_input_controls"][omission or "complete"] = evaluate_panel(
+                    model, evaluation_sources, native_panel, omit_native=() if omission is None else (omission,), max_native_worlds=16,
+                )
+        if generations:
+            rows = []
+            for case in prompts:
+                answer = generate_text(model, tokenizer, case["prompt"], max_tokens=case.get("max_tokens", 48))
+                row = {**case, "answer": answer}
+                if "expected" in case:
+                    row["exact_match"] = answer.strip() == case["expected"]
+                rows.append(row)
+            report["generations"] = rows
+        directory = output / "evaluation"
+        directory.mkdir(exist_ok=True)
+        (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+        print(json.dumps({"stage": "evaluation", "step": trainer.steps,
+                          "losses": {name: value["summary"]["loss"] for name, value in measured.items()}}), flush=True)
+        return report
+
+    before_evaluation = measure(controls=True, generations=True)
     audit = GradientAudit(model) if audit_gradients else None
     records = []
     try:
@@ -209,6 +229,8 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             print(json.dumps(record), flush=True)
             if trainer.steps % checkpoint_interval == 0:
                 save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
+            if evaluation_interval and trainer.steps % evaluation_interval == 0 and trainer.steps < steps:
+                measure()
     finally:
         if audit:
             audit.close()
@@ -216,6 +238,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     changed = [name for name in before if before[name] != after[name]]
     core_names = [name for name in before if name.startswith("core.")]
     save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
+    after_evaluation = measure(controls=True, generations=True)
     result = {"parameters": sum(parameter.numel() for parameter in model.parameters()),
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
               "core_parameter_tensors": len(core_names),
@@ -224,12 +247,16 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
               "source_progress": {name: source.progress() for name, source in sources.items()
                                   if hasattr(source, "progress")},
               "gradient_audit": audit.records if audit else None,
-              "evaluation_before": before_evaluation, "evaluation_after": evaluate(model, evaluation_sources),
-              "text_before": before_text, "text_after": {prompt: generate_text(model, tokenizer, prompt) for prompt in prompts},
+              "evaluation_before": {name: row["summary"]["loss"]["mean"] for name, row in before_evaluation["sources"].items()},
+              "evaluation_after": {name: row["summary"]["loss"]["mean"] for name, row in after_evaluation["sources"].items()},
+              "paired_evaluation": paired_comparison(before_evaluation["sources"], after_evaluation["sources"]),
+              "text_before": {row["prompt"]: row["answer"] for row in before_evaluation["generations"]},
+              "text_after": {row["prompt"]: row["answer"] for row in after_evaluation["generations"]},
               "max_process_rss_mib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
               "torch_version": str(torch.__version__), "device": device,
+              "cuda_peak_allocated_mib": torch.cuda.max_memory_allocated() / 2**20 if device.startswith("cuda") else None,
               "input_heads": list(model.input_heads), "output_heads": list(model.output_heads),
-              "limitations": "Execution and development-loss measurements; not full-population epoch completion or a capability claim."}
+              "limitations": "Fixed development panel; descriptive paired changes are not full-population evaluation or causal cross-task transfer evidence."}
     (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"stage": "saved", "checkpoint": str(checkpoint_path),
                       "changed_core_tensors": result["changed_core_parameter_tensors"],
