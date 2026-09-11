@@ -107,6 +107,12 @@ Class names and yes/no answers also receive a narrowly normalized score that
 ignores letter case and one final period. This separates answer content from
 formatting changes such as `Yes` becoming `yes`. Explicit text copying and the
 ninety strict language probes retain their original exact-match scoring.
+After the first interim results, analysis also added descriptive first/last
+answer-pair scores for text extraction and action history. It reports exact
+joint correctness, the subset with different target answers, and the strongest
+constant answer pair on each panel. An arithmetic final-numeral diagnostic
+separates some formatting failures from incorrect values; it does not replace
+the prespecified strict language score or assert semantic equivalence.
 
 BoolQ has no identical question/passage pair across its official train/development
 splits, but 720 distinct passages occur in both. Results must distinguish new

@@ -101,6 +101,35 @@ def language_scores(report):
     return result
 
 
+def paired_selection_answers(rows):
+    indexed = {(row["record_key"], row["form"], row["wording"]): row for row in rows}
+    output = {}
+    for first, last in (("first_word", "last_word"), ("first_action", "last_action")):
+        for wording in (0, 1):
+            pairs = [(row, indexed[(key, last, wording)])
+                     for (key, form, variant), row in indexed.items()
+                     if form == first and variant == wording]
+            if not pairs:
+                continue
+            targets = [(left["response"]["responses"][0]["expected"], right["response"]["responses"][0]["expected"])
+                       for left, right in pairs]
+            item = {}
+            for cohort in ("all", "different_targets"):
+                selected = [(pair, target) for pair, target in zip(pairs, targets)
+                            if cohort == "all" or target[0] != target[1]]
+                generated = [pair for pair, _ in selected if all("exact_match" in row["metrics"] for row in pair)]
+                correct = sum(all(row["metrics"]["exact_match"] == 1 for row in pair) for pair in generated)
+                counts = Counter(target for _, target in selected)
+                item[cohort] = {
+                    "pairs": len(selected), "generated_pairs": len(generated),
+                    "both_correct": correct,
+                    "both_correct_rate": correct / len(generated) if generated else None,
+                    "best_constant_answer_pair_accuracy_on_panel": max(counts.values()) / len(selected) if selected else None,
+                }
+            output[f"{first}+{last}/{wording}"] = item
+    return output
+
+
 def summarize_report(report, training_passages, consumed_passages=None):
     report = copy.deepcopy(report)
     # Keep punctuation/case exact for explicit text copying and the 90 strict
@@ -121,7 +150,9 @@ def summarize_report(report, training_passages, consumed_passages=None):
         forms = {f"{form}/{wording}": averages([row for row in rows if row["form"] == form and row["wording"] == wording])
                  for form, wording in sorted({(row["form"], row["wording"]) for row in rows})}
         item = {"original": averages([row for row in rows if row["form"] == "original"]),
-                "forms": forms, "paired_answers": paired_answers(rows), "constant_answer_baselines": constant_answer_baselines(rows)}
+                "forms": forms, "paired_answers": paired_answers(rows),
+                "paired_selection_answers": paired_selection_answers(rows),
+                "constant_answer_baselines": constant_answer_baselines(rows)}
         if name == "boolq":
             cohorts = [("passage_cohorts", training_passages, ("new_passage", "passage_in_training_population"))]
             if consumed_passages is not None:
@@ -142,6 +173,10 @@ def summarize_report(report, training_passages, consumed_passages=None):
             item["paired_input_controls"] = {
                 "complete": paired_answers([complete[row["key"]] for row in omitted]),
                 "without_observations": paired_answers(omitted),
+            }
+            item["selection_input_controls"] = {
+                "complete": paired_selection_answers([complete[row["key"]] for row in omitted]),
+                "without_observations": paired_selection_answers(omitted),
             }
             for form in sorted({row["form"] for row in omitted}):
                 without = [row for row in omitted if row["form"] == form]
@@ -299,7 +334,7 @@ def make_plots(root, conditions, curves):
         axis.vlines(baseline, index - 0.4, index + 0.4, color="#555555", linestyle="--",
                     label="Best constant relation on this panel" if index == 0 else None)
     axis.set(yticks=positions, yticklabels=names, xlim=(0, 1), xlabel="Both answers correct (case / final period normalized)",
-             title="Held-out question wording · greedy generation · same observations")
+             title="Complementary yes/no questions · held-out wording · greedy generation")
     axis.legend(frameon=False)
     figure.savefig(root / "question-pairs.png", dpi=160)
     figure.savefig(root / "question-pairs.pdf")
