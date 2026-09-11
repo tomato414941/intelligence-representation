@@ -118,3 +118,19 @@ time. These are sizing estimates rather than invoices. The recurrent unroll
 and several shared-core calls per step make these updates much more expensive
 than the single-pass cellular predictor. Detailed timings are retained with
 the [multimodal agent artifacts](multimodal-agent.md#artifacts-and-verification).
+
+## Shared Language And Native Agent
+
+For the 2026-09-11 Qwen3-4B NF4 + learned native predictor configuration,
+rank-eight LoRA and batch size two, the measured RTX A6000 job used an observed
+RunPod rate of $0.53/hour. One hundred joint updates took 1,058 seconds
+(10.58 seconds/update). Twenty subsequent updates mixing actual actor experience
+took about three minutes. These batches reconstruct complete six-step episodes
+and also supervise two conversations.
+
+Including setup, before/after validation, eight actual interaction episodes,
+output retrieval and pod deletion, the job took 1,692 seconds (28.2 minutes),
+about $0.25 at the observed hourly rate. Peak allocated CUDA memory during the
+initial training/evaluation process was 42.42 GB; the job resource monitor saw
+42,819 MiB GPU memory in use. This records the measured workload on a 48 GB GPU. Model and validation details are
+in [the language-capable agent](language-agent.md).

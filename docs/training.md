@@ -14,6 +14,7 @@ intrep.train_image_classification
 intrep.train_image_text_choice
 intrep.train_image_text_answer
 intrep.train_shogi_policy_value
+intrep.problems.language_agent.cli
 ```
 
 The grid step prediction CLI was removed on 2026-06-10; recorded results
@@ -24,6 +25,20 @@ evaluate commands over generated layouts; see
 Problem models compose task-specific input layers, the shared Transformer core
 where useful, and task-specific output heads. See [model-boundaries.md](model-boundaries.md)
 and [learning-data-boundaries.md](learning-data-boundaries.md) for the current design.
+
+## Joint Language And Native Experience
+
+`intrep.problems.language_agent.cli train` initializes a shared language decoder
+from a pinned base and retains a learned native predictor. It mixes supervised
+conversation replay with native episodes; `cycle` additionally collects actual
+action feedback and includes those episodes in each mixed replay batch. See
+[the language-capable agent](language-agent.md) for preparation, commands,
+checkpoint provenance and measured results.
+
+Its `--base` directory binds the language weights and tokenizer together.
+`--native-checkpoint` selects the learned native initialization for a new run;
+later learned checkpoints embed that small native base. LoRA and connecting
+projections are trained while both pretrained bases remain frozen.
 
 ## Tokenizer Reuse
 
@@ -46,7 +61,7 @@ uv run python -m intrep.train_language_model \
   --checkpoint-path runs/text.pt
 ```
 
-Text-consuming commands accept `--tokenizer-path` to reuse a fixed tokenizer.
+The earlier text-task commands accept `--tokenizer-path` to reuse a fixed tokenizer.
 If both a checkpoint and a tokenizer path are provided, the explicit tokenizer
 path is used.
 

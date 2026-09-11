@@ -10,6 +10,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | Dataset | Modality | Approximate size | Status | Description |
 | --- | --- | ---: | --- | --- |
 | Tiny Shakespeare | text | about 1 MB | supported | A single small Shakespeare text corpus commonly used for toy language-model examples. |
+| OpenAssistant OASST1 conversations | human text conversations | bounded local selection: 2,048 train / 128 validation | supported | Assistant rank-zero, undeleted en/ja chains up to 1,200 characters, partitioned by conversation-tree hash; conversation replay for the [language-capable agent](language-agent.md). |
 | WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
 | WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
 | TinyStories | text | over 2M stories | candidate | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
@@ -41,6 +42,21 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | TinyStories raw data | Local raw data is `data/tinystories/raw/TinyStoriesV2-GPT4-train.txt` and `data/tinystories/raw/TinyStoriesV2-GPT4-valid.txt` from `roneneldan/TinyStories` on Hugging Face. |
 | Qhapaq raw data | Local raw data under `data/qhapaq/raw/results/` contains the fetched `kifdownload` result CSVs. Local raw KIF archives under `data/qhapaq/raw/kiffiles/` contain every currently downloadable `.7z` link found on the source page; unavailable links are recorded in the local manifest. Source pages include `https://www.qhapaq.org/shogi/kifdb/` and `https://www.qhapaq.org/shogi/`. |
 | Qhapaq processed data | The local source-derived records are `data/qhapaq/processed/qhapaq_games.jsonl`; train/eval splits belong in Data Selection or fixed training data bundles, not in `processed/`. Regenerate them with `scripts/prepare_qhapaq_shogi_records.py` after raw KIF archive refreshes. |
+
+## Conversation Replay
+
+`scripts/prepare_agent_conversations.py` prepares a bounded selection from
+[OpenAssistant OASST1](https://huggingface.co/datasets/OpenAssistant/oasst1),
+revision `fdf72ae0827c1cda404aff25b6603abec9e3399b`, with its Apache-2.0 license
+and an archive checksum. Local files are under
+`data/language/agent-conversations-oasst1-20260911/`: the source archive,
+`train.jsonl`, `validation.jsonl`, `LICENSE` and `provenance.json`.
+
+Selection keeps undeleted rank-zero assistant chains in English or Japanese,
+up to 1,200 characters per conversation. Conversation-tree identity determines
+the split, so related branches cannot appear on both sides. The stored source
+records retain role, content, message identity, tree identity and provenance.
+The language-agent checkpoint records the selected file hash and identities.
 
 ## Preparation Entrypoints
 

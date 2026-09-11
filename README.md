@@ -47,6 +47,7 @@ docs/
 Read these first:
 
 - [Concept](docs/concept.md)
+- [Language-Capable Predictive Agent](docs/language-agent.md)
 - [Multimodal Predictive Agent](docs/multimodal-agent.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Boundaries](docs/model-boundaries.md)
@@ -111,6 +112,7 @@ intrep.train_image_classification
 intrep.train_image_text_choice
 intrep.train_image_text_answer
 intrep.train_shogi_policy_value
+intrep.problems.language_agent.cli
 ```
 
 Dataset preparation notes live in [Datasets](docs/datasets.md).
