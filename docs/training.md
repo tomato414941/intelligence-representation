@@ -38,6 +38,10 @@ checkpoints contain the entire model; there is no external language base or
 frozen second predictor. See [the single-core agent](language-agent.md) for
 commands and measured limitations.
 
+The [language-learning workflow](language-learning.md) adds causal text
+pretraining and instruction tuning to that same model, with explicit token
+budgets and native replay intervals.
+
 ## Tokenizer Reuse
 
 Text language modeling can train a tokenizer by default, but the preferred

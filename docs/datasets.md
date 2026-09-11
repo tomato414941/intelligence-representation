@@ -13,7 +13,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | OpenAssistant OASST1 conversations | human text conversations | bounded local selection: 2,048 train / 128 validation | supported | Assistant rank-zero, undeleted en/ja chains up to 1,200 characters, partitioned by conversation-tree hash; conversation replay for the [single-core agent](language-agent.md). |
 | WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
 | WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
-| TinyStories | text | over 2M stories | candidate | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
+| TinyStories | synthetic English text | over 2M stories | supported | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
 | Project Gutenberg | text | main mirror about 2.7 TiB | candidate | A public-domain ebook corpus. Use selected raw texts first; do not mirror the full collection without a concrete need. |
 | OpenWebText | text | about 8M documents / 40 GB text | candidate | An open reproduction of GPT-2-style WebText, collected from web pages linked by Reddit posts. |
 | FineWeb-Edu | text | about 1.3T tokens | candidate | A filtered educational subset of FineWeb built from Common Crawl web pages. |
@@ -80,3 +80,21 @@ intrep.problems.image_classification.dataset_builders
 intrep.problems.image_text_answer.dataset_builders
 intrep.problems.image_text_choice.dataset_builders
 ```
+
+## Single-Core Text Pretraining
+
+`scripts/prepare_agent_pretraining.py` builds a bounded byte stream from the
+existing `data/tinystories/raw/TinyStoriesV2-GPT4-{train,valid}.txt` files.
+The [official dataset card](https://huggingface.co/datasets/roneneldan/TinyStories)
+identifies TinyStories as English and licenses the dataset under
+CDLA-Sharing-1.0. Its stories were generated with language models; this work uses
+the text as training data and does not load those models' weights.
+
+The current selection under `data/language/single-core-pretraining-20260911/`
+contains 32,768 training documents and 256 validation documents. Exact document
+hashes are disjoint. `tokens.npz` contains byte values with EOS markers only at
+document boundaries; `provenance.json` records hashes, counts and source
+filenames. `validation-documents.json` retains the held-out prefixes for
+inspection. The stream checksum identifies the exact prepared data even though
+the original local download did not record a Hub revision. See
+[language learning](language-learning.md) for training and evaluation.

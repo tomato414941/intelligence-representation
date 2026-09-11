@@ -9,6 +9,10 @@ This corrects the [rejected two-model integration](research/language-agent-qwen-
 That experiment connected a frozen native predictor to Qwen; its language
 quality and native accuracy measurements do not describe the current model.
 
+The subsequent [language-learning experiment](language-learning.md) diagnoses
+repetition and adds text pretraining followed by instruction tuning, using
+established language-model training methods.
+
 ## Computation
 
 ```mermaid
@@ -38,8 +42,8 @@ Assistant answers are supervised, while prompt positions are masked out of the
 loss. Long answers are learned in chunks without inserting false end tokens.
 The full conversation is saved, but each prompt uses its last 1,024 bytes.
 Training uses up to 1,024 preceding bytes and a 1,024-byte answer chunk;
-generation keeps a rolling 1,024-byte prefix. This bounded context is a practical
-limit, not a claim of unlimited recall.
+generation now retains the same preceding prefix and current chunk as training.
+This bounded context is a practical limit, not a claim of unlimited recall.
 
 Chat turns update the same recurrent state used for action selection. Actual
 observations and feedback also update it; forecasts do not overwrite actual
@@ -56,7 +60,7 @@ same parameter set, used only for training bootstraps.
 
 `cycle` collects actual interactions, then replays them with retained experience
 and conversations. With both episode sources and batch size at least two,
-every update contains actor experience. Batch size one alternates sources.
+every native replay batch contains actor experience. Batch size one alternates sources.
 World identities and conversation trees define evaluation split boundaries;
 checkpoint provenance records source hashes and cumulative training identities.
 
