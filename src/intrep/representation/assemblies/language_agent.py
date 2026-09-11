@@ -60,15 +60,29 @@ class LanguageAgentModel(MultimodalAgentModel):
         prompt = self.prompt_ids(messages)
         memory = self.conversation_memory(prompt, memory)
         answer = []
-        for _ in range(max_new_tokens):
+        pending, lower, upper = 0, 0x80, 0xBF
+        for index in range(max_new_tokens):
             scores = self.text_logits(memory, [(prompt + answer)[-self.context_bytes:]])[0][-1]
-            logits = scores.clone()
-            # Only raw bytes and the end-of-answer token are valid outputs.
-            logits[256:] = float('-inf')
-            # EOS is outside the raw byte vocabulary.
-            logits[EOS] = scores[EOS]
+            logits = torch.full_like(scores, float('-inf'))
+            if pending:
+                logits[lower:upper + 1] = scores[lower:upper + 1]
+            else:
+                logits[:0x80] = scores[:0x80]
+                logits[EOS] = scores[EOS]
+                # A leading byte must leave enough budget to complete its codepoint.
+                remaining = max_new_tokens - index
+                for needed, start, stop in ((2, 0xC2, 0xE0), (3, 0xE0, 0xF0), (4, 0xF0, 0xF5)):
+                    if remaining >= needed:
+                        logits[start:stop] = scores[start:stop]
             token = int(logits.argmax())
             if token == EOS:
                 break
             answer.append(token)
-        return ByteTokenizer().decode(answer)
+            if pending:
+                pending -= 1
+                lower, upper = 0x80, 0xBF
+            elif token >= 0xC2:
+                pending = 1 if token < 0xE0 else 2 if token < 0xF0 else 3
+                lower = 0xA0 if token == 0xE0 else 0x90 if token == 0xF0 else 0x80
+                upper = 0x9F if token == 0xED else 0x8F if token == 0xF4 else 0xBF
+        return bytes(answer).decode('utf-8')

@@ -119,6 +119,26 @@ class LanguageAgentTests(unittest.TestCase):
             self.assertIsInstance(model.chat([{'role': 'user', 'content': 'hi'}], memory=memory, max_new_tokens=2), str)
 
 
+    def test_generation_enforces_utf8_including_budget_and_surrogate_boundaries(self):
+        from intrep.representation.inputs.multimodal_observation import (
+            EOS,
+            TEXT_VOCAB_SIZE,
+        )
+        model = tiny_model().eval()
+        scores = torch.full((1, TEXT_VOCAB_SIZE), -10.0)
+        scores[0, 0x80] = 100  # A continuation cannot start a codepoint.
+        scores[0, 0xED] = 90
+        scores[0, 0xA0] = 110  # ED A0 would encode a surrogate and is forbidden.
+        scores[0, 0x9F] = 70
+        scores[0, ord('a')] = 60
+        scores[0, EOS] = -100
+        with patch.object(model, 'text_logits', return_value=[scores]):
+            one = model.chat([{'role': 'user', 'content': 'hi'}], max_new_tokens=1)
+            three = model.chat([{'role': 'user', 'content': 'hi'}], max_new_tokens=3)
+        self.assertEqual(one, 'a')
+        self.assertEqual(three.encode('utf-8'), bytes([0xED, 0x80, 0xA0]))
+
+
 class ConversationSourceTests(unittest.TestCase):
     def test_tree_split_rejects_related_conversations(self):
         messages = (ChatMessage('user', 'hi'), ChatMessage('assistant', 'hello'))
