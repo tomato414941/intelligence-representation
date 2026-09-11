@@ -7,6 +7,10 @@ persistence. This experiment adds multiple questions per source, more consumed
 records, and three additional datasets. It compares fixed and varied questions
 under the same measured training-time budget.
 
+The [completed comparison](question-learning-evaluation.md) records actual data
+exposure, generated answers, baseline/input controls, language deterioration,
+checkpoint verification and compute measurements.
+
 ## Data And Learning Conditions
 
 All nine existing training populations remain in `configs/question-learning.json`.

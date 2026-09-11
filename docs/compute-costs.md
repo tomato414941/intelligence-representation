@@ -179,3 +179,32 @@ language deterioration. Timing, environment and resource records are retained
 with the durable `models/joint-lfm-learning-20260911/` artifacts. Future training
 budgets should use both capability/retention measurements and these workload
 costs, rather than extrapolating quality from falling aggregate loss.
+
+## Twelve-Source Question Learning Sizing Reference
+
+The 2026-09-11 fixed/varied-question comparison used one A40 at the observed
+$0.49/hour rate. Both conditions used a single LFM2.5-350M body, 358.23M attached
+trainable parameters, FP32 AdamW at `1e-5` and four Torch CPU threads. Each update
+read 128 positions from each of four text streams, two records from each image,
+speech, sensor and shogi source, two native transitions with history, and one
+complete BoolQ passage/question. Varied alternated original and added objectives.
+
+| Condition | Updates | Measured training time | Seconds/update | Peak Torch CUDA allocation |
+| --- | ---: | ---: | ---: | ---: |
+| Fixed objectives | 3,889 | 3,600.6 s | 0.926 | 7,942 MiB |
+| Varied objectives | 4,047 | 3,600.1 s | 0.890 | 7,943 MiB |
+
+Training measurements include input reading and question construction, forward/
+backward passes and optimizer steps; they exclude checkpoint and evaluation I/O.
+The complete sequential job took 9,137.5 seconds (2h32m17s), about $1.244 of
+GPU time at the observed rate, excluding disk charges. The two full final
+checkpoints total about 8.6 GB. The final retrieval took 247.6 seconds; the fixed
+checkpoint had already been copied during varied training. Peak monitored GPU
+memory was 8,972 MiB and mean utilization was 65.0% over the remote workload.
+
+These are workload sizing measurements, not a claim that the training budget
+produces a generally capable model. The [comparison report](question-learning-evaluation.md)
+records narrow improvements and substantial instruction-response deterioration.
+Timing and resource samples accompany the durable
+`models/question-learning-20260911/` artifacts. Full generated-answer evaluation
+and checkpoint retrieval are material overheads when planning another run.

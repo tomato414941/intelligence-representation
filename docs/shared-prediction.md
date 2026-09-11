@@ -12,6 +12,11 @@ and native image forecasts remain worse than persistence. The report includes
 per-task metrics and input-omission controls. The three-update figures below
 describe the earlier execution check.
 
+The subsequent [twelve-source question comparison](question-learning-evaluation.md)
+adds several questions per dataset and about eight times the earlier consumed
+data. Text extraction and some reconstruction tasks improve, while general
+instruction responses and several relation/history tests remain inadequate.
+
 ## The Learning Contract
 
 ```text
