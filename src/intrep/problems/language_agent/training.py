@@ -20,12 +20,13 @@ from intrep.problems.multimodal_agent.training import (
     target_values,
 )
 from intrep.representation.assemblies.language_agent import LanguageAgentModel
+from intrep.representation.assemblies.multimodal_agent import MultimodalAgentConfig
 from intrep.sources.language.conversations import (
     conversation_source,
     load_conversations,
 )
 
-SCHEMA = 'intrep.language_agent_checkpoint.v2'
+SCHEMA = 'intrep.language_agent_checkpoint.v3'
 
 
 @dataclass(frozen=True)
@@ -35,24 +36,12 @@ class LanguageTrainingConfig:
     learning_rate: float = 0.0001
     language_weight: float = 1.0
     seed: int = 41
-    rank: int = 8
     target_rate: float = 0.02
 
     def __post_init__(self):
-        if (min(self.steps, self.batch_size, self.rank) < 1 or self.learning_rate <= 0
+        if (min(self.steps, self.batch_size) < 1 or self.learning_rate <= 0
                 or self.language_weight <= 0 or not 0 < self.target_rate <= 1):
             raise ValueError('invalid language agent training configuration')
-
-
-def base_identity(directory: Path) -> str:
-    digest = hashlib.sha256()
-    for path in sorted(directory.iterdir()):
-        if path.is_file() and path.suffix in ('.json', '.safetensors', '.jinja'):
-            digest.update(path.name.encode())
-            with path.open('rb') as handle:
-                for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b''):
-                    digest.update(chunk)
-    return digest.hexdigest()
 
 
 def read_native_base(path: Path) -> dict:
@@ -79,17 +68,16 @@ def target_parameters(model, target):
                 value.copy_(current[name])
 
 
-def load_checkpoint(path: Path, base: Path, *, device: str = 'cpu'):
+def load_checkpoint(path: Path, *, device: str = 'cpu'):
     payload = torch.load(path, map_location='cpu', weights_only=True)
-    if payload.get('schema_version') != SCHEMA or payload['base_sha256'] != base_identity(base):
-        raise ValueError('checkpoint requires its exact pinned base weights and tokenizer')
-    config = LanguageTrainingConfig(**payload['config'])
-    model = LanguageAgentModel.from_pretrained(base, payload['native_base'], device=device, rank=config.rank)
-    model.restore_learned_state(payload['model'])
+    if payload.get('schema_version') != SCHEMA:
+        raise ValueError('requires a single-core language agent checkpoint (v3)')
+    model = LanguageAgentModel(MultimodalAgentConfig(**payload['model_config'])).to(device)
+    model.load_state_dict(payload['model'], strict=True)
     return model, payload
 
 
-def train(base: Path, selections: list[Path], conversations: Path, output: Path,
+def train(selections: list[Path], conversations: Path, output: Path,
           config: LanguageTrainingConfig, *, device: str = 'cpu', initialize: Path | None = None,
           resume: bool = False, native_checkpoint: Path | None = None) -> Path:
     if initialize is not None and resume:
@@ -119,7 +107,7 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
     start = 0
     payload = None
     if resume or initialize is not None:
-        model, payload = load_checkpoint(path if resume else initialize, base, device=device)
+        model, payload = load_checkpoint(path if resume else initialize, device=device)
         inherited = payload.get('training_history', [payload['sources']])
         trained_worlds = {world for source in inherited for group in source['episodes'] for world in group['world_ids']}
         if any(split != 'train' and world in trained_worlds for world, split in partitions.items()):
@@ -132,13 +120,12 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
             start = payload['step']
             if config.steps < start:
                 raise ValueError('step budget precedes saved step')
-        elif payload['config']['rank'] != config.rank:
-            raise ValueError('initialization adapter configuration differs')
     else:
         if native_checkpoint is None:
             raise ValueError('new training requires a learned native checkpoint')
         native_base = read_native_base(native_checkpoint)
-        model = LanguageAgentModel.from_pretrained(base, native_base, device=device, rank=config.rank)
+        model = LanguageAgentModel(MultimodalAgentConfig(**native_base['config'])).to(device)
+        model.load_state_dict(native_base['model'], strict=True)
         inherited = [{'episodes': native_base['sources'], 'conversations': {'group_ids': [], 'conversation_ids': []}}]
         trained_worlds = {world for source in native_base['sources'] for world in source['world_ids']}
         if any(split != 'train' and world in trained_worlds for world, split in partitions.items()):
@@ -164,7 +151,6 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
     language.extend(examples)
     output.mkdir(parents=True, exist_ok=True)
     (output / 'sources.json').write_text(json.dumps(provenance, indent=2) + '\n')
-    identity = base_identity(base)
     native_config = MultimodalTrainingConfig(model=model.config, text_weight=0.5)
     model.train()
     started = time.perf_counter()
@@ -212,9 +198,9 @@ def train(base: Path, selections: list[Path], conversations: Path, output: Path,
         if step == start + 1 or step % 10 == 0 or step == config.steps:
             print(json.dumps(row), flush=True)
         if step % 100 == 0 or step == config.steps:
-            state = {'schema_version': SCHEMA, 'base_sha256': identity, 'config': asdict(config), 'step': step,
-                     'native_base': model.native_base,
-                     'sources': provenance, 'training_history': history, 'model': model.learned_state(),
+            state = {'schema_version': SCHEMA, 'model_config': asdict(model.config), 'config': asdict(config), 'step': step,
+                     'sources': provenance, 'training_history': history,
+                     'model': {name: value.detach().cpu() for name, value in model.state_dict().items()},
                      'target': {name: value.cpu() for name, value in target.items()}, 'optimizer': optimizer.state_dict(),
                      'replay_rng': generator.get_state(), 'torch_rng': torch.get_rng_state(),
                      'cuda_rng': torch.cuda.get_rng_state_all() if device == 'cuda' else []}

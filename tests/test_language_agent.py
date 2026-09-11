@@ -12,26 +12,6 @@ from intrep.sources.language.conversations import (
     check_conversation_split,
 )
 
-try:
-    from peft import LoraConfig, get_peft_model
-    from transformers import Qwen3Config, Qwen3ForCausalLM
-    HAS_LLM = True
-except ImportError:
-    HAS_LLM = False
-
-
-class TinyTokenizer:
-    eos_token_id = 2
-
-    def encode(self, text, add_special_tokens=False):
-        return [3 + byte % 29 for byte in text.encode()]
-
-    def apply_chat_template(self, messages, **kwargs):
-        return {'input_ids': [1, *self.encode(str(messages)), 1]}
-
-    def decode(self, ids, **kwargs):
-        return ' '.join(str(int(token)) for token in ids)
-
 
 def tiny_native_base():
     from dataclasses import asdict
@@ -48,74 +28,83 @@ def tiny_native_base():
 
 def tiny_model():
     from intrep.representation.assemblies.language_agent import LanguageAgentModel
-    torch.manual_seed(12)
-    backbone = Qwen3ForCausalLM(Qwen3Config(
-        vocab_size=32, hidden_size=24, intermediate_size=48, num_hidden_layers=1,
-        num_attention_heads=3, num_key_value_heads=1, head_dim=8,
-        eos_token_id=2, pad_token_id=0, tie_word_embeddings=True,
-    ))
-    backbone = get_peft_model(backbone, LoraConfig(r=2, lora_alpha=4, task_type='CAUSAL_LM',
-                                                target_modules=['q_proj', 'v_proj']))
-    return LanguageAgentModel(backbone, TinyTokenizer(), tiny_native_base())
+    from intrep.representation.assemblies.multimodal_agent import MultimodalAgentConfig
+    native = tiny_native_base()
+    model = LanguageAgentModel(MultimodalAgentConfig(**native['config']))
+    model.load_state_dict(native['model'])
+    return model
 
 
-@unittest.skipUnless(HAS_LLM, 'requires llm extra')
 class LanguageAgentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         torch.set_num_threads(1)
 
-    def test_shared_decoder_receives_language_and_native_gradients(self):
+    def test_one_core_receives_language_action_forecast_and_memory_gradients(self):
+        from intrep.representation.cores.transformer import SharedTransformerCore
         model = tiny_model()
-        for task in ("conversation", "action", "forecast"):
-            native = task != "conversation"
+        self.assertEqual(sum(isinstance(module, SharedTransformerCore) for module in model.modules()), 1)
+        self.assertTrue(all(parameter.requires_grad for parameter in model.parameters()))
+        self.assertEqual(set(model.state_dict()), set(tiny_native_base()['model']))
+        for task in ('conversation', 'action', 'forecast'):
             model.zero_grad(set_to_none=True)
-            if native:
-                observation = MultimodalObservation(text='go', image=torch.rand(2, 2, 3), audio=torch.rand(8))
-                memory = model.observe([observation])
-                prediction = model.predict_outcome(memory, torch.tensor([1]), image_shapes=[(2, 2)], audio_samples=8)
-                loss = (model.policy(memory).square().mean() if task == "action" else
-                        prediction.images[0].mean() + prediction.audio.square().mean())
-            else:
+            if task == 'conversation':
                 loss = model.answer_loss([{'role': 'user', 'content': 'hi'}], 'hello')
+            else:
+                memory = model.observe([MultimodalObservation(text='go', image=torch.rand(2, 2, 3), audio=torch.rand(8))])
+                prediction = model.predict_outcome(memory, torch.tensor([1]), image_shapes=[(2, 2)], audio_samples=8)
+                loss = (model.policy(memory).square().mean() if task == 'action' else
+                        prediction.images[0].mean() + prediction.audio.square().mean())
             loss.backward()
-            self.assertTrue(any('lora_' in name and value.grad is not None and value.grad.abs().sum() > 0
-                                for name, value in model.named_parameters()))
-            self.assertTrue(all(value.grad is None for name, value in model.core.named_parameters() if 'lora_' not in name))
-            if native:
-                for layer in (model.native_to_language, model.language_to_native):
-                    self.assertGreater(float(layer.weight.grad.abs().sum()), 0)
+            for layer in model.core.layers:
+                self.assertGreater(float(layer.attention.in_proj_weight.grad.abs().sum()), 0)
+                self.assertGreater(float(layer.feed_forward_input.weight.grad.abs().sum()), 0)
+            self.assertGreater(float(model.memory_gate.weight.grad.abs().sum()), 0)
 
-    def test_native_initialization_preserves_learned_operations(self):
+    def test_native_initialization_preserves_all_operations(self):
         from intrep.representation.assemblies.multimodal_agent import (
             MultimodalAgentConfig,
             MultimodalAgentModel,
         )
         model = tiny_model().eval()
-        native = MultimodalAgentModel(MultimodalAgentConfig(**model.native_base['config'])).eval()
-        native.load_state_dict(model.native_base['model'])
+        native = MultimodalAgentModel(MultimodalAgentConfig(**tiny_native_base()['config'])).eval()
+        native.load_state_dict(tiny_native_base()['model'])
         with torch.no_grad():
-            model.native_gain.zero_()
             observation = MultimodalObservation(text='blue', image=torch.rand(3, 3, 3), audio=torch.rand(8))
-            actual = model.observe([observation])
-            expected = native.observe([observation])
+            actual, expected = model.observe([observation]), native.observe([observation])
             torch.testing.assert_close(actual, expected, rtol=0, atol=0)
             torch.testing.assert_close(model.policy(actual), native.policy(expected), rtol=0, atol=0)
             first = model.predict_outcome(actual, torch.tensor([1]), image_shapes=[(3, 3)], audio_samples=8)
             second = native.predict_outcome(expected, torch.tensor([1]), image_shapes=[(3, 3)], audio_samples=8)
             torch.testing.assert_close(first.images[0], second.images[0], rtol=0, atol=0)
             torch.testing.assert_close(first.audio, second.audio, rtol=0, atol=0)
+            torch.testing.assert_close(model.text_logits(actual, [[10]])[0], native.text_logits(expected, [[10]])[0])
 
-    def test_answer_shift_and_mask_match_direct_forward(self):
+    def test_answer_shift_mask_and_causality(self):
+        from intrep.representation.inputs.multimodal_observation import EOS
         model = tiny_model().eval()
         messages = [{'role': 'user', 'content': 'hi'}]
         prompt = model.prompt_ids(messages)
-        target = model._ids('ok') + [2]
-        ids = torch.tensor([prompt + target])
-        labels = ids.clone()
-        labels[:, :len(prompt)] = -100
-        expected = model.core(input_ids=ids, labels=labels).loss
+        memory = model.conversation_memory(prompt)
+        target = [111, 107, EOS]
+        logits = model.text_logits(memory, [prompt + target[:-1]])[0]
+        expected = torch.nn.functional.cross_entropy(logits[len(prompt):], torch.tensor(target))
         torch.testing.assert_close(model.answer_loss(messages, 'ok'), expected)
+        changed = model.text_logits(memory, [prompt + [99, 98]])[0]
+        torch.testing.assert_close(logits[:len(prompt) + 1], changed[:len(prompt) + 1])
+
+    def test_long_answer_supervises_every_byte_and_eos_once(self):
+        from intrep.representation.inputs.multimodal_observation import EOS
+        model = tiny_model()
+        model.context_bytes = 3
+        captured = []
+        original = torch.nn.functional.cross_entropy
+        def loss(logits, labels, **kwargs):
+            captured.extend(labels.tolist())
+            return original(logits, labels, **kwargs)
+        with patch('intrep.representation.assemblies.language_agent.F.cross_entropy', side_effect=loss):
+            model.answer_loss([{'role': 'user', 'content': 'hi'}], 'abcdefgh').backward()
+        self.assertEqual(captured, [*b'abcdefgh', EOS])
 
     def test_memory_affects_chat_and_forecast_does_not_write_it(self):
         model = tiny_model().eval()
@@ -127,19 +116,7 @@ class LanguageAgentTests(unittest.TestCase):
         model.predict_outcome(memory, torch.tensor([0]), image_shapes=[(2, 2)], audio_samples=8)
         torch.testing.assert_close(memory, before)
         with patch.object(model, 'policy', side_effect=AssertionError('chat must not act')):
-            self.assertIsInstance(model.chat([{'role': 'user', 'content': 'hi'}], max_new_tokens=2), str)
             self.assertIsInstance(model.chat([{'role': 'user', 'content': 'hi'}], memory=memory, max_new_tokens=2), str)
-
-    def test_delta_roundtrip_excludes_frozen_backbone(self):
-        model = tiny_model()
-        state = model.learned_state()
-        self.assertTrue(all('core.' not in name or 'lora_' in name for name in state))
-        other = tiny_model()
-        other.restore_learned_state(state)
-        for key, value in other.learned_state().items():
-            torch.testing.assert_close(value, state[key])
-        with self.assertRaises(ValueError):
-            other.restore_learned_state({})
 
 
 class ConversationSourceTests(unittest.TestCase):
@@ -150,7 +127,6 @@ class ConversationSourceTests(unittest.TestCase):
                                      [ConversationExample('b', 'tree', messages, 'source')])
 
 
-@unittest.skipUnless(HAS_LLM, 'requires llm extra')
 class LanguageTrainingTests(unittest.TestCase):
     def test_exact_resume_and_joint_replay(self):
         import dataclasses
@@ -168,8 +144,6 @@ class LanguageTrainingTests(unittest.TestCase):
         torch.set_num_threads(1)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            base = root / 'base'
-            base.mkdir()
             paths = [save_episode(root / 'data' / 'episodes', generate_episode(seed, size=(3, 3), horizon=2))
                      for seed in range(231, 239)]
             actor = generate_episode(239, size=(3, 3), horizon=2)
@@ -182,13 +156,11 @@ class LanguageTrainingTests(unittest.TestCase):
                                                          'messages': [{'role': 'user', 'content': 'hi'},
                                                                       {'role': 'assistant', 'content': 'hello'}]}) + '\n'
                                              for index in (1, 2)))
-            config = LanguageTrainingConfig(steps=2, batch_size=2, rank=2)
-            with patch('intrep.problems.language_agent.training.LanguageAgentModel.from_pretrained',
-                       side_effect=lambda *args, **kwargs: tiny_model()), patch(
-                           'intrep.problems.language_agent.training.read_native_base', return_value=tiny_native_base()):
-                full = train(base, [selection], conversations, root / 'full', config, native_checkpoint=root / 'native.pt')
-                train(base, [selection], conversations, root / 'resumed', dataclasses.replace(config, steps=1), native_checkpoint=root / 'native.pt')
-                resumed = train(base, [selection], conversations, root / 'resumed', config, resume=True)
+            config = LanguageTrainingConfig(steps=2, batch_size=2)
+            with patch('intrep.problems.language_agent.training.read_native_base', return_value=tiny_native_base()):
+                full = train([selection], conversations, root / 'full', config, native_checkpoint=root / 'native.pt')
+                train([selection], conversations, root / 'resumed', dataclasses.replace(config, steps=1), native_checkpoint=root / 'native.pt')
+                resumed = train([selection], conversations, root / 'resumed', config, resume=True)
             expected = torch.load(full, weights_only=True)
             actual = torch.load(resumed, weights_only=True)
             self.assertEqual(expected['step'], 2)
@@ -197,8 +169,8 @@ class LanguageTrainingTests(unittest.TestCase):
             self.assertEqual(expected['sources']['conversations']['conversation_ids'], ['chat1', 'chat2'])
             sampled = [json.loads(line)['actor_episodes'] for line in (root / 'full' / 'training.jsonl').read_text().splitlines()]
             self.assertEqual(sampled, [1, 1])
-            self.assertTrue(any(not torch.equal(value, tiny_model().learned_state()[key])
-                                for key, value in expected['model'].items() if 'lora_' in key))
+            self.assertTrue(any(not torch.equal(value, tiny_model().state_dict()[key])
+                                for key, value in expected['model'].items() if key.startswith('core.')))
 
     def test_session_roundtrip_preserves_conversation_and_world_memory(self):
         import tempfile
@@ -213,9 +185,9 @@ class LanguageTrainingTests(unittest.TestCase):
             model, 'policy', side_effect=AssertionError('chat must not act')
         ):
             self.assertEqual(session.reply('hi'), 'hello')
-            self.assertIsNone(chat.call_args.kwargs['memory'])
-            self.assertEqual(session.step, 0)
-            torch.testing.assert_close(session.memory, initial_memory)
+            self.assertIsNotNone(chat.call_args.kwargs['memory'])
+            self.assertEqual(session.step, 2)
+            self.assertFalse(torch.equal(session.memory, initial_memory))
             session.reply('what do you see', observation=MultimodalObservation(image=torch.rand(2, 2, 3)))
             self.assertIsNotNone(chat.call_args.kwargs['memory'])
         with tempfile.TemporaryDirectory() as temporary:
@@ -224,8 +196,30 @@ class LanguageTrainingTests(unittest.TestCase):
             other = LanguageSession(model, checkpoint_id='tiny')
             other.restore(path)
             self.assertEqual(other.messages, session.messages)
-            self.assertTrue(other.has_world_memory)
             torch.testing.assert_close(other.memory, session.memory)
             other.reset()
             self.assertFalse(other.messages)
-            self.assertFalse(other.has_world_memory)
+
+
+    def test_failed_reply_restores_common_memory_and_messages(self):
+        from intrep.problems.language_agent.runtime import LanguageSession
+        model = tiny_model()
+        session = LanguageSession(model, checkpoint_id='tiny')
+        before = session.memory.clone()
+        with (patch.object(model, 'chat', side_effect=RuntimeError('generation failed')),
+              self.assertRaises(RuntimeError)):
+            session.reply('hi', observation=MultimodalObservation(image=torch.rand(2, 2, 3)))
+        torch.testing.assert_close(session.memory, before)
+        self.assertEqual(session.step, 0)
+        self.assertEqual(session.messages, [])
+
+    def test_rejects_old_two_model_checkpoint(self):
+        import tempfile
+        from pathlib import Path
+
+        from intrep.problems.language_agent.training import load_checkpoint
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'old.pt'
+            torch.save({'schema_version': 'intrep.language_agent_checkpoint.v2'}, path)
+            with self.assertRaisesRegex(ValueError, 'single-core'):
+                load_checkpoint(path)

@@ -32,7 +32,6 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     for command in ('chat', 'act', 'train', 'rollout', 'cycle', 'evaluate'):
         sub = commands.add_parser(command)
-        sub.add_argument('--base', type=Path, required=True)
         sub.add_argument('--device', choices=('cpu', 'cuda'), default='cpu')
         sub.add_argument('--output', type=Path, required=True)
         if command in ('chat', 'act', 'rollout', 'cycle', 'evaluate'):
@@ -61,7 +60,6 @@ def main():
             sub.add_argument('--initialize', type=Path)
             sub.add_argument('--resume', action='store_true')
             sub.add_argument('--learning-rate', type=float, default=0.0001)
-            sub.add_argument('--rank', type=int, default=8)
         if command in ('rollout', 'cycle'):
             sub.add_argument('--episodes', type=int, default=8)
             sub.add_argument('--horizon', type=int, default=6)
@@ -73,12 +71,12 @@ def main():
     torch.set_num_threads(args.threads)
     if args.command == 'train':
         config = LanguageTrainingConfig(steps=args.steps, batch_size=args.batch_size,
-                                        learning_rate=args.learning_rate, rank=args.rank)
-        print(train(args.base, args.selection, args.conversations, args.output, config,
+                                        learning_rate=args.learning_rate)
+        print(train(args.selection, args.conversations, args.output, config,
                     device=args.device, initialize=args.initialize, resume=args.resume,
                     native_checkpoint=args.native_checkpoint))
         return
-    model, payload = load_checkpoint(args.checkpoint, args.base, device=args.device)
+    model, payload = load_checkpoint(args.checkpoint, device=args.device)
     identity = checkpoint_identity(args.checkpoint)
     if args.command == 'evaluate':
         args.output.mkdir(parents=True, exist_ok=True)
@@ -134,7 +132,7 @@ def main():
         del model
         if args.device == 'cuda':
             torch.cuda.empty_cache()
-        print(train(args.base, [*args.selection, selection], args.conversations, args.output / 'learning',
+        print(train([*args.selection, selection], args.conversations, args.output / 'learning',
                     config, device=args.device, initialize=args.checkpoint))
     else:
         print(selection)

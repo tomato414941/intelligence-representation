@@ -10,7 +10,7 @@ from intrep.representation.inputs.multimodal_observation import MultimodalObserv
 
 
 class LanguageSession(AgentSession):
-    """Conversation history and learned observation memory persist independently of replay."""
+    """Conversation and native observations update the same recurrent memory."""
 
     def __init__(self, model: LanguageAgentModel, *, checkpoint_id: str, seed: int = 0) -> None:
         super().__init__(model, checkpoint_id=checkpoint_id, seed=seed)
@@ -18,49 +18,46 @@ class LanguageSession(AgentSession):
     def reset(self) -> None:
         super().reset()
         self.messages: list[dict[str, str]] = []
-        self.has_world_memory = False
 
     @torch.no_grad()
     def hear(self, observation: MultimodalObservation) -> None:
         self.memory = self.model.observe([observation], self.memory, step=self.step).detach()
         self.step += 1
-        self.has_world_memory = True
 
     @torch.no_grad()
     def reply(self, text: str, *, observation: MultimodalObservation | None = None, max_new_tokens: int = 256) -> str:
         if not text.strip() or max_new_tokens < 1:
             raise ValueError("chat requires nonempty user text and a positive token budget")
-        before = self.memory, self.step, self.has_world_memory
+        before = self.memory, self.step
         try:
             if observation is not None:
                 self.hear(observation)
             answer_messages = [*self.messages, {"role": "user", "content": text}]
-            answer = self.model.chat(answer_messages, memory=self.memory if self.has_world_memory else None,
+            answer = self.model.chat(answer_messages, memory=self.memory,
                                      max_new_tokens=max_new_tokens)
+            prompt = self.model.prompt_ids(answer_messages)
+            self.memory = self.model.conversation_memory(prompt, self.memory).detach()
+            self.step += 1
+            if answer:
+                self.hear(MultimodalObservation(text=answer))
         except Exception:
-            self.memory, self.step, self.has_world_memory = before
+            self.memory, self.step = before
             raise
         self.messages.append({"role": "user", "content": text})
         self.messages.append({"role": "assistant", "content": answer})
         return answer
 
-    @torch.no_grad()
-    def act(self, observation: MultimodalObservation, *, epsilon: float = 0.0, max_text_bytes: int = 16):
-        decision = super().act(observation, epsilon=epsilon, max_text_bytes=max_text_bytes)
-        self.has_world_memory = True
-        return decision
-
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + '.tmp')
-        torch.save({"schema_version": "intrep.language_session.v1", "checkpoint_id": self.checkpoint_id,
+        torch.save({"schema_version": "intrep.language_session.v2", "checkpoint_id": self.checkpoint_id,
                     "step": self.step, "memory": self.memory.cpu(), "rng": self.generator.get_state(),
-                    "messages": self.messages, "has_world_memory": self.has_world_memory}, temporary)
+                    "messages": self.messages}, temporary)
         temporary.replace(path)
 
     def restore(self, path: Path) -> None:
         payload = torch.load(path, map_location='cpu', weights_only=True)
-        if payload.get('schema_version') != 'intrep.language_session.v1' or payload['checkpoint_id'] != self.checkpoint_id:
+        if payload.get('schema_version') != 'intrep.language_session.v2' or payload['checkpoint_id'] != self.checkpoint_id:
             raise ValueError('session belongs to a different model checkpoint')
         memory = payload['memory'].to(self.memory.device)
         self.model._memory(memory)
@@ -74,4 +71,4 @@ class LanguageSession(AgentSession):
             raise ValueError('saved conversation must end at a turn boundary')
         self.memory, self.step = memory, payload['step']
         self.generator.set_state(payload['rng'])
-        self.messages, self.has_world_memory = messages, bool(payload['has_world_memory'])
+        self.messages = messages
