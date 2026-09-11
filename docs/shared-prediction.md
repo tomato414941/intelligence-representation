@@ -5,6 +5,11 @@ heads can be attached, detached or replaced. LFM2.5-230M and 350M are independen
 size comparisons: each assembled model has exactly one LFM body. The earlier
 small `LanguageAgentModel` experiments remain separate historical baselines.
 
+The follow-up [learning evaluation](joint-learning-evaluation.md) increases the
+training budget and adds fixed multi-example panels, per-task metrics and
+native input-omission controls. The three-update figures below describe the
+earlier execution check.
+
 ## The Learning Contract
 
 ```text

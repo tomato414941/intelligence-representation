@@ -26,6 +26,11 @@ and installs non-torch runtime dependencies explicitly.
 For torchvision jobs, run `./scripts/setup_runpod_vision.sh` after
 `setup_runpod.sh` and provide a torchvision wheel matching the selected image.
 
+For the joint LFM experiment, `bash scripts/setup_runpod_lfm.sh` runs the normal
+setup, installs the pinned Transformers/safetensors dependencies and verifies
+the LFM integration tests. Its image readers use the existing IDX/CIFAR loaders;
+this path does not require a torchvision installation change.
+
 For CPU-only tensor-cache construction, use:
 
 ```sh
