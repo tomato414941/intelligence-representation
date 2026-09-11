@@ -1,239 +1,190 @@
-# Language-Capable Predictive Agent
+# Single-Core Predictive Agent
 
-The `language_agent` assembly uses a pretrained language model as the shared
-core for conversation, native observations, recurrent memory, action values and
-future image/audio/feedback predictions. Ordinary conversation can produce
-explanations, translations and summaries; it does not invoke the action head.
+The `language_agent` assembly uses the original multimodal Transformer for
+conversation, observation encoding, recurrent memory, action values and future
+image/audio/feedback prediction. It contains one trainable core and one set of
+text embeddings and output weights. No pretrained language model is loaded.
 
-The earlier [multimodal agent](multimodal-agent.md) was trained to emit target
-color labels. Its text head was not evidence of general language ability.
-That experiment remains separately documented so its measurements retain their
-original meaning.
+This corrects the [rejected two-model integration](research/language-agent-qwen-20260911.md).
+That experiment connected a frozen native predictor to Qwen; its language
+quality and native accuracy measurements do not describe the current model.
 
-## Shared Computation
+## Computation
 
 ```mermaid
 flowchart LR
-    C[Conversation history] --> T[Qwen token embeddings]
-    T --> L[Shared Qwen decoder + LoRA]
-    L --> H[Language head]
-    H --> R[Response]
-    O[Observations or native requests + memory] --> N[Learned native core]
-    N --> P[Projection to Qwen]
-    P --> L
-    L --> B[Projection back + learned scale]
-    B --> A[Add to native features]
-    N --> A
-    A --> F[Memory update, action or forecast]
-    M[Observation memory] --> P
+    O[Text, image, audio, action and feedback] --> E[Input embeddings]
+    C[Conversation history and answer prefix] --> E
+    E --> T[One trainable Transformer]
+    M[Recurrent memory] --> T
+    T --> U[Memory update]
+    U --> M
+    T --> L[Shared byte output]
+    L --> R[Generated text]
+    T --> A[Action values]
+    T --> P[Image, audio and feedback forecasts]
 ```
 
-The assembly contains two pretrained parts: the language decoder and the
-previously learned native predictor. The native predictor supplies useful
-perception, memory and forecast features. Those features are projected into the
-language decoder; its result is projected back and added as a small, learned
-correction. Every native observation update, action readout and forecast executes
-this shared language decoder. The correction also changes the memory carried to
-later observations. Text observations are also tokenized directly for Qwen,
-alongside the projected native features. With correction strength set to zero, the native operations
-exactly reproduce the original predictor in the unit test.
+`LanguageAgentModel` extends `MultimodalAgentModel` with conversation
+serialization, assistant-answer loss and autoregressive generation. It adds no
+parameters or second model. A native checkpoint loads strictly into exactly the
+same parameter names and shapes. All weights remain trainable, including every
+Transformer layer, the observation encoder, memory gate and output heads.
 
-Text conversation retains its complete message history, subject to the language
-model context limit. Native observations
-update the recurrent memory separately. When that memory is available, its
-projection is included as a prefix in language generation. Questions use the
-conversation path; they are not interpreted as new environment observations.
-Predicted outcomes do not update memory as if they were actual observations.
+Conversation prompts use explicit role delimiters and the existing UTF-8 byte
+vocabulary. The same observation update reads the prompt into recurrent memory;
+the same Transformer and byte output layer predict answer bytes causally.
+Assistant answers are supervised, while prompt positions are masked out of the
+loss. Long answers are learned in chunks without inserting false end tokens.
+The full conversation is saved, but each prompt uses its last 1,024 bytes.
+Training uses up to 1,024 preceding bytes and a 1,024-byte answer chunk;
+generation keeps a rolling 1,024-byte prefix. This bounded context is a practical
+limit, not a claim of unlimited recall.
 
-The language initialization is
-[Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507), pinned
-to revision `cdbee75f17c01a7cc42f958dc650907174af0554`. Its existing language
-ability supplies the starting point. This is not a claim to have acquired
-language from scratch or introduced a new intelligence principle.
+Chat turns update the same recurrent state used for action selection. Actual
+observations and feedback also update it; forecasts do not overwrite actual
+memory. A chat request generates text without executing a motor action.
+Inference changes session state, while explicit training changes weights.
 
-The language base is stored once in NF4 form. Joint training updates rank-eight
-LoRA matrices inside attention and feed-forward projections, the projections
-between native and language features, and their scales. The previously learned
-native weights are frozen. The same LoRA weights are active for language,
-observation, action and prediction. Tests verify their gradients separately
-from conversation loss, action loss and image/audio forecast loss. No separate
-answering service is called.
+## Joint Learning And Persistence
 
-Native initialization uses the earlier experiment's final learned checkpoint,
-including its cumulative source history. Raw image/audio support and native
-skill therefore retain that experiment's scope: the navigation world. General
-photo understanding, speech recognition and speech synthesis are not established
-by this change.
+Each update mixes complete native episodes and human OpenAssistant
+conversations. Native losses supervise available action labels, TD values from
+actual rewards, target words and next image/audio/feedback. Conversation loss
+updates the same core and memory path. The TD target is a moving average of the
+same parameter set, used only for training bootstraps.
 
-## Learning And Persistence
+`cycle` collects actual interactions, then replays them with retained experience
+and conversations. With both episode sources and batch size at least two,
+every update contains actor experience. Batch size one alternates sources.
+World identities and conversation trees define evaluation split boundaries;
+checkpoint provenance records source hashes and cumulative training identities.
 
-Each optimizer step includes a conversation batch and a batch of complete
-native episodes. Conversation loss supervises assistant responses, with prompt
-tokens masked out. Native losses supervise available teacher actions, TD values
-from actual rewards, target-color answers and the next image, waveform and
-feedback. An exponential moving average of learned parameters supplies TD
-bootstrap values. Frozen base weights are shared rather than duplicated for
-this target calculation. Actor-generated episodes are sampled separately from
-retained episodes: with both sources present and batch size at least two, every
-batch includes actor experience. Batch size one alternates the sources. This
-prevents a small collection of new experience from being missed in a short cycle.
-
-Conversation trees and native world identities define separate split boundaries.
-The selected source records and hashes are retained in checkpoints. Replay
-sampling reconstructs observation memory from actual recorded history.
-
-A checkpoint embeds the small frozen native initialization and its provenance,
-plus learned parameters, optimizer state, target parameters and random-generator
-states. Its language-base/tokenizer fingerprint must match when
-loading. Exact resume preserves these states; initialization starts a new
-optimizer while retaining the cumulative training-source history.
-
-Inference session files contain conversation messages, recurrent memory and
-actor random state. They are tied to the exact learned checkpoint. Sessions do
-not change weights. The `cycle` command explicitly collects actual interactions
-and then learns from their replay together with retained episodes and
-conversations.
+Schema `intrep.language_agent_checkpoint.v3` stores the complete single model,
+optimizer, target parameters and random-generator states. It loads without a
+language backbone or external tokenizer. Earlier Qwen checkpoints are rejected.
+Session schema v2 stores messages, common recurrent memory and actor random
+state, bound to the exact model checkpoint. Exact resume preserves sampling and
+optimizer state; initialization starts a new optimizer.
 
 ## Commands
 
-Install the optional language dependencies without replacing the current
-PyTorch environment:
+Install the normal project dependencies:
 
 ```sh
-uv sync --extra torch --extra vision --extra llm --inexact
+uv sync --extra torch --extra vision --inexact
 ```
 
-Prepare conversation replay:
+Conversation preparation is documented in [datasets](datasets.md#conversation-replay).
+Initialize from the existing native model and jointly learn language:
 
 ```sh
-uv run --inexact python scripts/prepare_agent_conversations.py \
-  --output data/language/agent-conversations-oasst1-20260911
-```
-
-Run commands from the repository root. The base directory contains the pinned
-tokenizer and exported NF4 weights. The following export command uses CUDA.
-Preparation and readiness checks are implemented in
-`scripts/probe_language_backbone.py`; they do not train on the readiness prompts:
-
-```sh
-uv run --inexact python scripts/probe_language_backbone.py \
-  --model Qwen/Qwen3-4B-Instruct-2507 \
-  --revision cdbee75f17c01a7cc42f958dc650907174af0554 \
-  --quantize --export-base --output runs/language-base-preparation
-```
-
-Promote the exported `base/` directory to a durable model directory before
-training or depending on it for inference. The recorded file hashes identify
-the exact exported tokenizer and weights.
-
-Train with both sources:
-
-```sh
-uv run --inexact python -m intrep.problems.language_agent.cli train \
-  --base models/backbones/qwen3-4b-instruct-2507-nf4-cdbee75 \
+uv run --inexact python scripts/train_language_agent.py \
   --native-checkpoint models/multimodal-agent-20260910/cycle/round-000/learning/checkpoint.pt \
   --selection data/multimodal-navigation-20260910/selection.json \
   --conversations data/language/agent-conversations-oasst1-20260911/train.jsonl \
-  --output runs/language-agent/learning --steps 100 --device cuda
+  --validation-conversations data/language/agent-conversations-oasst1-20260911/validation.jsonl \
+  --output runs/single-core-agent --steps 600 --batch-size 2 --device cuda
 ```
 
-Use `chat` for a conversation, optionally with `--image`, `--audio` or actual
-feedback. Use `act` to request an environment action and forecasts. Both commands
-write a `session.pt` that can be supplied to the next invocation with `--session`.
+Promote checkpoints from disposable `runs/` into `models/` before depending on
+them. Chat from a self-contained checkpoint:
 
 ```sh
 uv run --inexact python -m intrep.problems.language_agent.cli chat \
-  --base models/backbones/qwen3-4b-instruct-2507-nf4-cdbee75 \
-  --checkpoint models/language-agent-20260911/cycle/learning/checkpoint.pt \
-  --text '水が氷になる理由を短く説明してください。' \
-  --output runs/language-chat --device cpu
+  --checkpoint models/single-core-agent-20260911/cycle/learning/checkpoint.pt \
+  --text '水が氷になる理由を説明してください。' \
+  --output runs/single-core-chat --device cpu
 ```
 
-`scripts/train_language_agent.py` evaluates held-out conversation prompts and
-native validation episodes before and after joint learning. The conversational
-outputs are saved verbatim for inspection; a lower training loss is not treated
-as proof that language quality or action competence improved.
+`--session` restores a prior session; `--image`, `--audio`, `--previous-action`
+and `--feedback` supply actual observations. `act`, `rollout`, `cycle` and
+`evaluate` use this same checkpoint and require no `--base` argument.
 
-## Measured Run — 2026-09-11
+## Verification Scope
 
-The adopted model uses 17,825,794 trainable parameters: shared language LoRA,
-connecting projections and their scales. It draws replay from 2,048 selected
-human conversations and 1,024 native training episodes. Conversation selection
-contains 2,009 English and 39 Japanese assistant responses. The native
-initialization also retains its earlier training-source history.
+Tests check that exactly one Transformer exists, all parameters are trainable,
+and the model has exactly the original native parameter set. Independent
+conversation, action and forecast losses reach that same Transformer's
+attention/feed-forward weights and memory gate. Additional checks cover causal
+answer masking, long-answer supervision, unchanged native initialization,
+memory-dependent language, session persistence and exact replay resume.
 
-The run performed 100 joint updates, collected eight new six-step interaction
-episodes, and performed another 20 updates. Every additional update included
-one actor episode, one retained episode and two conversations. Actor records
-contain actual observations, actions and feedback without privileged teacher
-or target-word training labels.
+Architecture and general language quality are separate requirements. Removing
+Qwen also removes its pretrained language knowledge. A small native model
+jointly trained on a bounded conversation set must be evaluated through its
+actual outputs; structural tests and lower loss cannot establish reliable
+conversation, explanation, translation or summarization.
 
-The same eight held-out native validation worlds provide 48 recorded decisions
-at each stage. Language validation loss uses 16 conversations from disjoint
-conversation trees. These are held out from this run's replay; exposure during
-Qwen's original pretraining is unknown.
+## Measured Correction — 2026-09-11
 
-| Measurement | Before joint learning | After 100 updates | After actual-experience replay |
+The corrected model has 5,095,054 parameters (d256/h1024/heads8/l6, 32 memory
+vectors), all trainable. Its 100 parameter tensors have exactly the same names
+and shapes as the native initialization. All 100 changed during joint training
+and again during actual-experience replay. The inference module tree contains
+exactly one `SharedTransformerCore`.
+
+Training used the retained 1,024 native episodes and 2,048 human conversations
+(2,009 English and 39 Japanese), with batch size two and learning rate 0.0001.
+After 600 joint updates, the actor collected eight six-action episodes with
+15% exploration. Fifty additional updates each included one actor episode,
+one retained episode and two conversations. The final checkpoint retains both
+training stages' provenance. Actor records contain actual feedback rather than
+privileged action or word labels; evaluation annotations are kept separately.
+
+The same eight validation worlds provide 48 decisions at each stage. Language
+validation uses 16 conversations from separate conversation trees. Byte losses
+below cannot be compared numerically to the archived Qwen subword losses.
+
+| Measurement | Native initialization | After 600 updates | After 50 actor replay updates |
 | --- | ---: | ---: | ---: |
-| Teacher action agreement | 42/48 (87.5%) | 42/48 (87.5%) | 42/48 (87.5%) |
-| Conversation validation loss | 3.7763 | 1.6600 | 1.6559 |
-| Observation-grounded word loss | 3.2349 | 0.0768 | 0.0911 |
-| Native image loss, change-weighted | 0.10048 | 0.09961 | 0.09944 |
-| Native waveform MSE | 0.02362 | 0.02370 | 0.02363 |
+| Teacher action agreement | 42/48 (87.5%) | 44/48 (91.7%) | 43/48 (89.6%) |
+| Assistant byte validation loss | 8.0767 | 2.9225 | 2.9055 |
+| Target-word loss | 0.000136 | 0.001103 | 0.000667 |
+| Change-weighted image loss | 0.10049 | 0.08765 | 0.09407 |
+| Waveform MSE | 0.02362 | 0.02512 | 0.02383 |
 
-The original native checkpoint also scores 42/48 on these exact worlds. The
-image/audio losses and action scores support retention of its measured native
-behavior in this sample. They do not establish improved native skill.
+During actual interaction collection, the actor matched the teacher on 36/48
+exploratory decisions and the exact target word on 48/48. This validates the
+executed experience loop within the navigation task. The small evaluation and
+absence of an equal-compute control do not establish a causal improvement from
+conversation training or new experience.
 
-During the eight real interactions, the actor used 15% random-action exploration.
-It matched the annotated teacher on 35/48 decisions and emitted the exact target
-word on 46/48. The two word errors occurred around a changed target cue. Thus
-observation-grounded recall is still imperfect. These interactions were
-collected by the 100-update checkpoint before the additional replay updates.
+**General conversation remains unachieved.** The unconstrained Japanese
+responses contain invalid UTF-8 sequences, and English responses repeat short
+fragments. Conversation generation now masks invalid UTF-8 continuations, surrogate and
+out-of-range codepoints, and incomplete codepoints at the byte budget boundary.
+This repairs text encoding, not language understanding. A fresh CPU response to
+an English introduction request begins `The an an an an the an an an` and does
+not answer the request. A saved-session follow-up also fails semantically.
+After the encoding repair, held-out Japanese answers repeat the character
+`い`; they still do not answer the questions.
+These failures are retained in the response records. Neither lower validation
+loss nor valid Unicode is evidence that explanation, translation or summary
+requests are being fulfilled.
 
-Additional replay changed all 508 trainable parameter tensors, including shared
-language LoRA; all 252 LoRA output matrices are nonzero. The frozen native base
-remained exactly unchanged. Including actual experience and observing parameter
-updates establishes execution of the learning loop. An equal-compute control
-without new experience was not run, so no causal performance gain is attributed
-to the new experience.
-
-The final checkpoint's unedited conversation examples include:
-
-- Translation: `Yesterday, I went for a walk with my younger sister in the park.`
-- Remembering a supplied name: `コハクです。`
-- Following a correction: `変更後の集合日時：日曜日の午前11時`
-- Arithmetic: `3人×2個＝6個 ... 残りは2個です`
-- Python: a function filtering a list with `num % 2 == 0`.
-
-The examples also expose limits: the ice explanation is shallow, and the summary
-omits the stated opening hours. The loss reduction is not a blanket language
-quality score. This change establishes ordinary language behavior alongside the
-native agent; it does not establish general reliability or general audiovisual
-understanding.
+A cold CPU check loaded only the complete checkpoint, without importing
+Transformers, PEFT or bitsandbytes. It verified exact session restoration and
+continuation, chat updates to common memory, and an image/audio-driven action
+followed by actual feedback updating that same memory. The sequence took 9.96
+seconds with two CPU threads; this is a multi-operation check, not per-response
+latency. The actual reward in that example was -0.1, so it is execution evidence,
+not a successful-behavior example.
 
 Durable local artifacts:
 
-- [Final checkpoint](../models/language-agent-20260911/cycle/learning/checkpoint.pt)
-- [Full conversation examples](../models/language-agent-20260911/conversations.md)
-- [Actual interaction replay](../models/language-agent-20260911/replay.html)
-- [Final validation output](../models/language-agent-20260911/post-cycle/evaluation.json)
-- [Parameter, source and replay verification](../models/language-agent-20260911/verification.json)
+- [Final single-core checkpoint](../models/single-core-agent-20260911/cycle/learning/checkpoint.pt)
+- [Unedited response examples](../models/single-core-agent-20260911/conversations.md)
+- [Structural and persistence verification](../models/single-core-agent-20260911/verification.json)
+- [Training-stage evaluation](../models/single-core-agent-20260911/post-cycle/evaluation.json)
+- [UTF-8-constrained generation evaluation](../models/single-core-agent-20260911/utf8-evaluation/evaluation.json)
+- [Actual interaction replay](../models/single-core-agent-20260911/replay.html)
+- [Artifact hashes](../models/single-core-agent-20260911/manifest.json)
 
-The full suite passed 505 tests. It covers native initialization preservation,
-separate language/action/forecast gradients into the same decoder, assistant-only
-loss masking, observation memory, session restoration, replay participation and
-exact training resume. The GPU job retrieved its outputs and deleted its pod.
+The original GPU source snapshot is retained with the run; the corrected
+Unicode decoder is recorded separately with the final source. No learned
+parameters changed for the decoding repair. The GPU job retrieved its outputs
+and deleted its disposable pod.
 
-A separate CPU reload of the final checkpoint restored a saved conversation and
-correctly recalled its supplied preference (`麦茶`). On a new question, it
-explained day and night through Earth's rotation. It also consumed image/audio
-observations, selected a native action, received actual feedback and then
-answered the target-color question from updated observation memory. The
-[recorded CPU check](../models/language-agent-20260911/local-smoke/result.json)
-contains the exact prompts and outputs.
-
-The combined CPU verification sequence took 566 seconds with two threads on the
-shared local host. It includes loading, multiple generations, native prediction
-and feedback processing; it is not a per-response latency measurement. The CPU
-path is functional but slow in this environment.
+The final full unit suite passed 508 tests, and all 22 focused language/native
+checks passed. These verify execution and invariants, not conversational quality.

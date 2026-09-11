@@ -2,8 +2,8 @@
 
 This page records the initial native-modality experiment. Its text output was
 trained on color labels, not general conversation. The
-[language-capable assembly](language-agent.md) adds a pretrained language core
-and joint conversation replay; its results must be evaluated separately.
+[single-core assembly](language-agent.md) adds conversation training to the same
+core; its results must be evaluated separately.
 
 This implementation connects language, images, audio, actions, feedback and
 recurrent memory to one learned Transformer. It is an integrated research

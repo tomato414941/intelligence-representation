@@ -28,17 +28,15 @@ and [learning-data-boundaries.md](learning-data-boundaries.md) for the current d
 
 ## Joint Language And Native Experience
 
-`intrep.problems.language_agent.cli train` initializes a shared language decoder
-from a pinned base and retains a learned native predictor. It mixes supervised
-conversation replay with native episodes; `cycle` additionally collects actual
-action feedback and includes those episodes in each mixed replay batch. See
-[the language-capable agent](language-agent.md) for preparation, commands,
-checkpoint provenance and measured results.
+`intrep.problems.language_agent.cli train` extends the learned multimodal
+Transformer with conversation training. Language, observation memory, action and
+forecasts use the same trainable core, text embedding and text output layer.
+`cycle` collects actual action feedback and includes it in mixed replay batches.
 
-Its `--base` directory binds the language weights and tokenizer together.
-`--native-checkpoint` selects the learned native initialization for a new run;
-later learned checkpoints embed that small native base. LoRA and connecting
-projections are trained while both pretrained bases remain frozen.
+`--native-checkpoint` initializes the single model for a new run. Subsequent
+checkpoints contain the entire model; there is no external language base or
+frozen second predictor. See [the single-core agent](language-agent.md) for
+commands and measured limitations.
 
 ## Tokenizer Reuse
 

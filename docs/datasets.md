@@ -10,7 +10,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | Dataset | Modality | Approximate size | Status | Description |
 | --- | --- | ---: | --- | --- |
 | Tiny Shakespeare | text | about 1 MB | supported | A single small Shakespeare text corpus commonly used for toy language-model examples. |
-| OpenAssistant OASST1 conversations | human text conversations | bounded local selection: 2,048 train / 128 validation | supported | Assistant rank-zero, undeleted en/ja chains up to 1,200 characters, partitioned by conversation-tree hash; conversation replay for the [language-capable agent](language-agent.md). |
+| OpenAssistant OASST1 conversations | human text conversations | bounded local selection: 2,048 train / 128 validation | supported | Assistant rank-zero, undeleted en/ja chains up to 1,200 characters, partitioned by conversation-tree hash; conversation replay for the [single-core agent](language-agent.md). |
 | WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
 | WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
 | TinyStories | text | over 2M stories | candidate | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
@@ -57,6 +57,8 @@ up to 1,200 characters per conversation. Conversation-tree identity determines
 the split, so related branches cannot appear on both sides. The stored source
 records retain role, content, message identity, tree identity and provenance.
 The language-agent checkpoint records the selected file hash and identities.
+The single-core correction reuses these human conversations directly; it does
+not distill answers from Qwen or load pretrained language weights.
 
 ## Preparation Entrypoints
 

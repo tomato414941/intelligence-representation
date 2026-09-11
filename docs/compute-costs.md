@@ -119,7 +119,7 @@ and several shared-core calls per step make these updates much more expensive
 than the single-pass cellular predictor. Detailed timings are retained with
 the [multimodal agent artifacts](multimodal-agent.md#artifacts-and-verification).
 
-## Shared Language And Native Agent
+## Rejected Two-Model Language Integration
 
 For the 2026-09-11 Qwen3-4B NF4 + learned native predictor configuration,
 rank-eight LoRA and batch size two, the measured RTX A6000 job used an observed
@@ -133,4 +133,19 @@ output retrieval and pod deletion, the job took 1,692 seconds (28.2 minutes),
 about $0.25 at the observed hourly rate. Peak allocated CUDA memory during the
 initial training/evaluation process was 42.42 GB; the job resource monitor saw
 42,819 MiB GPU memory in use. This records the measured workload on a 48 GB GPU. Model and validation details are
-in [the language-capable agent](language-agent.md).
+in [the historical two-model experiment](research/language-agent-qwen-20260911.md).
+
+## Single-Core Language Correction
+
+The replacement 5.10-million-parameter shared native model used one RTX A5000
+at the observed $0.27/hour rate on 2026-09-11. Six hundred joint updates took
+218.6 seconds (0.36 seconds/update) with batch size two. Each update replayed
+complete native episodes and supervised two byte-level conversations. Fifty
+additional updates mixed actual actor experience with retained experience.
+
+The full disposable job, including setup, evaluation, actor collection, output
+retrieval and pod deletion, took 332.2 seconds, about $0.025 of GPU time excluding
+disk charges. Peak sampled GPU memory was 1,813 MiB. These figures describe the
+[corrected single-core experiment](language-agent.md), whose general language
+quality remains insufficient; they are not sizing estimates for acquiring
+reliable language ability.

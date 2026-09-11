@@ -47,7 +47,7 @@ docs/
 Read these first:
 
 - [Concept](docs/concept.md)
-- [Language-Capable Predictive Agent](docs/language-agent.md)
+- [Single-Core Predictive Agent](docs/language-agent.md)
 - [Multimodal Predictive Agent](docs/multimodal-agent.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
 - [Model Boundaries](docs/model-boundaries.md)
