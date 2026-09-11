@@ -5,8 +5,10 @@ model training methods to the existing multimodal core. It does not load a
 pretrained language model. Language and native tasks still update the same
 5,095,054 parameters.
 
-A follow-up [literature and implementation review](research/language-training-literature-20260911.md)
-revises the next step around existing recipes and reusable artifacts.
+The current [six-month research review](research/recent-language-world-action-20260911.md)
+prioritizes recent work and reusable capabilities. The earlier
+[literature and implementation comparison](research/language-training-literature-20260911.md)
+remains background.
 
 ## Research Used In The Implementation
 

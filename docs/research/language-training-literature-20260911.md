@@ -1,5 +1,8 @@
 # Existing Language-Training Methods And Reusable Artifacts
 
+The current shortlist is the [six-month research review](recent-language-world-action-20260911.md).
+This document is retained as background; it is not a survey of the latest work.
+
 Reviewed on 2026-09-11 against implementation commit `8b6afee`. This review
 replaces the proposal to simply increase the current prototype's training
 budget. The useful research question is how language and native experience can
