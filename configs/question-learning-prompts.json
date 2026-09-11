@@ -1,0 +1,458 @@
+[
+  {
+    "prompt": "Explain why ice melts in one sentence."
+  },
+  {
+    "prompt": "氷が溶ける理由を日本語で一文で説明してください。"
+  },
+  {
+    "prompt": "Compute 7 + 8. Output only the number.",
+    "expected": "15",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "7に8を足すといくつですか。数字だけで答えてください。",
+    "expected": "15",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "There are 12 apples. Five are eaten. Output only the number of apples remaining.",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "りんごが12個あり、5個食べました。残りの個数を数字だけで答えてください。",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Convert cat to uppercase. Output only the converted text.",
+    "expected": "CAT",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "「かきく」を逆の順番に並べてください。並べ替えた文字だけで答えてください。",
+    "expected": "くきか",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "From the list red, blue, green, output only the second item.",
+    "expected": "blue",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "「赤、青、緑」の2番目の項目だけを答えてください。",
+    "expected": "青",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: when the signal is blue choose left, otherwise choose right. The signal is red. Output only left or right.",
+    "expected": "right",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：信号が青なら左、それ以外なら右を選びます。信号は赤です。「左」か「右」だけで答えてください。",
+    "expected": "右",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 41 + 31? Reply with the number only.",
+    "expected": "72",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "41と31を足してください。数字だけで答えてください。",
+    "expected": "72",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 41 minus 31? Reply with the number only.",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "41から31を引いてください。数字だけで答えてください。",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: apple, island, hat. Return only item number 2.",
+    "expected": "island",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：犬, 卵, りんご。2番目の項目だけを答えてください。",
+    "expected": "卵",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 25. Output only A or B.",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は25です。AかBだけを答えてください。",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 28 + 35? Reply with the number only.",
+    "expected": "63",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "28と35を足してください。数字だけで答えてください。",
+    "expected": "63",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 35 minus 28? Reply with the number only.",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "35から28を引いてください。数字だけで答えてください。",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: chair, island, apple. Return only item number 3.",
+    "expected": "apple",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：コップ, りんご, 島。3番目の項目だけを答えてください。",
+    "expected": "島",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 14. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は14です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 30 + 31? Reply with the number only.",
+    "expected": "61",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "30と31を足してください。数字だけで答えてください。",
+    "expected": "61",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 31 minus 30? Reply with the number only.",
+    "expected": "1",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "31から30を引いてください。数字だけで答えてください。",
+    "expected": "1",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: apple, boat, dog. Return only item number 2.",
+    "expected": "boat",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：帽子, 犬, 瓶。2番目の項目だけを答えてください。",
+    "expected": "犬",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 12. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は12です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 44 + 33? Reply with the number only.",
+    "expected": "77",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "44と33を足してください。数字だけで答えてください。",
+    "expected": "77",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 44 minus 33? Reply with the number only.",
+    "expected": "11",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "44から33を引いてください。数字だけで答えてください。",
+    "expected": "11",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: island, dog, boat. Return only item number 1.",
+    "expected": "island",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：椅子, 船, 帽子。1番目の項目だけを答えてください。",
+    "expected": "椅子",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 7. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は7です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 27 + 34? Reply with the number only.",
+    "expected": "61",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "27と34を足してください。数字だけで答えてください。",
+    "expected": "61",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 34 minus 27? Reply with the number only.",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "34から27を引いてください。数字だけで答えてください。",
+    "expected": "7",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: glass, apple, boat. Return only item number 3.",
+    "expected": "boat",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：島, 犬, 船。3番目の項目だけを答えてください。",
+    "expected": "船",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 23. Output only A or B.",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は23です。AかBだけを答えてください。",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 12 + 11? Reply with the number only.",
+    "expected": "23",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "12と11を足してください。数字だけで答えてください。",
+    "expected": "23",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 12 minus 11? Reply with the number only.",
+    "expected": "1",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "12から11を引いてください。数字だけで答えてください。",
+    "expected": "1",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: boat, apple, egg. Return only item number 1.",
+    "expected": "boat",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：花, コップ, 椅子。1番目の項目だけを答えてください。",
+    "expected": "花",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 11. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は11です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 13 + 23? Reply with the number only.",
+    "expected": "36",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "13と23を足してください。数字だけで答えてください。",
+    "expected": "36",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 23 minus 13? Reply with the number only.",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "23から13を引いてください。数字だけで答えてください。",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: flower, chair, apple. Return only item number 3.",
+    "expected": "apple",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：椅子, 犬, 瓶。3番目の項目だけを答えてください。",
+    "expected": "瓶",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 2. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は2です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 20 + 30? Reply with the number only.",
+    "expected": "50",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "20と30を足してください。数字だけで答えてください。",
+    "expected": "50",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 30 minus 20? Reply with the number only.",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "30から20を引いてください。数字だけで答えてください。",
+    "expected": "10",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: chair, glass, apple. Return only item number 2.",
+    "expected": "glass",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：犬, 帽子, 卵。2番目の項目だけを答えてください。",
+    "expected": "帽子",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 19. Output only A or B.",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は19です。AかBだけを答えてください。",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 18 + 48? Reply with the number only.",
+    "expected": "66",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "18と48を足してください。数字だけで答えてください。",
+    "expected": "66",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 48 minus 18? Reply with the number only.",
+    "expected": "30",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "48から18を引いてください。数字だけで答えてください。",
+    "expected": "30",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: egg, flower, glass. Return only item number 3.",
+    "expected": "glass",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：椅子, 卵, 瓶。3番目の項目だけを答えてください。",
+    "expected": "瓶",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 1. Output only A or B.",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は1です。AかBだけを答えてください。",
+    "expected": "B",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 46 + 41? Reply with the number only.",
+    "expected": "87",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "46と41を足してください。数字だけで答えてください。",
+    "expected": "87",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "What is 46 minus 41? Reply with the number only.",
+    "expected": "5",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "46から41を引いてください。数字だけで答えてください。",
+    "expected": "5",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "List: glass, jar, island. Return only item number 2.",
+    "expected": "jar",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "一覧：島, コップ, 瓶。2番目の項目だけを答えてください。",
+    "expected": "コップ",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "Rule: output A for a number greater than 15; otherwise output B. The number is 16. Output only A or B.",
+    "expected": "A",
+    "max_tokens": 16
+  },
+  {
+    "prompt": "規則：数が15より大きければA、それ以外ならBを出力します。数は16です。AかBだけを答えてください。",
+    "expected": "A",
+    "max_tokens": 16
+  }
+]
