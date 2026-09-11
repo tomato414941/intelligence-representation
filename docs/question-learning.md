@@ -70,6 +70,9 @@ excluded from the inputs; their query coordinates specify only where to predict.
 Image/audio completion is scored on the missing region, with visible-image-mean
 and preceding-waveform-chunk baselines. Sensor forecasting uses persistence, and
 shogi successor prediction compares with copying the unchanged board/hands.
+Analysis also reconstructs the exact masked targets to measure zero predictions:
+black pixels, silence and training-channel means after sensor normalization.
+The reconstructed original baselines must agree with the saved evaluation rows.
 
 All parameters remain trainable in both conditions. Additional output heads
 that have no objective in the fixed condition provide untrained references;
@@ -97,6 +100,9 @@ observations for selected nontext questions while preserving the question and
 target. Their changed sequence lengths and distribution limit causal inference.
 Source state, question schedule, partner samplers and RNG states are restored
 after evaluation; evaluation must not change subsequent optimizer updates.
+Complementary-question scores are compared with both constant relation choices
+(first question yes/second no, and the reverse), since a model can change its
+answer with the question while still ignoring the observations.
 
 BoolQ has no identical question/passage pair across its official train/development
 splits, but 720 distinct passages occur in both. Results must distinguish new
