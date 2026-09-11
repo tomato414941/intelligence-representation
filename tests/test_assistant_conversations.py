@@ -58,15 +58,21 @@ class AssistantConversationTests(unittest.TestCase):
             self.assertEqual(tokenizer.decode(targets), "red [EOS] left right [EOS]")
             self.assertEqual(record["start"], 0)
             self.assertEqual(record["end"], record["tokens"].numel())
+            encoded_context = []
+            def capture_context(module, inputs, output):
+                output.retain_grad()
+                encoded_context.append(output)
+            handle = model.input_heads["text"].register_forward_hook(capture_context)
             actual = source.record_loss(record)
+            handle.remove()
             hidden = model(model.encode("text", record["tokens"][:, :-1]))
             logits = model.decode("text", hidden)
             expected = F.cross_entropy(logits[record["mask"][:, 1:]], record["tokens"][:, 1:][record["mask"][:, 1:]])
             torch.testing.assert_close(actual, expected)
             actual.backward()
             # Context tokens receive causal gradients even though they are not labels.
-            embedding = model.input_heads["text"]
-            self.assertGreater(float(embedding.weight.grad[tokenizer.convert_tokens_to_ids("one")].norm()), 0)
+            user_positions = record["tokens"][:, :-1] == tokenizer.convert_tokens_to_ids("one")
+            self.assertGreater(float(encoded_context[0].grad[user_positions].norm()), 0)
             self.assertTrue(all(parameter.requires_grad for parameter in model.parameters()))
 
     def test_overlapping_windows_cover_every_answer_token_once_and_resume_exactly(self):
