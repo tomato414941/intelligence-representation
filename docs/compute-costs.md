@@ -149,3 +149,33 @@ disk charges. Peak sampled GPU memory was 1,813 MiB. These figures describe the
 [corrected single-core experiment](language-agent.md), whose general language
 quality remains insufficient; they are not sizing estimates for acquiring
 reliable language ability.
+
+## Joint Full-Parameter LFM Sizing Reference
+
+The 2026-09-11 nine-source LFM comparison used one A40 at the observed pod rate
+of $0.49/hour. Both models started from their pinned official bases and trained
+all attached parameters with FP32 AdamW, learning rate `1e-5`, and four CPU
+threads. Each update accumulated all four text sources (64 targets each), three
+image sources (one image each), one shogi position and one native transition
+with its preceding history. These small batches do not exhaust the available
+training populations.
+
+| Assembly | Updates | Time in optimizer updates | Seconds/update | Peak Torch CUDA allocation |
+| --- | ---: | ---: | ---: | ---: |
+| LFM2.5-230M, 233.35M attached parameters | 1,000 | 508.0 s | 0.508 | 4,346 MiB |
+| LFM2.5-350M, 358.14M attached parameters | 1,000 | 533.2 s | 0.533 | 6,254 MiB |
+
+The complete sequential job took 1,825.1 seconds (30m25s), including provisioning,
+transfer of the complete recipe inputs, setup, five fixed-panel evaluations per
+model, generation/input controls, checkpoint retrieval and pod deletion. At the
+observed rate this is about $0.248, excluding disk charges; it is an estimate,
+not an invoice. The external GPU monitor peaked at 7,324 MiB and averaged 44.2%
+utilization during the monitored remote workload. These measurements describe
+this recipe and reference convolution implementation; the earlier CPU SGD
+execution checks are not a controlled hardware speed comparison.
+
+The [learning report](joint-learning-evaluation.md) records improvements and
+language deterioration. Timing, environment and resource records are retained
+with the durable `models/joint-lfm-learning-20260911/` artifacts. Future training
+budgets should use both capability/retention measurements and these workload
+costs, rather than extrapolating quality from falling aggregate loss.
