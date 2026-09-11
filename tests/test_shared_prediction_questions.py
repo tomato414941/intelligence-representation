@@ -167,6 +167,17 @@ class QuestionTests(unittest.TestCase):
             self.assertEqual((complete["prompt"], complete["expected"]), (missing["prompt"], missing["expected"]))
             self.assertGreater(complete["prefix_tokens"], missing["prefix_tokens"])
 
+    def test_each_added_comparison_form_sees_both_pair_labels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = build_sources(make_model(), make_tokenizer(), question_recipe(root), root)["mnist"]
+            seen = {form: set() for form in ("same", "different")}
+            for _ in range(4 * (len(source.forms) - 1)):
+                source.loss()
+                if source.last_form in seen:
+                    seen[source.last_form].add(source.last_response["responses"][0]["expected"])
+            self.assertEqual(seen, {"same": {"yes", "no"}, "different": {"yes", "no"}})
+
     def test_both_conditions_start_identically_and_read_the_same_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

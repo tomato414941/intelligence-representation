@@ -345,7 +345,10 @@ class QuestionSource:
         if self.partners:
             label = first["label"]
             generator = random.Random(seed)
-            same = seed % 2 == 0 if self._forced else self.step % 2 == 0
+            # Each added form must see both pair labels, independently of the
+            # original/added alternation and its own position in the cycle.
+            cycle = self.step // (2 * (len(self.forms) - 1))
+            same = seed % 2 == 0 if self._forced else cycle % 2 == 0
             selected = label if same else generator.choice([value for value in self.class_indices if value != label])
             pool = self.class_indices[selected]
             index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]

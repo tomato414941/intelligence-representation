@@ -35,7 +35,8 @@ the same source sampling prefix. Exact update and consumption counts are saved.
 Each text source now reads a block with 128 next-token target positions, twice
 the previous block length. Image, speech and sensor sources read an anchor from
 their complete shuffled population and a second record from a class-balanced
-partner pool. Same-class and different-class pairs alternate. Partner pools
+partner pool. Same-class and different-class pairs alternate across complete
+question cycles, so each added form receives both pair labels. Partner pools
 cycle through all members of each class; distinct partners are used when possible.
 Shogi and native sources read two records/transitions per update. BoolQ reads one
 complete passage/question. No source has a permanent small-sample cap. Increased
