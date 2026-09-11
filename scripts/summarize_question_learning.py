@@ -127,6 +127,10 @@ def summarize_report(report, training_passages, consumed_passages=None):
         if omitted:
             complete = {row["key"]: row for row in rows}
             item["input_controls"] = {}
+            item["paired_input_controls"] = {
+                "complete": paired_answers([complete[row["key"]] for row in omitted]),
+                "without_observations": paired_answers(omitted),
+            }
             for form in sorted({row["form"] for row in omitted}):
                 without = [row for row in omitted if row["form"] == form]
                 with_inputs = [complete[row["key"]] for row in without]
