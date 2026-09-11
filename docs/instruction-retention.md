@@ -50,8 +50,10 @@ Assistant masks come from the pinned tokenizer's chat template generation
 spans. User/system text supplies context but does not supply target labels.
 Assistant end-of-turn tokens are supervised. Conversations fitting 2,048 tokens
 remain together. Longer conversations use windows with 1,024 overlapping context
-tokens; all assistant targets are retained and each is supervised once per
-traversal. Very long histories therefore have bounded recent context. Branches
+tokens; assistant label positions are retained across windows without
+duplication. Original-conversation updates supervise those positions, while
+excerpt-question updates supervise their own answers. Very long histories
+therefore have bounded recent context. Branches
 without assistant targets are counted and skipped rather than given an empty
 loss. Checkpoints retain both the file cursor and pending token/mask windows.
 
@@ -93,6 +95,7 @@ python scripts/prepare_instruction_retention.py \
   --output data/instruction-retention-20260911
 R2_ENV_FILE=PATH_TO_PROJECT_R2_CONFIG \
   bash scripts/run_instruction_retention_experiment.sh reports/instruction-retention-20260911 300
+python -m scripts.summarize_instruction_retention reports/instruction-retention-20260911 --data-root .
 ```
 
 Use the established RunPod LFM setup and install `rclone`. Full checkpoints
