@@ -168,6 +168,24 @@ class LanguageAgentTests(unittest.TestCase):
         torch.testing.assert_close(logits[0][:4], changed[0][:4])
 
 
+    def test_nucleus_completion_is_seeded_and_respects_probability_cutoff(self):
+        from intrep.representation.inputs.multimodal_observation import TEXT_VOCAB_SIZE
+        model = tiny_model().eval()
+        scores = torch.full((1, TEXT_VOCAB_SIZE), -1000.)
+        scores[0, ord('a')] = 0
+        scores[0, ord('b')] = 0
+        with patch.object(model, 'text_logits', return_value=[scores]):
+            first = model.complete('prefix', max_new_tokens=20, temperature=1, top_p=1,
+                                   generator=torch.Generator().manual_seed(7))
+            second = model.complete('prefix', max_new_tokens=20, temperature=1, top_p=1,
+                                    generator=torch.Generator().manual_seed(7))
+            limited = model.complete('prefix', max_new_tokens=20, temperature=1, top_p=0.1,
+                                     generator=torch.Generator().manual_seed(7))
+        self.assertEqual(first, second)
+        self.assertEqual(set(first), {'a', 'b'})
+        self.assertEqual(len(set(limited)), 1)
+
+
 class ConversationSourceTests(unittest.TestCase):
     def test_tree_split_rejects_related_conversations(self):
         messages = (ChatMessage('user', 'hi'), ChatMessage('assistant', 'hello'))

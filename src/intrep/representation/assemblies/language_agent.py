@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import torch
@@ -64,9 +65,11 @@ class LanguageAgentModel(MultimodalAgentModel):
         return (prompt + answer[:start])[-self.context_bytes:] + answer[start:]
 
     @torch.no_grad()
-    def complete(self, prefix: str, *, max_new_tokens: int = 256) -> str:
+    def complete(self, prefix: str, *, max_new_tokens: int = 256, temperature: float = 0.0,
+                 top_p: float = 1.0, generator: torch.Generator | None = None) -> str:
         return self._generate(ByteTokenizer().encode(prefix)[-self.context_bytes:],
-                              self.new_memory(), max_new_tokens=max_new_tokens)
+                              self.new_memory(), max_new_tokens=max_new_tokens, temperature=temperature,
+                              top_p=top_p, generator=generator)
 
     @torch.no_grad()
     def chat(self, messages: Sequence[dict[str, str]], *, memory: torch.Tensor | None = None,
@@ -77,9 +80,12 @@ class LanguageAgentModel(MultimodalAgentModel):
         memory = self.conversation_memory(prompt, memory)
         return self._generate(prompt, memory, max_new_tokens=max_new_tokens)
 
-    def _generate(self, prompt: list[int], memory: torch.Tensor, *, max_new_tokens: int) -> str:
+    def _generate(self, prompt: list[int], memory: torch.Tensor, *, max_new_tokens: int,
+                  temperature: float = 0.0, top_p: float = 1.0, generator: torch.Generator | None = None) -> str:
         if max_new_tokens < 1:
             raise ValueError('generation budget must be positive')
+        if not math.isfinite(temperature) or temperature < 0 or not 0 < top_p <= 1:
+            raise ValueError('invalid temperature or nucleus probability')
         answer = []
         pending, lower, upper = 0, 0x80, 0xBF
         for index in range(max_new_tokens):
@@ -95,7 +101,14 @@ class LanguageAgentModel(MultimodalAgentModel):
                 for needed, start, stop in ((2, 0xC2, 0xE0), (3, 0xE0, 0xF0), (4, 0xF0, 0xF5)):
                     if remaining >= needed:
                         logits[start:stop] = scores[start:stop]
-            token = int(logits.argmax())
+            if temperature == 0:
+                token = int(logits.argmax())
+            else:
+                probabilities, indices = (logits.float() / temperature).softmax(-1).sort(descending=True)
+                keep = probabilities.cumsum(-1) - probabilities < top_p
+                probabilities = probabilities * keep
+                choice = torch.multinomial(probabilities.cpu(), 1, generator=generator)
+                token = int(indices[int(choice)])
             if token == EOS:
                 break
             answer.append(token)
