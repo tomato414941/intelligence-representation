@@ -28,6 +28,17 @@ def averages(rows):
             for key, samples in values.items()}
 
 
+def constant_answer_baselines(rows):
+    counts = defaultdict(Counter)
+    for row in rows:
+        for response in (row.get("response") or {}).get("responses", []):
+            if "expected" in response:
+                counts[f"{row['form']}/{row['wording']}"][response["expected"].strip()] += 1
+    return {form: {"answers": sum(values.values()), "answer_counts": dict(values),
+                   "best_constant_accuracy_on_panel": max(values.values()) / sum(values.values())}
+            for form, values in counts.items()}
+
+
 def paired_answers(rows):
     result = {}
     indexed = {(row["record_key"], row["form"], row["wording"]): row for row in rows}
@@ -98,7 +109,7 @@ def summarize_report(report, training_passages, consumed_passages=None):
         forms = {f"{form}/{wording}": averages([row for row in rows if row["form"] == form and row["wording"] == wording])
                  for form, wording in sorted({(row["form"], row["wording"]) for row in rows})}
         item = {"original": averages([row for row in rows if row["form"] == "original"]),
-                "forms": forms, "paired_answers": paired_answers(rows)}
+                "forms": forms, "paired_answers": paired_answers(rows), "constant_answer_baselines": constant_answer_baselines(rows)}
         if name == "boolq":
             cohorts = [("passage_cohorts", training_passages, ("new_passage", "passage_in_training_population"))]
             if consumed_passages is not None:
