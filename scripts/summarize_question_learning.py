@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -11,6 +12,11 @@ from pathlib import Path
 
 def read_json(path):
     return json.loads(path.read_text())
+
+
+def normalized_answer(text):
+    value = text.strip().casefold()
+    return value[:-1].rstrip() if value.endswith((".", "。")) else value
 
 
 def averages(rows):
@@ -32,18 +38,21 @@ def paired_answers(rows):
                      if form == first and variant == wording]
             if not pairs:
                 continue
-            correct, changed = [], []
+            correct, normalized, changed = [], [], []
             for left, right in pairs:
                 a, b = left["response"]["responses"][0], right["response"]["responses"][0]
                 if {a["expected"], b["expected"]} != {"yes", "no"}:
                     raise ValueError("paired questions do not have complementary answers")
                 if "answer" in a and "answer" in b:
                     correct.append(a["answer"].strip() == a["expected"] and b["answer"].strip() == b["expected"])
-                    changed.append(a["answer"].strip() != b["answer"].strip())
+                    normalized.append(normalized_answer(a["answer"]) == a["expected"] and normalized_answer(b["answer"]) == b["expected"])
+                    changed.append(normalized_answer(a["answer"]) != normalized_answer(b["answer"]))
             result[f"{first}+{second}/{wording}"] = {
                 "pairs": len(pairs), "generated_pairs": len(correct),
                 "both_correct": sum(correct), "both_correct_rate": sum(correct) / len(correct) if correct else None,
-                "different_generated_answers": sum(changed),
+                "normalized_both_correct": sum(normalized),
+                "normalized_both_correct_rate": sum(normalized) / len(normalized) if normalized else None,
+                "different_normalized_answers": sum(changed),
                 "teacher_forced_both_correct": sum(a["metrics"]["teacher_forced_exact"] == 1
                                                    and b["metrics"]["teacher_forced_exact"] == 1 for a, b in pairs),
                 "constant_relation_baselines": {
@@ -70,6 +79,19 @@ def language_scores(report):
 
 
 def summarize_report(report, training_passages):
+    report = copy.deepcopy(report)
+    # Keep punctuation/case exact for explicit text copying and the 90 strict
+    # language probes. Class/yes-no answers also get a narrowly normalized score.
+    for container in (report["sources"], report.get("question_without_observations", {})):
+        for name, source in container.items():
+            if name in ("tinystories", "wikitext2", "shakespeare", "conversations"):
+                continue
+            for row in source["rows"]:
+                responses = (row.get("response") or {}).get("responses", [])
+                responses = [answer for answer in responses if "answer" in answer and "expected" in answer]
+                if responses:
+                    row["metrics"]["normalized_match"] = sum(normalized_answer(answer["answer"]) == normalized_answer(answer["expected"])
+                                                              for answer in responses) / len(responses)
     output = {"step": report["step"], "language": language_scores(report), "sources": {}}
     for name, source in report["sources"].items():
         rows = source["rows"]
@@ -235,8 +257,8 @@ def make_plots(root, conditions, curves):
         for pair, row in source["paired_answers"].items():
             if pair.endswith("/1"):
                 names.append(name.replace("_", " "))
-                fixed.append(row["both_correct_rate"])
-                varied.append(conditions["varied"]["after"]["sources"][name]["paired_answers"][pair]["both_correct_rate"])
+                fixed.append(row["normalized_both_correct_rate"])
+                varied.append(conditions["varied"]["after"]["sources"][name]["paired_answers"][pair]["normalized_both_correct_rate"])
                 baselines.append(max(row["constant_relation_baselines"].values()))
     figure, axis = plt.subplots(figsize=(10, 5), constrained_layout=True)
     positions = list(range(len(names)))
@@ -245,7 +267,7 @@ def make_plots(root, conditions, curves):
     for index, baseline in enumerate(baselines):
         axis.vlines(baseline, index - 0.4, index + 0.4, color="#555555", linestyle="--",
                     label="Best constant relation on this panel" if index == 0 else None)
-    axis.set(yticks=positions, yticklabels=names, xlim=(0, 1), xlabel="Fraction with both complementary answers correct",
+    axis.set(yticks=positions, yticklabels=names, xlim=(0, 1), xlabel="Both answers correct (case / final period normalized)",
              title="Held-out question wording · greedy generation · same observations")
     axis.legend(frameon=False)
     figure.savefig(root / "question-pairs.png", dpi=160)

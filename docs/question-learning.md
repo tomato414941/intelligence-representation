@@ -103,6 +103,10 @@ after evaluation; evaluation must not change subsequent optimizer updates.
 Complementary-question scores are compared with both constant relation choices
 (first question yes/second no, and the reverse), since a model can change its
 answer with the question while still ignoring the observations.
+Class names and yes/no answers also receive a narrowly normalized score that
+ignores letter case and one final period. This separates answer content from
+formatting changes such as `Yes` becoming `yes`. Explicit text copying and the
+ninety strict language probes retain their original exact-match scoring.
 
 BoolQ has no identical question/passage pair across its official train/development
 splits, but 720 distinct passages occur in both. Results must distinguish new
