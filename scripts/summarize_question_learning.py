@@ -86,6 +86,18 @@ def language_scores(report):
                         if ("ja" if re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", row["prompt"]) else "en") == language]
             result[name]["by_language"][language] = {"correct": sum(row["exact_match"] for row in selected), "questions": len(selected)}
     result["responses"] = report["generations"]
+    scored = [row for row in report["generations"] if "expected" in row]
+    arithmetic = [row for row in scored if re.fullmatch(r"-?\d+", row["expected"])]
+    matching_numerals = [row for row in arithmetic
+                        if (numerals := re.findall(r"-?\d+", row["answer"]))
+                        and numerals[-1] == row["expected"]]
+    result["format_diagnostics"] = {
+        "yes_only_answers": sum(normalized_answer(row["answer"]) == "yes" for row in scored),
+        "arithmetic_questions": len(arithmetic),
+        "arithmetic_strict_correct": sum(row["exact_match"] for row in arithmetic),
+        "arithmetic_final_numeral_matches": len(matching_numerals),
+        "scope": "Post-hoc format diagnostic: the final signed integer matches the expected number. This is not a semantic-equivalence score and does not replace strict instruction scoring.",
+    }
     return result
 
 
