@@ -133,3 +133,41 @@ used for before/after measurements; they are not an untouched final test.
 Archived duplicates and the older bounded text selections are not concatenated
 again into this recipe. New data sources are added explicitly while retaining
 the existing populations and training cursors.
+
+## Additional Data For Question Learning
+
+`scripts/prepare_question_datasets.py` downloads complete source releases into
+`data/question-learning-20260911/`, retaining source archives, provenance and
+checksums. `configs/question-learning.json` adds these three sources to the nine
+complete populations above. See [question learning](question-learning.md) for
+the questions and evaluation controls. Split counts describe available records,
+not how many records a particular training run has consumed.
+
+| Dataset | Training | Development | Separate test | Source and license |
+| --- | ---: | ---: | ---: | --- |
+| Free Spoken Digit Dataset (FSDD) | 2,000 recordings | 500 | 500 | [Official repository](https://github.com/Jakobovski/free-spoken-digit-dataset), CC BY-SA 4.0 |
+| UCI Human Activity Recognition (HAR) | 6,234 windows | 1,118 | 2,947 | [Official dataset](https://archive.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones), CC BY 4.0 |
+| BoolQ | 9,427 passage/question pairs | 3,270 | Hidden labels | [Official repository](https://github.com/google-research-datasets/boolean-questions), CC BY-SA 3.0 |
+
+FSDD is pinned to commit `26eb9aaf76e81b692f806f9140c2d2777410d7a1`.
+All 3,000 full-length 8 kHz PCM recordings are preserved. Four speakers are used
+for training and one each for development and test. This custom speaker-disjoint
+split differs from the repository's recording-index split.
+
+HAR uses all nine released inertial signal channels and all 128 samples in each
+window. These are the source's preprocessed signals, not the 561 engineered
+features or unfiltered raw sensor measurements. Three subjects from the official
+training partition are held out with seed 9047. The official test partition is
+retained. Subject identities are disjoint across all three partitions; channel
+normalization is fitted using the resulting 6,234 training windows only.
+
+BoolQ is downloaded from the official [SuperGLUE v2 archive](https://dl.fbaipublicfiles.com/glue/superglue/data/v2/BoolQ.zip).
+It preserves complete questions and passages, mapping the source `label` to
+`answer`. No identical question/passage pair occurs across train and development,
+but 720 distinct passages occur in both. Evaluation therefore separates novel
+passages from new questions about training passages. The archive's unlabeled
+test records are retained in the archive and excluded from supervised use.
+
+```sh
+uv run python scripts/prepare_question_datasets.py --output data/question-learning-20260911
+```
