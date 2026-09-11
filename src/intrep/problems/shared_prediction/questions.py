@@ -95,6 +95,8 @@ def stable_seed(value):
 
 
 def text_question(source, tokens, form, wording):
+    if isinstance(tokens, dict):
+        tokens = tokens["tokens"]
     ids = tokens[0].tolist()
     text = source.tokenizer.decode(ids, skip_special_tokens=True)
     if form == "infill":

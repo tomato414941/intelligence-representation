@@ -29,10 +29,13 @@ def main():
     parser.add_argument("--checkpoint-interval", type=int, default=100)
     parser.add_argument("--extend", action="store_true", help="retain old sources and optimizer state while adding sources/heads")
     parser.add_argument("--audit-gradients", action="store_true")
+    parser.add_argument("--gradient-probe-interval", type=int, default=0, help="observe per-source gradients on selected body projections")
     parser.add_argument("--evaluation-examples", type=int, default=1, help="fixed cases per source; native uses worlds with all transitions")
     parser.add_argument("--evaluation-interval", type=int, default=0)
     parser.add_argument("--native-controls", action="store_true", help="evaluate omission of individual native input forms")
     parser.add_argument("--prompts", type=Path, help="JSON list of fixed generation prompts and optional expected answers")
+    parser.add_argument("--generation-interval", type=int, default=0, help="measure development instruction responses between updates")
+    parser.add_argument("--holdout-prompts", type=Path, help="separate prompts evaluated only at the initial and final checkpoints")
     parser.add_argument("--extension", action="append", default=[], help="explicit Python module registering additional source factories")
     args = parser.parse_args()
     if args.threads < 1:
@@ -47,7 +50,9 @@ def main():
           audit_gradients=args.audit_gradients, extensions=args.extension, checkpoint_interval=args.checkpoint_interval,
           evaluation_examples=args.evaluation_examples, evaluation_interval=args.evaluation_interval,
           native_controls=args.native_controls, prompts=json.loads(args.prompts.read_text()) if args.prompts else None,
-          training_seconds=args.training_seconds)
+          training_seconds=args.training_seconds, generation_interval=args.generation_interval,
+          holdout_prompts=json.loads(args.holdout_prompts.read_text()) if args.holdout_prompts else None,
+          gradient_probe_interval=args.gradient_probe_interval)
 
 
 if __name__ == "__main__":

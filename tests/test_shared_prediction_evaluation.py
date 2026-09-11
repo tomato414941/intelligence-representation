@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +26,28 @@ class EvaluationTests(unittest.TestCase):
         except ImportError as error:
             raise unittest.SkipTest("install the lfm extra") from error
         torch.set_num_threads(1)
+
+    def test_gradient_probe_measures_weighting_and_opposition_without_changing_update(self):
+        from intrep.learning.joint import JointTrainer
+        from intrep.problems.shared_prediction.training import SourceGradientProbe
+        models = [make_model(), make_model()]
+        weights = {"conversations": 2., "other": 1.}
+        probe = SourceGradientProbe(models[1])
+        probe.begin(True)
+        for index, model in enumerate(models):
+            trainer = JointTrainer(model, weights, optimizer="sgd", learning_rate=0.01)
+            def loss(name, sign):
+                if index == 1:
+                    probe.source = name
+                return sign * sum(parameter.square().sum() for parameter in model.parameters())
+            trainer.step({"conversations": lambda: loss("conversations", 1), "other": lambda: loss("other", -1)})
+        measured = probe.summary(weights)["sources"]
+        probe.close()
+        self.assertAlmostEqual(measured["conversations"]["weighted_norm"] / measured["other"]["weighted_norm"], 2., places=5)
+        self.assertAlmostEqual(measured["conversations"]["unweighted_norm"], measured["other"]["unweighted_norm"], places=5)
+        self.assertAlmostEqual(measured["other"]["cosine_to_conversations"], -1., places=5)
+        for actual, expected in zip(models[0].parameters(), models[1].parameters()):
+            torch.testing.assert_close(actual, expected, rtol=0, atol=0)
 
     def test_fixed_panel_restores_sources_and_measures_identical_examples(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -63,12 +86,17 @@ class EvaluationTests(unittest.TestCase):
             options = {"base": root / "base", "recipe": recipe, "root": root, "steps": 2,
                        "optimizer": "adamw", "evaluation_examples": 4, "prompts": []}
             first = train(**options, output=root / "plain")
-            second = train(**options, output=root / "measured", evaluation_interval=1)
+            second = train(**options, output=root / "measured", evaluation_interval=1, generation_interval=1,
+                           holdout_prompts=[{"prompt": "one two", "expected": "three", "max_tokens": 2}])
             a, _, _ = load_checkpoint(first)
             b, _, _ = load_checkpoint(second)
             for actual, expected in zip(a.parameters(), b.parameters()):
                 torch.testing.assert_close(actual, expected, rtol=0, atol=0)
             self.assertTrue((root / "measured/evaluation/step-000001.json").exists())
+            intermediate = json.loads((root / "measured/generations/step-000001.json").read_text())
+            final = json.loads((root / "measured/generations/step-000002.json").read_text())
+            self.assertEqual(intermediate["generations"], [])
+            self.assertEqual(final["generations"][0]["split"], "holdout")
 
 
 if __name__ == "__main__":

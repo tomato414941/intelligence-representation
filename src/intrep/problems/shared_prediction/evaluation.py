@@ -71,6 +71,9 @@ def set_case(source, case):
         if isinstance(source, TextSource):
             source.pending = []
             source.tokens = 0
+            if hasattr(source, "pending_mask"):
+                source.pending_mask = []
+                source.position = 0
     elif isinstance(source, ClassificationSource):
         source.sampler.cursor = case["cursor"]
     elif isinstance(source, NativeSource):

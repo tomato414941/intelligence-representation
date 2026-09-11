@@ -458,7 +458,15 @@ def build_sources(model, tokenizer, recipe, root: Path):
     configure_heads(model, recipe)
     sources = {}
     for config in source_configs(recipe):
-        source = SOURCE_FACTORIES[config["kind"]][1](model, tokenizer, config, root)
+        factory = SOURCE_FACTORIES[config["kind"]][1]
+        if config["kind"] == "conversations":
+            objective = config.get("conversation_objective", "all_tokens")
+            if objective == "assistant":
+                from intrep.problems.shared_prediction.conversations import AssistantConversationSource
+                factory = AssistantConversationSource
+            elif objective != "all_tokens":
+                raise ValueError("conversation_objective must be all_tokens or assistant")
+        source = factory(model, tokenizer, config, root)
         if "question_mode" in config:
             from intrep.problems.shared_prediction.questions import QuestionSource
             source = QuestionSource(source)

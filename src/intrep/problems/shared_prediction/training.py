@@ -92,9 +92,53 @@ class GradientAudit:
         valid = bool(torch.isfinite(gradient).all() and torch.count_nonzero(gradient))
         self.records.setdefault(self.source, {})[key] = self.records.get(self.source, {}).get(key, False) or valid
 
-    def loss(self, name, source):
-        self.source = name
-        return source.loss()
+    def close(self):
+        for handle in self.handles:
+            handle.remove()
+
+
+class SourceGradientProbe:
+    """Observe weighted gradients on two body projections without extra updates."""
+
+    def __init__(self, model):
+        self.enabled = False
+        self.source = None
+        self.values = {}
+        self.handles = []
+        self.parameters = []
+        layers = model.core.body.layers
+        for index in sorted({0, len(layers) - 1}):
+            layer = layers[index]
+            operator = layer.self_attn.q_proj if layer.is_attention_layer else layer.conv.in_proj
+            key = f"layer_{index}.{'attention_q' if layer.is_attention_layer else 'conv_in'}"
+            self.parameters.append(key)
+            self.handles.append(operator.weight.register_hook(lambda gradient, key=key: self.record(key, gradient)))
+
+    def begin(self, enabled):
+        self.enabled = enabled
+        self.values = {}
+
+    def record(self, key, gradient):
+        if self.enabled:
+            self.values.setdefault(self.source, {})[key] = gradient.detach().float().clone()
+
+    def summary(self, weights):
+        if not self.enabled:
+            return None
+        norms = {name: sum(value.square().sum() for value in values.values()).sqrt()
+                 for name, values in self.values.items()}
+        rows = {name: {"weighted_norm": float(norm),
+                       "unweighted_norm": float(norm) * sum(weights.values()) / weights[name]}
+                for name, norm in norms.items()}
+        reference = self.values.get("conversations")
+        if reference:
+            for name, values in self.values.items():
+                dot = sum((values[key] * other).sum() for key, other in reference.items())
+                denominator = norms[name] * norms["conversations"]
+                rows[name]["cosine_to_conversations"] = float(dot / denominator) if float(denominator) > 0 else None
+        self.values = {}
+        return {"parameters": self.parameters, "sources": rows,
+                "scope": "Selected first/last body projections, before global gradient clipping; not whole-model norms."}
 
     def close(self):
         for handle in self.handles:
@@ -125,10 +169,12 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
 def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int,
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
           resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
-          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None):
+          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None,
+          generation_interval=0, holdout_prompts=None, gradient_probe_interval=0):
     from transformers import AutoTokenizer
 
-    if (steps < 1 or checkpoint_interval < 1 or evaluation_examples < 1 or evaluation_interval < 0
+    if (steps < 1 or checkpoint_interval < 1 or evaluation_examples < 1 or evaluation_interval < 0 or generation_interval < 0
+            or gradient_probe_interval < 0
             or (base is None) == (resume is None) or (extend and resume is None)):
         raise ValueError("choose a local base or a resume checkpoint and a positive total step budget")
     if training_seconds is not None and (not 0 < training_seconds < float("inf")):
@@ -189,6 +235,27 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         {"prompt": "氷が溶ける理由を日本語で一文で説明してください。"},
     ]
 
+    def measure_generations(*, include_holdout=False):
+        rows = []
+        for split, cases in (("development", prompts), ("holdout", holdout_prompts or [])):
+            if split == "holdout" and not include_holdout:
+                continue
+            for case in cases:
+                answer = generate_text(model, tokenizer, case["prompt"], max_tokens=case.get("max_tokens", 48))
+                row = {**case, "split": split, "answer": answer}
+                if "expected" in case:
+                    row["exact_match"] = answer.strip() == case["expected"]
+                rows.append(row)
+        directory = output / "generations"
+        directory.mkdir(exist_ok=True)
+        (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(
+            {"step": trainer.steps, "generations": rows}, ensure_ascii=False, indent=2) + "\n")
+        scored = [row for row in rows if row["split"] == "development" and "exact_match" in row]
+        print(json.dumps({"stage": "generation", "step": trainer.steps,
+                          "development_correct": sum(row["exact_match"] for row in scored),
+                          "development_count": len(scored)}), flush=True)
+        return rows
+
     def measure(*, controls=False, generations=False):
         measured = evaluate_panel(model, evaluation_sources, panel, generate_answers=generations)
         report = {"step": trainer.steps, "sources": measured}
@@ -206,14 +273,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if omitted:
                 report["question_without_observations"] = evaluate_panel(model, evaluation_sources, omitted, generate_answers=generations)
         if generations:
-            rows = []
-            for case in prompts:
-                answer = generate_text(model, tokenizer, case["prompt"], max_tokens=case.get("max_tokens", 48))
-                row = {**case, "answer": answer}
-                if "expected" in case:
-                    row["exact_match"] = answer.strip() == case["expected"]
-                rows.append(row)
-            report["generations"] = rows
+            report["generations"] = measure_generations(include_holdout=True)
         directory = output / "evaluation"
         directory.mkdir(exist_ok=True)
         (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
@@ -223,6 +283,15 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
 
     before_evaluation = measure(controls=True, generations=True)
     audit = GradientAudit(model) if audit_gradients else None
+    probe = SourceGradientProbe(model) if gradient_probe_interval else None
+
+    def source_loss(name, source):
+        if audit:
+            audit.source = name
+        if probe:
+            probe.source = name
+        return source.loss()
+
     records = []
     elapsed_training = 0.0
     try:
@@ -232,12 +301,16 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if next(model.parameters()).is_cuda:
                 torch.cuda.synchronize()
             start = time.perf_counter()
-            callbacks = {name: (lambda name=name, source=source: audit.loss(name, source)) if audit else source.loss
-                         for name, source in sources.items()}
+            if probe:
+                next_step = trainer.steps + 1
+                probe.begin(next_step <= 2 or next_step % gradient_probe_interval in (0, 1))
+            callbacks = {name: (lambda name=name, source=source: source_loss(name, source)) for name, source in sources.items()}
             metrics = trainer.step(callbacks)
             if next(model.parameters()).is_cuda:
                 torch.cuda.synchronize()
             record = {"step": trainer.steps, "seconds": time.perf_counter() - start, **metrics}
+            if probe and probe.enabled:
+                record["gradient_probe"] = probe.summary(trainer.weights)
             elapsed_training += record["seconds"]
             if any(hasattr(source, "last_update_info") for source in sources.values()):
                 record["source_details"] = {name: source.last_update_info for name, source in sources.items()
@@ -250,9 +323,13 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
                 save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
             if evaluation_interval and trainer.steps % evaluation_interval == 0 and trainer.steps < steps:
                 measure()
+            if generation_interval and trainer.steps % generation_interval == 0 and trainer.steps < steps:
+                measure_generations()
     finally:
         if audit:
             audit.close()
+        if probe:
+            probe.close()
     after = parameter_digests(model)
     changed = [name for name in before if before[name] != after[name]]
     core_names = [name for name in before if name.startswith("core.")]
@@ -260,6 +337,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     after_evaluation = measure(controls=True, generations=True)
     result = {"parameters": sum(parameter.numel() for parameter in model.parameters()),
               "initial_parameters_sha256": hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest(),
+              "final_parameters_sha256": hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest(),
               "requested_steps": steps, "completed_steps": trainer.steps,
               "training_seconds_budget": training_seconds, "training_seconds": elapsed_training,
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
