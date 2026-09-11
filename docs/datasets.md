@@ -45,6 +45,19 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 
 ## Conversation Replay
 
+The [instruction retention pilot](instruction-retention.md) uses a separate
+corpus under `data/instruction-retention-20260911/`. It retains all 40,636
+training and 4,686 validation branches from the complete joint-learning OASST
+export, and adds 5,618 unique programmatically authored training instructions
+(2,809 English and 2,809 Japanese). All three conditions use the same shuffled
+46,254-branch training file and the same validation file. Original tree splits
+are preserved. The added examples cover arithmetic, case conversion, lookup,
+extraction, conditions, summaries, and a small set of explanations; their
+limited template diversity is explicitly recorded. Sixty fresh bilingual
+evaluation prompts have separate wording and values and do not occur exactly
+among original or generated training user turns. Provenance records file
+identities and counts, and `OASST-LICENSE` preserves the original license.
+
 `scripts/prepare_agent_conversations.py` prepares a bounded selection from
 [OpenAssistant OASST1](https://huggingface.co/datasets/OpenAssistant/oasst1),
 revision `fdf72ae0827c1cda404aff25b6603abec9e3399b`, with its Apache-2.0 license

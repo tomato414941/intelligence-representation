@@ -17,6 +17,7 @@ build/
 data/
 runs/
 models/
+reports/instruction-retention-20260911/
 
 .DS_Store
 *.log

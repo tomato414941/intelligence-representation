@@ -17,6 +17,12 @@ adds several questions per dataset and about eight times the earlier consumed
 data. Text extraction and some reconstruction tasks improve, while general
 instruction responses and several relation/history tests remain inadequate.
 
+The [instruction retention pilot](instruction-retention.md) compares that
+conversation objective with assistant-only supervision over longer context,
+then increases its source loss weight. All conditions retain one trainable
+body and the same twelve sources, with frequent development generation probes
+and a separate fresh prompt group.
+
 ## The Learning Contract
 
 ```text
