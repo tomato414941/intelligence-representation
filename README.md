@@ -18,7 +18,7 @@ computation where useful.
 raw examples
   -> modality-specific input layers
   -> input embedding sequence
-  -> shared Transformer core
+  -> shared learned core
   -> problem-specific output layer
 ```
 
@@ -47,6 +47,7 @@ docs/
 Read these first:
 
 - [Concept](docs/concept.md)
+- [Exchangeable Heads And Joint LFM Learning](docs/shared-prediction.md)
 - [Single-Core Predictive Agent](docs/language-agent.md)
 - [Multimodal Predictive Agent](docs/multimodal-agent.md)
 - [Predictive Representation System](docs/predictive-representation-system.md)
@@ -113,6 +114,7 @@ intrep.train_image_text_choice
 intrep.train_image_text_answer
 intrep.train_shogi_policy_value
 intrep.problems.language_agent.cli
+scripts/train_shared_prediction.py
 ```
 
 Dataset preparation notes live in [Datasets](docs/datasets.md).

@@ -11,7 +11,7 @@ Local artifact placement rules live in [artifact-layout.md](artifact-layout.md).
 | --- | --- | ---: | --- | --- |
 | Tiny Shakespeare | text | about 1 MB | supported | A single small Shakespeare text corpus commonly used for toy language-model examples. |
 | OpenAssistant OASST1 conversations | human text conversations | bounded local selection: 2,048 train / 128 validation | supported | Assistant rank-zero, undeleted en/ja chains up to 1,200 characters, partitioned by conversation-tree hash; conversation replay for the [single-core agent](language-agent.md). |
-| WikiText-2 | text | about 2M tokens | candidate | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
+| WikiText-2 | text | about 2M tokens | supported | A small Wikipedia-derived language-modeling corpus with train, validation, and test splits. |
 | WikiText-103 | text | about 103M tokens | candidate | A larger Wikipedia-derived language-modeling corpus built from full articles. |
 | TinyStories | synthetic English text | over 2M stories | supported | A synthetic corpus of short English stories written with simple vocabulary and grammar. |
 | Project Gutenberg | text | main mirror about 2.7 TiB | candidate | A public-domain ebook corpus. Use selected raw texts first; do not mirror the full collection without a concrete need. |
@@ -98,3 +98,38 @@ filenames. `validation-documents.json` retains the held-out prefixes for
 inspection. The stream checksum identifies the exact prepared data even though
 the original local download did not record a Hub revision. See
 [language learning](language-learning.md) for training and evaluation.
+
+## Complete Populations For Joint LFM Learning
+
+`configs/joint-lfm.json` declares the populations for the
+[exchangeable-head joint learner](shared-prediction.md). All nine sources
+contribute to every optimizer update. Mini-batches advance through their full
+training files; the recipe has no permanent small-sample limits. This does not
+mean that a short execution check has already traversed those populations.
+
+| Source | Training population | Development evaluation |
+| --- | --- | --- |
+| TinyStories | Entire raw GPT4 training file, 2,227,753,162 bytes | Entire raw validation file |
+| WikiText-2 | Entire `wiki.train.raw.txt` | `wiki.valid.raw.txt` |
+| Tiny Shakespeare | Bytes `[0, 1003856)` of the original file | `[1003856, 1115394)`; a disjoint approximately 10% suffix, aligned to a line boundary |
+| OASST1 | 40,636 complete branches covering 78,351 distinct usable messages | 4,686 branches covering 8,934 messages; disjoint tree hashes |
+| MNIST / Fashion-MNIST | All 60,000 training images each | Official 10,000-image test files, used here for development measurements |
+| CIFAR-10 | All five official training batches, 50,000 images | Official test batch, used here for development measurements |
+| Qhapaq | All 4,951,012 examples in `qhapaq-full/train-examples.jsonl` | Its existing game-disjoint `eval-examples.jsonl` |
+| Native navigation | Every transition in all 1,024 training episodes of `data/multimodal-navigation-20260910/selection.json` | Its 64 validation episodes; 128 test episodes remain separate |
+
+`scripts/prepare_joint_conversations.py` exports the previously downloaded,
+pinned OASST1 archive to `data/language/joint-conversations-oasst1-20260911/`.
+It removes the earlier replay selection's count, language, rank and length
+limits. Of 88,838 archived messages, 87,285 are usable; 1,553 deleted messages
+are excluded. Every usable message is represented in a complete root-to-leaf
+branch. Shared ancestors recur in their branches. Deleted/empty ancestors make
+a branch unusable, rather than being silently replaced by invented content.
+The archive hash, output counts, source revision and license are recorded.
+
+Text training covers all conversation roles. Training does not read validation
+or test targets. The image test sets listed above are development data once
+used for before/after measurements; they are not an untouched final test.
+Archived duplicates and the older bounded text selections are not concatenated
+again into this recipe. New data sources are added explicitly while retaining
+the existing populations and training cursors.

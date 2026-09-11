@@ -16,6 +16,11 @@ to the dataset or interaction they come from.
 Commonization should happen at the input embedding sequence consumed by the
 Transformer core.
 
+The [exchangeable LFM assembly](shared-prediction.md) uses the same boundary
+with a causal convolution/attention body. The common interface does not require
+the body to consist solely of Transformer attention layers. Input and output
+heads can be attached or replaced while retaining that learned body.
+
 ```text
 source records
   -> modality-specific input embedding modules

@@ -15,6 +15,7 @@ intrep.train_image_text_choice
 intrep.train_image_text_answer
 intrep.train_shogi_policy_value
 intrep.problems.language_agent.cli
+scripts/train_shared_prediction.py
 ```
 
 The grid step prediction CLI was removed on 2026-06-10; recorded results
@@ -27,6 +28,13 @@ where useful, and task-specific output heads. See [model-boundaries.md](model-bo
 and [learning-data-boundaries.md](learning-data-boundaries.md) for the current design.
 
 ## Joint Language And Native Experience
+
+The newer [joint LFM workflow](shared-prediction.md) loads pretrained
+230M/350M weights, separates exchangeable input/output heads, and accumulates
+all declared training sources before each full-model update. Its recipe includes
+complete text, conversation, image, shogi and native-experience populations;
+extensions can register additional source types. The commands below describe
+the earlier small-model experiment.
 
 `intrep.problems.language_agent.cli train` extends the learned multimodal
 Transformer with conversation training. Language, observation memory, action and
