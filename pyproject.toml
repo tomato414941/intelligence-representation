@@ -24,6 +24,9 @@ torch = [
 vision = [
     "torchvision>=0.17",
 ]
+lfm = [
+    "transformers>=5.17,<6",
+]
 
 
 [tool.setuptools.packages.find]

@@ -2,4 +2,4 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-uv sync --extra torch --extra vision
+uv sync --extra torch --extra vision --extra lfm
