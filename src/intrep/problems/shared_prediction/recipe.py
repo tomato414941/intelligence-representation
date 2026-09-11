@@ -24,15 +24,18 @@ def validate_recipe(recipe: dict, root: Path) -> None:
     patches = {row["patch_size"] for row in train if row["kind"] in {"idx", "cifar10", "native"}}
     if len(patches) > 1:
         raise ValueError("sources sharing the rgb head must agree on its patch size")
+    chunks = {row["audio_chunk_size"] for row in train if row["kind"] in {"native", "spoken_digits"}}
+    if len(chunks) > 1:
+        raise ValueError("sources sharing the waveform head must agree on its chunk size")
     intervals = {"train": [], "evaluation": []}
     for split, rows in (("train", train), ("evaluation", evaluation)):
         for row in rows:
             if any(key in row for key in ("limit", "max_examples", "max_games")):
                 raise ValueError("joint recipes traverse complete declared populations without subset limits")
-            if row["kind"] == "native":
+            if row["kind"] in {"native", "spoken_digits"}:
                 expected = "train" if split == "train" else "validation"
                 if row.get("split", "train") != expected:
-                    raise ValueError("native sources must use separate train and validation worlds")
+                    raise ValueError("recorded experience and speech must use separate train and validation groups")
                 continue
             names = ([row["path"]] if "path" in row else
                      [row["images"], row["labels"]] if "images" in row else row.get("batches", []))

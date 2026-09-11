@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--data-root", type=Path, default=Path("."))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--steps", type=int, required=True, help="total joint updates, including restored updates")
+    parser.add_argument("--training-seconds", type=float, help="stop after this many measured training seconds; excludes evaluation and I/O")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--optimizer", choices=("sgd", "adamw"), default="sgd")
@@ -45,7 +46,8 @@ def main():
           learning_rate=args.learning_rate, max_grad_norm=args.max_grad_norm, extend=args.extend,
           audit_gradients=args.audit_gradients, extensions=args.extension, checkpoint_interval=args.checkpoint_interval,
           evaluation_examples=args.evaluation_examples, evaluation_interval=args.evaluation_interval,
-          native_controls=args.native_controls, prompts=json.loads(args.prompts.read_text()) if args.prompts else None)
+          native_controls=args.native_controls, prompts=json.loads(args.prompts.read_text()) if args.prompts else None,
+          training_seconds=args.training_seconds)
 
 
 if __name__ == "__main__":

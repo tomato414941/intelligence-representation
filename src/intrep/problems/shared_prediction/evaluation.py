@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import math
 import random
 from collections import defaultdict
@@ -91,9 +92,11 @@ def summarize(rows):
 
 
 @torch.no_grad()
-def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=None):
+def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=None, generate_answers=True):
     states = {name: copy.deepcopy(source.state_dict()) for name, source in sources.items()}
-    omissions = {name: source.omitted_inputs.copy() for name, source in sources.items() if isinstance(source, NativeSource)}
+    native = {name: getattr(source, "reader", source) for name, source in sources.items()
+              if isinstance(getattr(source, "reader", source), NativeSource)}
+    omissions = {name: source.omitted_inputs.copy() for name, source in native.items()}
     previous_mode = model.training
     torch_rng = torch.get_rng_state()
     cuda_rng = torch.cuda.get_rng_state_all() if next(model.parameters()).is_cuda else []
@@ -103,27 +106,35 @@ def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=N
         for name, cases in panel.items():
             source = sources[name]
             rows, worlds = [], set()
-            if isinstance(source, NativeSource):
-                source.omitted_inputs = set(omit_native)
+            if name in native:
+                native[name].omitted_inputs = set(omit_native)
             for case in cases:
                 group = case.get("group", case["key"])
-                if isinstance(source, NativeSource) and max_native_worlds is not None:
+                if name in native and max_native_worlds is not None:
                     if group not in worlds and len(worlds) >= max_native_worlds:
                         continue
                     worlds.add(group)
-                set_case(source, case)
+                set_case(source, {**case, "generate": generate_answers and case.get("generate", True)})
                 loss = source.loss()
                 group = getattr(source, "last_group", None) or group
                 metrics = {"loss": float(loss), **{key: float(value) for key, value in getattr(source, "last_metrics", {}).items()}}
-                rows.append({"key": case["key"], "group": group, "metrics": metrics})
+                row = {"key": case["key"], "group": group, "metrics": metrics}
+                if "form" in case:
+                    row.update(form=case["form"], wording=case["wording"], record_key=case["record_key"])
+                    row["response"] = copy.deepcopy(getattr(source, "last_response", None))
+                rows.append(row)
             result[name] = {"summary": summarize(rows), "rows": rows,
                             "groups": len({row["group"] for row in rows})}
+            if any("form" in row for row in rows):
+                forms = {(row["form"], row["wording"]) for row in rows}
+                result[name]["forms"] = {f"{form}/{wording}": summarize([row for row in rows if (row["form"], row["wording"]) == (form, wording)])
+                                          for form, wording in sorted(forms)}
         return result
     finally:
         for name, state in states.items():
             sources[name].load_state_dict(state)
             if name in omissions:
-                sources[name].omitted_inputs = omissions[name]
+                native[name].omitted_inputs = omissions[name]
         torch.set_rng_state(torch_rng)
         if cuda_rng:
             torch.cuda.set_rng_state_all(cuda_rng)
@@ -147,4 +158,17 @@ def paired_comparison(before, after):
             deltas.append({"metrics": {metric: new["metrics"][metric] - value for metric, value in old["metrics"].items()}})
         result[name] = {"before": before[name]["summary"], "after": after[name]["summary"],
                         "paired_change": summarize(deltas), "examples": len(deltas), "groups": before[name]["groups"]}
+    return result
+
+
+def question_omission_panel(sources, panel, examples=16):
+    result = {}
+    for name, cases in panel.items():
+        source = sources[name]
+        if not hasattr(source, "reader") or source.config["kind"] in ("text", "conversations", "boolq"):
+            continue
+        candidates = [case for case in cases if case["form"] != "original" and case["wording"] == 0]
+        keys = sorted({case["record_key"] for case in candidates}, key=lambda key: hashlib.sha256(key.encode()).hexdigest())
+        selected = set(keys[:examples])
+        result[name] = [{**case, "omit_observations": True} for case in candidates if case["record_key"] in selected]
     return result

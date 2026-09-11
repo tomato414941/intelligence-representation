@@ -110,7 +110,7 @@ class TextSource(Source):
         self.pending = []
         self.tokens = 0
 
-    def loss(self):
+    def next_record(self):
         count = self.config["block_tokens"]
         while len(self.pending) < count + 1:
             epoch = self.stream.epochs
@@ -129,6 +129,12 @@ class TextSource(Source):
         tokens = self.ids(self.pending[:count + 1])
         self.pending = self.pending[count:]
         self.tokens += count
+        return tokens
+
+    def loss(self):
+        return self.record_loss(self.next_record())
+
+    def record_loss(self, tokens):
         hidden = self.model(self.model.encode("text", tokens[:, :-1]))
         logits = self.model.decode("text", hidden)
         loss = F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
@@ -166,15 +172,24 @@ class ClassificationSource(Source):
             raise ValueError("classification images and labels differ in length")
         self.sampler = EpochSampler(len(self.images), self.config["seed"])
 
-    def loss(self):
-        index = self.sampler.next()
+    def next_record(self):
+        return self.read_record(self.sampler.next())
+
+    def read_record(self, index):
         pixels = np.array(self.images[index], copy=True)
         if pixels.ndim == 2:
             pixels = np.repeat(pixels[:, :, None], 3, axis=-1)
         image = torch.tensor(pixels, dtype=self.dtype, device=self.device) / 255
+        return {"index": index, "image": image, "label": int(self.labels[index])}
+
+    def loss(self):
+        return self.record_loss(self.next_record())
+
+    def record_loss(self, record):
+        image = record["image"]
         hidden = self.model(self.model.encode("rgb", image))
         logits = self.model.decode(self.config["name"], hidden[:, -1:])[:, 0]
-        target = torch.tensor([int(self.labels[index])], device=self.device)
+        target = torch.tensor([record["label"]], device=self.device)
         self.last_metrics = {"accuracy": (logits.detach().argmax(-1) == target).float().mean()}
         return F.cross_entropy(logits, target)
 
@@ -198,8 +213,13 @@ class ShogiSource(Source):
         super().__init__(*args)
         self.stream = LineStream(self.path("path"))
 
+    def next_record(self):
+        return shogi_move_policy_value_example_from_json(json.loads(self.stream.next()))
+
     def loss(self):
-        example = shogi_move_policy_value_example_from_json(json.loads(self.stream.next()))
+        return self.record_loss(self.next_record())
+
+    def record_loss(self, example):
         self.last_group = f"game:{example.game_index}" if example.game_index is not None else None
         board = shogi.Board(example.position_sfen)
         features = stack_shogi_position_features([
@@ -283,24 +303,29 @@ class NativeSource(Source):
         return self.model.encode(name, coordinates.to(device=self.device, dtype=self.dtype).unsqueeze(0))
 
     def _observations(self, observations):
+        return [self.model.encode(name, *values) for name, values in self.observation_inputs(observations)]
+
+    def observation_inputs(self, observations):
         sequence = []
         for step, observation in enumerate(observations):
-            sequence.append(self._query("observation_time", torch.tensor([[step]])))
+            sequence.append(("observation_time", (torch.tensor([[[step]]], device=self.device, dtype=self.dtype),)))
             if observation.text and "text" not in self.omitted_inputs:
-                sequence.append(self.model.encode("text", self.ids(self.text_ids(observation.text))))
+                sequence.append(("text", (self.ids(self.text_ids(observation.text)),)))
             if observation.image is not None and "image" not in self.omitted_inputs:
-                sequence.append(self.model.encode("rgb", observation.image.to(device=self.device, dtype=self.dtype)))
+                sequence.append(("rgb", (observation.image.to(device=self.device, dtype=self.dtype),)))
             if observation.audio is not None and "audio" not in self.omitted_inputs:
-                sequence.append(self.model.encode("waveform", observation.audio.to(device=self.device, dtype=self.dtype),
-                                                  observation.sample_rate))
+                sequence.append(("waveform", (observation.audio.to(device=self.device, dtype=self.dtype), observation.sample_rate)))
             if observation.previous_action is not None:
-                sequence.append(self.model.encode("action", self.ids([observation.previous_action])))
+                sequence.append(("action", (self.ids([observation.previous_action]),)))
             if observation.feedback is not None:
-                sequence.append(self.model.encode("feedback", observation.feedback.to(device=self.device, dtype=self.dtype).view(1, 1, 3)))
+                sequence.append(("feedback", (observation.feedback.to(device=self.device, dtype=self.dtype).view(1, 1, 3),)))
         return sequence
 
     def loss(self):
-        episode, index = self.next_transition()
+        return self.record_loss(self.next_transition())
+
+    def record_loss(self, record):
+        episode, index = record
         future = episode.observations[index + 1]
         sequence = self._observations(episode.observations[:index + 1])
         offset = sum(part.shape[1] for part in sequence)
@@ -422,9 +447,20 @@ def source_configs(recipe):
 def configure_heads(model, recipe):
     for config in source_configs(recipe):
         SOURCE_FACTORIES[config["kind"]][0](model, config)
+        if "question_mode" in config:
+            from intrep.problems.shared_prediction.questions import (
+                configure_question_heads,
+            )
+            configure_question_heads(model, config)
 
 
 def build_sources(model, tokenizer, recipe, root: Path):
     configure_heads(model, recipe)
-    return {config["name"]: SOURCE_FACTORIES[config["kind"]][1](model, tokenizer, config, root)
-            for config in source_configs(recipe)}
+    sources = {}
+    for config in source_configs(recipe):
+        source = SOURCE_FACTORIES[config["kind"]][1](model, tokenizer, config, root)
+        if "question_mode" in config:
+            from intrep.problems.shared_prediction.questions import QuestionSource
+            source = QuestionSource(source)
+        sources[config["name"]] = source
+    return sources

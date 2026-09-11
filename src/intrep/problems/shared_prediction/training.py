@@ -15,6 +15,7 @@ from intrep.problems.shared_prediction.evaluation import (
     evaluate_panel,
     make_panel,
     paired_comparison,
+    question_omission_panel,
 )
 from intrep.problems.shared_prediction.recipe import (
     evaluation_recipe,
@@ -124,12 +125,14 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
 def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int,
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
           resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
-          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None):
+          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None):
     from transformers import AutoTokenizer
 
     if (steps < 1 or checkpoint_interval < 1 or evaluation_examples < 1 or evaluation_interval < 0
             or (base is None) == (resume is None) or (extend and resume is None)):
         raise ValueError("choose a local base or a resume checkpoint and a positive total step budget")
+    if training_seconds is not None and (not 0 < training_seconds < float("inf")):
+        raise ValueError("the training-time budget must be finite and positive")
     validate_recipe(recipe, root)
     checkpoint_path = output / "checkpoint.pt"
     if checkpoint_path.exists() and (resume is None or checkpoint_path.resolve() != resume.resolve()):
@@ -187,16 +190,21 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     ]
 
     def measure(*, controls=False, generations=False):
-        measured = evaluate_panel(model, evaluation_sources, panel)
+        measured = evaluate_panel(model, evaluation_sources, panel, generate_answers=generations)
         report = {"step": trainer.steps, "sources": measured}
         if controls and native_controls:
             from intrep.problems.shared_prediction.sources import NativeSource
-            native_panel = {name: cases for name, cases in panel.items() if isinstance(evaluation_sources[name], NativeSource)}
+            native_panel = {name: cases for name, cases in panel.items()
+                            if isinstance(getattr(evaluation_sources[name], "reader", evaluation_sources[name]), NativeSource)}
             report["native_input_controls"] = {}
             for omission in (None, "image", "audio", "text"):
                 report["native_input_controls"][omission or "complete"] = evaluate_panel(
                     model, evaluation_sources, native_panel, omit_native=() if omission is None else (omission,), max_native_worlds=16,
+                    generate_answers=False,
                 )
+            omitted = question_omission_panel(evaluation_sources, panel)
+            if omitted:
+                report["question_without_observations"] = evaluate_panel(model, evaluation_sources, omitted, generate_answers=generations)
         if generations:
             rows = []
             for case in prompts:
@@ -216,13 +224,24 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     before_evaluation = measure(controls=True, generations=True)
     audit = GradientAudit(model) if audit_gradients else None
     records = []
+    elapsed_training = 0.0
     try:
         while trainer.steps < steps:
+            if training_seconds is not None and elapsed_training >= training_seconds:
+                break
+            if next(model.parameters()).is_cuda:
+                torch.cuda.synchronize()
             start = time.perf_counter()
             callbacks = {name: (lambda name=name, source=source: audit.loss(name, source)) if audit else source.loss
                          for name, source in sources.items()}
             metrics = trainer.step(callbacks)
+            if next(model.parameters()).is_cuda:
+                torch.cuda.synchronize()
             record = {"step": trainer.steps, "seconds": time.perf_counter() - start, **metrics}
+            elapsed_training += record["seconds"]
+            if any(hasattr(source, "last_update_info") for source in sources.values()):
+                record["source_details"] = {name: source.last_update_info for name, source in sources.items()
+                                             if hasattr(source, "last_update_info")}
             records.append(record)
             with (output / "steps.jsonl").open("a") as handle:
                 handle.write(json.dumps(record) + "\n")
@@ -240,6 +259,9 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
     after_evaluation = measure(controls=True, generations=True)
     result = {"parameters": sum(parameter.numel() for parameter in model.parameters()),
+              "initial_parameters_sha256": hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest(),
+              "requested_steps": steps, "completed_steps": trainer.steps,
+              "training_seconds_budget": training_seconds, "training_seconds": elapsed_training,
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
               "core_parameter_tensors": len(core_names),
               "changed_core_parameter_tensors": sum(name in changed for name in core_names),
