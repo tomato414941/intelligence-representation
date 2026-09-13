@@ -44,7 +44,11 @@ def make_panel(sources, examples: int, seed: int = 9047) -> dict:
                 raise ValueError(f"source {name!r} has no evaluation records")
             cases = [{"offset": offset, "key": f"byte:{offset}"} for offset in sorted(offsets)]
         elif isinstance(source, ClassificationSource):
-            positions = generator.sample(range(source.sampler.count), min(examples, source.sampler.count))
+            excluded = set(source.config.get("evaluation_excluded_indices", []))
+            eligible = [cursor for cursor, index in enumerate(source.sampler.order) if int(index) not in excluded]
+            if not eligible:
+                raise ValueError(f"source {name!r} has no development images outside its holdout")
+            positions = generator.sample(eligible, min(examples, len(eligible)))
             cases = [{"cursor": cursor, "key": f"image:{int(source.sampler.order[cursor])}"} for cursor in positions]
         elif isinstance(source, NativeSource):
             # Native counts refer to independent worlds, with all their transitions.

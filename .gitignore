@@ -18,6 +18,7 @@ data/
 runs/
 models/
 reports/instruction-retention-20260911/
+reports/rule-transfer/
 
 .DS_Store
 *.log

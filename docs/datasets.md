@@ -147,6 +147,19 @@ Archived duplicates and the older bounded text selections are not concatenated
 again into this recipe. New data sources are added explicitly while retaining
 the existing populations and training cursors.
 
+## Reserved MNIST Panels For Rule Transfer
+
+`scripts/prepare_rule_transfer.py` prepares the
+[text-to-image rule-transfer comparison](rule-transfer.md) from the existing
+MNIST files. It records historical primary/partner evaluation indices, excludes
+exact pixel duplicates of training and selected images, and fixes separate
+development and final panels without copying image payloads. Generated files
+under `data/rule-transfer-20260913/` include the panel manifest, text-only rule
+supervision and a development recipe that excludes final-panel images from
+both ordinary evaluation anchors and comparison partners. The original twelve
+training populations are preserved. Panel hashes and the audited historical
+records define the scope of the unused-image claim.
+
 ## Additional Data For Question Learning
 
 `scripts/prepare_question_datasets.py` downloads complete source releases into

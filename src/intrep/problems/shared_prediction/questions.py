@@ -285,6 +285,7 @@ class QuestionSource:
         self.last_response = None
         self.forms = available_forms(reader.config)
         self.class_indices, self.partners = {}, {}
+        self.evaluation_excluded_indices = set(reader.config.get("evaluation_excluded_indices", []))
         if hasattr(reader, "labels"):
             for label in sorted(set(map(int, reader.labels))):
                 indices = np.flatnonzero(np.asarray(reader.labels) == label).tolist()
@@ -343,6 +344,8 @@ class QuestionSource:
     def _records(self, seed):
         next_record = self.reader.next_transition if isinstance(self.reader, NativeSource) else self.reader.next_record
         first = next_record()
+        if self._forced and isinstance(first, dict) and first.get("index") in self.evaluation_excluded_indices:
+            raise ValueError("a reserved holdout image cannot enter development evaluation")
         records = [first]
         if self.partners:
             label = first["label"]
@@ -351,8 +354,16 @@ class QuestionSource:
             # original/added alternation and its own position in the cycle.
             cycle = self.step // (2 * (len(self.forms) - 1))
             same = seed % 2 == 0 if self._forced else cycle % 2 == 0
-            selected = label if same else generator.choice([value for value in self.class_indices if value != label])
+            eligible_labels = [value for value, indices in self.class_indices.items() if value != label
+                               and (not self._forced or any(index not in self.evaluation_excluded_indices for index in indices))]
+            if not same and not eligible_labels:
+                raise ValueError("no different-class development partner remains outside the holdout")
+            selected = label if same else generator.choice(eligible_labels)
             pool = self.class_indices[selected]
+            if self._forced:
+                pool = [index for index in pool if index not in self.evaluation_excluded_indices]
+                if not pool:
+                    raise ValueError("no development partner remains outside the holdout for this class")
             index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]
             while len(pool) > 1 and index == first["index"]:
                 index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]

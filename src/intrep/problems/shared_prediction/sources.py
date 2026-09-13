@@ -170,6 +170,9 @@ class ClassificationSource(Source):
             self.images, self.labels = read_cifar10_images_and_labels(self.files)
         if len(self.images) != len(self.labels):
             raise ValueError("classification images and labels differ in length")
+        if any(type(index) is not int or not 0 <= index < len(self.images)
+               for index in self.config.get("evaluation_excluded_indices", [])):
+            raise ValueError("evaluation exclusions must be valid raw image indices")
         self.sampler = EpochSampler(len(self.images), self.config["seed"])
 
     def next_record(self):
