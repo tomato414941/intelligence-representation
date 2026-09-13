@@ -11,8 +11,9 @@ that learned representations are better than explicit digit symbols.
 Preparation, calibration, intervention training, evaluation and paired-comparison
 tools are implemented. Their implementation tests include exact training
 continuation and identical background sampling across counterfactual branches.
-Scientific calibration and intervention results are separate generated artifacts;
-synthetic execution tests do not establish the capability prerequisites.
+The measured common calibration is recorded below. Detailed calibration and
+intervention outputs are separate generated artifacts; synthetic execution tests
+do not establish the capability prerequisites.
 
 ## Learning Conditions
 
@@ -144,6 +145,29 @@ on development data. The evaluator reports each gate separately. Transfer
 evidence and degradation of existing abilities must still be considered
 separately; passing these gates alone is not proof of transfer. Calibration
 must establish that the control's old text rule is already known as well.
+
+### Measured Common Calibration (2026-09-13)
+
+The common checkpoint first passed all three development gates at 3,500 updates,
+using 5,505.9 seconds (91.8 minutes) of measured training on one A40. Evaluation,
+setup and archive verification add to this time. Every recorded update included
+the twelve original sources, and all 358,228,139 parameters remained trainable.
+
+| Development generation | Before calibration | Selected common checkpoint |
+|---|---:|---:|
+| Digit naming, 900 images | 10.0% | 95.67% |
+| Old image order, 900 oriented questions | 50.0% | 91.56% |
+| Old text order, 90 questions | 50.0% | 100.0% |
+
+General instruction following remained poor: strict correctness on the existing
+90 scored prompts changed from 4/90 to 1/90. These prerequisite scores therefore
+establish a narrow starting capability; broader retention needs its own results.
+New-rule image answers were never queried during calibration or its selection.
+
+The checkpoint, complete update traces and generated answers are archived at
+the project R2 prefix `shared-prediction/rule-transfer-20260913/calibration`.
+Its `cpu-verification.json` records restoration of model parameters, optimizer
+state and all twelve readers; `archive.json` records remote byte verification.
 
 ## Fixed Image Panels
 
