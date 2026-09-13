@@ -32,6 +32,9 @@ in the same sequence, with 45 yes and 45 no answers. A and B differ only in the
 answers: 23 of the 45 unordered class-pair relations change, and 22 remain the
 same. Training and evaluation use the same question wording; this is transfer
 to an untrained modality/rule combination, not to a new operator family.
+The control's tuition question names the old order, while A/B tuition names the
+new order. Their digit-pair sequence and grounding inputs are matched; the
+control's tuition question text and labels differ from A/B.
 
 The text manifests contain `rule`, `digits` and `answer` fields. Construct their
 questions with `order_question(..., modality="text")` and supervise the answer
@@ -173,8 +176,9 @@ state and all twelve readers; `archive.json` records remote byte verification.
 
 All three branches first qualified together at 900 updates, with 7,200 tuition
 questions per branch: 80 complete repetitions of the 90 textual pairs. The
-training audit verified identical starting weights, background states and
-supplemental inputs, all twelve sources and all 358,228,139 trainable parameters.
+training audit verified identical starting weights, background states, grounding
+inputs and tuition digit-pair sequences, all twelve sources and all 358,228,139
+trainable parameters.
 No new-rule image answer was used in these training updates or their selection.
 
 | Development generation | A | B | Rehearsal control, scored under A |
