@@ -13,7 +13,7 @@ from scripts.run_rule_transfer_interventions import main
 
 
 class InterventionScheduleTests(unittest.TestCase):
-    def exercise(self, root, *, b_passes):
+    def exercise(self, root, *, b_passes, b_at=450, control_at=225):
         common, panel, output, work = [root / name for name in ("common", "panel", "output", "work")]
         common.mkdir()
         panel.mkdir()
@@ -34,7 +34,8 @@ class InterventionScheduleTests(unittest.TestCase):
             calls.append((name, arguments))
             if name == "train_rule_transfer.py":
                 condition, steps = value("--condition"), int(value("--steps"))
-                passed = condition != "b" or b_passes and steps >= 450
+                passed = (condition == "a" or condition == "b" and b_passes and steps >= b_at
+                          or condition == "control" and steps >= control_at)
                 directory = Path(value("--output"))
                 directory.mkdir(parents=True, exist_ok=True)
                 (directory / "checkpoint.pt").write_bytes(b"synthetic branch")
@@ -75,6 +76,26 @@ class InterventionScheduleTests(unittest.TestCase):
             self.assertEqual(outcome["trained_conditions"], ["a", "b"])
             self.assertFalse(any(name == "evaluate_rule_transfer.py" for name, _ in calls))
             self.assertEqual(sum(name == "archive_rule_transfer.py" for name, _ in calls), 2)
+
+    def test_control_regression_extends_every_condition_before_transfer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, outcome = self.exercise(Path(directory), b_passes=True, b_at=225, control_at=450)
+            training = [(args[args.index("--condition") + 1], args[args.index("--steps") + 1], args[0])
+                        for name, args in calls if name == "train_rule_transfer.py"]
+            self.assertEqual(training, [("a", 225, "--common"), ("b", 225, "--common"), ("control", 225, "--common"),
+                                       ("a", 450, "--resume"), ("b", 450, "--resume"), ("control", 450, "--resume")])
+            self.assertEqual(outcome["selected_updates"], 450)
+            self.assertFalse(outcome["milestone_results"][0]["prerequisites"]["control"]["fixture_gate"]["passed"])
+            self.assertTrue(outcome["development_transfer_evaluated"])
+
+    def test_control_that_never_qualifies_is_archived_without_transfer_queries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls, outcome = self.exercise(Path(directory), b_passes=True, b_at=225, control_at=900)
+            self.assertIsNone(outcome["selected_updates"])
+            self.assertEqual(outcome["trained_conditions"], ["a", "b", "control"])
+            self.assertFalse(outcome["development_transfer_evaluated"])
+            self.assertFalse(any(name == "evaluate_rule_transfer.py" for name, _ in calls))
+            self.assertEqual(sum(name == "archive_rule_transfer.py" for name, _ in calls), 3)
 
 
 if __name__ == "__main__":

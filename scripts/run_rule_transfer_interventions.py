@@ -44,7 +44,7 @@ def main():
     args.work.mkdir(parents=True, exist_ok=True)
     args.output.mkdir(parents=True, exist_ok=True)
     plan = {"schema_version": "intrep.rule_transfer_intervention_plan.v1", "milestones": args.milestones,
-            "selection": "earliest common milestone at which both A and B pass development prerequisites",
+            "selection": "earliest common milestone at which A, B and control pass development prerequisites",
             "control_updates": "same as the selected A/B milestone",
             "holdout_evaluation": "separate, after the procedure and any development-based follow-up are fixed",
             "settings_from_common": settings, "common_checkpoint_sha256": common["checkpoint_sha256"]}
@@ -68,26 +68,27 @@ def main():
 
     selected = None
     comparisons = []
+    conditions = ["a", "b"]
     for limit in args.milestones:
         results = {name: train(name, limit) for name in ("a", "b")}
-        comparisons.append({"updates": limit, "prerequisites": {name: result["prerequisites"] for name, result in results.items()}})
         if all(result["prerequisites_passed"] for result in results.values()):
+            results["control"] = train("control", limit)
+            if "control" not in conditions:
+                conditions.append("control")
+        comparisons.append({"updates": limit, "prerequisites": {name: result["prerequisites"] for name, result in results.items()}})
+        if "control" in results and all(result["prerequisites_passed"] for result in results.values()):
             selected = limit
             break
-    conditions = ["a", "b"]
     if selected is not None:
-        control = train("control", selected)
-        conditions.append("control")
         script("audit_rule_transfer_training.py", ["--common", args.common, "--a", args.work / "a", "--b", args.work / "b",
                                                     "--control", args.work / "control", "--output", args.output / "training-audit.json"])
-        if control["prerequisites_passed"]:
-            for name in conditions:
-                script("evaluate_rule_transfer.py", ["--checkpoint", args.work / name / "checkpoint.pt",
-                    "--panel", panel, "--split", "development", "--order", "b" if name == "b" else "a",
-                    "--extension", "intrep.problems.shared_prediction.record_sources",
-                    "--output", args.output / f"{name}-development.json", "--device", args.device, "--threads", args.threads])
-            script("compare_rule_transfer.py", ["--a", args.output / "a-development.json", "--b", args.output / "b-development.json",
-                                                "--output", args.output / "development-comparison.json"])
+        for name in conditions:
+            script("evaluate_rule_transfer.py", ["--checkpoint", args.work / name / "checkpoint.pt",
+                "--panel", panel, "--split", "development", "--order", "b" if name == "b" else "a",
+                "--extension", "intrep.problems.shared_prediction.record_sources",
+                "--output", args.output / f"{name}-development.json", "--device", args.device, "--threads", args.threads])
+        script("compare_rule_transfer.py", ["--a", args.output / "a-development.json", "--b", args.output / "b-development.json",
+                                            "--output", args.output / "development-comparison.json"])
     outcome = {"selected_updates": selected, "milestone_results": comparisons, "trained_conditions": conditions,
                "development_transfer_evaluated": (args.output / "development-comparison.json").exists(),
                "holdout_evaluated": False}

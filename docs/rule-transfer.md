@@ -98,9 +98,12 @@ for training continuation. The standard shared-checkpoint evaluator can read it.
 1,800 updates. With eight tuition examples per update, every milestone finishes
 complete 90-example cycles, so each pair receives the same number of labels and
 yes/no counts remain exactly balanced in A, B and the control. It selects the
-first common milestone at which both A and B pass the development prerequisites,
-then trains the control for the identical number of updates. If either branch
-never qualifies, it archives the diagnostic runs without querying new-rule images.
+first common milestone at which A, B and the control pass the development
+prerequisites. The control is trained once A and B qualify at a milestone; if
+the control does not qualify, the next milestone advances A and B as well.
+No branch receives a smaller selected update budget. If the conditions never
+qualify together, the runner archives the diagnostic runs without querying
+new-rule images.
 
 Given a restored common archive and the same configured project R2 environment:
 
