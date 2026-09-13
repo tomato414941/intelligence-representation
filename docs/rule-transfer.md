@@ -144,6 +144,17 @@ all reader states on CPU, verifies the recorded parameter/checkpoint digests,
 uploads to a new project R2 prefix and compares remote bytes before removing the
 working checkpoint. Only small reports and tokenizer files return locally.
 
+For future image follow-ups, `scripts/run_rule_transfer_image_followup.py`
+starts one background CPU archive worker as endpoints finish. Hard-linked
+snapshots allow verification and transfer to overlap the remaining training and
+holdout inference. The selected working checkpoints remain until all holdout
+evaluations and all archive verifications succeed. Use `--isolate-timing` when
+comparing processing times: it defers all archives until evaluation finishes,
+avoiding archive CPU, disk and network contention during measurements. Selection
+and outcome records include `archive_schedule`; overlapping timings must not be
+treated as isolated per-condition throughput measurements. This change follows
+the measured 2026-09-13 run and does not alter its recorded timings.
+
 Before interpreting a negative transfer result, generated digit naming and
 the new text rule must each reach 95%, and the old image rule must reach 90%
 on development data. The evaluator reports each gate separately. Transfer

@@ -4,10 +4,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,6 +35,15 @@ def write_once(path, value):
 
 def script(name, arguments):
     subprocess.run([sys.executable, str(Path(__file__).resolve().parent / name), *map(str, arguments)], check=True)
+
+
+def archive_endpoint(directory, prefix, output):
+    # The completed endpoint remains available for holdout inference while a
+    # CPU subprocess verifies and uploads a hard-linked snapshot.
+    with tempfile.TemporaryDirectory(prefix=".archive-", dir=directory.parent) as temporary:
+        snapshot = Path(temporary) / directory.name
+        shutil.copytree(directory, snapshot, copy_function=os.link)
+        script("archive_rule_transfer.py", ["--directory", snapshot, "--prefix", prefix, "--local-output", output])
 
 
 def extension_reason(result, previous):
@@ -121,6 +133,8 @@ def main():
     parser.add_argument("--work", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--archive-prefix", required=True)
+    parser.add_argument("--isolate-timing", action="store_true",
+                        help="defer CPU verification and uploads until all training and evaluation measurements finish")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--threads", type=int, default=4)
     args = parser.parse_args()
@@ -139,8 +153,14 @@ def main():
             parser.error("all original endpoints must match their passing, text-only parent records")
     args.output.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(args.plan, args.output / "protocol.json")
+    with ThreadPoolExecutor(max_workers=1) as archiver:
+        run_comparison(args, plan, parents, panel, archiver)
+
+
+def run_comparison(args, plan, parents, panel, archiver):
     settings = parents["a"]["settings"]
-    endpoints, extensions = {}, {}
+    endpoints, extensions, archives = {}, {}, {}
+    archive_schedule = "after-evaluation" if args.isolate_timing else "overlap-training-and-evaluation"
     for count in plan["teacher_budgets"]:
         manifest_path = args.support_directory / f"image-{count:04d}.json"
         manifest = json.loads(manifest_path.read_text())
@@ -148,6 +168,9 @@ def main():
             raise ValueError("the image support differs from the fixed budget or panel")
         directories = {}
         for name in ("a", "control"):
+            for future in archives.values():
+                if future.done():
+                    future.result()
             key = f"image-{count:04d}-{name}"
             directory = args.work / key
             directories[name] = directory
@@ -172,27 +195,39 @@ def main():
                 result = read_result(directory)
             endpoints[key] = {"checkpoint_sha256": result["checkpoint_sha256"], "updates": result["completed_steps"],
                               "prerequisites_passed": result["prerequisites_passed"], "training_seconds": result["training_seconds"]}
+            if not args.isolate_timing:
+                archives[key] = archiver.submit(archive_endpoint, directory, args.archive_prefix + "/" + key, args.output / key)
         audited = audit_pair(args.parents, directories, manifest, file_digest(manifest_path))
         write_once(args.output / f"image-{count:04d}-audit.json", audited)
         print(json.dumps({"stage": "image_budget_complete", "budget": count, "audit": audited}), flush=True)
     selection = {"schema_version": "intrep.rule_transfer_final_selection.v1", "frozen_at": datetime.now(timezone.utc).isoformat(),
                  "protocol_sha256": file_digest(args.plan), "panel_sha256": file_digest(panel),
                  "parents": {name: result["checkpoint_sha256"] for name, result in parents.items()},
-                 "image_endpoints": endpoints, "extensions": extensions, "holdout_evaluated": False}
+                 "image_endpoints": endpoints, "extensions": extensions, "holdout_evaluated": False,
+                 "archive_schedule": archive_schedule}
     write_once(args.output / "selection.json", selection)
     checkpoints = {**{name: args.parents / name / "checkpoint.pt" for name in parents},
                    **{name: args.work / name / "checkpoint.pt" for name in endpoints}}
     for name, checkpoint in checkpoints.items():
+        for future in archives.values():
+            if future.done():
+                future.result()
         script("evaluate_rule_transfer.py", ["--checkpoint", checkpoint, "--panel", panel, "--split", "holdout",
             "--order", "b" if name == "b" else "a", "--extension", "intrep.problems.shared_prediction.record_sources",
             "--output", args.output / "holdout" / (name + ".json"), "--device", args.device, "--threads", args.threads])
     script("compare_rule_transfer.py", ["--a", args.output / "holdout/a.json", "--b", args.output / "holdout/b.json",
                                         "--output", args.output / "holdout/comparison.json"])
+    if args.isolate_timing:
+        for name in endpoints:
+            archives[name] = archiver.submit(archive_endpoint, args.work / name,
+                                            args.archive_prefix + "/" + name, args.output / name)
+    for future in archives.values():
+        future.result()
     for name in endpoints:
-        script("archive_rule_transfer.py", ["--directory", args.work / name, "--prefix", args.archive_prefix + "/" + name,
-                                            "--local-output", args.output / name])
+        (args.work / name / "checkpoint.pt").unlink()
     write_once(args.output / "outcome.json", {"endpoints": endpoints, "holdout_evaluated": True,
-               "holdout_variants": list(checkpoints), "image_checkpoints_archived": True})
+               "holdout_variants": list(checkpoints), "image_checkpoints_archived": True,
+               "archive_schedule": archive_schedule})
     print(json.dumps({"stage": "image_followup_complete", "holdout_variants": list(checkpoints)}), flush=True)
 
 

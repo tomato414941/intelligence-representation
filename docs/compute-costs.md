@@ -247,3 +247,39 @@ rates and existing account usage when planning retention. The
 [comparison report](instruction-retention-evaluation.md) and its durable
 `reports/instruction-retention-20260911/` artifacts contain model-quality,
 environment, archive and timing records.
+
+## Shared Prediction Execution Efficiency
+
+Local checks on 2026-09-13 compared the pre-change implementation at
+`da724fedaefdbcae8d110a70533cd5c6e3dd8efc` with batched original objectives and
+faster source-state hashing. Measurements used CPU, four Torch threads and
+PyTorch 2.11.0. The forward/backward fixture was an untrained 16-dimensional,
+three-layer LFM body: these are component timings, not LFM2.5-350M or A40
+throughput estimates.
+
+| Component | Before | After | Local speedup |
+| --- | ---: | ---: | ---: |
+| Source-state digest, 71,445 distinct-record entries | 116.3 ms | 14.8 ms | 7.8x |
+| MNIST original objective, eight images | 55.5 ms | 12.7 ms | 4.4x |
+| Text original objective, eight 128-token blocks | 57.2 ms | 13.2 ms | 4.4x |
+| Sensor classification, eight 128-sample windows | 59.8 ms | 14.5 ms | 4.1x |
+| Speech classification, eight short unequal-length fixtures | 54.9 ms | 16.9 ms | 3.3x |
+
+The digest test used synthetic sampler values sized from the completed run and
+required identical hashes; values are medians of nine repetitions. Batching
+used the same model and inputs for each comparison, with seven repetitions and
+alternating order. MNIST used actual 28x28 training images with four-pixel
+patches; the other inputs were synthetic fixtures. Forward/backward timings
+exclude input-file I/O and optimizer updates. At two records per batch, these
+four component speedups were 1.6–1.7x. Tests also compare losses
+and gradients, including unequal-length speech weighted equally per example.
+
+Joint training now collects detached loss scalars once per device; finite-loss
+and finite-gradient checks still run before optimizer updates. Source metrics
+can still cause other CUDA synchronizations. The image-follow-up runner can
+overlap CPU archive verification and transfer with remaining GPU work, with
+`--isolate-timing` available for processing-time comparisons. No additional GPU
+run measured these changes. Before choosing a larger batch for training, measure
+complete-update throughput and peak memory on the intended model/device, then
+compare learning at matched exposure. The component ratios cannot be multiplied
+or used directly as GPU billing reductions.

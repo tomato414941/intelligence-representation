@@ -6,6 +6,7 @@ import copy
 import io
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -257,6 +258,12 @@ class FollowupRunnerTests(unittest.TestCase):
         self.assertEqual(extension_reason(result, previous), [])
 
     def test_holdout_waits_for_all_six_independent_endpoints_and_conditional_extensions(self):
+        self.check_archive_schedule(isolate_timing=False)
+
+    def test_isolated_timing_defers_archives_until_training_and_evaluation_finish(self):
+        self.check_archive_schedule(isolate_timing=True)
+
+    def check_archive_schedule(self, *, isolate_timing):
         from scripts.run_rule_transfer_image_followup import main
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
             root = Path(directory)
@@ -280,6 +287,8 @@ class FollowupRunnerTests(unittest.TestCase):
             for count in (32, 128, 512):
                 (support / f"image-{count:04d}.json").write_text(json.dumps({"examples": [None] * count, "panel_sha256": panel_hash}))
             calls = []
+            archive_started = threading.Event()
+            evaluation_started = threading.Event()
 
             def run(name, arguments):
                 args = list(arguments)
@@ -287,7 +296,10 @@ class FollowupRunnerTests(unittest.TestCase):
                 value = lambda flag: args[args.index(flag) + 1]
                 if name == "train_rule_transfer.py":
                     output = value("--output")
+                    if not isolate_timing and output.name != "image-0032-a":
+                        self.assertTrue(archive_started.wait(5), "archiving must overlap the remaining training")
                     output.mkdir(parents=True, exist_ok=True)
+                    (output / "checkpoint.pt").write_text(output.name)
                     control = value("--condition") == "control"
                     count = int(value("--image-manifest").stem.split("-")[1])
                     extended = "--resume" in args
@@ -300,13 +312,25 @@ class FollowupRunnerTests(unittest.TestCase):
                     (output / "prerequisites").mkdir(exist_ok=True)
                     (output / "prerequisites/step-000512.json").write_text(json.dumps({"gates": {"new_image_rule": {"accuracy": .69}}}))
                 elif name == "evaluate_rule_transfer.py":
+                    evaluation_started.set()
                     self.assertTrue((root / "output/selection.json").exists())
                     self.assertEqual(len(json.loads((root / "output/selection.json").read_text())["image_endpoints"]), 6)
                     self.assertEqual(value("--split"), "holdout")
+                    self.assertTrue(value("--checkpoint").exists())
+                elif name == "archive_rule_transfer.py":
+                    archive_started.set()
+                    self.assertTrue(evaluation_started.wait(5), "GPU work must continue while an archive is pending")
+                    snapshot = value("--directory")
+                    original = root / "work" / snapshot.name / "checkpoint.pt"
+                    self.assertEqual((snapshot / "checkpoint.pt").stat().st_ino, original.stat().st_ino)
+                    (snapshot / "checkpoint.pt").unlink()
+                    self.assertTrue(original.exists())
 
             argv = ["run_rule_transfer_image_followup.py", "--parents", str(parents), "--parent-audit", str(root / "audit.json"),
                     "--plan", str(root / "plan.json"), "--panel-directory", str(panel), "--support-directory", str(support),
                     "--work", str(root / "work"), "--output", str(root / "output"), "--archive-prefix", "fixture"]
+            if isolate_timing:
+                argv.append("--isolate-timing")
             with patch("sys.argv", argv), patch("scripts.run_rule_transfer_image_followup.script", side_effect=run), \
                  patch("scripts.run_rule_transfer_image_followup.audit_pair", return_value={"verified": True}):
                 main()
@@ -317,6 +341,35 @@ class FollowupRunnerTests(unittest.TestCase):
             first_evaluation = next(index for index, (name, _) in enumerate(calls) if name == "evaluate_rule_transfer.py")
             self.assertFalse(any(name == "train_rule_transfer.py" for name, _ in calls[first_evaluation:]))
             self.assertEqual(sum(name == "archive_rule_transfer.py" for name, _ in calls), 6)
+            if isolate_timing:
+                comparison = next(index for index, (name, _) in enumerate(calls) if name == "compare_rule_transfer.py")
+                self.assertFalse(any(name == "archive_rule_transfer.py" for name, _ in calls[:comparison + 1]))
+            expected_schedule = "after-evaluation" if isolate_timing else "overlap-training-and-evaluation"
+            for filename in ("selection.json", "outcome.json"):
+                self.assertEqual(json.loads((root / "output" / filename).read_text())["archive_schedule"], expected_schedule)
+            self.assertFalse(list((root / "work").glob("image-*/checkpoint.pt")))
+            self.assertTrue(all((parents / name / "checkpoint.pt").exists() for name in ("a", "b", "control")))
+
+    def test_archive_snapshot_failure_keeps_the_selected_checkpoint(self):
+        from scripts.run_rule_transfer_image_followup import archive_endpoint
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected = root / "image-0032-a"
+            selected.mkdir()
+            expected = b"selected checkpoint needed for holdout and upload recovery"
+            (selected / "checkpoint.pt").write_bytes(expected)
+
+            def failed_archive(name, arguments):
+                snapshot = arguments[arguments.index("--directory") + 1]
+                self.assertEqual((snapshot / "checkpoint.pt").read_bytes(), expected)
+                (snapshot / "checkpoint.pt").unlink()
+                raise RuntimeError("remote verification failed")
+
+            with patch("scripts.run_rule_transfer_image_followup.script", side_effect=failed_archive):
+                with self.assertRaisesRegex(RuntimeError, "verification failed"):
+                    archive_endpoint(selected, "fixture/archive", root / "collected")
+            self.assertEqual((selected / "checkpoint.pt").read_bytes(), expected)
+            self.assertEqual(list(root.iterdir()), [selected])
 
 
 if __name__ == "__main__":
