@@ -8,9 +8,11 @@ constraint makes them equal to the corresponding token embeddings. This does
 not test acquisition of cross-modal correspondence without labels, or establish
 that learned representations are better than explicit digit symbols.
 
-The preparation, evaluation and paired-comparison tools are implemented. They
-prepare supervision and evaluate saved shared checkpoints. Calibration and
-intervention training have not been run for this experiment.
+Preparation, calibration, intervention training, evaluation and paired-comparison
+tools are implemented. Their implementation tests include exact training
+continuation and identical background sampling across counterfactual branches.
+Scientific calibration and intervention results are separate generated artifacts;
+synthetic execution tests do not establish the capability prerequisites.
 
 ## Learning Conditions
 
@@ -37,6 +39,73 @@ answer examples. `development-recipe.json` preserves the existing training
 populations and reserves holdout images; it does not itself add the new rule
 loss to the training loop. The intervention runner must explicitly consume
 the text manifests while preserving the twelve background data streams.
+
+## Calibration And Intervention Training
+
+`scripts/train_rule_transfer.py` adds digit naming, the old image order and the
+old text order to every joint update. These supplemental samplers are separate
+from the twelve original readers. Digit naming traverses every training image
+before repeating; old image pairs cycle through all 90 ordered unequal-digit
+pairs with complete, shuffled per-class image pools. No new-order image answer
+is taught. Equal-length questions are batched with the same answer-token and EOS
+loss as the existing language answer objective.
+
+The initial calibration uses the prior LFM2.5-350M varied-question checkpoint.
+Its trained image input provides a starting point, but the separate classifier's
+past accuracy does not establish generated digit naming or order competence.
+The entire body and all attached heads remain trainable. Calibration resets
+AdamW to `1e-5`, preserves every background training configuration and reader
+cursor, and uses additional batches of 16 digit names, eight old image pairs and
+eight old text pairs. Their loss weights are 8, 8 and 2; each original source
+retains weight 1. There is no parameter freezing or reduced training population.
+
+```sh
+uv run python scripts/train_rule_transfer.py \
+  --initialize models/question-learning-20260911/varied/checkpoint.pt \
+  --condition calibration \
+  --recipe data/rule-transfer-20260913/development-recipe.json \
+  --panel data/rule-transfer-20260913/panel.json \
+  --extension intrep.problems.shared_prediction.record_sources \
+  --output models/rule-transfer/calibration --device cuda \
+  --steps 12000 --training-seconds 10800 --interval 500 --stop-when-calibrated \
+  --prompts configs/question-learning-prompts.json
+```
+
+Every 500 updates, development generation measures digit names, the old image
+order and all 90 old text relations. Calibration stops after passing their
+95%, 90% and 95% gates, or reaching 12,000 updates or three measured training
+hours. Evaluation, checkpoint I/O and storage verification are additional costs.
+New-order image questions are not queried to select the starting checkpoint.
+All twelve original tasks and the existing instruction prompt panel are measured
+before and after each training invocation to expose deterioration separately.
+
+Use `--common` with the passing calibration checkpoint and `--condition a`, `b`
+or `control`, together with the corresponding `--manifest` text file. This forks
+the identical model weights and background/supplemental reader states while
+resetting AdamW identically in every branch. Each branch adds eight tuition
+questions per update with weight 8. A/B receive the new text order; the control
+receives old-order rehearsal. The manifest is checked against the prepared order
+and must match exactly. Development prerequisite checks add the new text gate
+for A/B without querying new-order image answers.
+
+The intervention comparison must choose the same update count for every branch.
+Use `--resume` in the original output directory to continue the exact optimizer,
+sampling and RNG state. Settings and the complete recipe must remain unchanged.
+The checkpoint includes supplemental lesson state; use this experiment's runner
+for training continuation. The standard shared-checkpoint evaluator can read it.
+
+Training records retain initial checkpoint and parameter hashes, every update's
+background reader-state hash and supplemental input indices/text example IDs.
+Verify these traces and equal update counts before interpreting A/B contrasts.
+All new-rule supervision and every model-selection query have explicit modality
+boundaries; the final image split is reserved throughout calibration.
+
+`scripts/run_rule_transfer_calibration.sh` restores the initial checkpoint on a
+disposable CUDA worker, checks its expected SHA-256, runs calibration and calls
+`scripts/archive_rule_transfer.py`. Archiving restores the model, optimizer and
+all reader states on CPU, verifies the recorded parameter/checkpoint digests,
+uploads to a new project R2 prefix and compares remote bytes before removing the
+working checkpoint. Only small reports and tokenizer files return locally.
 
 Before interpreting a negative transfer result, generated digit naming and
 the new text rule must each reach 95%, and the old image rule must reach 90%
