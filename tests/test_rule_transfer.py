@@ -21,6 +21,7 @@ from intrep.problems.shared_prediction.rule_transfer_data import (
     DIGITS,
     PANEL_SCHEMA,
     historical_indices,
+    historical_files,
     make_orders,
     make_pairs,
     precedes,
@@ -108,6 +109,22 @@ class DataTests(unittest.TestCase):
         history = {"schema_version": "intrep.rule_transfer_evaluation.v1", "digit_readouts": [{"index": 7}],
                    "rows": [{"indices": [7, 29]}, {"indices": [29, 7]}]}
         self.assertEqual(historical_indices(history), {7, 29})
+
+    def test_calibration_readouts_are_excluded_without_treating_text_digits_as_image_indices(self):
+        history = {"schema_version": "intrep.rule_transfer_prerequisites.v1", "digit_readouts": [{"index": 7}],
+                   "old_image_rows": [{"indices": [7, 29]}], "old_text_rows": [{"digits": [2, 3]}]}
+        self.assertEqual(historical_indices(history), {7, 29})
+
+    def test_history_discovery_includes_calibration_and_background_evaluations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            names = ("trial/prerequisites/step-000500.json", "trial/background/step-000500.json", "trial/background-panel.json")
+            for name in names:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}")
+            (root / "unrelated.json").write_text("{}")
+            self.assertEqual({path.relative_to(root).as_posix() for path in historical_files([root])}, set(names))
 
 
 class ReadoutTests(unittest.TestCase):

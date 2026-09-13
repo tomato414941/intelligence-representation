@@ -57,9 +57,11 @@ def historical_indices(payload) -> set[int]:
 
     def visit(value, mnist=False):
         if isinstance(value, dict):
-            if value.get("schema_version") == "intrep.rule_transfer_evaluation.v1":
+            schema = value.get("schema_version")
+            if schema in ("intrep.rule_transfer_evaluation.v1", "intrep.rule_transfer_prerequisites.v1"):
                 indices = [row["index"] for row in value["digit_readouts"]]
-                indices += [index for row in value["rows"] for index in row["indices"]]
+                relation_rows = value["rows"] if schema == "intrep.rule_transfer_evaluation.v1" else value["old_image_rows"]
+                indices += [index for row in relation_rows for index in row["indices"]]
                 if any(type(index) is not int or index < 0 for index in indices):
                     raise ValueError("historical rule-transfer indices must be nonnegative integers")
                 found.update(indices)
@@ -91,9 +93,9 @@ def historical_files(directories) -> list[Path]:
             paths.add(directory)
         elif directory.is_dir():
             paths.update(path for path in directory.rglob("*.json")
-                         if path.name in ("evaluation-panel.json", "result.json", "comparison.json")
+                         if path.name in ("evaluation-panel.json", "background-panel.json", "result.json", "comparison.json")
                          or path.name.endswith(("-development.json", "-holdout.json"))
-                         or "evaluation" in path.relative_to(directory).parts)
+                         or {"evaluation", "background", "prerequisites"}.intersection(path.relative_to(directory).parts))
         else:
             raise FileNotFoundError(directory)
     return sorted(paths)
