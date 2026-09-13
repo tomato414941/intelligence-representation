@@ -49,7 +49,11 @@ class SharedPredictorTests(unittest.TestCase):
         def source(name, target):
             seen.append(name)
             return loss(model, target)
-        trainer.step({"first": lambda: source("first", 0), "second": lambda: source("second", 2)})
+        expected_metrics = {"first": float(loss(expected, 0).detach()), "second": float(loss(expected, 2).detach())}
+        metrics = trainer.step({"first": lambda: source("first", 0), "second": lambda: source("second", 2)})
+        for name, value in expected_metrics.items():
+            self.assertEqual(metrics[name], value)
+        self.assertEqual(metrics["weighted_loss"], (expected_metrics["first"] + 3 * expected_metrics["second"]) / 4)
         (0.25 * loss(expected, 0) + 0.75 * loss(expected, 2)).backward()
         optimizer = torch.optim.SGD(expected.parameters(), lr=0.1)
         optimizer.step()
@@ -127,6 +131,26 @@ class SharedPredictorTests(unittest.TestCase):
         other.step({"signal": lambda: loss(restored)})
         for actual, expected in zip(model.parameters(), restored.parameters()):
             torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+    def test_nonfinite_loss_or_gradient_cannot_reach_optimizer(self):
+        for invalid in ("loss", "gradient"):
+            with self.subTest(invalid=invalid):
+                model = small_predictor()
+                trainer = JointTrainer(model, {"signal": 1}, learning_rate=0.01)
+                before = copy.deepcopy(model.state_dict())
+
+                def loss():
+                    if invalid == "loss":
+                        return model.core.weight.square().mean() + float("nan")
+                    return (model.core.weight - model.core.weight.detach()).sum().sqrt()
+
+                with self.assertRaises(ValueError if invalid == "loss" else RuntimeError):
+                    trainer.step({"signal": loss})
+                self.assertEqual(trainer.steps, 0)
+                self.assertFalse(trainer.optimizer.state)
+                self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
+                for name, value in model.state_dict().items():
+                    torch.testing.assert_close(value, before[name], rtol=0, atol=0)
 
     def test_full_joint_learning_rejects_a_frozen_body(self):
         model = small_predictor()

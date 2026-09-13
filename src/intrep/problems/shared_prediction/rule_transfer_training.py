@@ -39,10 +39,16 @@ def state_digest(value):
                 visit(item[key])
             digest.update(b"}")
         elif isinstance(item, (list, tuple)):
-            digest.update(b"[")
-            for child in item:
-                visit(child)
-            digest.update(b"]")
+            if item and all(type(child) in (str, int, float, bool, type(None)) for child in item):
+                # Encode large record-index lists in C while preserving the
+                # existing scalar terminators and exact digest byte stream.
+                encoded = json.dumps(item, separators=(";", ":"), allow_nan=False).encode()
+                digest.update(encoded[:-1] + b";]")
+            else:
+                digest.update(b"[")
+                for child in item:
+                    visit(child)
+                digest.update(b"]")
         else:
             digest.update(json.dumps(item, sort_keys=True, allow_nan=False).encode() + b";")
 

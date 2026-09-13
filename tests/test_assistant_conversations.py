@@ -107,7 +107,7 @@ class AssistantConversationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = build_sources(make_model(), assistant_tokenizer(),
-                                   conversation_recipe(root, messages, question_mode="varied"), root)["conversations"]
+                                   conversation_recipe(root, messages, question_mode="varied", records_per_update=2), root)["conversations"]
             for _ in range(5):
                 source.loss()
             state = copy.deepcopy(source.state_dict())

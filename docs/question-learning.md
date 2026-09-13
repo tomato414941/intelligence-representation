@@ -46,6 +46,18 @@ Shogi and native sources read two records/transitions per update. BoolQ reads on
 complete passage/question. No source has a permanent small-sample cap. Increased
 exposure is measured separately from the number of derived questions.
 
+The execution changes from 2026-09-13 batch fixed-length text blocks and
+equal-length image, speech and sensor observations for their original objectives.
+Variable-length speech is grouped by length without padding or truncation, and
+classification losses remain means over examples. Assistant-target conversation
+windows and added question forms keep their individual answer computations.
+Paired sources now honor an even
+`records_per_update` of at least two: a setting of eight consumes four anchors
+and four partners. The configured experiments still use two; larger batches
+require a new recipe and measured device-memory use. Evaluation keeps its fixed
+cases and restores sampling state independently of the training batch size.
+These execution changes do not revise the completed experiment's results.
+
 ## Questions
 
 The record readers expose records independently of their loss computation.

@@ -135,6 +135,10 @@ class TextSource(Source):
         return self.record_loss(self.next_record())
 
     def record_loss(self, tokens):
+        return self.record_batch_loss([tokens])
+
+    def record_batch_loss(self, records):
+        tokens = torch.cat(records, dim=0)
         hidden = self.model(self.model.encode("text", tokens[:, :-1]))
         logits = self.model.decode("text", hidden)
         loss = F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
@@ -156,6 +160,22 @@ class TextSource(Source):
     def progress(self):
         return {**self.stream.state_dict(), "byte_range": [self.stream.start, self.stream.end],
                 "trained_tokens": self.tokens, "buffered_tokens": len(self.pending)}
+
+
+def classification_batch_loss(source, sequences, labels):
+    """Batch equal-length observations without padding, truncation or dropped examples."""
+    groups = {}
+    for sequence, label in zip(sequences, labels):
+        groups.setdefault(sequence.shape[1], []).append((sequence, label))
+    losses, correct = [], []
+    for rows in groups.values():
+        hidden = source.model(torch.cat([row[0] for row in rows], dim=0))[:, -1:]
+        logits = source.model.decode(source.config["name"], hidden)[:, 0]
+        targets = torch.tensor([row[1] for row in rows], device=source.device)
+        losses.append(F.cross_entropy(logits, targets, reduction="sum"))
+        correct.append((logits.detach().argmax(-1) == targets).float().sum())
+    source.last_metrics = {"accuracy": torch.stack(correct).sum() / len(labels)}
+    return torch.stack(losses).sum() / len(labels)
 
 
 class ClassificationSource(Source):
@@ -189,12 +209,11 @@ class ClassificationSource(Source):
         return self.record_loss(self.next_record())
 
     def record_loss(self, record):
-        image = record["image"]
-        hidden = self.model(self.model.encode("rgb", image))
-        logits = self.model.decode(self.config["name"], hidden[:, -1:])[:, 0]
-        target = torch.tensor([record["label"]], device=self.device)
-        self.last_metrics = {"accuracy": (logits.detach().argmax(-1) == target).float().mean()}
-        return F.cross_entropy(logits, target)
+        return self.record_batch_loss([record])
+
+    def record_batch_loss(self, records):
+        return classification_batch_loss(self, [self.model.encode("rgb", row["image"]) for row in records],
+                                         [row["label"] for row in records])
 
     def state_dict(self):
         return self.sampler.state_dict()

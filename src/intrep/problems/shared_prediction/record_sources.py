@@ -8,13 +8,13 @@ import wave
 import numpy as np
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 from intrep.problems.shared_prediction.answers import answer_loss
 from intrep.problems.shared_prediction.sources import (
     Source,
     TextSource,
     attach,
+    classification_batch_loss,
     register_source,
 )
 from intrep.problems.shared_prediction.streams import (
@@ -48,11 +48,12 @@ class IndexedSource(Source):
         return self.record_loss(self.next_record())
 
     def record_loss(self, record):
-        self.last_group = record["group"]
-        hidden = self.model(self.encode_record(record))[:, -1:]
-        logits = self.model.decode(self.config["name"], hidden)[:, 0]
-        self.last_metrics = {"accuracy": (logits.detach().argmax(-1) == record["label"]).float().mean()}
-        return F.cross_entropy(logits, self.ids([record["label"]])[0])
+        return self.record_batch_loss([record])
+
+    def record_batch_loss(self, records):
+        self.last_group = records[-1]["group"]
+        return classification_batch_loss(self, [self.encode_record(row) for row in records],
+                                         [row["label"] for row in records])
 
     def state_dict(self):
         return self.sampler.state_dict()

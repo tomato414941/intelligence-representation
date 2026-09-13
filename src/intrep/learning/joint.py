@@ -63,15 +63,25 @@ class JointTrainer:
         self.optimizer.zero_grad(set_to_none=True)
         total_weight = sum(self.weights.values())
         metrics = {}
+        device_groups = {}
         try:
             # Release each source's activations after backward; gradients accumulate.
             for name, weight in self.weights.items():
                 loss = losses[name]()
                 if (not isinstance(loss, torch.Tensor) or loss.ndim != 0
-                        or not loss.requires_grad or not torch.isfinite(loss).item()):
+                        or not loss.requires_grad):
                     raise ValueError(f"source {name!r} must produce a finite differentiable scalar loss")
-                metrics[name] = float(loss.detach())
+                metrics[name] = loss.detach()
+                device_groups.setdefault(loss.device, []).append(name)
                 (loss * (weight / total_weight)).backward()
+            # Transfer loss scalars together instead of synchronizing CUDA for
+            # every source. Reject invalid losses before any parameter update.
+            for names in device_groups.values():
+                values = torch.stack([metrics[name] for name in names]).cpu().tolist()
+                for name, value in zip(names, values):
+                    if not math.isfinite(value):
+                        raise ValueError(f"source {name!r} must produce a finite differentiable scalar loss")
+                    metrics[name] = value
             norm = nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm,
                                             error_if_nonfinite=True, foreach=False)
             self.optimizer.step()

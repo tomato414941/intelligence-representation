@@ -42,6 +42,26 @@ def training_fixture(root, *, twelve=False, per_class=4):
     return recipe, model, tokenizer, sources
 
 
+class StateDigestTests(unittest.TestCase):
+    def test_digest_preserves_archived_scalar_and_nested_state_hashes(self):
+        cases = [
+            ({"empty": [], "values": [None, True, False, 0, -1, 2**70, -0.0, 1.5, 1e-20,
+                                      "", "文字", '[;]\\"\n']},
+             "410602b2491d238c7ee6e5227c1b1609a68b35f7b8d9a778ad045eafe588db88"),
+            ({"nested": [[1, 2], ("a", "b"), [], {"z": [1., 2.], "a": torch.tensor([[1., -2.], [3., 4.]])}],
+              "sampler": torch.arange(7)},
+             "0d56070646ea47be39ddee186609ca92d7c173fd0f9591127e3a02b0a88e4b38"),
+            ({"distinct": [str(i) for i in range(20000)], "float_values": [i / 10 for i in range(100)]},
+             "ae12b2ade13dca010b18e90b5d33cee0811a4d030bdd0c769b9e7111ab245108"),
+        ]
+        for value, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(state_digest(value), expected)
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.assertRaises(ValueError):
+                state_digest([value])
+
+
 class LessonTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -291,6 +291,10 @@ class QuestionSource:
                 indices = np.flatnonzero(np.asarray(reader.labels) == label).tolist()
                 self.class_indices[label] = indices
                 self.partners[label] = EpochSampler(len(indices), reader.config["seed"] + label + 1000)
+        self.records_per_update = reader.config.get("records_per_update", 2 if self.partners else 1)
+        if (type(self.records_per_update) is not int or self.records_per_update < 1
+                or self.partners and (self.records_per_update < 2 or self.records_per_update % 2)):
+            raise ValueError("records_per_update must be positive, and paired sources require an even count of at least two")
 
     def __getattr__(self, name):
         return getattr(self.reader, name)
@@ -348,28 +352,32 @@ class QuestionSource:
             raise ValueError("a reserved holdout image cannot enter development evaluation")
         records = [first]
         if self.partners:
-            label = first["label"]
             generator = random.Random(seed)
             # Each added form must see both pair labels, independently of the
             # original/added alternation and its own position in the cycle.
             cycle = self.step // (2 * (len(self.forms) - 1))
             same = seed % 2 == 0 if self._forced else cycle % 2 == 0
-            eligible_labels = [value for value, indices in self.class_indices.items() if value != label
-                               and (not self._forced or any(index not in self.evaluation_excluded_indices for index in indices))]
-            if not same and not eligible_labels:
-                raise ValueError("no different-class development partner remains outside the holdout")
-            selected = label if same else generator.choice(eligible_labels)
-            pool = self.class_indices[selected]
-            if self._forced:
-                pool = [index for index in pool if index not in self.evaluation_excluded_indices]
-                if not pool:
-                    raise ValueError("no development partner remains outside the holdout for this class")
-            index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]
-            while len(pool) > 1 and index == first["index"]:
+            for pair_index in range(1 if self._forced else self.records_per_update // 2):
+                if pair_index:
+                    first = next_record()
+                    records.append(first)
+                label = first["label"]
+                eligible_labels = [value for value, indices in self.class_indices.items() if value != label
+                                   and (not self._forced or any(index not in self.evaluation_excluded_indices for index in indices))]
+                if not same and not eligible_labels:
+                    raise ValueError("no different-class development partner remains outside the holdout")
+                selected = label if same else generator.choice(eligible_labels)
+                pool = self.class_indices[selected]
+                if self._forced:
+                    pool = [index for index in pool if index not in self.evaluation_excluded_indices]
+                    if not pool:
+                        raise ValueError("no development partner remains outside the holdout for this class")
                 index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]
-            records.append(self.reader.read_record(index))
+                while len(pool) > 1 and index == first["index"]:
+                    index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]
+                records.append(self.reader.read_record(index))
         elif not self._forced:
-            records.extend(next_record() for _ in range(self.config.get("records_per_update", 1) - 1))
+            records.extend(next_record() for _ in range(self.records_per_update - 1))
         for record in records:
             if isinstance(record, dict) and "index" in record:
                 self.distinct.add(str(record["index"]))
@@ -449,21 +457,29 @@ class QuestionSource:
                            hashlib.sha256(first["passage"].encode()).hexdigest() if self.config["kind"] == "boolq" else
                            first.get("group") if isinstance(first, dict) else None)
         paired = form in ("identify", "same", "different", "sum", "greater")
-        batches = [records] if paired else [[record] for record in records]
+        batches = [records[index:index + 2] for index in range(0, len(records), 2)] if paired else [[record] for record in records]
         losses, rows, responses = [], [], []
-        for batch in batches:
-            if form == "original":
-                loss = (self.reader.record_loss(batch[0], generate=self._forced is not None and self._forced.get("generate", True))
-                        if self.config["kind"] == "boolq" else self.reader.record_loss(batch[0]))
-                self.last_metrics = self.reader.last_metrics.copy()
-                self.last_response = copy.deepcopy(getattr(self.reader, "last_response", None))
-            else:
-                loss = self._score(self._question(batch, form, seed, wording))
-            losses.append(loss)
-            rows.append({key: float(value) for key, value in self.last_metrics.items()})
-            if self.last_response is not None:
-                responses.append(self.last_response)
-                self.answer_tokens += self.last_response.get("target_tokens", 0)
+        batched_original = (form == "original" and not self._forced
+                            and self.config["kind"] in {"text", "conversations", "idx", "cifar10", "spoken_digits", "inertial_activity"}
+                            and not (self.config["kind"] == "conversations"
+                                     and self.config.get("conversation_objective") == "assistant"))
+        if batched_original:
+            losses.append(self.reader.record_batch_loss(records))
+            rows.append({key: float(value) for key, value in self.reader.last_metrics.items()})
+        else:
+            for batch in batches:
+                if form == "original":
+                    loss = (self.reader.record_loss(batch[0], generate=self._forced is not None and self._forced.get("generate", True))
+                            if self.config["kind"] == "boolq" else self.reader.record_loss(batch[0]))
+                    self.last_metrics = self.reader.last_metrics.copy()
+                    self.last_response = copy.deepcopy(getattr(self.reader, "last_response", None))
+                else:
+                    loss = self._score(self._question(batch, form, seed, wording))
+                losses.append(loss)
+                rows.append({key: float(value) for key, value in self.last_metrics.items()})
+                if self.last_response is not None:
+                    responses.append(self.last_response)
+                    self.answer_tokens += self.last_response.get("target_tokens", 0)
         from intrep.problems.shared_prediction.evaluation import summarize
         summary = summarize([{"metrics": row} for row in rows])
         self.last_metrics = {key: row["mean"] for key, row in summary.items()}
