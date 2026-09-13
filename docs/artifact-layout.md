@@ -53,6 +53,26 @@ Shogi game records store recorded game facts. Replay-derived traces,
 position/legal-move expansions, and tensorized policy/value samples are caches
 or problem artifacts, not source game records.
 
+## Local And Remote Storage
+
+Keep active datasets and models locally. Archive inactive large model weights,
+completed run payloads, and unused dataset splits in the project's R2 storage.
+Small evaluation results, configurations, tokenizers, and restore information
+can remain local without retaining every checkpoint beside them.
+
+Before removing a durable local artifact, record its original relative path,
+size, SHA-256, remote location, and restore command. Use a new archive prefix
+and verify the stored contents by reading them back. For compressed archives,
+also compare every member with the original files before deleting those files.
+Keep the verification record and mark affected model directories with restore
+information; an archived directory must be restored before loading its weights.
+
+Remove temporary transport archives after verification instead of keeping both
+compressed and expanded copies. Download remote training checkpoints only when
+they are needed locally; results and provenance are sufficient for reviewing
+an experiment. Source records and the active training bundle must remain
+available when removing derived splits or caches.
+
 ## Saved File Formats
 
 File and artifact directory names identify the artifact's role, not its format
