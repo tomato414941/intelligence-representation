@@ -94,6 +94,34 @@ sampling and RNG state. Settings and the complete recipe must remain unchanged.
 The checkpoint includes supplemental lesson state; use this experiment's runner
 for training continuation. The standard shared-checkpoint evaluator can read it.
 
+`scripts/run_rule_transfer_interventions.py` uses milestones of 225, 450, 900 and
+1,800 updates. With eight tuition examples per update, every milestone finishes
+complete 90-example cycles, so each pair receives the same number of labels and
+yes/no counts remain exactly balanced in A, B and the control. It selects the
+first common milestone at which both A and B pass the development prerequisites,
+then trains the control for the identical number of updates. If either branch
+never qualifies, it archives the diagnostic runs without querying new-rule images.
+
+Given a restored common archive and the same configured project R2 environment:
+
+```sh
+uv run python scripts/run_rule_transfer_interventions.py \
+  --common models/rule-transfer/calibration \
+  --panel-directory data/rule-transfer-20260913 \
+  --work runs/rule-transfer-interventions \
+  --output reports/rule-transfer/interventions \
+  --archive-prefix shared-prediction/rule-transfer/interventions
+```
+
+The runner invokes `scripts/audit_rule_transfer_training.py` to reject mismatched
+initial weights, reader traces, sample exposure, update counts, trainable parameter
+counts, manifests or loss membership. Passing prerequisites are reported separately
+from matching training conditions. Once all three conditions qualify, it measures
+development transfer and archives the checkpoints with byte verification. Final
+holdout evaluation is a separate action after reviewing development results and
+fixing any planned limited-label follow-up; holdout results never select tuition
+duration or decide whether to add that follow-up.
+
 Training records retain initial checkpoint and parameter hashes, every update's
 background reader-state hash and supplemental input indices/text example IDs.
 Verify these traces and equal update counts before interpreting A/B contrasts.
