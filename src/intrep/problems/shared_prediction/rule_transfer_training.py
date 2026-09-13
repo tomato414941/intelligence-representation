@@ -14,12 +14,13 @@ from intrep.problems.shared_prediction.answers import question_prefix
 from intrep.problems.shared_prediction.rule_transfer import (
     MeasuredReadout, accuracy, digit_question, image_record, order_question,
 )
-from intrep.problems.shared_prediction.rule_transfer_data import DIGITS, text_training_examples
+from intrep.problems.shared_prediction.rule_transfer_data import DIGITS, precedes, text_training_examples, validate_image_manifest
 from intrep.problems.shared_prediction.sources import source_configs
 from intrep.problems.shared_prediction.streams import EpochSampler
 
 LESSON_KEY = "rule_transfer_lessons"
 LESSON_NAMES = ("digit_names", "old_image_order", "old_text_order", "text_tuition")
+LESSON_SLOTS = {**{name: index for index, name in enumerate(LESSON_NAMES)}, "image_tuition": 3}
 
 
 def state_digest(value):
@@ -92,7 +93,8 @@ def batched_answer_loss(source, questions):
 class RuleLessons:
     """Keep supplemental sampling separate from all twelve background readers."""
 
-    def __init__(self, source, orders, *, condition="calibration", seed=47, batches=(16, 8, 8, 8), manifest=None):
+    def __init__(self, source, orders, *, condition="calibration", seed=47, batches=(16, 8, 8, 8),
+                 manifest=None, image_manifest=None):
         if condition not in ("calibration", "a", "b", "control") or len(batches) != 4 or min(batches) < 1:
             raise ValueError("choose a lesson condition and four positive batch sizes")
         self.source, self.orders, self.condition = source, copy.deepcopy(orders), condition
@@ -110,7 +112,12 @@ class RuleLessons:
         }
         self.tuition_position = 0
         self.manifest = None
-        if condition != "calibration":
+        self.image_manifest = copy.deepcopy(image_manifest)
+        if image_manifest is not None:
+            if condition not in ("a", "control") or manifest is not None:
+                raise ValueError("image followup compares A/control without ongoing new text tuition")
+            validate_image_manifest(image_manifest, source.images, source.labels, orders)
+        elif condition != "calibration":
             expected = {"schema_version": "intrep.rule_transfer_text.v1", "condition": condition,
                         "examples": text_training_examples(orders, condition)}
             if manifest != expected:
@@ -120,6 +127,8 @@ class RuleLessons:
 
     @property
     def names(self):
+        if self.image_manifest is not None:
+            return (*LESSON_NAMES[:3], "image_tuition")
         return LESSON_NAMES[:3] if self.condition == "calibration" else LESSON_NAMES
 
     def state_dict(self):
@@ -134,16 +143,21 @@ class RuleLessons:
         self.tuition_position = state["tuition_position"]
 
     def provenance(self):
-        return {"condition": self.condition, "batches": list(self.batches), "seed": self.seed,
-                "orders": self.orders, "manifest": self.manifest,
-                "image_supervision": "MNIST training split; digit naming and old order only",
-                "new_rule_supervision": "text observations only"}
+        result = {"condition": self.condition, "batches": list(self.batches), "seed": self.seed,
+                  "orders": self.orders, "manifest": self.manifest,
+                  "image_supervision": "MNIST training split; digit naming and old order only",
+                  "new_rule_supervision": "text observations only"}
+        if self.image_manifest is not None:
+            result.update(image_manifest=self.image_manifest,
+                          image_supervision="MNIST training split; digit naming, old order and the fixed new-order support",
+                          new_rule_supervision="image observations only in this followup phase")
+        return result
 
     def questions(self, name):
         if name not in self.names:
             raise ValueError("lesson is not active in this condition")
         questions, trace = [], []
-        for _ in range(self.batches[LESSON_NAMES.index(name)]):
+        for _ in range(self.batches[LESSON_SLOTS[name]]):
             if name == "digit_names":
                 index = self.samplers["names"].next()
                 questions.append(digit_question(self.source.read_record(index)))
@@ -158,6 +172,14 @@ class RuleLessons:
                 digits = self.pairs[self.samplers["old_text_pairs"].next()]
                 questions.append(order_question(self.source, digits, rule="old", modality="text", order=self.orders["old"]))
                 trace.append(digits)
+            elif name == "image_tuition":
+                examples = self.image_manifest["examples"]
+                row = examples[self.tuition_position % len(examples)]
+                self.tuition_position += 1
+                question = order_question(self.source, [self.source.read_record(index) for index in row["indices"]])
+                question.answer = row["answer"]
+                questions.append(question)
+                trace.append(row["id"])
             else:
                 row = self.manifest["examples"][self.tuition_position % 90]
                 self.tuition_position += 1
@@ -218,3 +240,42 @@ def measure_prerequisites(source, panel, images, labels, *, condition, readout=N
             "gates": gates, "passed": all(row["passed"] for row in gates.values()),
             "digit_readouts": digits, "old_image_rows": old_images, "old_text_rows": old_text, "new_text_rows": new_text,
             "costs": readout.snapshot(), "new_rule_image_queries": 0}
+
+
+def measure_image_followup(source, panel, images, labels, lessons, *, condition, readout=None, progress=None):
+    """Measure development transfer and training fit with explicit image-query counts."""
+    readout = readout or MeasuredReadout(source)
+    mode, cpu_rng = source.model.training, torch.get_rng_state()
+    cuda_rng = torch.cuda.get_rng_state_all() if source.device.type == "cuda" else []
+    source.model.eval()
+    try:
+        result = measure_prerequisites(source, panel, images, labels, condition=condition,
+                                       readout=readout, progress=progress)
+        new_rows, support_rows = [], []
+        for pair_number, pair in enumerate(panel["panels"]["development"], 1):
+            for orientation, direction in ((0, 1), (1, -1)):
+                indices = pair["indices"][::direction]
+                response = readout(order_question(source, [image_record(source, images[index]) for index in indices]), ("yes", "no"))
+                expected = "yes" if precedes(panel["orders"]["a"], *[int(labels[index]) for index in indices]) else "no"
+                new_rows.append({"pair_id": pair["id"], "orientation": orientation, "indices": indices,
+                                 "class_pair": pair["digits"], "expected": expected, **response})
+            if progress and pair_number % 50 == 0:
+                progress({"stage": "followup_development_images", "complete": pair_number,
+                          "total": len(panel["panels"]["development"])})
+        for row in lessons.image_manifest["examples"]:
+            response = readout(order_question(source, [lessons.source.read_record(index) for index in row["indices"]]), ("yes", "no"))
+            support_rows.append({"id": row["id"], "training_indices": row["indices"], "expected": row["answer"], **response})
+        score = accuracy(new_rows)
+        result["gates"]["new_image_rule"] = {"accuracy": score, "count": len(new_rows), "threshold": .90, "passed": score >= .90}
+        result.update(schema_version="intrep.rule_transfer_image_prerequisites.v1",
+                      passed=all(gate["passed"] for gate in result["gates"].values()),
+                      new_image_rows=new_rows, support_rows=support_rows,
+                      support_accuracy=accuracy(support_rows), costs=readout.snapshot(),
+                      new_rule_image_queries=len(new_rows) + len(support_rows),
+                      development_new_rule_image_queries=len(new_rows), support_new_rule_image_queries=len(support_rows))
+        return result
+    finally:
+        source.model.train(mode)
+        torch.set_rng_state(cpu_rng)
+        if cuda_rng:
+            torch.cuda.set_rng_state_all(cuda_rng)

@@ -46,7 +46,8 @@ def verify(directory, root):
     metadata = payload["provenance"][LESSON_KEY]
     settings, lesson_info = metadata["settings"], metadata["lessons"]
     lessons = RuleLessons(sources["mnist"].reader, lesson_info["orders"], condition=settings["condition"],
-                          seed=settings["seed"], batches=settings["batches"], manifest=lesson_info["manifest"])
+                          seed=settings["seed"], batches=settings["batches"], manifest=lesson_info["manifest"],
+                          image_manifest=lesson_info.get("image_manifest"))
     lessons.load_state_dict(payload["sources"][LESSON_KEY])
     restored = {**{name: source.state_dict() for name, source in sources.items()}, LESSON_KEY: lessons.state_dict()}
     if (state_digest(restored) != state_digest(payload["sources"])

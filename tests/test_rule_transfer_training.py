@@ -27,16 +27,16 @@ from tests.test_shared_prediction_questions import question_recipe
 from tests.test_shared_prediction_sources import make_model
 
 
-def training_fixture(root, *, twelve=False):
+def training_fixture(root, *, twelve=False, per_class=4):
     recipe = question_recipe(root)
     if twelve:
         recipe["sources"] = [*[{**recipe["sources"][0], "name": f"text_{index}"} for index in range(11)], recipe["sources"][1]]
-    pixels = np.arange(40 * 16, dtype=np.uint8).reshape(40, 4, 4)
-    labels = np.repeat(np.arange(10, dtype=np.uint8), 4)
+    pixels = np.random.default_rng(7).integers(0, 256, size=(10 * per_class, 4, 4), dtype=np.uint8)
+    labels = np.repeat(np.arange(10, dtype=np.uint8), per_class)
     with gzip.open(root / "train-images.gz", "wb") as handle:
-        handle.write(struct.pack(">IIII", 2051, 40, 4, 4) + pixels.tobytes())
+        handle.write(struct.pack(">IIII", 2051, len(labels), 4, 4) + pixels.tobytes())
     with gzip.open(root / "train-labels.gz", "wb") as handle:
-        handle.write(struct.pack(">II", 2049, 40) + labels.tobytes())
+        handle.write(struct.pack(">II", 2049, len(labels)) + labels.tobytes())
     model, tokenizer = make_model(), digit_tokenizer()
     sources = build_sources(model, tokenizer, recipe, root)
     return recipe, model, tokenizer, sources
@@ -177,7 +177,8 @@ class TrialTests(unittest.TestCase):
             options = dict(initialize=root / "initial/checkpoint.pt", common=None, resume=None, condition="calibration",
                            manifest=None, recipe=root / "recipe.json", panel=root / "panel.json", data_root=root,
                            steps=2, interval=2, threads=1, device="cpu", extension=[], prompts=None,
-                           training_seconds=None, stop_when_calibrated=False,
+                           training_seconds=None, stop_when_calibrated=False, stop_when_adapted=False,
+                           image_manifest=None, milestones=None,
                            batches=[2, 2, 2, 2], weights=[8., 8., 2., 8.], learning_rate=.001, seed=47)
 
             def measurement(*args, **kwargs):

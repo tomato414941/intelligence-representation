@@ -51,6 +51,59 @@ def text_training_examples(orders, condition, seed=47):
              "answer": "yes" if precedes(order, a, b) else "no"} for a, b in pairs]
 
 
+def image_training_examples(images, labels, orders, *, count=512, seed=71):
+    """Build nested, balanced training supports that identify the complete order."""
+    if count not in (32, 128, 512) or len(images) != len(labels) or set(map(int, labels)) != set(DIGITS):
+        raise ValueError("image tuition requires 32/128/512 questions and all ten training classes")
+    order = orders["a"]
+    if sorted(order) != list(DIGITS):
+        raise ValueError("image tuition needs the prepared order A")
+    generator = random.Random(seed)
+    pools = {digit: list(map(int, np.flatnonzero(np.asarray(labels) == digit))) for digit in DIGITS}
+    for pool in pools.values():
+        generator.shuffle(pool)
+    chain = [tuple(sorted(pair)) for pair in zip(order, order[1:])]
+    remaining = [pair for pair in CLASS_PAIRS if pair not in chain]
+    generator.shuffle(remaining)
+    pairs = chain + remaining
+    while len(pairs) < count // 2:
+        cycle = list(CLASS_PAIRS)
+        generator.shuffle(cycle)
+        pairs.extend(cycle)
+    used_hashes = set()
+
+    def take(digit):
+        while pools[digit]:
+            index = pools[digit].pop()
+            digest = hashlib.sha256(np.asarray(images[index]).tobytes()).hexdigest()
+            if digest not in used_hashes:
+                used_hashes.add(digest)
+                return index, digest
+        raise ValueError("not enough distinct training pixels for the image tuition")
+
+    examples = []
+    for number, digits in enumerate(pairs[:count // 2]):
+        selected = [take(digit) for digit in digits]
+        for orientation, direction in ((0, 1), (1, -1)):
+            ordered_digits = list(digits[::direction])
+            examples.append({"id": f"image-order-{number:04d}-{orientation}",
+                             "pair_id": f"image-order-{number:04d}", "orientation": orientation,
+                             "indices": [row[0] for row in selected[::direction]], "digits": ordered_digits,
+                             "image_sha256": [row[1] for row in selected[::direction]],
+                             "answer": "yes" if precedes(order, *ordered_digits) else "no"})
+    return examples
+
+
+def validate_image_manifest(manifest, images, labels, orders):
+    if (manifest.get("schema_version") != "intrep.rule_transfer_images.v1"
+            or manifest.get("source_split") != "train" or manifest.get("order") != orders["a"]
+            or type(manifest.get("seed")) is not int):
+        raise ValueError("image tuition must declare the training split and prepared order A")
+    expected = image_training_examples(images, labels, orders, count=len(manifest["examples"]), seed=manifest["seed"])
+    if manifest["examples"] != expected:
+        raise ValueError("image tuition differs from its deterministic training-only support")
+
+
 def historical_indices(payload) -> set[int]:
     """Read primary and partner indices only inside explicitly named MNIST results."""
     found = set()
@@ -58,7 +111,8 @@ def historical_indices(payload) -> set[int]:
     def visit(value, mnist=False):
         if isinstance(value, dict):
             schema = value.get("schema_version")
-            if schema in ("intrep.rule_transfer_evaluation.v1", "intrep.rule_transfer_prerequisites.v1"):
+            if schema in ("intrep.rule_transfer_evaluation.v1", "intrep.rule_transfer_prerequisites.v1",
+                          "intrep.rule_transfer_image_prerequisites.v1"):
                 indices = [row["index"] for row in value["digit_readouts"]]
                 relation_rows = value["rows"] if schema == "intrep.rule_transfer_evaluation.v1" else value["old_image_rows"]
                 indices += [index for row in relation_rows for index in row["indices"]]

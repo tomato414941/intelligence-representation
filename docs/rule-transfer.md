@@ -169,6 +169,75 @@ the project R2 prefix `shared-prediction/rule-transfer-20260913/calibration`.
 Its `cpu-verification.json` records restoration of model parameters, optimizer
 state and all twelve readers; `archive.json` records remote byte verification.
 
+### Measured Text Interventions (2026-09-13)
+
+All three branches first qualified together at 900 updates, with 7,200 tuition
+questions per branch: 80 complete repetitions of the 90 textual pairs. The
+training audit verified identical starting weights, background states and
+supplemental inputs, all twelve sources and all 358,228,139 trainable parameters.
+No new-rule image answer was used in these training updates or their selection.
+
+| Development generation | A | B | Rehearsal control, scored under A |
+|---|---:|---:|---:|
+| Digit naming | 96.56% | 95.89% | 97.44% |
+| Old image order | 93.00% | 92.00% | 92.11% |
+| Taught text order | 100.00% | 100.00% | 100.00% old order |
+| Direct new image order | 54.56% | 30.56% | 54.33% |
+| Read digits, then apply the learned text table | 97.22% | 97.22% | 55.33% |
+
+Across the 230 development image pairs whose relation changes between A and B,
+direct generation answered all four questions correctly for 0/230 pairs. The
+read-then-apply route succeeded on 218/230 (94.78%). These development results
+show available digit and textual-rule components, with weak direct image use;
+final evidence remains the separate holdout evaluation.
+
+Before these image answers were measured, the follow-up trigger was archived:
+skip limited-image training only if direct A and B each reach 90% and the changed
+all-four score reaches 75%. The measured results triggered the planned follow-up.
+This threshold is an operational decision rule, not a statistical significance
+test. The parent checkpoints and complete reports are byte-verified at
+`shared-prediction/rule-transfer-20260913/interventions/{a,b,control}`.
+
+### Fixed Limited-Image Follow-Up
+
+`scripts/prepare_rule_transfer_image_followup.py` creates nested supports from
+MNIST training images. A budget of 32, 128 or 512 means that many labelled,
+oriented pair questions, using 16, 64 or 256 physical pairs and 32, 128 or 512
+distinct images. Every physical pair contributes both orientations, keeping
+yes/no labels balanced. Duplicate pixels are excluded. With seed 71, the first
+nine pairs express adjacent relations in order A, so even the smallest support
+identifies the entire order through transitivity. The first 45 physical pairs
+cover all class relations; subsequent cycles balance them. This is a structured
+teacher design, not a randomly sampled label budget.
+
+Each budget independently forks the selected A and rehearsal-control parents.
+Both arms reset AdamW to `1e-5`, preserve all original populations and trainable
+parameters, and replace the eight new-text/old-text tuition questions with the
+same eight new-image tuition questions, at weight 8. Naming and old-image/old-text
+supplements retain batches 16/8/8 and weights 8/8/2. No new text tuition continues
+during this phase; A must retain its previously taught text competence.
+
+`scripts/run_rule_transfer_image_followup.py` measures updates 0, 64, 128, 256,
+512 and 1,024. Each arm stops at its first scheduled check passing direct new-image
+90%, naming 95%, old-image 90% and old-text 95%; A also requires new-text 95%.
+If still unqualified at 1,024, it extends to 2,048 only if support generation is
+below 99% or development new-image accuracy gained at least two percentage points
+from 512 to 1,024. The final budget is an endpoint, not evidence of convergence.
+
+The audit checks parent hashes, optimizer reset, all source/loss membership,
+image labels and presentation counts, and identical inputs over each arm's shared
+update prefix. Stopping times may differ because additional learning cost is the
+outcome. Development/support query counts are recorded explicitly. After all six
+endpoints are fixed, the runner freezes their hashes and evaluates those six and
+the original three checkpoints on the untouched holdout, once each. Reports
+include every endpoint, including those missing development targets. Archive
+verification preserves image manifests and restores the image-lesson reader state.
+
+The fixed follow-up plan is archived at
+`shared-prediction/rule-transfer-20260913/image-followup-plan/plan.json`.
+Training cost must include the parent tuition/rehearsal as well as image training;
+the matched rehearsal control is not a claim about the cheapest deployment path.
+
 ## Fixed Image Panels
 
 ```sh
