@@ -154,6 +154,9 @@ avoiding archive CPU, disk and network contention during measurements. Selection
 and outcome records include `archive_schedule`; overlapping timings must not be
 treated as isolated per-condition throughput measurements. This change follows
 the measured 2026-09-13 run and does not alter its recorded timings.
+The subsequent [GPU efficiency comparison](compute-costs.md#complete-model-gpu-comparison-2026-09-14)
+measures complete training updates, larger batches and archive scheduling without
+reopening the capability holdout.
 
 Before interpreting a negative transfer result, generated digit naming and
 the new text rule must each reach 95%, and the old image rule must reach 90%

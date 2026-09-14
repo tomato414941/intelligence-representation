@@ -278,8 +278,91 @@ Joint training now collects detached loss scalars once per device; finite-loss
 and finite-gradient checks still run before optimizer updates. Source metrics
 can still cause other CUDA synchronizations. The image-follow-up runner can
 overlap CPU archive verification and transfer with remaining GPU work, with
-`--isolate-timing` available for processing-time comparisons. No additional GPU
-run measured these changes. Before choosing a larger batch for training, measure
-complete-update throughput and peak memory on the intended model/device, then
-compare learning at matched exposure. The component ratios cannot be multiplied
-or used directly as GPU billing reductions.
+`--isolate-timing` available for processing-time comparisons. The complete-model
+GPU comparison below measures their combined effect. The component ratios cannot
+be multiplied or used directly as GPU billing reductions.
+
+### Complete-Model GPU Comparison (2026-09-14)
+
+One A40 ran all 358,228,139 trainable parameters of the existing LFM2.5-350M
+rule-transfer model, in float32 with AdamW. The comparison used PyTorch
+2.8.0+cu128, Transformers 5.17.0, eager attention and four Torch CPU threads.
+It restored the same 4.3 GB checkpoint, optimizer, sampling cursors and RNG for
+each trial. All twelve data sources and four supplemental lessons remained
+enabled, with their complete training populations and original loss weights.
+
+The old code at `da724fedaefdbcae8d110a70533cd5c6e3dd8efc` and optimized code at
+`a3fb0c81080fe3aa01591d72854e7fc5b8782f4e` ran in old/new/new/old order, each with
+eight warmup updates and 32 measured updates. Timings include input reads, all
+loss computations, forward/backward, AdamW, CUDA synchronization and source-state
+hashing. They exclude model restoration, correctness snapshots, evaluation and
+checkpoint I/O. The common harness is
+`scripts/benchmark_shared_prediction_training.py` at
+`8cbf7afd56c15329305f5a33b81443d378fa4cf6`.
+
+| Implementation and batch | Seconds / 32 updates | Original-batch data equivalents / second | Peak allocated GPU memory |
+| --- | ---: | ---: | ---: |
+| Old, original batch, mean of two runs | 57.62 | 0.555 | 7.81 GiB |
+| Optimized, original batch, mean of two runs | 51.43 | 0.622 | 7.81 GiB |
+| Optimized, all batches x2, one run | 87.71 | 0.730 | 10.03 GiB |
+| Optimized, all batches x4, one run | 164.27 | 0.779 | 14.45 GiB |
+
+At the unchanged batch, the optimized code reduced complete-update time by
+10.7% (1.120x throughput). The two old measurements were 57.13 and 58.11 seconds;
+the two optimized measurements were 50.94 and 51.92 seconds. Initialization,
+per-update source and lesson traces, and sequence-position counts matched.
+The maximum loss difference divided by `max(1, abs(old_loss))` was 5.27e-5,
+within the predeclared 1e-4 tolerance.
+The first update used added question forms and had exactly equal parameters and
+clipped gradients. A separate check exercised all twelve original objectives on
+the second update: relative L2 differences were 1.82e-10 for all parameters and
+2.30e-7 for active clipped gradients, below the declared 1e-6 and 1e-4 limits.
+
+For the batch sweep, every source's records per update and every supplemental
+lesson batch increased together. Data equivalents count this common multiplier;
+they do not count optimizer updates. The x4 candidate processed 25.2% more data
+per second than the optimized original batch, and 40.3% more than the old code.
+Moving from x2 to x4 added only 6.8%, so no larger batch was measured. Larger
+batches consumed different sample spans and had one trial each; these results
+do not establish learning quality or cost to reach a target score. The x4 peak
+PyTorch memory reservation was 16.39 GiB, including its cache; the table reports
+allocated tensors. Required memory also depends on sampled sequence lengths
+and CUDA context overhead.
+
+The archive comparison used one sequential/overlap pair. Each schedule ran a
+fresh training process with eight warmup and 64 measured updates, plus CPU
+restoration, R2 upload and full download verification of the same existing
+4.3 GB checkpoint. Both retained identical training inputs and loss traces.
+
+| Schedule | Measured training, 64 updates | Complete training and archive schedule |
+| --- | ---: | ---: |
+| Sequential | 103.88 s | 817.30 s (13m37s) |
+| Overlapped | 104.77 s | 694.60 s (11m35s) |
+
+Overlap saved 122.71 seconds (15.0%) in this pair, while measured training slowed
+by 0.86%. Archive-process durations were 660.74 and 691.82 seconds, so storage
+time itself varied. Complete schedule times include process/model restoration,
+warmup, correctness checks and temporary-copy cleanup. They exclude initial
+worker provisioning and source restoration; checkpoint serialization was not
+remeasured. One pair does not establish a general saving across networks or
+workloads, and this ratio must not be multiplied by the training speedup.
+
+The next throughput candidate uses four records per text/conversation/BoolQ
+source, eight per other source, and supplemental lesson batches of
+`[64, 32, 32, 32]`. Keep the source weights, float32, AdamW and learning rate
+`1e-5` unchanged, and overlap one completed-checkpoint archive with remaining
+GPU work. Changing batches requires an explicit new experiment initialized
+from the checkpoint because exact resume validates the original recipe. Compare
+learning at matched exposure before adopting this as the default for further
+learning experiments. No capability evaluation was run during this profiling.
+
+The disposable A40 allocation lasted 2,929.26 seconds (48m49s), including initial
+setup recovery, all model restores, measurements, archive checks, supplementary
+gradient checks, result retrieval and deletion. At the observed $0.49/hr rate,
+the GPU estimate is $0.399, excluding disk and storage request charges, not an
+invoice. The worker and both temporary R2 checkpoint copies were deleted; the
+original trained checkpoint remains in its existing archive. The local report
+directory is `reports/rule-transfer/efficiency-gpu-20260914/`, including
+`selected-training-settings.json`. Small evidence files are retained at project
+R2 prefix `shared-prediction/efficiency-20260914/results-1605`; no profiling
+checkpoint weights are retained.
