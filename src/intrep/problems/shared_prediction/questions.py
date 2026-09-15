@@ -272,6 +272,27 @@ def boolq_question(record, form, wording):
                     "yes" if record["answer"] == proposed else "no")
 
 
+def _metric_means(rows):
+    # Transfer detached scalars together instead of waiting on every question's
+    # metrics. Keep dtypes separate so conversion preserves each scalar's value.
+    groups = {}
+    for row in rows:
+        for key, value in row.items():
+            if isinstance(value, torch.Tensor):
+                groups.setdefault((value.device, value.dtype), []).append((row, key, value.detach().reshape(())))
+            else:
+                row[key] = float(value)
+    for entries in groups.values():
+        values = torch.stack([value for _, _, value in entries]).cpu().tolist()
+        for (row, key, _), value in zip(entries, values):
+            row[key] = float(value)
+    # Preserve finite-value rejection and per-key means, including metrics
+    # present in only some questions, before the trainer can update parameters.
+    from intrep.problems.shared_prediction.evaluation import summarize
+    summary = summarize([{"metrics": row} for row in rows])
+    return {key: row["mean"] for key, row in summary.items()}
+
+
 class QuestionSource:
     def __init__(self, reader):
         if reader.config.get("question_mode") not in ("fixed", "varied"):
@@ -465,7 +486,7 @@ class QuestionSource:
                                      and self.config.get("conversation_objective") == "assistant"))
         if batched_original:
             losses.append(self.reader.record_batch_loss(records))
-            rows.append({key: float(value) for key, value in self.reader.last_metrics.items()})
+            rows.append(self.reader.last_metrics.copy())
         else:
             for batch in batches:
                 if form == "original":
@@ -476,13 +497,11 @@ class QuestionSource:
                 else:
                     loss = self._score(self._question(batch, form, seed, wording))
                 losses.append(loss)
-                rows.append({key: float(value) for key, value in self.last_metrics.items()})
+                rows.append(self.last_metrics.copy())
                 if self.last_response is not None:
                     responses.append(self.last_response)
                     self.answer_tokens += self.last_response.get("target_tokens", 0)
-        from intrep.problems.shared_prediction.evaluation import summarize
-        summary = summarize([{"metrics": row} for row in rows])
-        self.last_metrics = {key: row["mean"] for key, row in summary.items()}
+        self.last_metrics = _metric_means(rows)
         self.last_response = {"form": form, "responses": responses,
                               "record_indices": [record["index"] for record in records if isinstance(record, dict) and "index" in record]}
         self.counts[form] += len(batches)

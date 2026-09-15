@@ -11,7 +11,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from intrep.learning.joint import JointTrainer
 from intrep.problems.shared_prediction.evaluation import evaluate_panel, make_panel
+from intrep.problems.shared_prediction.questions import _metric_means
 from intrep.problems.shared_prediction.rule_transfer_training import state_digest
 from intrep.problems.shared_prediction.sources import build_sources
 from tests.test_shared_prediction_questions import question_recipe
@@ -46,6 +48,56 @@ class SourceBatchingTests(unittest.TestCase):
         ])
         model = make_model()
         return model, build_sources(model, make_tokenizer(), recipe, root)
+
+    def test_collected_metrics_preserve_precision_and_means_for_missing_keys(self):
+        for device in ("cpu", "cuda") if torch.cuda.is_available() else ("cpu",):
+            with self.subTest(device=device):
+                rows = [
+                    {"accuracy": torch.tensor(.25, device=device, requires_grad=True),
+                     "precise": torch.tensor(1 + 2 ** -40, dtype=torch.float64, device=device),
+                     "integer": torch.tensor(2 ** 55 + 1, device=device),
+                     "optional": torch.tensor(3, dtype=torch.bfloat16, device=device)},
+                    {"accuracy": .75, "precise": 1.25, "integer": torch.tensor(3, device=device)},
+                    {"accuracy": torch.tensor(.5, dtype=torch.float16, device=device), "optional": 5.0},
+                ]
+                expected = {"accuracy": .5, "precise": (1 + 2 ** -40 + 1.25) / 2,
+                            "integer": (float(2 ** 55 + 1) + 3) / 2, "optional": 4.0}
+                actual = _metric_means(rows)
+                self.assertEqual(actual, expected)
+                self.assertTrue(all(type(value) is float for value in actual.values()))
+                self.assertEqual(json.loads(json.dumps(actual)), expected)
+
+    def test_nonfinite_question_metrics_are_rejected_before_parameter_updates(self):
+        for form in ("original", "identify"):
+            with self.subTest(form=form), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                recipe = question_recipe(root)
+                recipe["sources"][1]["records_per_update"] = 4
+                model = make_model()
+                source = build_sources(model, make_tokenizer(), recipe, root)["mnist"]
+                source.step = 0 if form == "original" else 1
+                target = source.reader if form == "original" else source
+                method = "record_batch_loss" if form == "original" else "_score"
+                score = getattr(target, method)
+                calls = []
+
+                def invalid_metrics(record):
+                    loss = score(record)
+                    calls.append(True)
+                    invalid = form == "original" or len(calls) == 2
+                    target.last_metrics["invalid"] = loss.detach().new_tensor(float("nan") if invalid else 1)
+                    return loss
+
+                setattr(target, method, invalid_metrics)
+                trainer = JointTrainer(model, {"mnist": 1}, learning_rate=.01)
+                before = copy.deepcopy(model.state_dict())
+                with self.assertRaisesRegex(ValueError, "nonfinite metric"):
+                    trainer.step({"mnist": source.loss})
+                self.assertEqual(trainer.steps, 0)
+                self.assertFalse(trainer.optimizer.state)
+                self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
+                for name, value in model.state_dict().items():
+                    torch.testing.assert_close(value, before[name], rtol=0, atol=0)
 
     def test_batching_preserves_per_example_losses_gradients_and_all_sequence_lengths(self):
         with tempfile.TemporaryDirectory() as directory:

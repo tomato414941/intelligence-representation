@@ -395,10 +395,16 @@ implemented; their gains must not be counted again as new opportunities.
 #### Execution Changes To Investigate First
 
 1. **Defer question metrics and batch compatible questions.**
-   `QuestionSource.loss` still converts GPU metrics with `float(value)` for
-   each question before backward. Collect detached metrics on the device and
-   transfer them together when needed, retaining finite-loss/gradient checks
-   before every update. Added forms still call `_score` separately; original
+   `QuestionSource.loss` now collects detached metric scalars and transfers them
+   together per device and dtype, replacing per-question `float(tensor)` calls.
+   Python-float summaries, per-key averaging and rejection of nonfinite metrics
+   before parameter updates are preserved. A local comparison of 36 original
+   and added updates on small CPU fixtures found exactly equal losses,
+   gradients, metrics, responses, sampling state and RNG state. The GPU timing
+   effect of this additional change is unmeasured; local evidence is under
+   `reports/rule-transfer/metric-transfer-20260915/`.
+
+   Added forms still call `_score` separately; original
    assistant conversation, BoolQ, shogi and native objectives also remain
    sequential. Start with compatible lengths and output heads, preserving
    each question's loss weight, target mask, sampler order and question count.
