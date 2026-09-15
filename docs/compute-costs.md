@@ -366,3 +366,154 @@ directory is `reports/rule-transfer/efficiency-gpu-20260914/`, including
 `selected-training-settings.json`. Small evidence files are retained at project
 R2 prefix `shared-prediction/efficiency-20260914/results-1605`; no profiling
 checkpoint weights are retained.
+
+### Further Cost Reduction Before Another Learning Run (2026-09-15)
+
+Prioritize fewer CPU/GPU waits and remaining question batching at unchanged
+training settings, then measure the unused CUDA implementations. Keep all
+358,228,139 parameters trainable, all twelve full source populations and the
+four lessons. This review reuses completed experiments and inspects code;
+it does not add a GPU run or establish another speedup.
+
+The [completed rule-transfer experiment](rule-transfer.md#computation-and-retention)
+provides the relevant allocation baseline:
+
+| Work | Hours | GPU cost estimate at the recorded $0.49/hour |
+| --- | ---: | ---: |
+| Training updates, all ten endpoints | 6.98 | $3.42 |
+| Setup, evaluation, saving, verification and other waits | 3.68 | $1.80 |
+| Complete worker allocation | 10.66 | $5.22 |
+
+Non-training work accounted for 34.5% of allocation, including necessary
+evaluation and preservation. Existing timers do not split that entire amount
+into storage, evaluation and idle time. As sensitivity calculations only,
+halving this portion would save 17.3% of the whole job, about $0.90; reducing
+training time by another 10% would save 6.5%, about $0.34. Neither is a forecast.
+The previously measured 10.7% training reduction and archive overlap are already
+implemented; their gains must not be counted again as new opportunities.
+
+#### Execution Changes To Investigate First
+
+1. **Defer question metrics and batch compatible questions.**
+   `QuestionSource.loss` still converts GPU metrics with `float(value)` for
+   each question before backward. Collect detached metrics on the device and
+   transfer them together when needed, retaining finite-loss/gradient checks
+   before every update. Added forms still call `_score` separately; original
+   assistant conversation, BoolQ, shogi and native objectives also remain
+   sequential. Start with compatible lengths and output heads, preserving
+   each question's loss weight, target mask, sampler order and question count.
+   Tokenization can be reused for immutable prompts, but learned embeddings
+   cannot be reused across parameter updates.
+
+   Existing traces provide a diagnostic, not a prediction of removable time:
+
+   | Optimized batch | Original-form seconds/update | Added-form seconds/update | Original / added body calls per update |
+   | --- | ---: | ---: | ---: |
+   | x1, mean of two trials | 1.566 | 1.648 | 18.88 / 19.13 |
+   | x2, one trial | 2.516 | 2.966 | 25.88 / 34.25 |
+   | x4, one trial | 4.625 | 5.642 | 39.06 / 64.50 |
+
+   Each trial contributes 16 measured updates of each form category. Larger
+   batches consume different samples, and call counts do not identify GPU
+   compute time. They show why increasing batch counts alone leaves substantial
+   sequential execution. The x4 throughput gain over x2 was only 6.8%.
+
+2. **Measure CUDA implementations while retaining FP32.**
+   Every GPU trial logged the reference `causal_conv1d_fn` fallback. The model
+   has ten convolution blocks and six attention blocks; no convolution share
+   of elapsed time has been measured. The
+   [CUDA causal-convolution implementation](https://github.com/Dao-AILab/causal-conv1d)
+   supports FP32 and the model's width-three convolution, making this a concrete
+   candidate. Verify the pinned Transformers 5.17.0 integration, backward
+   results and CPU paths before deployment; importing the optional package
+   changes the implementation selected by its wrapper.
+
+   `JointTrainer` also forces `foreach=False` for AdamW and gradient clipping.
+   [PyTorch 2.8 AdamW](https://docs.pytorch.org/docs/2.8/generated/torch.optim.AdamW.html)
+   documents faster foreach/fused candidates and additional foreach memory.
+   Test these separately, preserving all optimizer moments, clipping and loss
+   weights. Restored optimizer parameter groups include execution options,
+   so changing the constructor alone is insufficient. GPU savings and numerical
+   equivalence remain unmeasured for this model.
+
+3. **Shorten evaluation and the final storage wait.**
+   Record separate times for serialization, CPU restore, upload, full readback
+   and evaluation. The existing image runner overlaps archives, but the
+   intervention runner still archives its endpoints sequentially after
+   evaluation. Overlap completed immutable checkpoints with remaining planned
+   GPU work where possible. The last archive still lies on the completion path.
+
+   The current `rclone check --download` reads complete content; its `--checkers`
+   setting controls concurrent file checks. Increasing it does not split one
+   large checkpoint into parallel parts. A candidate is a multithreaded copy
+   into temporary storage followed by complete local byte comparison, which
+   needs an additional checkpoint-sized disk allocation. Keep CPU restoration
+   and full-content verification. The
+   [check documentation](https://rclone.org/commands/rclone_check/) and
+   [multithread transfer documentation](https://rclone.org/docs/#multi-thread-cutoff)
+   describe these distinct paths. Existing 661--692 second archive timings
+   include multiple stages, so they cannot establish this candidate's saving.
+
+   Generated-answer evaluation also recomputes the complete prefix for every
+   token in `generate_text`, `answer_loss` and `MeasuredReadout` because the
+   shared LFM core uses `use_cache=False`. Evaluate batching and fresh
+   per-question inference caches while preserving prompts, EOS handling,
+   query counts and every scored answer. LFM needs both convolution and
+   attention state; this is an inference change, with no cache carried across
+   training updates. [Transformers caching](https://huggingface.co/docs/transformers/kv_cache)
+   explains the avoided prefix computation. Its benefit for these mostly short
+   answers remains unmeasured. Keep the evaluation panels and scheduled gates.
+
+#### Changes Requiring A Learning Comparison
+
+The x4 batch remains a throughput candidate: 25.2% more data per second than
+the optimized x1 batch, with no demonstrated reduction in cost to reach a
+quality target. Compare per-source and per-question exposure as well as update
+counts and retention before adoption. Changing the recipe requires a new
+experiment fork, as exact resume checks its original settings.
+
+TF32 matmul is disabled, and training has no BF16 autocast. Either may reduce
+compute time, but changes numerical behavior. Test separately from batching;
+[TF32](https://docs.pytorch.org/docs/2.8/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices)
+changes matmul input precision, while
+[autocast](https://docs.pytorch.org/docs/2.8/amp.html)
+selects precision per operation. Autocast with FP32 parameters and AdamW states
+does not by itself halve the 4.3 GB checkpoint. SDPA is supported by the
+[pinned LFM implementation](https://github.com/huggingface/transformers/blob/v5.17.0/src/transformers/models/lfm2/modeling_lfm2.py),
+but the current eager-attention path and any replacement need a measured
+comparison on actual input lengths and dtypes.
+
+The x4 trial's 16.39 GiB peak reservation makes 24 GB GPUs worth a fit and cost
+comparison, without establishing that all future sequence lengths fit. Choose
+using current quotes and complete workload cost, including preparation and
+storage waits. Hourly price or peak arithmetic throughput alone is insufficient.
+
+#### Next Decision
+
+Prepare the metric/batching changes and their loss, gradient and sampling
+comparisons locally. For a later GPU comparison, restore the existing checkpoint
+and all source/optimizer/RNG state, use the original batch first and repeat
+baseline/candidate trials in balanced order. Cover original and added forms;
+reuse the previous declared tolerances for behavior-preserving changes. Measure
+complete updates and allocation time, and test only candidates prepared in
+advance on one disposable worker. A training-only comparison does not require
+repeating the large checkpoint-upload benchmark or preserving profiling weights.
+
+Before provisioning, verify the complete source-file and dependency manifests;
+the previous two allocations needed recovery for omitted inputs or code.
+Set the total comparison budget using setup, restore, verification and cleanup
+as well as timed updates. At the historical rate, 30 minutes of A40 allocation
+would cost $0.245 before storage; this is arithmetic, not a current quote or an
+authorized run budget.
+
+Further quality training should use a fixed development decision and retention
+criteria. No image-tuition arm reached the previous target despite near-perfect
+support scores, so additional updates alone have no established cost benefit.
+Do not repeat calibration or the full multi-arm experiment merely to benchmark
+execution. Account-level persistent storage should be reviewed separately from
+these disposable-worker costs; network storage can remain billable with no
+running GPU, as described in [RunPod storage](https://docs.runpod.io/storage/network-volumes).
+
+Offline derivation and input hashes are in
+`reports/rule-transfer/cost-review-20260915/{analyze.py,analysis.json}`. Inputs are
+the existing final allocation/training report and six GPU comparison traces.
