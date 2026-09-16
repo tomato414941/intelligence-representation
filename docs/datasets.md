@@ -58,6 +58,40 @@ evaluation prompts have separate wording and values and do not occur exactly
 among original or generated training user turns. Provenance records file
 identities and counts, and `OASST-LICENSE` preserves the original license.
 
+The 2026-09-16 replay comparison keeps that corpus and every other existing
+source, then adds three sources prepared by `scripts/prepare_replay_coverage.py`:
+
+| Additional source | Training population | Validation population |
+| --- | ---: | ---: |
+| Aya English instructions | 3,750 pairs | 190 pairs |
+| Aya Japanese instructions | 5,961 pairs | 298 pairs |
+| LLM-jp Japanese Wikipedia | 1,363,395 articles | 1,134 articles |
+
+[Aya](https://huggingface.co/datasets/CohereLabs/aya_dataset) is pinned to
+`f9ea04583f02a8f86404ff6c58bf75fe637df8a2` and distributed under Apache-2.0.
+The selected language populations contain original human annotations and human
+edits of generated annotations. Three empty pairs and one prompt overlapping
+existing evaluation are excluded. Normalized prompt hashes keep alternate
+answers together in a five-percent validation split; validation candidates
+already present in existing training are assigned to training. The official
+Aya test split is unused. Exact normalized overlaps with the instruction panels
+and existing conversation validation prompts are excluded from new training.
+
+The complete `ja/ja_wiki` subset of
+[LLM-jp Corpus v3](https://gitlab.llm-jp.nii.ac.jp/datasets/llm-jp-corpus-v3)
+is pinned to `e928f19330f5271b29f382fe5a01245dec7d57c2`: fourteen training
+shards and the published validation shard, from Wikipedia's 2023-07-20 snapshot,
+under CC-BY-SA-3.0. Each upstream LFS checksum is verified. Articles are shuffled
+within each shard and interleaved across shards; no article is dropped in this
+prepared version. The preparation also excludes training page IDs or exact
+texts matching validation. An article index retains page URLs, titles, source
+locations, text hashes, and byte ranges in the prepared files.
+
+Raw inputs and prepared data are under `data/replay-coverage-20260916/`.
+These additions provide alternative replay material; they are not Liquid AI's
+original pretraining corpus. A short training run does not traverse the entire
+declared population. Its actual token and record exposure must be reported.
+
 `scripts/prepare_agent_conversations.py` prepares a bounded selection from
 [OpenAssistant OASST1](https://huggingface.co/datasets/OpenAssistant/oasst1),
 revision `fdf72ae0827c1cda404aff25b6603abec9e3399b`, with its Apache-2.0 license
