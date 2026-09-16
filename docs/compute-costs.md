@@ -458,8 +458,9 @@ implemented; their gains must not be counted again as new opportunities.
    documents faster foreach/fused candidates and additional foreach memory.
    Test these separately, preserving all optimizer moments, clipping and loss
    weights. Restored optimizer parameter groups include execution options,
-   so changing the constructor alone is insufficient. GPU savings and numerical
-   equivalence remain unmeasured for this model.
+   so changing the constructor alone is insufficient. The operator profile
+   below subsequently tested fused AdamW and rejected it under the declared
+   numerical tolerance; foreach and the convolution replacement remain untested.
 
 3. **Shorten evaluation and the final storage wait.**
    Record separate times for serialization, CPU restore, upload, full readback
@@ -606,3 +607,93 @@ under `reports/rule-transfer/question-batching-gpu-20260916/`. The 1.06 MB evide
 bundle is retained at project R2 prefix
 `shared-prediction/question-batching-20260916/results-1210`, verified by a full
 download and byte comparison.
+
+### Operator Profile And FP32 AdamW Candidate (2026-09-16)
+
+Keep the current AdamW implementation for this recipe. The fused candidate
+failed the predeclared numerical trajectory check, so the comparison stopped
+after one trial per implementation. Its small timing difference does not
+establish a repeatable saving. Profiling places most GPU computation in
+backward, with little time in the depthwise convolution or optimizer alone.
+
+An RTX A6000 ran the same full-parameter FP32 checkpoint, twelve complete source
+populations, four lessons, production batches, learning rate and clipping as
+the earlier comparison. A40 allocation requests failed; this allocation had
+eight vCPUs and 62 GB RAM. Both implementations used this one GPU, PyTorch
+2.8.0+cu128, Transformers 5.17.0, eager attention and four Torch CPU threads.
+Absolute times should not be compared directly with the earlier A40 runs.
+
+The [PyTorch profiler](https://docs.pytorch.org/docs/2.8/profiler.html) recorded
+four updates after eight warmups. The trace contains 1,741,338 events, including
+165,814 CUDA kernels. Each kernel was matched to its CPU launch and then to
+the enclosing training phase, including launches on autograd worker threads;
+none were unmatched. GPU annotation spans include gaps and are not kernel
+execution time, so those spans were excluded from this table.
+
+| Phase | Mean CUDA kernel time per profiled update | Share of kernel time |
+| --- | ---: | ---: |
+| Input, forward and loss computation | 250.7 ms | 23.9% |
+| Backward | 754.7 ms | 71.8% |
+| AdamW update | 38.2 ms | 3.6% |
+| Gradient clipping | 7.4 ms | 0.7% |
+
+Total kernel time was about 1,051 ms per profiled update; the annotated CPU
+update interval averaged 3,139 ms and includes dispatch and waiting. CPU and
+GPU times overlap and must not be added. These are instrumented samples, not
+production utilization or billing fractions. Nested convolution operators
+accounted for about 7.5 ms per update, only 0.7% of kernel time. This gives
+little reason to expect a large overall saving from replacing that convolution
+alone at these batch counts. Future substantial reductions need to address
+the forward/backward workload and its many kernel launches.
+
+The selection rule, fixed before the profile, compared convolution GPU time
+with optimizer GPU time and selected fused AdamW. The candidate rebuilt AdamW
+with `fused=True`, retained `foreach=False` for clipping and preserved all
+optimizer moments and scientific settings. Restored optimizer values were
+hashed before and after the execution-option change and matched exactly.
+
+| Unprofiled implementation | Seconds for 48 updates | Peak allocated GPU memory |
+| --- | ---: | ---: |
+| Current AdamW | 100.71 | 7.818 GiB |
+| Fused AdamW candidate | 97.87 | 7.818 GiB |
+
+Each trial restored the same checkpoint, optimizer and sampling state and
+performed eight warmups. The single observed time reduction was 2.8%.
+All 56 per-trial input traces, source cursors, question forms, lesson inputs
+and sequence positions matched. The baseline profile also reproduced its
+corresponding unprofiled loss and gradient-norm values exactly.
+
+After the first added-form and original-form updates, every parameter and
+active clipped gradient passed their relative L2 limits (`1e-6` / `1e-4`);
+maximum errors were `7.05e-10` / `1.42e-6`. Later updates exceeded the trajectory
+limit, defined as `abs(candidate - baseline) / max(1, abs(baseline)) <= 1e-4`:
+gradient norm at update index 48 differed by `2.33e-4`, and native-experience
+loss at index 51 differed by `2.80e-4` (2.218438 versus 2.217817). One further
+native-experience loss exceeded the limit at index 54. Indices start at zero
+and include warmup. The largest weighted-loss difference remained `1.65e-5`.
+
+This rejects adoption under the declared unchanged-execution criterion; it
+does not demonstrate worse learning quality. The two remaining planned trials
+per implementation and the optional candidate profile were cancelled. Without
+repeated baseline trials, this run also does not independently quantify the
+baseline's long-trajectory numerical variation. No tolerance was relaxed and
+no production optimizer setting was changed.
+
+The benchmark now offers `--profile` for compressed CPU/CUDA traces and operator
+tables. Its optional instrumentation passed the full 595-test local suite and
+43 worker integration tests. A subsequent packaging fix supports direct script
+execution and identifies operator device types explicitly; the measured worker
+used frozen revision `fc5a41d`. Profiling export and event aggregation were
+substantial overhead: the diagnostic process took 283 seconds including its
+model restoration, warmup and trace processing. Use ordinary unprofiled runs
+to compare speed and keep diagnostic recordings short.
+
+The worker was deleted and its absence verified after collecting the results.
+Its 1,021.48-second allocation cost approximately **$0.1504** at the observed
+$0.53/hour GPU rate, excluding container disk and storage requests. This is
+an allocation estimate, not an invoice. Local evidence is under
+`reports/rule-transfer/operator-profile-20260916/`, including the compressed
+trace, frozen benchmark code, raw update records and independent verification.
+The 30.83 MB evidence archive is retained at project R2 prefix
+`shared-prediction/operator-profile-20260916/results-1412`, verified by a full
+download and byte comparison. It contains no model weights.
