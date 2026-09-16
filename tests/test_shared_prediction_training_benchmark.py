@@ -75,6 +75,22 @@ class TrainingBenchmarkTests(unittest.TestCase):
             for a, b in zip(*traces):
                 for key in ("losses", "source_state_sha256", "body", "sources", "lesson_inputs"):
                     self.assertEqual(a[key], b[key])
+            options.update(tensor_reference=None, profile=True)
+            profiled = benchmark(argparse.Namespace(**options, output=root / "profiled"))
+            self.assertTrue(profiled["profiled"])
+            self.assertEqual(profiled["initial"], first["initial"])
+            profile_rows = [json.loads(line) for line in (root / "profiled/steps.jsonl").read_text().splitlines()]
+            for a, b in zip(traces[0], profile_rows):
+                for key in ("losses", "source_state_sha256", "body", "sources", "lesson_inputs"):
+                    self.assertEqual(a[key], b[key])
+            profile = json.loads((root / "profiled/profile-operators.json").read_text())
+            operators = {row["name"]: row for row in profile["operators"]}
+            self.assertEqual(operators["intrep/update"]["count"], 3)
+            self.assertEqual(operators["intrep/optimizer"]["count"], 3)
+            self.assertEqual(operators["intrep/source/mnist"]["count"], 3)
+            self.assertEqual(operators["intrep/backward/mnist"]["count"], 3)
+            self.assertTrue((root / "profiled/profile-trace.json.gz").is_file())
+            options["profile"] = False
             self.assertEqual(sum(row["measured"] for row in traces[0]), 3)
             self.assertEqual(first["records_per_source"], {name: 6 if name == "mnist" else 3 for name in sources})
             options.update(batch_multiplier=2, tensor_reference=None)

@@ -8,6 +8,7 @@ import json
 import math
 import statistics
 import time
+from contextlib import ExitStack, nullcontext
 from pathlib import Path
 
 import torch
@@ -130,18 +131,25 @@ def benchmark(args):
     rows, parity = [], None
     setup_seconds = time.perf_counter() - started
     try:
-        with (args.output / "steps.jsonl").open("w") as trace:
+        with (args.output / "steps.jsonl").open("w") as trace, ExitStack() as profiling:
             for index in range(args.warmup + args.steps):
                 if args.device.startswith("cuda"):
                     torch.cuda.synchronize()
                     if index == args.warmup:
                         torch.cuda.reset_peak_memory_stats()
+                profile_active = getattr(args, "profile", False) and index >= args.warmup
+                if profile_active and index == args.warmup:
+                    from scripts.shared_prediction_profile import TrainingProfile
+                    profiling.enter_context(TrainingProfile(trainer, callbacks, args.output, device=args.device))
                 body_counts.update(calls=0, positions=0)
                 start = time.perf_counter()
-                metrics = trainer.step(callbacks)
-                if args.device.startswith("cuda"):
-                    torch.cuda.synchronize()
-                digest = state_digest({name: source.state_dict() for name, source in sources.items()})
+                with torch.profiler.record_function("intrep/update") if profile_active else nullcontext():
+                    metrics = trainer.step(callbacks)
+                    with torch.profiler.record_function("intrep/final_sync") if profile_active else nullcontext():
+                        if args.device.startswith("cuda"):
+                            torch.cuda.synchronize()
+                    with torch.profiler.record_function("intrep/source_hash") if profile_active else nullcontext():
+                        digest = state_digest({name: source.state_dict() for name, source in sources.items()})
                 elapsed = time.perf_counter() - start
                 row = {"index": index, "measured": index >= args.warmup, "seconds": elapsed,
                        "losses": metrics, "source_state_sha256": digest, "body": body_counts.copy(),
@@ -173,6 +181,7 @@ def benchmark(args):
     result = {"schema_version": "intrep.training_benchmark.v1", "checkpoint_sha256": args.checkpoint_sha256,
               "revision": args.revision, "initial": initial, "environment": environment,
               "batch_multiplier": args.batch_multiplier, "warmup_updates": args.warmup,
+              "profiled": bool(getattr(args, "profile", False)),
               "measured_updates": args.steps, "setup_seconds": setup_seconds,
               "training_seconds": seconds, "median_update_seconds": statistics.median(row["seconds"] for row in measured),
               "equivalent_base_updates_per_second": args.steps * args.batch_multiplier / seconds,
@@ -204,6 +213,7 @@ def main():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--tensor-reference", type=Path)
     parser.add_argument("--write-tensor-reference", action="store_true")
+    parser.add_argument("--profile", action="store_true", help="Record CPU/CUDA traces; these timings include profiler overhead")
     args = parser.parse_args()
     if args.write_tensor_reference and not args.tensor_reference:
         parser.error("writing the tensor reference requires its path")
