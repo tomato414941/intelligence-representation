@@ -9,11 +9,14 @@ import math
 import statistics
 import time
 from contextlib import ExitStack, nullcontext
+from functools import wraps
+from unittest.mock import patch
 from pathlib import Path
 
 import torch
 
 from intrep.learning.joint import JointTrainer
+from intrep.problems.shared_prediction.questions import QuestionSource
 from intrep.problems.shared_prediction.rule_transfer_data import file_digest
 from intrep.problems.shared_prediction.rule_transfer_training import LESSON_KEY, RuleLessons, state_digest
 from intrep.problems.shared_prediction.sources import build_sources, source_configs
@@ -74,6 +77,80 @@ def tensor_reference(model, path, *, create):
         if relative_error > limit:
             raise ValueError(f"first-update {kind} differ beyond the declared tolerance: {relative_error}")
     return summary
+
+
+class _TrainingProfile:
+    """Record measured updates without changing the training implementation."""
+
+    def __init__(self, trainer, callbacks, output, *, device):
+        self.trainer, self.callbacks, self.output = trainer, callbacks, output
+        self.original_callbacks = callbacks.copy()
+        self.source = "unknown"
+        self.stack = ExitStack()
+        activities = [torch.profiler.ProfilerActivity.CPU]
+        if device.startswith("cuda"):
+            activities.append(torch.profiler.ProfilerActivity.CUDA)
+        # Shape/stack/memory tracing adds overhead and can retain tensor references.
+        self.profiler = torch.profiler.profile(activities=activities)
+
+    @staticmethod
+    def annotated(function, name):
+        @wraps(function)
+        def run(*args, **kwargs):
+            with torch.profiler.record_function(name):
+                return function(*args, **kwargs)
+        return run
+
+    def __enter__(self):
+        self.stack.enter_context(self.profiler)
+        try:
+            for owner, attribute, label in (
+                (self.trainer, "synchronize_parameters", "synchronize_parameters"),
+                (self.trainer.optimizer, "zero_grad", "zero_grad"),
+                (self.trainer.optimizer, "step", "optimizer"),
+                (torch.nn.utils, "clip_grad_norm_", "clip_grad_norm"),
+                (self.trainer.model.core, "forward", "body_forward"),
+                (QuestionSource, "_records", "read_records"),
+                (QuestionSource, "_question", "prepare_question"),
+            ):
+                self.stack.enter_context(patch.object(
+                    owner, attribute, self.annotated(getattr(owner, attribute), "intrep/" + label)))
+            backward = torch.autograd.backward
+
+            def annotated_backward(*args, **kwargs):
+                with torch.profiler.record_function("intrep/backward/" + self.source):
+                    return backward(*args, **kwargs)
+
+            self.stack.enter_context(patch.object(torch.autograd, "backward", annotated_backward))
+            for name, callback in self.original_callbacks.items():
+                def annotated_source(name=name, callback=callback):
+                    self.source = name
+                    with torch.profiler.record_function("intrep/source/" + name):
+                        return callback()
+                self.callbacks[name] = annotated_source
+        except BaseException:
+            self.callbacks.update(self.original_callbacks)
+            self.stack.close()
+            raise
+        return self
+
+    def __exit__(self, *exception):
+        self.callbacks.update(self.original_callbacks)
+        self.stack.__exit__(*exception)
+        if exception[0] is None:
+            self.profiler.export_chrome_trace(str(self.output / "profile-trace.json.gz"))
+            rows = [{"name": row.key, "device_type": str(row.device_type), "count": row.count,
+                     "cpu_total_ms": row.cpu_time_total / 1000,
+                     "cpu_self_ms": row.self_cpu_time_total / 1000,
+                     "device_total_ms": row.device_time_total / 1000,
+                     "device_self_ms": row.self_device_time_total / 1000}
+                    for row in self.profiler.key_averages()]
+            summary = {
+                "scope": "Instrumented measured updates only. Nested CPU/device totals overlap; do not sum them. Use unprofiled runs for speed comparisons.",
+                "record_shapes": False, "with_stack": False, "profile_memory": False,
+                "operators": sorted(rows, key=lambda row: row["device_self_ms"], reverse=True),
+            }
+            (self.output / "profile-operators.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
 
 
 def benchmark(args):
@@ -139,8 +216,7 @@ def benchmark(args):
                         torch.cuda.reset_peak_memory_stats()
                 profile_active = getattr(args, "profile", False) and index >= args.warmup
                 if profile_active and index == args.warmup:
-                    from scripts.shared_prediction_profile import TrainingProfile
-                    profiling.enter_context(TrainingProfile(trainer, callbacks, args.output, device=args.device))
+                    profiling.enter_context(_TrainingProfile(trainer, callbacks, args.output, device=args.device))
                 body_counts.update(calls=0, positions=0)
                 start = time.perf_counter()
                 with torch.profiler.record_function("intrep/update") if profile_active else nullcontext():

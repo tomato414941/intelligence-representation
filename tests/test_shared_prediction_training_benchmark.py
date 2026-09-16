@@ -5,6 +5,8 @@ import contextlib
 import copy
 import io
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -90,6 +92,13 @@ class TrainingBenchmarkTests(unittest.TestCase):
             self.assertEqual(operators["intrep/source/mnist"]["count"], 3)
             self.assertEqual(operators["intrep/backward/mnist"]["count"], 3)
             self.assertTrue((root / "profiled/profile-trace.json.gz").is_file())
+            script = Path(__file__).resolve().parents[1] / "scripts/benchmark_shared_prediction_training.py"
+            subprocess.run([sys.executable, str(script), "--checkpoint", str(checkpoint),
+                            "--checkpoint-sha256", digest, "--output", str(root / "cli-profile"),
+                            "--data-root", str(root), "--revision", "fixture", "--device", "cpu",
+                            "--threads", "1", "--warmup", "1", "--steps", "1", "--profile"],
+                           cwd=root, check=True, capture_output=True, text=True, timeout=60)
+            self.assertTrue(json.loads((root / "cli-profile/result.json").read_text())["profiled"])
             options["profile"] = False
             self.assertEqual(sum(row["measured"] for row in traces[0]), 3)
             self.assertEqual(first["records_per_source"], {name: 6 if name == "mnist" else 3 for name in sources})
