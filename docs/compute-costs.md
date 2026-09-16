@@ -372,8 +372,8 @@ checkpoint weights are retained.
 Prioritize fewer CPU/GPU waits and remaining question batching at unchanged
 training settings, then measure the unused CUDA implementations. Keep all
 358,228,139 parameters trainable, all twelve full source populations and the
-four lessons. This review reuses completed experiments and inspects code;
-it does not add a GPU run or establish another speedup.
+four lessons. This review used completed experiments and code inspection;
+the subsequent implementation's GPU check is recorded below.
 
 The [completed rule-transfer experiment](rule-transfer.md#computation-and-retention)
 provides the relevant allocation baseline:
@@ -400,9 +400,10 @@ implemented; their gains must not be counted again as new opportunities.
    Python-float summaries, per-key averaging and rejection of nonfinite metrics
    before parameter updates are preserved. A local comparison of 36 original
    and added updates on small CPU fixtures found exactly equal losses,
-   gradients, metrics, responses, sampling state and RNG state. The GPU timing
-   effect of this additional change is unmeasured; local evidence is under
-   `reports/rule-transfer/metric-transfer-20260915/`.
+   gradients, metrics, responses, sampling state and RNG state. The GPU check
+   below measures this change together with added-form batching; their
+   individual timing contributions are not isolated. Local CPU evidence is
+   under `reports/rule-transfer/metric-transfer-20260915/`.
 
    Added forms now batch compatible questions (2026-09-16). Text answers are
    grouped by prefix and answer lengths; image, audio, sensor and board
@@ -418,8 +419,9 @@ implemented; their gains must not be counted again as new opportunities.
    state matched exactly. Maximum absolute loss/gradient differences were
    `4.77e-7` / `9.54e-7`, within the comparisons' `rtol=1e-5` / `1e-4` and
    `atol=1e-6`. Across the 74 added-form updates, body calls fell from 448 to
-   133. These counts are not measured GPU speedups or billing reductions;
-   full-model GPU time, memory and learning-quality effects remain unmeasured.
+   133. These counts are not GPU speedups or billing reductions. The full-model
+   GPU time and memory check below uses the smaller production batches;
+   learning-quality effects remain unmeasured.
    All 595 unit tests passed, including unequal answer lengths, partial audio
    masks, multiple prediction heads, nonfinite metrics and exact resume.
    Local evidence is under `reports/rule-transfer/question-batching-20260916/`.
@@ -513,8 +515,9 @@ storage waits. Hourly price or peak arithmetic throughput alone is insufficient.
 
 #### Next Decision
 
-Prepare the metric/batching changes and their loss, gradient and sampling
-comparisons locally. For a later GPU comparison, restore the existing checkpoint
+The metric/batching changes and their original-batch GPU check are complete.
+Prepare further candidates and their loss, gradient and sampling comparisons
+locally. For another GPU comparison, restore the existing checkpoint
 and all source/optimizer/RNG state, use the original batch first and repeat
 baseline/candidate trials in balanced order. Cover original and added forms;
 reuse the previous declared tolerances for behavior-preserving changes. Measure
@@ -525,9 +528,8 @@ repeating the large checkpoint-upload benchmark or preserving profiling weights.
 Before provisioning, verify the complete source-file and dependency manifests;
 the previous two allocations needed recovery for omitted inputs or code.
 Set the total comparison budget using setup, restore, verification and cleanup
-as well as timed updates. At the historical rate, 30 minutes of A40 allocation
-would cost $0.245 before storage; this is arithmetic, not a current quote or an
-authorized run budget.
+as well as timed updates. The September 16 check below includes these phases
+in its allocation cost; obtain a fresh quote for another allocation.
 
 Further quality training should use a fixed development decision and retention
 criteria. No image-tuition arm reached the previous target despite near-perfect
@@ -540,3 +542,67 @@ running GPU, as described in [RunPod storage](https://docs.runpod.io/storage/net
 Offline derivation and input hashes are in
 `reports/rule-transfer/cost-review-20260915/{analyze.py,analysis.json}`. Inputs are
 the existing final allocation/training report and six GPU comparison traces.
+
+### GPU Check Of Metric Collection And Question Batching (2026-09-16)
+
+At unchanged production batches, the combined changes reduced mean complete
+update time by **4.4%** in two trials per implementation. The trial ranges overlap:
+the first old/new pair was 0.8% slower after the changes, while the second pair
+was faster. This is a small, variable result, not an established fixed saving.
+
+| Implementation | Trial 1, seconds / 32 updates | Trial 2 | Mean | Peak allocated GPU memory |
+| --- | ---: | ---: | ---: | ---: |
+| Before both changes, `0f1d501` | 51.19 | 55.68 | 53.43 | 7.815 GiB |
+| Metric collection and question batching, `2c3ede0` | 51.58 | 50.54 | 51.06 | 7.818 GiB |
+
+Both versions ran on one A40, in old/new/new/old order, with eight warmup updates
+and 32 timed updates per trial. The environment was PyTorch 2.8.0+cu128,
+Transformers 5.17.0, eager attention and four Torch CPU threads. All 358,228,139
+parameters remained trainable in FP32 with AdamW. Every trial restored the same
+checkpoint, optimizer, twelve full source populations, four lessons, sampling
+cursors and RNG. The production batch counts remained one record per
+text/conversation/BoolQ source, two per other source and lesson batches
+`[16, 8, 8, 8]`.
+
+The common benchmark times full updates, including input preparation,
+forward/backward, AdamW, CUDA synchronization and source-state hashing. It
+excludes model restoration, warmup, numerical checks, evaluation and checkpoint
+I/O. This comparison isolates the combined metric/question changes relative to
+the already optimized code; the earlier 10.7% reduction is not another gain in
+this table.
+
+Across the two trials per version, added-form body calls fell from 19.125 to
+17.375 per update; original-form calls stayed at 18.875. The dimension-16 CPU
+fixture's larger reduction used eight records per source, so its call counts
+do not describe the production setting. GPU memory remained almost unchanged:
+allocated tensors increased by 3.77 MiB and peak reservation by 12 MiB
+(8.201 to 8.213 GiB). Two short trials do not establish worst-case memory over
+unseen sequence lengths or the cost to reach a learning-quality target.
+
+Independent verification matched every source-file hash to its frozen revision,
+the complete initial state, all 40 per-trial source/lesson traces and sequence
+positions. The maximum normalized difference among recorded losses and gradient
+norms was `2.17e-5`, below `1e-4`. Checks after both an added-form update and an
+original-form update compared all parameters and active clipped gradients;
+maximum relative L2 errors were `7.64e-10` and `1.57e-6`, below `1e-6` and
+`1e-4`, respectively. The existing 595 local tests and 43 worker integration
+tests passed. No capability or retention evaluation was run.
+
+The disposable allocation lasted 606.11 seconds (10m06s), including provisioning,
+setup, transfer, restoration, all four trials, result retrieval and deletion.
+At the observed $0.49/hour rate, its GPU estimate is **$0.0825**, excluding
+container disk and storage requests; this is not an invoice. The worker was
+deleted and its absence independently confirmed. No profiling weights were
+retained, and the original archived checkpoint was preserved.
+
+Retain the numerical checks and unchanged batch settings for the next execution
+candidate. These results do not support expecting a large further cost reduction
+from batching alone at the current record counts. The pending FP32 CUDA-kernel
+and non-training wait investigations remain separate candidates; larger batches
+still require a learning comparison.
+
+Evidence, frozen source files, complete traces and the independent analysis are
+under `reports/rule-transfer/question-batching-gpu-20260916/`. The 1.06 MB evidence
+bundle is retained at project R2 prefix
+`shared-prediction/question-batching-20260916/results-1210`, verified by a full
+download and byte comparison.
