@@ -13,7 +13,7 @@ import torch
 
 from intrep.learning.joint import JointTrainer
 from intrep.problems.shared_prediction.evaluation import evaluate_panel, make_panel
-from intrep.problems.shared_prediction.questions import _metric_means
+from intrep.problems.shared_prediction.questions import Prediction, Question, _metric_means, waveform_question
 from intrep.problems.shared_prediction.rule_transfer_training import state_digest
 from intrep.problems.shared_prediction.sources import build_sources
 from tests.test_shared_prediction_questions import question_recipe
@@ -77,16 +77,17 @@ class SourceBatchingTests(unittest.TestCase):
                 source = build_sources(model, make_tokenizer(), recipe, root)["mnist"]
                 source.step = 0 if form == "original" else 1
                 target = source.reader if form == "original" else source
-                method = "record_batch_loss" if form == "original" else "_score"
+                method = "record_batch_loss" if form == "original" else "_score_batch"
                 score = getattr(target, method)
-                calls = []
 
                 def invalid_metrics(record):
-                    loss = score(record)
-                    calls.append(True)
-                    invalid = form == "original" or len(calls) == 2
-                    target.last_metrics["invalid"] = loss.detach().new_tensor(float("nan") if invalid else 1)
-                    return loss
+                    result = score(record)
+                    if form == "original":
+                        target.last_metrics["invalid"] = result.detach().new_tensor(float("nan"))
+                    else:
+                        for index, (loss, metrics, _) in enumerate(result):
+                            metrics["invalid"] = loss.detach().new_tensor(float("nan") if index == 1 else 1)
+                    return result
 
                 setattr(target, method, invalid_metrics)
                 trainer = JointTrainer(model, {"mnist": 1}, learning_rate=.01)
@@ -98,6 +99,129 @@ class SourceBatchingTests(unittest.TestCase):
                 self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
                 for name, value in model.state_dict().items():
                     torch.testing.assert_close(value, before[name], rtol=0, atol=0)
+
+    def assert_question_batch_matches_singles(self, source, questions):
+        model = source.model
+        model.zero_grad(set_to_none=True)
+        expected = []
+        for question in questions:
+            loss = source._score(question)
+            expected.append((loss, source.last_metrics.copy(), copy.deepcopy(source.last_response)))
+        torch.stack([row[0] for row in expected]).mean().backward()
+        gradients = {name: parameter.grad.clone() for name, parameter in model.named_parameters()
+                     if parameter.grad is not None}
+        model.zero_grad(set_to_none=True)
+        calls = []
+        handle = model.core.register_forward_pre_hook(lambda _, args: calls.append(tuple(args[0].shape)))
+        actual = source._score_batch(questions)
+        handle.remove()
+        torch.stack([row[0] for row in actual]).mean().backward()
+        self.assertEqual({name for name, parameter in model.named_parameters() if parameter.grad is not None},
+                         set(gradients))
+        for name, gradient in gradients.items():
+            torch.testing.assert_close(dict(model.named_parameters())[name].grad, gradient, rtol=1e-4, atol=1e-6)
+        for (loss, metrics, response), (old_loss, old_metrics, old_response) in zip(actual, expected):
+            torch.testing.assert_close(loss, old_loss, rtol=1e-5, atol=1e-6)
+            torch.testing.assert_close(metrics, old_metrics, rtol=1e-5, atol=1e-6)
+            self.assertEqual(response, old_response)
+        return calls
+
+    def test_answer_batches_keep_question_weights_and_order_with_different_lengths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, sources = self.fixture(Path(directory))
+            source = sources["text_data"]
+            questions = [Question("one", "two"), Question("one two three", "four go left"),
+                         Question("one", "left"), Question("one", ""), Question("one two", "red")]
+            calls = self.assert_question_batch_matches_singles(source, questions)
+            self.assertEqual([shape[0] for shape in calls], [2, 1, 1, 1])
+            # Generation starts from each observation/question prefix, including
+            # when teacher-forced answers of different lengths share a batch.
+            source._forced = {"generate": True}
+            self.assert_question_batch_matches_singles(source, questions)
+
+    def test_audio_batches_preserve_partial_chunk_masks_and_per_question_weight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, sources = self.fixture(Path(directory))
+            source = sources["spoken_digits"]
+            questions = [waveform_question(source, {"audio": torch.linspace(.2, .8, length), "sample_rate": 8000}, 0)
+                         for length in (1, 8, 3)]
+            self.assertEqual([int(question.predictions[0].valid.sum()) for question in questions], [1, 4, 3])
+            calls = self.assert_question_batch_matches_singles(source, questions)
+            self.assertEqual([shape[0] for shape in calls], [2, 1])
+            altered = copy.deepcopy(questions)
+            for question in altered:
+                prediction = question.predictions[0]
+                prediction.target[~prediction.valid] = 1000
+                prediction.baseline[~prediction.valid] = -1000
+            for before, after in zip(source._score_batch(questions), source._score_batch(altered)):
+                torch.testing.assert_close(before[0], after[0], rtol=0, atol=0)
+                torch.testing.assert_close(before[1], after[1], rtol=0, atol=0)
+
+    def test_prediction_batches_keep_multiple_head_weights_and_optional_metrics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            model, sources = self.fixture(Path(directory))
+            source = sources["mnist"]
+            model.attach_output("board_pieces", torch.nn.Linear(model.dimension, 29))
+            model.attach_output("board_hands", torch.nn.Linear(model.dimension, 19))
+            questions = []
+            for prompt, occupied in (("one", True), ("one two three", True), ("one", False)):
+                pieces = torch.arange(81) % 29 if occupied else torch.zeros(81, dtype=torch.long)
+                hands = torch.arange(14)
+                questions.append(Question(prompt, predictions=[
+                    Prediction("board_pieces", torch.arange(81).view(-1, 1), pieces, "class", torch.zeros_like(pieces)),
+                    Prediction("board_hands", torch.arange(14).view(-1, 1), hands, "class", torch.zeros_like(hands)),
+                ]))
+            # Different output layouts must not share head offsets, even when
+            # the total sequence lengths happen to match.
+            questions.insert(1, Question("one", "two"))
+            questions.append(Question("one", predictions=list(reversed(questions[0].predictions))))
+            calls = self.assert_question_batch_matches_singles(source, questions)
+            self.assertEqual(sorted(shape[0] for shape in calls), [1, 1, 1, 2])
+            metrics = [row[1] for row in source._score_batch(questions)]
+            self.assertIn("occupied_square_accuracy", metrics[0])
+            self.assertNotIn("occupied_square_accuracy", metrics[3])
+
+    def test_all_added_forms_preserve_sampling_counts_responses_and_rng(self):
+        with tempfile.TemporaryDirectory() as directory:
+            model, sources = self.fixture(Path(directory))
+            grouped_updates = 0
+            for source in sources.values():
+                source.records_per_update = 8
+                batch_score = source._score_batch
+                for step in range(2 * (len(source.forms) - 1)):
+                    with self.subTest(source=source.config["name"], step=step):
+                        state, rng = copy.deepcopy(source.state_dict()), torch.get_rng_state().clone()
+                        source._score_batch = lambda questions: [batch_score([question])[0] for question in questions]
+                        model.zero_grad(set_to_none=True)
+                        expected = source.loss()
+                        expected.backward()
+                        gradients = {name: parameter.grad.clone() for name, parameter in model.named_parameters()
+                                     if parameter.grad is not None}
+                        expected_state = state_digest(source.state_dict())
+                        metrics, response, info = copy.deepcopy((source.last_metrics, source.last_response, source.last_update_info))
+                        expected_rng = torch.get_rng_state().clone()
+                        source.load_state_dict(state)
+                        torch.set_rng_state(rng)
+                        source._score_batch = batch_score
+                        model.zero_grad(set_to_none=True)
+                        calls = []
+                        handle = model.core.register_forward_pre_hook(lambda _, args: calls.append(tuple(args[0].shape)))
+                        actual = source.loss()
+                        handle.remove()
+                        actual.backward()
+                        torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)
+                        self.assertEqual({name for name, parameter in model.named_parameters() if parameter.grad is not None},
+                                         set(gradients))
+                        for name, gradient in gradients.items():
+                            torch.testing.assert_close(dict(model.named_parameters())[name].grad, gradient, rtol=1e-4, atol=1e-6)
+                        torch.testing.assert_close(source.last_metrics, metrics, rtol=1e-5, atol=1e-6)
+                        self.assertEqual((source.last_response, source.last_update_info), (response, info))
+                        self.assertEqual(state_digest(source.state_dict()), expected_state)
+                        torch.testing.assert_close(torch.get_rng_state(), expected_rng, rtol=0, atol=0)
+                        self.assertEqual(sum(shape[0] for shape in calls), info["questions"])
+                        if source.last_form != "original" and len(calls) < info["questions"]:
+                            grouped_updates += 1
+            self.assertGreater(grouped_updates, 10)
 
     def test_batching_preserves_per_example_losses_gradients_and_all_sequence_lengths(self):
         with tempfile.TemporaryDirectory() as directory:

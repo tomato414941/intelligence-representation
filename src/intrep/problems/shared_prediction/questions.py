@@ -15,7 +15,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from intrep.problems.shared_prediction.answers import answer_loss, question_prefix
+from intrep.problems.shared_prediction.answers import answer_scores, question_prefix
 from intrep.problems.shared_prediction.sources import NativeSource, attach
 from intrep.problems.shared_prediction.streams import EpochSampler
 from intrep.representation.inputs.multimodal_observation import (
@@ -425,42 +425,62 @@ class QuestionSource:
         return categorical_question(self.reader, records, form, wording)
 
     def _score(self, question):
+        loss, self.last_metrics, self.last_response = self._score_batch([question])[0]
+        return loss
+
+    def _score_batch(self, questions):
+        # Match prefix/target lengths and output heads without padding or
+        # truncation. Results retain input order and each question's loss weight.
         omit = self._forced is not None and self._forced.get("omit_observations", False)
-        observations = [] if omit else [self.model.encode(name, *values) for name, values in question.inputs]
-        if question.answer is not None:
-            return answer_loss(self, question.prompt, question.answer, observations,
-                               generate=self._forced is not None and self._forced.get("generate", True))
-        prefix = question_prefix(self.reader, question.prompt, observations)
-        sequence = [prefix]
-        for prediction in question.predictions:
-            coordinates = prediction.coordinates.to(device=self.device, dtype=self.dtype).unsqueeze(0)
-            sequence.append(self.model.encode("answer_query", coordinates))
-        hidden = self.model(torch.cat(sequence, dim=1))
-        offset, losses, metrics = prefix.shape[1], [], {}
-        for prediction in question.predictions:
-            count = len(prediction.coordinates)
-            output = self.model.decode(prediction.head, hidden[:, offset:offset + count])[0]
-            target = prediction.target.to(device=self.device)
-            if prediction.kind == "class":
-                loss = F.cross_entropy(output, target)
-                chosen = output.detach().argmax(-1)
-                metrics[f"{prediction.head}_accuracy"] = (chosen == target).float().mean()
-                if prediction.head == "board_pieces" and bool((target != 0).any()):
-                    metrics["occupied_square_accuracy"] = (chosen[target != 0] == target[target != 0]).float().mean()
-                metrics[f"{prediction.head}_exact"] = (chosen == target).all().float()
-                metrics[f"{prediction.head}_copy_accuracy"] = (prediction.baseline == target).float().mean()
-            else:
-                output = output.sigmoid() if prediction.kind == "image" else output.tanh() if prediction.kind == "audio" else output
-                valid = prediction.valid if prediction.valid is not None else torch.ones_like(target, dtype=torch.bool)
-                loss = F.mse_loss(output[valid], target[valid].to(output))
-                metrics[f"{prediction.head}_mse"] = loss.detach()
-                metrics[f"{prediction.head}_baseline_mse"] = F.mse_loss(prediction.baseline[valid], target[valid]).detach()
-            losses.append(loss)
-            offset += count
-        self.last_metrics = metrics
-        self.last_response = {"prompt": question.prompt, "prefix_tokens": prefix.shape[1],
-                              "target_values": sum(int(prediction.target.numel()) for prediction in question.predictions)}
-        return torch.stack(losses).mean()
+        answers, groups = [], {}
+        results = [None] * len(questions)
+        for index, question in enumerate(questions):
+            observations = [] if omit else [self.model.encode(name, *values) for name, values in question.inputs]
+            if question.answer is not None:
+                answers.append((index, (question.prompt, question.answer, observations)))
+                continue
+            prefix = question_prefix(self.reader, question.prompt, observations)
+            sequence = [prefix]
+            for prediction in question.predictions:
+                coordinates = prediction.coordinates.to(device=self.device, dtype=self.dtype).unsqueeze(0)
+                sequence.append(self.model.encode("answer_query", coordinates))
+            layout = tuple((prediction.head, len(prediction.coordinates)) for prediction in question.predictions)
+            groups.setdefault((prefix.shape[1], layout), []).append((index, question, torch.cat(sequence, dim=1)))
+        if answers:
+            scores = answer_scores(self, [case for _, case in answers],
+                                   generate=self._forced is not None and self._forced.get("generate", True))
+            for (index, _), score in zip(answers, scores):
+                results[index] = score
+        for (prefix_length, layout), rows in groups.items():
+            hidden = self.model(torch.cat([row[2] for row in rows], dim=0))
+            offset, outputs = prefix_length, []
+            for head, count in layout:
+                outputs.append(self.model.decode(head, hidden[:, offset:offset + count]))
+                offset += count
+            for row_index, (index, question, _) in enumerate(rows):
+                losses, metrics = [], {}
+                for prediction, output in zip(question.predictions, outputs):
+                    output = output[row_index]
+                    target = prediction.target.to(device=self.device)
+                    if prediction.kind == "class":
+                        loss = F.cross_entropy(output, target)
+                        chosen = output.detach().argmax(-1)
+                        metrics[f"{prediction.head}_accuracy"] = (chosen == target).float().mean()
+                        if prediction.head == "board_pieces" and bool((target != 0).any()):
+                            metrics["occupied_square_accuracy"] = (chosen[target != 0] == target[target != 0]).float().mean()
+                        metrics[f"{prediction.head}_exact"] = (chosen == target).all().float()
+                        metrics[f"{prediction.head}_copy_accuracy"] = (prediction.baseline == target).float().mean()
+                    else:
+                        output = output.sigmoid() if prediction.kind == "image" else output.tanh() if prediction.kind == "audio" else output
+                        valid = prediction.valid if prediction.valid is not None else torch.ones_like(target, dtype=torch.bool)
+                        loss = F.mse_loss(output[valid], target[valid].to(output))
+                        metrics[f"{prediction.head}_mse"] = loss.detach()
+                        metrics[f"{prediction.head}_baseline_mse"] = F.mse_loss(prediction.baseline[valid], target[valid]).detach()
+                    losses.append(loss)
+                response = {"prompt": question.prompt, "prefix_tokens": prefix_length,
+                            "target_values": sum(int(prediction.target.numel()) for prediction in question.predictions)}
+                results[index] = torch.stack(losses).mean(), metrics, response
+        return results
 
     def loss(self):
         self.last_metrics, self.last_response = {}, None
@@ -479,15 +499,17 @@ class QuestionSource:
                            first.get("group") if isinstance(first, dict) else None)
         paired = form in ("identify", "same", "different", "sum", "greater")
         batches = [records[index:index + 2] for index in range(0, len(records), 2)] if paired else [[record] for record in records]
-        losses, rows, responses = [], [], []
         batched_original = (form == "original" and not self._forced
                             and self.config["kind"] in {"text", "conversations", "idx", "cifar10", "spoken_digits", "inertial_activity"}
                             and not (self.config["kind"] == "conversations"
                                      and self.config.get("conversation_objective") == "assistant"))
         if batched_original:
-            losses.append(self.reader.record_batch_loss(records))
-            rows.append(self.reader.last_metrics.copy())
+            loss = self.reader.record_batch_loss(records)
+            scores = [(loss, self.reader.last_metrics.copy(), None)]
+        elif form != "original" and not self._forced:
+            scores = self._score_batch([self._question(batch, form, seed, wording) for batch in batches])
         else:
+            scores = []
             for batch in batches:
                 if form == "original":
                     loss = (self.reader.record_loss(batch[0], generate=self._forced is not None and self._forced.get("generate", True))
@@ -496,11 +518,14 @@ class QuestionSource:
                     self.last_response = copy.deepcopy(getattr(self.reader, "last_response", None))
                 else:
                     loss = self._score(self._question(batch, form, seed, wording))
-                losses.append(loss)
-                rows.append(self.last_metrics.copy())
-                if self.last_response is not None:
-                    responses.append(self.last_response)
-                    self.answer_tokens += self.last_response.get("target_tokens", 0)
+                scores.append((loss, self.last_metrics.copy(), self.last_response))
+        losses, rows, responses = [], [], []
+        for loss, metrics, response in scores:
+            losses.append(loss)
+            rows.append(metrics)
+            if response is not None:
+                responses.append(response)
+                self.answer_tokens += response.get("target_tokens", 0)
         self.last_metrics = _metric_means(rows)
         self.last_response = {"form": form, "responses": responses,
                               "record_indices": [record["index"] for record in records if isinstance(record, dict) and "index" in record]}

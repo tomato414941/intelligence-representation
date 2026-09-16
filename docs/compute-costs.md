@@ -404,12 +404,29 @@ implemented; their gains must not be counted again as new opportunities.
    effect of this additional change is unmeasured; local evidence is under
    `reports/rule-transfer/metric-transfer-20260915/`.
 
-   Added forms still call `_score` separately; original
-   assistant conversation, BoolQ, shogi and native objectives also remain
-   sequential. Start with compatible lengths and output heads, preserving
-   each question's loss weight, target mask, sampler order and question count.
-   Tokenization can be reused for immutable prompts, but learned embeddings
-   cannot be reused across parameter updates.
+   Added forms now batch compatible questions (2026-09-16). Text answers are
+   grouped by prefix and answer lengths; image, audio, sensor and board
+   predictions by prefix length and output-head spans. Each question retains
+   its own loss weight, target mask and response position, without padding or
+   truncation. Source batch sizes and sampling are unchanged. Forced evaluation
+   still scores individual cases and generates from their observation/question
+   prefixes.
+
+   A frozen-code comparison covered 148 source updates across all nine source
+   kinds, using ten synthetic sources, eight records per update and a small
+   dimension-16 CPU model. Responses, sample state, question counts and RNG
+   state matched exactly. Maximum absolute loss/gradient differences were
+   `4.77e-7` / `9.54e-7`, within the comparisons' `rtol=1e-5` / `1e-4` and
+   `atol=1e-6`. Across the 74 added-form updates, body calls fell from 448 to
+   133. These counts are not measured GPU speedups or billing reductions;
+   full-model GPU time, memory and learning-quality effects remain unmeasured.
+   All 595 unit tests passed, including unequal answer lengths, partial audio
+   masks, multiple prediction heads, nonfinite metrics and exact resume.
+   Local evidence is under `reports/rule-transfer/question-batching-20260916/`.
+
+   Original assistant conversation, BoolQ, shogi and native objectives still
+   run sequentially. Tokenization can be reused for immutable prompts, but
+   learned embeddings cannot be reused across parameter updates.
 
    Existing traces provide a diagnostic, not a prediction of removable time:
 
