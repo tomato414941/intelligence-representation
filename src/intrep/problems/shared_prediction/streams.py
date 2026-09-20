@@ -33,8 +33,9 @@ class LineStream:
         self.offset = start
         self.epochs = 0
         self.records = 0
+        self.epoch_limit = None
 
-    def next(self) -> str:
+    def next(self, *, wrap: bool = True) -> str:
         with self.path.open("rb") as handle:
             handle.seek(self.offset)
             for _ in range(2):
@@ -44,6 +45,8 @@ class LineStream:
                     if raw.strip():
                         self.records += 1
                         return raw.decode("utf-8")
+                if not wrap or (self.epoch_limit is not None and self.epochs + 1 >= self.epoch_limit):
+                    raise StopIteration
                 self.epochs += 1
                 self.offset = self.start
                 handle.seek(self.start)
@@ -70,9 +73,12 @@ class EpochSampler:
         self.cursor = 0
         self.epochs = 0
         self.samples = 0
+        self.epoch_limit = None
 
     def next(self) -> int:
         if self.cursor == self.count:
+            if self.epoch_limit is not None and self.epochs + 1 >= self.epoch_limit:
+                raise StopIteration
             self.order = torch.randperm(self.count, generator=self.generator)
             self.cursor = 0
             self.epochs += 1

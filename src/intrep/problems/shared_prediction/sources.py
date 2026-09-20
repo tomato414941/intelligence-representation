@@ -114,7 +114,11 @@ class TextSource(Source):
         count = self.config["block_tokens"]
         while len(self.pending) < count + 1:
             epoch = self.stream.epochs
-            row = self.stream.next()
+            try:
+                # Finish the last, possibly shorter block before another epoch.
+                row = self.stream.next(wrap=self.stream.epoch_limit is None or len(self.pending) < 2)
+            except StopIteration:
+                break
             if self.config["kind"] == "conversations":
                 messages = json.loads(row)["messages"]
                 encoded = self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=False,
@@ -126,6 +130,9 @@ class TextSource(Source):
             if self.stream.epochs != epoch:
                 self.pending.append(self.tokenizer.eos_token_id)
             self.pending.extend(encoded)
+        count = min(count, len(self.pending) - 1)
+        if count < 1:
+            raise StopIteration
         tokens = self.ids(self.pending[:count + 1])
         self.pending = self.pending[count:]
         self.tokens += count
@@ -138,12 +145,21 @@ class TextSource(Source):
         return self.record_batch_loss([tokens])
 
     def record_batch_loss(self, records):
-        tokens = torch.cat(records, dim=0)
-        hidden = self.model(self.model.encode("text", tokens[:, :-1]))
-        logits = self.model.decode("text", hidden)
-        loss = F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
-        self.last_metrics = {"token_accuracy": (logits.detach().argmax(-1) == tokens[:, 1:]).float().mean()}
-        return loss
+        groups = {}
+        for record in records:
+            groups.setdefault(record.shape[1], []).append(record)
+        losses, correct, targets = [], 0, 0
+        for rows in groups.values():
+            tokens = torch.cat(rows, dim=0)
+            hidden = self.model(self.model.encode("text", tokens[:, :-1]))
+            logits = self.model.decode("text", hidden)
+            loss = F.cross_entropy(logits.flatten(0, 1), tokens[:, 1:].flatten())
+            count = tokens[:, 1:].numel()
+            losses.append(loss * count)
+            correct = correct + (logits.detach().argmax(-1) == tokens[:, 1:]).sum()
+            targets += count
+        self.last_metrics = {"token_accuracy": correct.float() / targets}
+        return torch.stack(losses).sum() / targets
 
     def state_dict(self):
         return {"stream": self.stream.state_dict(), "pending": list(self.pending), "tokens": self.tokens}

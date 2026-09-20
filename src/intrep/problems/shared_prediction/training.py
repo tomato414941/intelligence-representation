@@ -17,10 +17,13 @@ from intrep.problems.shared_prediction.evaluation import (
     paired_comparison,
     question_omission_panel,
 )
+from intrep.problems.shared_prediction.full_evaluation import evaluate_full, paired_full_comparison
+from intrep.problems.shared_prediction.population import completed_epochs
 from intrep.problems.shared_prediction.recipe import (
     evaluation_recipe,
     validate_extension,
     validate_recipe,
+    without_evaluation_sampling,
 )
 from intrep.problems.shared_prediction.sources import (
     build_sources,
@@ -166,17 +169,23 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
         model.train(previous_mode)
 
 
-def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int,
+def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int | None = None, epochs: int | None = None,
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
           resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
-          evaluation_examples=1, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None,
+          evaluation_examples=None, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None,
           generation_interval=0, holdout_prompts=None, gradient_probe_interval=0):
     from transformers import AutoTokenizer
 
-    if (steps < 1 or checkpoint_interval < 1 or evaluation_examples < 1 or evaluation_interval < 0 or generation_interval < 0
+    if steps is None and epochs is None:
+        epochs = 1
+    if ((steps is not None and (type(steps) is not int or steps < 1))
+            or (epochs is not None and (type(epochs) is not int or epochs < 1))
+            or (steps is not None and epochs is not None)
+            or checkpoint_interval < 1 or (evaluation_examples is not None and evaluation_examples < 1)
+            or evaluation_interval < 0 or generation_interval < 0
             or gradient_probe_interval < 0
             or (base is None) == (resume is None) or (extend and resume is None)):
-        raise ValueError("choose a local base or a resume checkpoint and a positive total step budget")
+        raise ValueError("choose a local base or a resume checkpoint and either positive epochs or an explicit step budget")
     if training_seconds is not None and (not 0 < training_seconds < float("inf")):
         raise ValueError("the training-time budget must be finite and positive")
     validate_recipe(recipe, root)
@@ -189,7 +198,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         model, tokenizer, payload = load_checkpoint(resume, device=device, extensions=extensions, extend=extend)
         if extend:
             validate_extension(payload["recipe"], recipe)
-        elif payload["recipe"] != recipe:
+        elif without_evaluation_sampling(payload["recipe"]) != without_evaluation_sampling(recipe):
             raise ValueError("exact resume requires the original complete data recipe")
         old_weights = payload["trainer"]["weights"]
         trainer = JointTrainer(model, old_weights, learning_rate=learning_rate, optimizer=optimizer,
@@ -221,15 +230,23 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         for row in source_configs(recipe):
             if row["name"] not in trainer.weights:
                 trainer.add_source(row["name"], row.get("weight", 1.0))
-    if steps <= trainer.steps:
+    if steps is not None and steps <= trainer.steps:
         raise ValueError("the requested total step budget must advance the checkpoint")
+    if epochs is not None and all(completed_epochs(source) >= epochs for source in sources.values()):
+        raise ValueError("the requested epochs must advance the checkpoint")
     trainer.synchronize_parameters()
     (output / "recipe.json").write_text(json.dumps(recipe, ensure_ascii=False, indent=2) + "\n")
     (output / "provenance.json").write_text(json.dumps({"training": provenance, "evaluation": evaluation_provenance},
                                                       ensure_ascii=False, indent=2) + "\n")
     before = parameter_digests(model)
-    panel = make_panel(evaluation_sources, evaluation_examples)
-    (output / "evaluation-panel.json").write_text(json.dumps(panel, ensure_ascii=False, indent=2) + "\n")
+    full_evaluation = evaluation_examples is None
+    panel = None if full_evaluation else make_panel(evaluation_sources, evaluation_examples)
+    evaluation_spec = ({"scope": "complete populations", "record_sampling": False,
+                        "questions": "all configured forms and both wordings for every record",
+                        "pairs": "each primary item with one deterministic comparison partner",
+                        "long_text": "all blocks and conversation windows, including the final partial block"}
+                       if full_evaluation else panel)
+    (output / "evaluation-panel.json").write_text(json.dumps(evaluation_spec, ensure_ascii=False, indent=2) + "\n")
     prompts = prompts if prompts is not None else [
         {"prompt": "Explain why ice melts in one sentence."},
         {"prompt": "氷が溶ける理由を日本語で一文で説明してください。"},
@@ -257,25 +274,41 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         return rows
 
     def measure(*, controls=False, generations=False):
-        measured = evaluate_panel(model, evaluation_sources, panel, generate_answers=generations)
-        report = {"step": trainer.steps, "sources": measured}
-        if controls and native_controls:
-            from intrep.problems.shared_prediction.sources import NativeSource
-            native_panel = {name: cases for name, cases in panel.items()
-                            if isinstance(getattr(evaluation_sources[name], "reader", evaluation_sources[name]), NativeSource)}
-            report["native_input_controls"] = {}
-            for omission in (None, "image", "audio", "text"):
-                report["native_input_controls"][omission or "complete"] = evaluate_panel(
-                    model, evaluation_sources, native_panel, omit_native=() if omission is None else (omission,), max_native_worlds=16,
-                    generate_answers=False,
-                )
-            omitted = question_omission_panel(evaluation_sources, panel)
-            if omitted:
-                report["question_without_observations"] = evaluate_panel(model, evaluation_sources, omitted, generate_answers=generations)
-        if generations:
-            report["generations"] = measure_generations(include_holdout=True)
         directory = output / "evaluation"
         directory.mkdir(exist_ok=True)
+        rows_directory = directory / f"step-{trainer.steps:06d}"
+        measured = (evaluate_full(model, evaluation_sources, rows_directory, generate_answers=generations)
+                    if full_evaluation else evaluate_panel(model, evaluation_sources, panel, generate_answers=generations))
+        report = {"step": trainer.steps, "sources": measured}
+        if full_evaluation:
+            report["rows_directory"] = rows_directory.name
+        if controls and native_controls:
+            from intrep.problems.shared_prediction.sources import NativeSource
+            native_sources = {name: source for name, source in evaluation_sources.items()
+                              if isinstance(getattr(source, "reader", source), NativeSource)}
+            report["native_input_controls"] = {}
+            for omission in (None, "image", "audio", "text"):
+                omitted_inputs = () if omission is None else (omission,)
+                report["native_input_controls"][omission or "complete"] = (
+                    evaluate_full(model, native_sources, rows_directory / f"native-{omission or 'complete'}",
+                                  omit_native=omitted_inputs, generate_answers=False)
+                    if full_evaluation else evaluate_panel(
+                        model, evaluation_sources, {name: panel[name] for name in native_sources},
+                        omit_native=omitted_inputs, max_native_worlds=16, generate_answers=False))
+            if full_evaluation:
+                question_sources = {name: source for name, source in evaluation_sources.items()
+                                    if source.config.get("question_mode") == "varied"
+                                    and source.config["kind"] not in ("text", "conversations", "boolq")}
+                if question_sources:
+                    report["question_without_observations"] = evaluate_full(
+                        model, question_sources, rows_directory / "without-observations", generate_answers=generations,
+                        only_questions=True, omit_observations=True)
+            else:
+                omitted = question_omission_panel(evaluation_sources, panel)
+                if omitted:
+                    report["question_without_observations"] = evaluate_panel(model, evaluation_sources, omitted, generate_answers=generations)
+        if generations:
+            report["generations"] = measure_generations(include_holdout=True)
         (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps({"stage": "evaluation", "step": trainer.steps,
                           "losses": {name: value["summary"]["loss"] for name, value in measured.items()}}), flush=True)
@@ -292,10 +325,12 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             probe.source = name
         return source.loss()
 
-    records = []
+    records = [] if steps is not None else None
     elapsed_training = 0.0
     try:
-        while trainer.steps < steps:
+        while steps is None or trainer.steps < steps:
+            if epochs is not None and all(completed_epochs(source) >= epochs for source in sources.values()):
+                break
             if training_seconds is not None and elapsed_training >= training_seconds:
                 break
             if next(model.parameters()).is_cuda:
@@ -315,15 +350,18 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if any(hasattr(source, "last_update_info") for source in sources.values()):
                 record["source_details"] = {name: source.last_update_info for name, source in sources.items()
                                              if hasattr(source, "last_update_info")}
-            records.append(record)
+            if records is not None:
+                records.append(record)
             with (output / "steps.jsonl").open("a") as handle:
                 handle.write(json.dumps(record) + "\n")
             print(json.dumps(record), flush=True)
             if trainer.steps % checkpoint_interval == 0:
                 save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
-            if evaluation_interval and trainer.steps % evaluation_interval == 0 and trainer.steps < steps:
+            remaining = (trainer.steps < steps if steps is not None
+                         else any(completed_epochs(source) < epochs for source in sources.values()))
+            if evaluation_interval and trainer.steps % evaluation_interval == 0 and remaining:
                 measure()
-            if generation_interval and trainer.steps % generation_interval == 0 and trainer.steps < steps:
+            if generation_interval and trainer.steps % generation_interval == 0 and remaining:
                 measure_generations()
     finally:
         if audit:
@@ -335,28 +373,36 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     core_names = [name for name in before if name.startswith("core.")]
     save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
     after_evaluation = measure(controls=True, generations=True)
+    paired = (paired_full_comparison(before_evaluation["sources"], after_evaluation["sources"],
+                                    before_directory=output / "evaluation" / before_evaluation["rows_directory"],
+                                    after_directory=output / "evaluation" / after_evaluation["rows_directory"])
+              if full_evaluation else paired_comparison(before_evaluation["sources"], after_evaluation["sources"]))
     result = {"parameters": sum(parameter.numel() for parameter in model.parameters()),
               "initial_parameters_sha256": hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest(),
               "final_parameters_sha256": hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest(),
               "requested_steps": steps, "completed_steps": trainer.steps,
+              "requested_epochs": epochs,
+              "completed_epochs": {name: completed_epochs(source) for name, source in sources.items()},
+              "population_complete": all(completed_epochs(source) >= (epochs or 1) for source in sources.values()),
               "training_seconds_budget": training_seconds, "training_seconds": elapsed_training,
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
               "core_parameter_tensors": len(core_names),
               "changed_core_parameter_tensors": sum(name in changed for name in core_names),
-              "changed_parameter_names": changed, "joint_updates": records,
+              "changed_parameter_names": changed, "joint_updates": records, "updates_file": "steps.jsonl",
               "source_progress": {name: source.progress() for name, source in sources.items()
                                   if hasattr(source, "progress")},
               "gradient_audit": audit.records if audit else None,
               "evaluation_before": {name: row["summary"]["loss"]["mean"] for name, row in before_evaluation["sources"].items()},
               "evaluation_after": {name: row["summary"]["loss"]["mean"] for name, row in after_evaluation["sources"].items()},
-              "paired_evaluation": paired_comparison(before_evaluation["sources"], after_evaluation["sources"]),
+              "paired_evaluation": paired,
               "text_before": {row["prompt"]: row["answer"] for row in before_evaluation["generations"]},
               "text_after": {row["prompt"]: row["answer"] for row in after_evaluation["generations"]},
               "max_process_rss_mib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
               "torch_version": str(torch.__version__), "device": device,
               "cuda_peak_allocated_mib": torch.cuda.max_memory_allocated() / 2**20 if device.startswith("cuda") else None,
               "input_heads": list(model.input_heads), "output_heads": list(model.output_heads),
-              "limitations": "Fixed development panel; descriptive paired changes are not full-population evaluation or causal cross-task transfer evidence."}
+              "limitations": ("Complete declared development populations and configured question forms; not an untouched test or causal cross-task transfer evidence."
+                              if full_evaluation else "Fixed development panel; descriptive paired changes are not full-population evaluation or causal cross-task transfer evidence.")}
     (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"stage": "saved", "checkpoint": str(checkpoint_path),
                       "changed_core_tensors": result["changed_core_parameter_tensors"],

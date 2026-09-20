@@ -366,13 +366,14 @@ class QuestionSource:
         set_case(self.reader, case)
         self._forced = case
 
-    def _records(self, seed):
+    def _records(self, seed, first=None):
         next_record = self.reader.next_transition if isinstance(self.reader, NativeSource) else self.reader.next_record
-        first = next_record()
+        if first is None:
+            first = next_record()
         if self._forced and isinstance(first, dict) and first.get("index") in self.evaluation_excluded_indices:
             raise ValueError("a reserved holdout image cannot enter development evaluation")
         records = [first]
-        if self.partners:
+        if self.partners and not (self._forced and self._forced.get("primary_only", False)):
             generator = random.Random(seed)
             # Each added form must see both pair labels, independently of the
             # original/added alternation and its own position in the cycle.
@@ -380,7 +381,10 @@ class QuestionSource:
             same = seed % 2 == 0 if self._forced else cycle % 2 == 0
             for pair_index in range(1 if self._forced else self.records_per_update // 2):
                 if pair_index:
-                    first = next_record()
+                    try:
+                        first = next_record()
+                    except StopIteration:
+                        break
                     records.append(first)
                 label = first["label"]
                 eligible_labels = [value for value, indices in self.class_indices.items() if value != label
@@ -398,7 +402,11 @@ class QuestionSource:
                     index = generator.choice(pool) if self._forced else pool[self.partners[selected].next()]
                 records.append(self.reader.read_record(index))
         elif not self._forced:
-            records.extend(next_record() for _ in range(self.records_per_update - 1))
+            for _ in range(self.records_per_update - 1):
+                try:
+                    records.append(next_record())
+                except StopIteration:
+                    break
         for record in records:
             if isinstance(record, dict) and "index" in record:
                 self.distinct.add(str(record["index"]))
@@ -482,10 +490,10 @@ class QuestionSource:
                 results[index] = torch.stack(losses).mean(), metrics, response
         return results
 
-    def loss(self):
+    def loss(self, record=None):
         self.last_metrics, self.last_response = {}, None
         seed = self._forced["seed"] if self._forced else stable_seed((self.config["name"], self.step))
-        records = self._records(seed)
+        records = self._records(seed, record)
         if self._forced:
             form, wording = self._forced["form"], self._forced["wording"]
         else:

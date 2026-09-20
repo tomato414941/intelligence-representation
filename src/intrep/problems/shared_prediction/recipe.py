@@ -16,6 +16,15 @@ def evaluation_recipe(recipe: dict) -> dict:
     return result
 
 
+def without_evaluation_sampling(recipe: dict) -> dict:
+    """Sampling evaluation cases does not change training inputs or cursor state."""
+    result = copy.deepcopy(recipe)
+    for row in [result.get("defaults", {}), *result["sources"]]:
+        row.pop("question_evaluation_examples", None)
+        row.pop("question_evaluation_worlds", None)
+    return result
+
+
 def validate_recipe(recipe: dict, root: Path) -> None:
     train = source_configs(recipe)
     evaluation = source_configs(evaluation_recipe(recipe))

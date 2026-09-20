@@ -1,0 +1,178 @@
+{
+  "seed": 47,
+  "defaults": {
+    "patch_size": 4,
+    "audio_chunk_size": 128,
+    "action_count": 5,
+    "block_tokens": 128,
+    "seed": 47,
+    "weight": 1.0,
+    "records_per_update": 2,
+    "question_mode": "varied"
+  },
+  "sources": [
+    {
+      "name": "tinystories",
+      "kind": "text",
+      "path": "data/tinystories/raw/TinyStoriesV2-GPT4-train.txt",
+      "evaluation": {
+        "path": "data/tinystories/raw/TinyStoriesV2-GPT4-valid.txt"
+      },
+      "records_per_update": 1
+    },
+    {
+      "name": "wikitext2",
+      "kind": "text",
+      "path": "data/wikitext-2/raw/wiki.train.raw.txt",
+      "evaluation": {
+        "path": "data/wikitext-2/raw/wiki.valid.raw.txt"
+      },
+      "records_per_update": 1
+    },
+    {
+      "name": "shakespeare",
+      "kind": "text",
+      "path": "data/tiny-shakespeare/raw/tiny-shakespeare.txt",
+      "byte_start": 0,
+      "byte_end": 1003856,
+      "evaluation": {
+        "byte_start": 1003856,
+        "byte_end": 1115394
+      },
+      "records_per_update": 1
+    },
+    {
+      "name": "conversations",
+      "kind": "conversations",
+      "path": "data/instruction-retention-20260911/train.jsonl",
+      "evaluation": {
+        "path": "data/instruction-retention-20260911/validation.jsonl"
+      },
+      "records_per_update": 1,
+      "conversation_objective": "assistant",
+      "weight": 1.0,
+      "conversation_tokens": 2048,
+      "conversation_overlap": 1024
+    },
+    {
+      "name": "mnist",
+      "kind": "idx",
+      "images": "data/mnist/raw/train-images-idx3-ubyte.gz",
+      "labels": "data/mnist/raw/train-labels-idx1-ubyte.gz",
+      "evaluation": {
+        "images": "data/mnist/raw/t10k-images-idx3-ubyte.gz",
+        "labels": "data/mnist/raw/t10k-labels-idx1-ubyte.gz"
+      }
+    },
+    {
+      "name": "fashion_mnist",
+      "kind": "idx",
+      "images": "data/fashion-mnist/raw/train-images-idx3-ubyte.gz",
+      "labels": "data/fashion-mnist/raw/train-labels-idx1-ubyte.gz",
+      "evaluation": {
+        "images": "data/fashion-mnist/raw/t10k-images-idx3-ubyte.gz",
+        "labels": "data/fashion-mnist/raw/t10k-labels-idx1-ubyte.gz"
+      }
+    },
+    {
+      "name": "cifar10",
+      "kind": "cifar10",
+      "batches": [
+        "data/cifar10/raw/cifar-10-batches-py/data_batch_1",
+        "data/cifar10/raw/cifar-10-batches-py/data_batch_2",
+        "data/cifar10/raw/cifar-10-batches-py/data_batch_3",
+        "data/cifar10/raw/cifar-10-batches-py/data_batch_4",
+        "data/cifar10/raw/cifar-10-batches-py/data_batch_5"
+      ],
+      "evaluation": {
+        "batches": [
+          "data/cifar10/raw/cifar-10-batches-py/test_batch"
+        ]
+      }
+    },
+    {
+      "name": "shogi",
+      "kind": "shogi_examples",
+      "path": "data/shogi/training-data-bundles/qhapaq-full/train-examples.jsonl",
+      "evaluation": {
+        "path": "data/shogi/training-data-bundles/qhapaq-full/eval-examples.jsonl"
+      }
+    },
+    {
+      "name": "native_experience",
+      "kind": "native",
+      "selection": "data/multimodal-navigation-20260910/selection.json",
+      "split": "train",
+      "evaluation": {
+        "split": "validation"
+      }
+    },
+    {
+      "name": "spoken_digits",
+      "kind": "spoken_digits",
+      "manifest": "data/question-learning-20260911/fsdd/manifest.json",
+      "split": "train",
+      "evaluation": {
+        "split": "validation"
+      }
+    },
+    {
+      "name": "inertial_activity",
+      "kind": "inertial_activity",
+      "path": "data/question-learning-20260911/uci-har/train.npz",
+      "normalization": "data/question-learning-20260911/uci-har/normalization.json",
+      "evaluation": {
+        "path": "data/question-learning-20260911/uci-har/validation.npz"
+      }
+    },
+    {
+      "name": "boolq",
+      "kind": "boolq",
+      "path": "data/question-learning-20260911/boolq/train.jsonl",
+      "evaluation": {
+        "path": "data/question-learning-20260911/boolq/validation.jsonl"
+      },
+      "records_per_update": 1
+    },
+    {
+      "name": "aya_en",
+      "kind": "conversations",
+      "path": "data/replay-coverage-20260916/prepared/aya-en-train.jsonl",
+      "evaluation": {
+        "path": "data/replay-coverage-20260916/prepared/aya-en-validation.jsonl"
+      },
+      "conversation_objective": "assistant",
+      "conversation_tokens": 2048,
+      "conversation_overlap": 1024,
+      "records_per_update": 4,
+      "weight": 1.0,
+      "question_mode": "fixed"
+    },
+    {
+      "name": "aya_ja",
+      "kind": "conversations",
+      "path": "data/replay-coverage-20260916/prepared/aya-ja-train.jsonl",
+      "evaluation": {
+        "path": "data/replay-coverage-20260916/prepared/aya-ja-validation.jsonl"
+      },
+      "conversation_objective": "assistant",
+      "conversation_tokens": 2048,
+      "conversation_overlap": 1024,
+      "records_per_update": 4,
+      "weight": 1.0,
+      "question_mode": "fixed"
+    },
+    {
+      "name": "wikipedia_ja",
+      "kind": "text",
+      "path": "data/replay-coverage-20260916/prepared/wiki-train.txt",
+      "evaluation": {
+        "path": "data/replay-coverage-20260916/prepared/wiki-validation.txt"
+      },
+      "block_tokens": 512,
+      "records_per_update": 1,
+      "weight": 1.0,
+      "question_mode": "fixed"
+    }
+  ]
+}
