@@ -20,9 +20,11 @@ def main():
     parser.add_argument("--data-root", type=Path, default=Path("."))
     parser.add_argument("--output", type=Path, required=True)
     budget = parser.add_mutually_exclusive_group()
-    budget.add_argument("--epochs", type=int, help="minimum passes through every source; all sources remain active, defaults to one")
-    budget.add_argument("--steps", type=int, help="explicit diagnostic limit on total joint updates, including restored updates")
-    parser.add_argument("--training-seconds", type=float, help="stop after this many measured training seconds; excludes evaluation and I/O")
+    budget.add_argument("--epochs", type=int, help="complete fresh passes through every source, defaults to one; completed sources participate only in replay")
+    budget.add_argument("--steps", type=int, help="diagnostic limit on total fresh/replay updates within one pass, including restored updates")
+    parser.add_argument("--replay-every", type=int, help="one replay update after this many fresh updates; 0 disables replay; defaults to 3, inherited on resume")
+    parser.add_argument("--replay-capacity", type=int, help="maximum retained batches per source; defaults to 128, inherited on resume")
+    parser.add_argument("--training-seconds", type=float, help="stop after this many measured training seconds; excludes evaluation and checkpoint I/O")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--optimizer", choices=("sgd", "adamw"), default="sgd")
@@ -54,7 +56,8 @@ def main():
           native_controls=args.native_controls, prompts=json.loads(args.prompts.read_text()) if args.prompts else None,
           training_seconds=args.training_seconds, generation_interval=args.generation_interval,
           holdout_prompts=json.loads(args.holdout_prompts.read_text()) if args.holdout_prompts else None,
-          gradient_probe_interval=args.gradient_probe_interval)
+          gradient_probe_interval=args.gradient_probe_interval,
+          replay_every=args.replay_every, replay_capacity=args.replay_capacity)
 
 
 if __name__ == "__main__":

@@ -124,11 +124,11 @@ def main():
                       [row["sources"][name]["summary"]["loss"]["mean"] for row in records],
                       marker="o", color=color, label=size.upper())
         axis.set_title(name.replace("_", " "))
-        axis.set_xlabel("Joint updates")
+        axis.set_xlabel("Optimizer updates")
         axis.set_ylabel("Development loss")
         axis.grid(alpha=0.18)
     axes[0, 0].legend(frameon=False)
-    figure.suptitle("All nine sources in every update · fixed validation examples", fontsize=14)
+    figure.suptitle("Shared model learning · fixed validation examples", fontsize=14)
     figure.savefig(args.root / "learning-curves.png", dpi=180)
     figure.savefig(args.root / "learning-curves.pdf")
     plt.close(figure)

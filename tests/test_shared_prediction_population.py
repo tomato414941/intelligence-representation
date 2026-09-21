@@ -159,6 +159,7 @@ class PopulationTests(unittest.TestCase):
 
     def test_full_pass_covers_every_episode_transition_and_all_other_record_sources(self):
         import intrep.problems.shared_prediction.record_sources  # noqa: F401
+        from intrep.problems.shared_prediction.replay import batch_loss, pack_batch, unpack_batch
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
             root = Path(directory)
             recipe = question_recipe(root)
@@ -192,7 +193,8 @@ class PopulationTests(unittest.TestCase):
             (root / "shogi.jsonl").write_text("".join(json.dumps({"position_sfen": board.sfen(), "legal_moves": moves,
                 "chosen_move": move, "game_index": index}) + "\n" for index, move in enumerate(moves[:2])))
             recipe["sources"] = [
-                {"name": "experience", "kind": "native", "selection": selection.name, "split": "validation"},
+                {"name": "experience", "kind": "native", "selection": selection.name, "split": "validation",
+                 "records_per_update": 4},
                 {"name": "spoken_digits", "kind": "spoken_digits", "manifest": "manifest.json", "split": "validation"},
                 {"name": "inertial_activity", "kind": "inertial_activity", "path": "signals.npz", "normalization": "normalization.json"},
                 {"name": "boolq", "kind": "boolq", "path": "boolq.jsonl", "records_per_update": 1},
@@ -211,6 +213,18 @@ class PopulationTests(unittest.TestCase):
                 rows = list(population_records(source))
                 self.assertEqual(completed_epochs(source), 1)
                 self.assertEqual(len(rows), measured[source.config["name"]]["records"])
+                # Replay media from disk and structured targets from a safe
+                # checkpoint, without consuming the remaining fresh records.
+                rewind_population(source)
+                batch = source.next_batch()
+                expected = batch_loss(source, batch).detach()
+                cursor = copy.deepcopy(source.reader.progress())
+                buffer = io.BytesIO()
+                torch.save(pack_batch(source, batch), buffer)
+                buffer.seek(0)
+                restored = unpack_batch(source, torch.load(buffer, weights_only=True))
+                torch.testing.assert_close(batch_loss(source, restored).detach(), expected, rtol=0, atol=0)
+                self.assertEqual(source.reader.progress(), cursor)
 
     def test_default_training_finishes_all_sources_and_partial_epoch_resumes_exactly(self):
         from transformers import Lfm2ForCausalLM
@@ -244,7 +258,10 @@ class PopulationTests(unittest.TestCase):
             self.assertGreaterEqual(report["source_progress"]["text_data"]["trained_tokens"], 6)
             self.assertEqual(report["source_progress"]["pictures"]["samples"], 4)
             steps = [json.loads(line) for line in (root / "straight/steps.jsonl").read_text().splitlines()]
-            self.assertTrue(all({"text_data", "pictures"}.issubset(row) for row in steps))
+            self.assertEqual([row["source"] for row in steps if row["experience"] == "fresh"],
+                             ["text_data", "pictures", "text_data", "pictures", "pictures", "pictures"])
+            self.assertEqual(sum(row["experience"] == "replay" for row in steps), 2)
+            self.assertEqual(report["source_progress"]["text_data"]["trained_tokens"], 6)
             self.assertIsNone(report["joint_updates"])
             self.assertEqual(report["paired_evaluation"]["pictures"]["examples"], 4)
 

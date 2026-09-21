@@ -8,7 +8,7 @@ from torch import nn
 
 
 class JointTrainer:
-    """Accumulate every registered source, then update the entire shared model once."""
+    """Accumulate selected registered sources, then update the shared model once."""
 
     def __init__(self, model: nn.Module, weights: Mapping[str, float], *, learning_rate: float,
                  optimizer: str = "adamw", weight_decay: float = 0.0, momentum: float = 0.0,
@@ -56,17 +56,20 @@ class JointTrainer:
         self.weights[name] = weight
 
     def step(self, losses: Mapping[str, Callable[[], torch.Tensor]]) -> dict[str, float]:
-        if set(losses) != set(self.weights):
-            raise ValueError("each joint update must include every registered data source")
+        if not losses or not set(losses).issubset(self.weights):
+            raise ValueError("each update must select one or more registered data sources")
         self.synchronize_parameters()
         self.model.train()
         self.optimizer.zero_grad(set_to_none=True)
-        total_weight = sum(self.weights.values())
+        weights = {name: weight for name, weight in self.weights.items() if name in losses}
+        # Retain relative source weights even when an update selects just one.
+        # Uniform source selection then estimates the complete weighted loss.
+        total_weight = sum(self.weights.values()) * (len(weights) / len(self.weights))
         metrics = {}
         device_groups = {}
         try:
             # Release each source's activations after backward; gradients accumulate.
-            for name, weight in self.weights.items():
+            for name, weight in weights.items():
                 loss = losses[name]()
                 if (not isinstance(loss, torch.Tensor) or loss.ndim != 0
                         or not loss.requires_grad):
@@ -89,7 +92,7 @@ class JointTrainer:
             self.optimizer.zero_grad(set_to_none=True)
             raise
         self.steps += 1
-        metrics["weighted_loss"] = sum(metrics[name] * weight for name, weight in self.weights.items()) / total_weight
+        metrics["weighted_loss"] = sum(metrics[name] * weight for name, weight in weights.items()) / total_weight
         metrics["grad_norm"] = float(norm)
         return metrics
 

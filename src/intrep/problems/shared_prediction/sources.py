@@ -311,6 +311,7 @@ class NativeSource(Source):
             worlds[row["world_id"]] = row["split"]
         split = self.config.get("split", "train")
         self.entries = [row for row in payload["episodes"] if row["split"] == split]
+        self.episode_indices = {row["id"]: index for index, row in enumerate(self.entries)}
         self.sampler = EpochSampler(len(self.entries), self.config["seed"])
         self.active = None
         self.transition = 0
@@ -318,14 +319,18 @@ class NativeSource(Source):
         self.transitions_seen = 0
         self.omitted_inputs = set()
 
-    def _load(self, index):
+    def read_episode(self, index):
         entry = self.entries[index]
         path = (self.selection.parent / entry["path"]).resolve()
         if not path.is_relative_to(self.selection.parent.resolve()) or episode_digest(path) != entry["sha256"]:
             raise ValueError("native episode path or digest differs from its selection")
-        self.episode = load_episode(path)
-        if self.episode.id != entry["id"] or self.episode.world_id != entry["world_id"]:
+        episode = load_episode(path)
+        if episode.id != entry["id"] or episode.world_id != entry["world_id"]:
             raise ValueError("native episode identity differs from its selection")
+        return episode
+
+    def _load(self, index):
+        self.episode = self.read_episode(index)
         self.active = index
 
     def next_transition(self):

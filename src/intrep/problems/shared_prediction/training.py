@@ -19,6 +19,7 @@ from intrep.problems.shared_prediction.evaluation import (
 )
 from intrep.problems.shared_prediction.full_evaluation import evaluate_full, paired_full_comparison
 from intrep.problems.shared_prediction.population import completed_epochs
+from intrep.problems.shared_prediction.replay import ExperienceReplay, batch_loss
 from intrep.problems.shared_prediction.recipe import (
     evaluation_recipe,
     validate_extension,
@@ -35,12 +36,13 @@ from intrep.representation.cores.lfm import create_lfm, load_lfm
 SCHEMA = "intrep.shared_prediction_checkpoint.v1"
 
 
-def save_checkpoint(path: Path, model, trainer, sources, recipe, provenance, tokenizer, extensions=()):
+def save_checkpoint(path: Path, model, trainer, sources, recipe, provenance, tokenizer, extensions=(), *, replay=None):
     payload = {"schema_version": SCHEMA, "lfm_config": model.core.body.config.to_dict(),
                "attention_implementation": model.core.body.config._attn_implementation,
                "modules": model.module_state_dict(), "trainer": trainer.state_dict(),
                "sources": {name: source.state_dict() for name, source in sources.items()},
                "recipe": recipe, "provenance": provenance, "extensions": list(extensions),
+               "experience_replay": replay.state_dict() if replay is not None else None,
                "torch_rng": torch.get_rng_state(),
                "cuda_rng": torch.cuda.get_rng_state_all() if next(model.parameters()).device.type == "cuda" else [],
                "dtype": str(next(model.parameters()).dtype).removeprefix("torch.")}
@@ -130,8 +132,9 @@ class SourceGradientProbe:
             return None
         norms = {name: sum(value.square().sum() for value in values.values()).sqrt()
                  for name, values in self.values.items()}
+        normalizer = sum(weights.values()) * (len(norms) / len(weights))
         rows = {name: {"weighted_norm": float(norm),
-                       "unweighted_norm": float(norm) * sum(weights.values()) / weights[name]}
+                       "unweighted_norm": float(norm) * normalizer / weights[name]}
                 for name, norm in norms.items()}
         reference = self.values.get("conversations")
         if reference:
@@ -173,10 +176,12 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
           resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
           evaluation_examples=None, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None,
-          generation_interval=0, holdout_prompts=None, gradient_probe_interval=0):
+          generation_interval=0, holdout_prompts=None, gradient_probe_interval=0,
+          replay_every=None, replay_capacity=None):
     from transformers import AutoTokenizer
 
-    if steps is None and epochs is None:
+    default_epochs = steps is None and epochs is None
+    if default_epochs:
         epochs = 1
     if ((steps is not None and (type(steps) is not int or steps < 1))
             or (epochs is not None and (type(epochs) is not int or epochs < 1))
@@ -196,6 +201,8 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     payload = None
     if resume is not None:
         model, tokenizer, payload = load_checkpoint(resume, device=device, extensions=extensions, extend=extend)
+        if payload.get("experience_replay") is None:
+            raise ValueError("this checkpoint has no experience replay schedule; exact replay continuation requires its saved schedule")
         if extend:
             validate_extension(payload["recipe"], recipe)
         elif without_evaluation_sampling(payload["recipe"]) != without_evaluation_sampling(recipe):
@@ -232,8 +239,20 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
                 trainer.add_source(row["name"], row.get("weight", 1.0))
     if steps is not None and steps <= trainer.steps:
         raise ValueError("the requested total step budget must advance the checkpoint")
-    if epochs is not None and all(completed_epochs(source) >= epochs for source in sources.values()):
+    previous_replay = payload["experience_replay"] if payload is not None else {}
+    if default_epochs and previous_replay:
+        epochs = previous_replay["epochs"]
+    target_epochs = epochs if epochs is not None else previous_replay["epochs"] if previous_replay else 1
+    replay = ExperienceReplay(sources, epochs=target_epochs, seed=recipe.get("seed", 47),
+                              every=previous_replay.get("every", 3) if replay_every is None else replay_every,
+                              capacity=previous_replay.get("capacity", 128) if replay_capacity is None else replay_capacity)
+    if previous_replay:
+        replay.load_state_dict(previous_replay, extend=extend)
+        if sum(replay.fresh_updates.values()) + sum(replay.replay_updates.values()) != trainer.steps:
+            raise ValueError("checkpoint replay counts do not match optimizer updates")
+    if replay.complete:
         raise ValueError("the requested epochs must advance the checkpoint")
+    print(json.dumps({"stage": "experience_replay", **replay.progress()}), flush=True)
     trainer.synchronize_parameters()
     (output / "recipe.json").write_text(json.dumps(recipe, ensure_ascii=False, indent=2) + "\n")
     (output / "provenance.json").write_text(json.dumps({"training": provenance, "evaluation": evaluation_provenance},
@@ -318,18 +337,18 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     audit = GradientAudit(model) if audit_gradients else None
     probe = SourceGradientProbe(model) if gradient_probe_interval else None
 
-    def source_loss(name, source):
+    def source_loss(name, batch):
         if audit:
             audit.source = name
         if probe:
             probe.source = name
-        return source.loss()
+        return batch_loss(sources[name], batch)
 
     records = [] if steps is not None else None
     elapsed_training = 0.0
     try:
         while steps is None or trainer.steps < steps:
-            if epochs is not None and all(completed_epochs(source) >= epochs for source in sources.values()):
+            if replay.complete:
                 break
             if training_seconds is not None and elapsed_training >= training_seconds:
                 break
@@ -339,26 +358,30 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if probe:
                 next_step = trainer.steps + 1
                 probe.begin(next_step <= 2 or next_step % gradient_probe_interval in (0, 1))
-            callbacks = {name: (lambda name=name, source=source: source_loss(name, source)) for name, source in sources.items()}
-            metrics = trainer.step(callbacks)
+            try:
+                name, batch, is_replay = replay.next()
+            except StopIteration:
+                if not replay.complete:
+                    raise ValueError("a training source ended before completing its declared population")
+                break
+            metrics = trainer.step({name: lambda: source_loss(name, batch)})
+            replay.record_update(name, batch, is_replay)
             if next(model.parameters()).is_cuda:
                 torch.cuda.synchronize()
-            record = {"step": trainer.steps, "seconds": time.perf_counter() - start, **metrics}
+            record = {"step": trainer.steps, "seconds": time.perf_counter() - start,
+                      "source": name, "experience": "replay" if is_replay else "fresh", **metrics}
             if probe and probe.enabled:
                 record["gradient_probe"] = probe.summary(trainer.weights)
             elapsed_training += record["seconds"]
-            if any(hasattr(source, "last_update_info") for source in sources.values()):
-                record["source_details"] = {name: source.last_update_info for name, source in sources.items()
-                                             if hasattr(source, "last_update_info")}
+            record["source_details"] = {name: getattr(sources[name], "last_update_info", {"records": len(batch["records"])})}
             if records is not None:
                 records.append(record)
             with (output / "steps.jsonl").open("a") as handle:
                 handle.write(json.dumps(record) + "\n")
             print(json.dumps(record), flush=True)
             if trainer.steps % checkpoint_interval == 0:
-                save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
-            remaining = (trainer.steps < steps if steps is not None
-                         else any(completed_epochs(source) < epochs for source in sources.values()))
+                save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions, replay=replay)
+            remaining = not replay.complete and (steps is None or trainer.steps < steps)
             if evaluation_interval and trainer.steps % evaluation_interval == 0 and remaining:
                 measure()
             if generation_interval and trainer.steps % generation_interval == 0 and remaining:
@@ -371,7 +394,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     after = parameter_digests(model)
     changed = [name for name in before if before[name] != after[name]]
     core_names = [name for name in before if name.startswith("core.")]
-    save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions)
+    save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions, replay=replay)
     after_evaluation = measure(controls=True, generations=True)
     paired = (paired_full_comparison(before_evaluation["sources"], after_evaluation["sources"],
                                     before_directory=output / "evaluation" / before_evaluation["rows_directory"],
@@ -383,7 +406,8 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
               "requested_steps": steps, "completed_steps": trainer.steps,
               "requested_epochs": epochs,
               "completed_epochs": {name: completed_epochs(source) for name, source in sources.items()},
-              "population_complete": all(completed_epochs(source) >= (epochs or 1) for source in sources.values()),
+              "population_complete": all(completed_epochs(source) >= replay.epochs for source in sources.values()),
+              "experience_replay": replay.progress(),
               "training_seconds_budget": training_seconds, "training_seconds": elapsed_training,
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
               "core_parameter_tensors": len(core_names),

@@ -216,7 +216,7 @@ class SourceIntegrationTests(unittest.TestCase):
             model, _, state = load_checkpoint(path, extensions=extensions)
             self.assertIn("another_output", model.output_heads)
             self.assertEqual(set(state["sources"]), {"text_data", "pictures", "another_output"})
-            self.assertEqual(state["sources"]["pictures"]["samples"], 3)
+            self.assertEqual(state["sources"]["pictures"]["samples"], 1)
             self.assertEqual(state["sources"]["another_output"]["samples"], 1)
 
 

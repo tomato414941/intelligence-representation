@@ -28,7 +28,8 @@ for mode in ("fixed", "varied"):
     "model": "LFM2.5-350M", "base": "models/lfm2.5-350m",
     "precision": "float32", "optimizer": "AdamW", "learning_rate": 1e-5,
     "training_seconds_per_condition": float(sys.argv[2]), "maximum_steps": 12000,
-    "all_sources_per_update": True, "all_parameters_trainable": True,
+    "all_sources_per_update": False, "all_parameters_trainable": True,
+    "fresh_updates_per_replay": 3, "replay_capacity_per_source_batches": 128,
     "comparison": "same initial weights, populations and primary/partner sampling; matched measured training wall time on the same GPU, not exact FLOPs",
 }, indent=2) + "\n")
 PY

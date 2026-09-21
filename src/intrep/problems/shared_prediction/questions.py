@@ -490,8 +490,7 @@ class QuestionSource:
                 results[index] = torch.stack(losses).mean(), metrics, response
         return results
 
-    def loss(self, record=None):
-        self.last_metrics, self.last_response = {}, None
+    def next_batch(self, record=None):
         seed = self._forced["seed"] if self._forced else stable_seed((self.config["name"], self.step))
         records = self._records(seed, record)
         if self._forced:
@@ -499,6 +498,15 @@ class QuestionSource:
         else:
             form = "original" if self.config["question_mode"] == "fixed" or self.step % 2 == 0 else self.forms[1:][(self.step // 2) % (len(self.forms) - 1)]
             wording = 0
+        return {"records": records, "seed": seed, "form": form, "wording": wording}
+
+    def loss(self, record=None):
+        return self.batch_loss(self.next_batch(record))
+
+    def batch_loss(self, batch):
+        """Score the supplied experience without advancing any data reader."""
+        self.last_metrics, self.last_response = {}, None
+        records, seed, form, wording = (batch[key] for key in ("records", "seed", "form", "wording"))
         self.last_form = form
         first = records[0]
         self.last_group = (first[0].world_id if isinstance(self.reader, NativeSource) else

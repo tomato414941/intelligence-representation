@@ -259,7 +259,7 @@ class QuestionTests(unittest.TestCase):
             b, _, _ = load_checkpoint(straight)
             for actual, expected in zip(a.parameters(), b.parameters()):
                 torch.testing.assert_close(actual, expected, rtol=0, atol=0)
-            self.assertEqual(state["sources"]["mnist"]["step"], 3)
+            self.assertEqual(state["sources"]["mnist"]["step"], 1)
 
 
 if __name__ == "__main__":

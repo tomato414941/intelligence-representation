@@ -60,11 +60,13 @@ class SharedPredictorTests(unittest.TestCase):
         self.assertEqual(seen, ["first", "second"])
         for actual, wanted in zip(model.parameters(), expected.parameters()):
             torch.testing.assert_close(actual, wanted)
-        before = copy.deepcopy(model.state_dict())
-        with self.assertRaisesRegex(ValueError, "every registered"):
-            trainer.step({"first": lambda: loss(model, 0)})
-        for name, value in model.state_dict().items():
-            torch.testing.assert_close(value, before[name], rtol=0, atol=0)
+        # A selected source retains its weight relative to the registered mean.
+        optimizer.zero_grad(set_to_none=True)
+        (0.5 * loss(expected, 0)).backward()
+        optimizer.step()
+        trainer.step({"first": lambda: loss(model, 0)})
+        for actual, wanted in zip(model.parameters(), expected.parameters()):
+            torch.testing.assert_close(actual, wanted)
 
     def test_exchange_updates_optimizer_without_resetting_core_history(self):
         model = small_predictor()
@@ -95,8 +97,10 @@ class SharedPredictorTests(unittest.TestCase):
         model = small_predictor()
         trainer = JointTrainer(model, {"existing": 1}, learning_rate=0.01)
         trainer.add_source("new", 2)
-        with self.assertRaisesRegex(ValueError, "every registered"):
-            trainer.step({"new": lambda: model.core.weight.square().mean()})
+        before = model.core.weight.detach().clone()
+        trainer.step({"new": lambda: model.core.weight.square().mean()})
+        self.assertFalse(torch.equal(model.core.weight, before))
+        self.assertEqual(trainer.weights, {"existing": 1, "new": 2})
         trainer.step({"existing": lambda: model.core.weight.square().mean(),
                       "new": lambda: model.core.weight.abs().mean()})
 
