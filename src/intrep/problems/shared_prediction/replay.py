@@ -70,7 +70,7 @@ class ExperienceReplay:
     A batch enters the reservoir only after its successful optimizer update.
     """
 
-    def __init__(self, sources, *, epochs=1, every=3, capacity=128, seed=47):
+    def __init__(self, sources, *, epochs=1, every=1, capacity=128, seed=47):
         if (not sources or type(epochs) is not int or epochs < 1
                 or type(every) is not int or every < 0
                 or type(capacity) is not int or capacity < 1):

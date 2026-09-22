@@ -22,7 +22,7 @@ def main():
     budget = parser.add_mutually_exclusive_group()
     budget.add_argument("--epochs", type=int, help="complete fresh passes through every source, defaults to one; completed sources participate only in replay")
     budget.add_argument("--steps", type=int, help="diagnostic limit on total fresh/replay updates within one pass, including restored updates")
-    parser.add_argument("--replay-every", type=int, help="one replay update after this many fresh updates; 0 disables replay; defaults to 3, inherited on resume")
+    parser.add_argument("--replay-every", type=int, help="one replay update after this many fresh updates; 0 disables replay; defaults to 1, inherited on resume")
     parser.add_argument("--replay-capacity", type=int, help="maximum retained batches per source; defaults to 128, inherited on resume")
     parser.add_argument("--training-seconds", type=float, help="stop after this many measured training seconds; excludes evaluation and checkpoint I/O")
     parser.add_argument("--device", default="cpu")

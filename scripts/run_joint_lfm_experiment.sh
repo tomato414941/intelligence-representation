@@ -21,7 +21,7 @@ Path(sys.argv[1]).write_text(json.dumps({
     "gpu": torch.cuda.get_device_name(0), "cuda": torch.version.cuda,
     "precision": "float32", "optimizer": "AdamW", "learning_rate": 1e-5,
     "all_sources_per_update": False, "all_parameters_trainable": True,
-    "fresh_updates_per_replay": 3, "replay_capacity_per_source_batches": 128,
+    "fresh_updates_per_replay": 1, "replay_capacity_per_source_batches": 128,
 }, indent=2) + "\n")
 PY
 

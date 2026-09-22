@@ -244,7 +244,7 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         epochs = previous_replay["epochs"]
     target_epochs = epochs if epochs is not None else previous_replay["epochs"] if previous_replay else 1
     replay = ExperienceReplay(sources, epochs=target_epochs, seed=recipe.get("seed", 47),
-                              every=previous_replay.get("every", 3) if replay_every is None else replay_every,
+                              every=previous_replay.get("every", 1) if replay_every is None else replay_every,
                               capacity=previous_replay.get("capacity", 128) if replay_capacity is None else replay_capacity)
     if previous_replay:
         replay.load_state_dict(previous_replay, extend=extend)

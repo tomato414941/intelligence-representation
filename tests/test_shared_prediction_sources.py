@@ -198,18 +198,18 @@ class SourceIntegrationTests(unittest.TestCase):
             Lfm2ForCausalLM(config).save_pretrained(root / "base")
             make_tokenizer().save_pretrained(root / "base")
             checkpoint = train(base=root / "base", recipe=recipe, root=root, output=root / "first", steps=1)
-            resumed = train(base=None, resume=checkpoint, recipe=recipe, root=root, output=root / "resumed", steps=2)
-            straight = train(base=root / "base", recipe=recipe, root=root, output=root / "straight", steps=2)
+            resumed = train(base=None, resume=checkpoint, recipe=recipe, root=root, output=root / "resumed", steps=3)
+            straight = train(base=root / "base", recipe=recipe, root=root, output=root / "straight", steps=3)
             resumed_model, _, state = load_checkpoint(resumed)
             straight_model, _, _ = load_checkpoint(straight)
             for actual, expected in zip(resumed_model.parameters(), straight_model.parameters()):
                 torch.testing.assert_close(actual, expected, rtol=0, atol=0)
-            self.assertEqual(state["trainer"]["steps"], 2)
+            self.assertEqual(state["trainer"]["steps"], 3)
             extended = copy.deepcopy(recipe)
             extra = {**copy.deepcopy(recipe["sources"][1]), "name": "another_output"}
             extended["sources"].append(extra)
             extensions = ("tests.test_shared_prediction_sources",)
-            path = train(base=None, resume=resumed, recipe=extended, root=root, output=root / "extended", steps=3,
+            path = train(base=None, resume=resumed, recipe=extended, root=root, output=root / "extended", steps=5,
                          extend=True, extensions=extensions)
             with self.assertRaisesRegex(ValueError, "extensions differ"):
                 load_checkpoint(path)

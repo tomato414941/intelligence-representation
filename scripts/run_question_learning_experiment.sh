@@ -29,7 +29,7 @@ for mode in ("fixed", "varied"):
     "precision": "float32", "optimizer": "AdamW", "learning_rate": 1e-5,
     "training_seconds_per_condition": float(sys.argv[2]), "maximum_steps": 12000,
     "all_sources_per_update": False, "all_parameters_trainable": True,
-    "fresh_updates_per_replay": 3, "replay_capacity_per_source_batches": 128,
+    "fresh_updates_per_replay": 1, "replay_capacity_per_source_batches": 128,
     "comparison": "same initial weights, populations and primary/partner sampling; matched measured training wall time on the same GPU, not exact FLOPs",
 }, indent=2) + "\n")
 PY

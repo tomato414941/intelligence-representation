@@ -260,7 +260,7 @@ class PopulationTests(unittest.TestCase):
             steps = [json.loads(line) for line in (root / "straight/steps.jsonl").read_text().splitlines()]
             self.assertEqual([row["source"] for row in steps if row["experience"] == "fresh"],
                              ["text_data", "pictures", "text_data", "pictures", "pictures", "pictures"])
-            self.assertEqual(sum(row["experience"] == "replay" for row in steps), 2)
+            self.assertEqual([row["experience"] for row in steps], ["fresh", "replay"] * 6)
             self.assertEqual(report["source_progress"]["text_data"]["trained_tokens"], 6)
             self.assertIsNone(report["joint_updates"])
             self.assertEqual(report["paired_evaluation"]["pictures"]["examples"], 4)

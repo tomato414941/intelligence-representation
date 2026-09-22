@@ -46,7 +46,7 @@ class ExperienceReplayTests(unittest.TestCase):
             (root / "train.txt").write_text("one two three four " * 8 + "\n")
             model = make_model()
             sources = build_sources(model, make_tokenizer(), recipe, root)
-            replay = ExperienceReplay(sources, capacity=1, every=3)
+            replay = ExperienceReplay(sources, capacity=1)
             trainer = JointTrainer(model, {name: 1 for name in sources}, learning_rate=.001)
             pictures, tokens, kinds = [], [], []
             while not replay.complete:
@@ -63,9 +63,9 @@ class ExperienceReplayTests(unittest.TestCase):
                 kinds.append(is_replay)
             self.assertEqual(sorted(pictures), list(range(4)))
             self.assertEqual(tokens, sources["text_data"].text_ids((root / "train.txt").read_text())[1:])
-            self.assertEqual(kinds, [False, False, False, True] * 4)
+            self.assertEqual(kinds, [False, True] * 12)
             self.assertEqual(replay.fresh_updates, {"text_data": 8, "pictures": 4})
-            self.assertEqual(sum(replay.replay_updates.values()), 4)
+            self.assertEqual(sum(replay.replay_updates.values()), 12)
             self.assertEqual(replay.progress()["retained_batches"], {"text_data": 1, "pictures": 1})
             self.assertEqual({name: completed_epochs(source) for name, source in sources.items()},
                              {"text_data": 1, "pictures": 1})

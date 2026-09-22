@@ -46,7 +46,7 @@ for condition, objective, weight in (("chunked", "all_tokens", 1.), ("assistant"
     "precision": "float32", "optimizer": "AdamW", "learning_rate": 1e-5,
     "steps_per_condition": int(sys.argv[2]), "generation_interval": 50,
     "all_sources_per_update": False, "all_parameters_trainable": True,
-    "fresh_updates_per_replay": 3, "replay_capacity_per_source_batches": 128,
+    "fresh_updates_per_replay": 1, "replay_capacity_per_source_batches": 128,
     "comparison": "same initial weights and populations; fixed optimizer updates, not matched token counts, time or FLOPs",
     "conversation_control": "chunked uses the old 128-token all-role objective with the same expanded bilingual corpus as the other conditions",
     "contrast": "chunked vs assistant changes context and label masking together; assistant vs assistant_weighted changes only source weight",
