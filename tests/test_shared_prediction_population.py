@@ -226,7 +226,7 @@ class PopulationTests(unittest.TestCase):
                 torch.testing.assert_close(batch_loss(source, restored).detach(), expected, rtol=0, atol=0)
                 self.assertEqual(source.reader.progress(), cursor)
 
-    def test_default_training_finishes_all_sources_and_partial_epoch_resumes_exactly(self):
+    def test_step_budget_stops_mid_population_and_resumes_past_a_complete_pass(self):
         from transformers import Lfm2ForCausalLM
         from intrep.problems.shared_prediction.training import load_checkpoint, train
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
@@ -238,31 +238,33 @@ class PopulationTests(unittest.TestCase):
             make_tokenizer().save_pretrained(root / "base")
             options = {"root": root, "optimizer": "adamw", "prompts": []}
             recipe["defaults"].update(question_evaluation_examples=8, question_evaluation_worlds=4)
-            partial = train(base=root / "base", recipe=recipe, output=root / "partial", training_seconds=1e-9, **options)
+            partial = train(base=root / "base", recipe=recipe, output=root / "partial", steps=3, **options)
             partial_report = json.loads((root / "partial/result.json").read_text())
-            self.assertFalse(partial_report["population_complete"])
+            self.assertFalse(partial_report["first_pass_complete"])
+            self.assertEqual(partial_report["completed_steps"], 3)
             uncapped = without_evaluation_sampling(recipe)
-            resumed = train(base=None, resume=partial, recipe=uncapped, output=root / "resumed", **options)
-            straight = train(base=root / "base", recipe=uncapped, output=root / "straight", **options)
+            resumed = train(base=None, resume=partial, recipe=uncapped, output=root / "resumed", steps=20, **options)
+            straight = train(base=root / "base", recipe=uncapped, output=root / "straight", steps=20, **options)
             resumed_model, _, resumed_state = load_checkpoint(resumed)
             straight_model, _, straight_state = load_checkpoint(straight)
             for actual, expected in zip(resumed_model.parameters(), straight_model.parameters()):
                 torch.testing.assert_close(actual, expected, rtol=0, atol=0)
             self.assertEqual(resumed_state["trainer"]["steps"], straight_state["trainer"]["steps"])
             report = json.loads((root / "straight/result.json").read_text())
-            self.assertTrue(report["population_complete"])
-            self.assertEqual(report["requested_epochs"], 1)
-            self.assertIsNone(report["requested_steps"])
+            self.assertTrue(report["first_pass_complete"])
+            self.assertEqual(report["requested_steps"], 20)
+            self.assertEqual(report["completed_steps"], 20)
+            self.assertEqual(report["stop_reason"], "step_budget")
             self.assertTrue(all(value >= 1 for value in report["completed_epochs"].values()))
             self.assertEqual(report["completed_epochs"]["pictures"], 1)
             self.assertGreaterEqual(report["source_progress"]["text_data"]["trained_tokens"], 6)
-            self.assertEqual(report["source_progress"]["pictures"]["samples"], 4)
+            self.assertEqual(report["source_progress"]["pictures"]["samples"], 5)
             steps = [json.loads(line) for line in (root / "straight/steps.jsonl").read_text().splitlines()]
             self.assertEqual([row["source"] for row in steps if row["experience"] == "fresh"],
-                             ["text_data", "pictures", "text_data", "pictures", "pictures", "pictures"])
-            self.assertEqual([row["experience"] for row in steps], ["fresh", "replay"] * 6)
-            self.assertEqual(report["source_progress"]["text_data"]["trained_tokens"], 6)
-            self.assertIsNone(report["joint_updates"])
+                             ["text_data", "pictures"] * 5)
+            self.assertEqual([row["experience"] for row in steps], ["fresh", "replay"] * 10)
+            self.assertEqual(report["source_progress"]["text_data"]["trained_tokens"], 20)
+            self.assertEqual(len(report["joint_updates"]), 20)
             self.assertEqual(report["paired_evaluation"]["pictures"]["examples"], 4)
 
 

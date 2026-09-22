@@ -36,6 +36,10 @@ from intrep.representation.cores.lfm import create_lfm, load_lfm
 SCHEMA = "intrep.shared_prediction_checkpoint.v1"
 
 
+class TimeBudgetExceeded(TimeoutError):
+    pass
+
+
 def save_checkpoint(path: Path, model, trainer, sources, recipe, provenance, tokenizer, extensions=(), *, replay=None):
     payload = {"schema_version": SCHEMA, "lfm_config": model.core.body.config.to_dict(),
                "attention_implementation": model.core.body.config._attn_implementation,
@@ -152,7 +156,7 @@ class SourceGradientProbe:
 
 
 @torch.no_grad()
-def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
+def generate_text(model, tokenizer, prompt: str, *, max_tokens=32, check_budget=None):
     device = next(model.parameters()).device
     ids = tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=True,
                                         add_generation_prompt=True, return_tensors="pt", return_dict=False).to(device)
@@ -161,6 +165,8 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
     model.eval()
     try:
         for _ in range(max_tokens):
+            if check_budget:
+                check_budget()
             hidden = model(model.encode("text", ids))
             token = int(model.decode("text", hidden[:, -1:])[0, 0].argmax())
             if token == tokenizer.eos_token_id:
@@ -172,27 +178,36 @@ def generate_text(model, tokenizer, prompt: str, *, max_tokens=32):
         model.train(previous_mode)
 
 
-def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int | None = None, epochs: int | None = None,
+def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: int | None = None,
           device="cpu", optimizer="sgd", learning_rate=0.0001, max_grad_norm=1.0,
           resume: Path | None = None, extend=False, audit_gradients=False, extensions=(), checkpoint_interval=100,
           evaluation_examples=None, evaluation_interval=0, native_controls=False, prompts=None, training_seconds=None,
           generation_interval=0, holdout_prompts=None, gradient_probe_interval=0,
-          replay_every=None, replay_capacity=None):
+          replay_every=None, replay_capacity=None, time_budget_seconds=None):
+    invocation_started = time.perf_counter()
     from transformers import AutoTokenizer
 
-    default_epochs = steps is None and epochs is None
-    if default_epochs:
-        epochs = 1
     if ((steps is not None and (type(steps) is not int or steps < 1))
-            or (epochs is not None and (type(epochs) is not int or epochs < 1))
-            or (steps is not None and epochs is not None)
+            or (steps is None and training_seconds is None and time_budget_seconds is None)
             or checkpoint_interval < 1 or (evaluation_examples is not None and evaluation_examples < 1)
             or evaluation_interval < 0 or generation_interval < 0
             or gradient_probe_interval < 0
             or (base is None) == (resume is None) or (extend and resume is None)):
-        raise ValueError("choose a local base or a resume checkpoint and either positive epochs or an explicit step budget")
-    if training_seconds is not None and (not 0 < training_seconds < float("inf")):
-        raise ValueError("the training-time budget must be finite and positive")
+        raise ValueError("choose a local base or a resume checkpoint and an explicit time or step budget")
+    for label, value in (("training-time", training_seconds), ("elapsed-time", time_budget_seconds)):
+        if value is not None and (isinstance(value, bool) or not 0 < value < float("inf")):
+            raise ValueError(f"the {label} budget must be finite and positive")
+
+    elapsed_training = 0.0
+    timing = {"setup": 0.0, "training": 0.0, "evaluation": 0.0, "checkpoint": 0.0}
+
+    def elapsed_seconds():
+        return time.perf_counter() - invocation_started
+
+    def check_time_budget():
+        if time_budget_seconds is not None and elapsed_seconds() >= time_budget_seconds:
+            raise TimeBudgetExceeded("the elapsed-time budget is exhausted")
+
     validate_recipe(recipe, root)
     checkpoint_path = output / "checkpoint.pt"
     if checkpoint_path.exists() and (resume is None or checkpoint_path.resolve() != resume.resolve()):
@@ -239,19 +254,15 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
                 trainer.add_source(row["name"], row.get("weight", 1.0))
     if steps is not None and steps <= trainer.steps:
         raise ValueError("the requested total step budget must advance the checkpoint")
+    initial_step = trainer.steps
     previous_replay = payload["experience_replay"] if payload is not None else {}
-    if default_epochs and previous_replay:
-        epochs = previous_replay["epochs"]
-    target_epochs = epochs if epochs is not None else previous_replay["epochs"] if previous_replay else 1
-    replay = ExperienceReplay(sources, epochs=target_epochs, seed=recipe.get("seed", 47),
+    replay = ExperienceReplay(sources, seed=recipe.get("seed", 47),
                               every=previous_replay.get("every", 1) if replay_every is None else replay_every,
                               capacity=previous_replay.get("capacity", 128) if replay_capacity is None else replay_capacity)
     if previous_replay:
         replay.load_state_dict(previous_replay, extend=extend)
         if sum(replay.fresh_updates.values()) + sum(replay.replay_updates.values()) != trainer.steps:
             raise ValueError("checkpoint replay counts do not match optimizer updates")
-    if replay.complete:
-        raise ValueError("the requested epochs must advance the checkpoint")
     print(json.dumps({"stage": "experience_replay", **replay.progress()}), flush=True)
     trainer.synchronize_parameters()
     (output / "recipe.json").write_text(json.dumps(recipe, ensure_ascii=False, indent=2) + "\n")
@@ -277,7 +288,9 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if split == "holdout" and not include_holdout:
                 continue
             for case in cases:
-                answer = generate_text(model, tokenizer, case["prompt"], max_tokens=case.get("max_tokens", 48))
+                check_time_budget()
+                answer = generate_text(model, tokenizer, case["prompt"], max_tokens=case.get("max_tokens", 48),
+                                       check_budget=check_time_budget)
                 row = {**case, "split": split, "answer": answer}
                 if "expected" in case:
                     row["exact_match"] = answer.strip() == case["expected"]
@@ -285,7 +298,8 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         directory = output / "generations"
         directory.mkdir(exist_ok=True)
         (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(
-            {"step": trainer.steps, "generations": rows}, ensure_ascii=False, indent=2) + "\n")
+            {"step": trainer.steps, "training_seconds": elapsed_training,
+             "elapsed_seconds": elapsed_seconds(), "generations": rows}, ensure_ascii=False, indent=2) + "\n")
         scored = [row for row in rows if row["split"] == "development" and "exact_match" in row]
         print(json.dumps({"stage": "generation", "step": trainer.steps,
                           "development_correct": sum(row["exact_match"] for row in scored),
@@ -293,46 +307,63 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
         return rows
 
     def measure(*, controls=False, generations=False):
+        started = time.perf_counter()
         directory = output / "evaluation"
         directory.mkdir(exist_ok=True)
         rows_directory = directory / f"step-{trainer.steps:06d}"
-        measured = (evaluate_full(model, evaluation_sources, rows_directory, generate_answers=generations)
-                    if full_evaluation else evaluate_panel(model, evaluation_sources, panel, generate_answers=generations))
-        report = {"step": trainer.steps, "sources": measured}
-        if full_evaluation:
-            report["rows_directory"] = rows_directory.name
-        if controls and native_controls:
-            from intrep.problems.shared_prediction.sources import NativeSource
-            native_sources = {name: source for name, source in evaluation_sources.items()
-                              if isinstance(getattr(source, "reader", source), NativeSource)}
-            report["native_input_controls"] = {}
-            for omission in (None, "image", "audio", "text"):
-                omitted_inputs = () if omission is None else (omission,)
-                report["native_input_controls"][omission or "complete"] = (
-                    evaluate_full(model, native_sources, rows_directory / f"native-{omission or 'complete'}",
-                                  omit_native=omitted_inputs, generate_answers=False)
-                    if full_evaluation else evaluate_panel(
-                        model, evaluation_sources, {name: panel[name] for name in native_sources},
-                        omit_native=omitted_inputs, max_native_worlds=16, generate_answers=False))
+        report = {"step": trainer.steps, "sources": {}, "complete": False}
+        try:
+            check_time_budget()
+            report["sources"] = (
+                evaluate_full(model, evaluation_sources, rows_directory, generate_answers=generations,
+                              check_budget=check_time_budget)
+                if full_evaluation else evaluate_panel(model, evaluation_sources, panel, generate_answers=generations,
+                                                       check_budget=check_time_budget))
             if full_evaluation:
-                question_sources = {name: source for name, source in evaluation_sources.items()
-                                    if source.config.get("question_mode") == "varied"
-                                    and source.config["kind"] not in ("text", "conversations", "boolq")}
-                if question_sources:
-                    report["question_without_observations"] = evaluate_full(
-                        model, question_sources, rows_directory / "without-observations", generate_answers=generations,
-                        only_questions=True, omit_observations=True)
-            else:
-                omitted = question_omission_panel(evaluation_sources, panel)
-                if omitted:
-                    report["question_without_observations"] = evaluate_panel(model, evaluation_sources, omitted, generate_answers=generations)
-        if generations:
-            report["generations"] = measure_generations(include_holdout=True)
+                report["rows_directory"] = rows_directory.name
+            if controls and native_controls:
+                from intrep.problems.shared_prediction.sources import NativeSource
+                native_sources = {name: source for name, source in evaluation_sources.items()
+                                  if isinstance(getattr(source, "reader", source), NativeSource)}
+                report["native_input_controls"] = {}
+                for omission in (None, "image", "audio", "text"):
+                    check_time_budget()
+                    omitted_inputs = () if omission is None else (omission,)
+                    report["native_input_controls"][omission or "complete"] = (
+                        evaluate_full(model, native_sources, rows_directory / f"native-{omission or 'complete'}",
+                                      omit_native=omitted_inputs, generate_answers=False, check_budget=check_time_budget)
+                        if full_evaluation else evaluate_panel(
+                            model, evaluation_sources, {name: panel[name] for name in native_sources},
+                            omit_native=omitted_inputs, max_native_worlds=16, generate_answers=False,
+                            check_budget=check_time_budget))
+                if full_evaluation:
+                    question_sources = {name: source for name, source in evaluation_sources.items()
+                                        if source.config.get("question_mode") == "varied"
+                                        and source.config["kind"] not in ("text", "conversations", "boolq")}
+                    if question_sources:
+                        report["question_without_observations"] = evaluate_full(
+                            model, question_sources, rows_directory / "without-observations", generate_answers=generations,
+                            only_questions=True, omit_observations=True, check_budget=check_time_budget)
+                else:
+                    omitted = question_omission_panel(evaluation_sources, panel)
+                    if omitted:
+                        report["question_without_observations"] = evaluate_panel(
+                            model, evaluation_sources, omitted, generate_answers=generations, check_budget=check_time_budget)
+            if generations:
+                report["generations"] = measure_generations(include_holdout=True)
+            report["complete"] = True
+        except TimeBudgetExceeded:
+            report["stop_reason"] = "time_budget"
+        finally:
+            timing["evaluation"] += time.perf_counter() - started
+        report.update(training_seconds=elapsed_training, elapsed_seconds=elapsed_seconds())
         (directory / f"step-{trainer.steps:06d}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps({"stage": "evaluation", "step": trainer.steps,
-                          "losses": {name: value["summary"]["loss"] for name, value in measured.items()}}), flush=True)
+                          "complete": report["complete"], "elapsed_seconds": report["elapsed_seconds"],
+                          "losses": {name: value["summary"]["loss"] for name, value in report["sources"].items()}}), flush=True)
         return report
 
+    timing["setup"] = elapsed_seconds()
     before_evaluation = measure(controls=True, generations=True)
     audit = GradientAudit(model) if audit_gradients else None
     probe = SourceGradientProbe(model) if gradient_probe_interval else None
@@ -344,14 +375,23 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             probe.source = name
         return batch_loss(sources[name], batch)
 
+    def stop_condition():
+        if time_budget_seconds is not None and elapsed_seconds() >= time_budget_seconds:
+            return "time_budget"
+        if training_seconds is not None and elapsed_training >= training_seconds:
+            return "training_time_budget"
+        if steps is not None and trainer.steps >= steps:
+            return "step_budget"
+        return None
+
+    def checkpoint():
+        started = time.perf_counter()
+        save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions, replay=replay)
+        timing["checkpoint"] += time.perf_counter() - started
+
     records = [] if steps is not None else None
-    elapsed_training = 0.0
     try:
-        while steps is None or trainer.steps < steps:
-            if replay.complete:
-                break
-            if training_seconds is not None and elapsed_training >= training_seconds:
-                break
+        while (stop_reason := stop_condition()) is None:
             if next(model.parameters()).is_cuda:
                 torch.cuda.synchronize()
             start = time.perf_counter()
@@ -360,10 +400,8 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
                 probe.begin(next_step <= 2 or next_step % gradient_probe_interval in (0, 1))
             try:
                 name, batch, is_replay = replay.next()
-            except StopIteration:
-                if not replay.complete:
-                    raise ValueError("a training source ended before completing its declared population")
-                break
+            except StopIteration as error:
+                raise ValueError("a cycling training source cannot produce a batch") from error
             metrics = trainer.step({name: lambda: source_loss(name, batch)})
             replay.record_update(name, batch, is_replay)
             if next(model.parameters()).is_cuda:
@@ -373,19 +411,26 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
             if probe and probe.enabled:
                 record["gradient_probe"] = probe.summary(trainer.weights)
             elapsed_training += record["seconds"]
+            timing["training"] = elapsed_training
+            record.update(training_seconds=elapsed_training, elapsed_seconds=elapsed_seconds())
             record["source_details"] = {name: getattr(sources[name], "last_update_info", {"records": len(batch["records"])})}
             if records is not None:
                 records.append(record)
             with (output / "steps.jsonl").open("a") as handle:
                 handle.write(json.dumps(record) + "\n")
             print(json.dumps(record), flush=True)
-            if trainer.steps % checkpoint_interval == 0:
-                save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions, replay=replay)
-            remaining = not replay.complete and (steps is None or trainer.steps < steps)
-            if evaluation_interval and trainer.steps % evaluation_interval == 0 and remaining:
+            if trainer.steps % checkpoint_interval == 0 and stop_condition() is None:
+                checkpoint()
+            if evaluation_interval and trainer.steps % evaluation_interval == 0 and stop_condition() is None:
                 measure()
-            if generation_interval and trainer.steps % generation_interval == 0 and remaining:
-                measure_generations()
+            if generation_interval and trainer.steps % generation_interval == 0 and stop_condition() is None:
+                started = time.perf_counter()
+                try:
+                    measure_generations()
+                except TimeBudgetExceeded:
+                    pass
+                finally:
+                    timing["evaluation"] += time.perf_counter() - started
     finally:
         if audit:
             audit.close()
@@ -394,21 +439,38 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
     after = parameter_digests(model)
     changed = [name for name in before if before[name] != after[name]]
     core_names = [name for name in before if name.startswith("core.")]
-    save_checkpoint(checkpoint_path, model, trainer, sources, recipe, provenance, tokenizer, extensions, replay=replay)
+    checkpoint()
     after_evaluation = measure(controls=True, generations=True)
-    paired = (paired_full_comparison(before_evaluation["sources"], after_evaluation["sources"],
-                                    before_directory=output / "evaluation" / before_evaluation["rows_directory"],
-                                    after_directory=output / "evaluation" / after_evaluation["rows_directory"])
-              if full_evaluation else paired_comparison(before_evaluation["sources"], after_evaluation["sources"]))
+    paired = {}
+    comparison_complete = False
+    if before_evaluation["complete"] and after_evaluation["complete"]:
+        started = time.perf_counter()
+        try:
+            check_time_budget()
+            paired = (paired_full_comparison(before_evaluation["sources"], after_evaluation["sources"],
+                                            before_directory=output / "evaluation" / before_evaluation["rows_directory"],
+                                            after_directory=output / "evaluation" / after_evaluation["rows_directory"],
+                                            check_budget=check_time_budget)
+                      if full_evaluation else paired_comparison(before_evaluation["sources"], after_evaluation["sources"],
+                                                                check_budget=check_time_budget))
+            comparison_complete = True
+        except TimeBudgetExceeded:
+            pass
+        finally:
+            timing["evaluation"] += time.perf_counter() - started
+    elapsed = elapsed_seconds()
+    timing["other"] = max(0.0, elapsed - sum(timing.values()))
     result = {"parameters": sum(parameter.numel() for parameter in model.parameters()),
               "initial_parameters_sha256": hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest(),
               "final_parameters_sha256": hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest(),
-              "requested_steps": steps, "completed_steps": trainer.steps,
-              "requested_epochs": epochs,
+              "requested_steps": steps, "initial_step": initial_step, "completed_steps": trainer.steps,
+              "stop_reason": stop_reason,
               "completed_epochs": {name: completed_epochs(source) for name, source in sources.items()},
-              "population_complete": all(completed_epochs(source) >= replay.epochs for source in sources.values()),
+              "first_pass_complete": all(completed_epochs(source) >= 1 for source in sources.values()),
               "experience_replay": replay.progress(),
               "training_seconds_budget": training_seconds, "training_seconds": elapsed_training,
+              "time_budget_seconds": time_budget_seconds, "elapsed_seconds": elapsed, "timing_seconds": timing,
+              "budget_scope": "time limits apply to this invocation; step limit includes restored updates",
               "trainable_parameters": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad),
               "core_parameter_tensors": len(core_names),
               "changed_core_parameter_tensors": sum(name in changed for name in core_names),
@@ -418,9 +480,10 @@ def train(*, base: Path | None, recipe: dict, root: Path, output: Path, steps: i
               "gradient_audit": audit.records if audit else None,
               "evaluation_before": {name: row["summary"]["loss"]["mean"] for name, row in before_evaluation["sources"].items()},
               "evaluation_after": {name: row["summary"]["loss"]["mean"] for name, row in after_evaluation["sources"].items()},
-              "paired_evaluation": paired,
-              "text_before": {row["prompt"]: row["answer"] for row in before_evaluation["generations"]},
-              "text_after": {row["prompt"]: row["answer"] for row in after_evaluation["generations"]},
+              "paired_evaluation": paired, "comparison_complete": comparison_complete,
+              "evaluation_complete": {"before": before_evaluation["complete"], "after": after_evaluation["complete"]},
+              "text_before": {row["prompt"]: row["answer"] for row in before_evaluation.get("generations", [])},
+              "text_after": {row["prompt"]: row["answer"] for row in after_evaluation.get("generations", [])},
               "max_process_rss_mib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
               "torch_version": str(torch.__version__), "device": device,
               "cuda_peak_allocated_mib": torch.cuda.max_memory_allocated() / 2**20 if device.startswith("cuda") else None,

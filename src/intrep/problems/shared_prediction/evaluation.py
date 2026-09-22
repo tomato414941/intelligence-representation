@@ -99,7 +99,8 @@ def summarize(rows):
 
 
 @torch.no_grad()
-def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=None, generate_answers=True):
+def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=None, generate_answers=True,
+                   check_budget=None):
     states = {name: copy.deepcopy(source.state_dict()) for name, source in sources.items()}
     native = {name: getattr(source, "reader", source) for name, source in sources.items()
               if isinstance(getattr(source, "reader", source), NativeSource)}
@@ -111,11 +112,15 @@ def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=N
     result = {}
     try:
         for name, cases in panel.items():
+            if check_budget:
+                check_budget()
             source = sources[name]
             rows, worlds = [], set()
             if name in native:
                 native[name].omitted_inputs = set(omit_native)
             for case in cases:
+                if check_budget:
+                    check_budget()
                 group = case.get("group", case["key"])
                 if name in native and max_native_worlds is not None:
                     if group not in worlds and len(worlds) >= max_native_worlds:
@@ -148,17 +153,21 @@ def evaluate_panel(model, sources, panel, *, omit_native=(), max_native_worlds=N
         model.train(previous_mode)
 
 
-def paired_comparison(before, after):
+def paired_comparison(before, after, *, check_budget=None):
     if set(before) != set(after):
         raise ValueError("paired evaluation requires the same sources")
     result = {}
     for name in before:
+        if check_budget:
+            check_budget()
         original = {row["key"]: row for row in before[name]["rows"]}
         following = {row["key"]: row for row in after[name]["rows"]}
         if original.keys() != following.keys():
             raise ValueError("paired evaluation requires the same examples")
         deltas = []
         for key, old in original.items():
+            if check_budget:
+                check_budget()
             new = following[key]
             if old["metrics"].keys() != new["metrics"].keys():
                 raise ValueError("paired evaluation metric identities differ")

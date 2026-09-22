@@ -47,7 +47,7 @@ def full_cases(source, record_case):
 
 @torch.no_grad()
 def evaluate_full(model, sources, directory: Path, *, generate_answers=True,
-                  omit_native=(), omit_observations=False, only_questions=False):
+                  omit_native=(), omit_observations=False, only_questions=False, check_budget=None):
     """Score every primary record and every configured question, including tails."""
     directory.mkdir(parents=True, exist_ok=True)
     states = {name: copy.deepcopy(source.state_dict()) for name, source in sources.items()}
@@ -61,6 +61,8 @@ def evaluate_full(model, sources, directory: Path, *, generate_answers=True,
     result = {}
     try:
         for source_index, (name, source) in enumerate(sources.items()):
+            if check_budget:
+                check_budget()
             rewind_population(source)
             if name in native:
                 native[name].omitted_inputs = set(omit_native)
@@ -74,6 +76,8 @@ def evaluate_full(model, sources, directory: Path, *, generate_answers=True,
                 for record_case, record in population_records(source):
                     records += 1
                     for case in full_cases(source, record_case):
+                        if check_budget:
+                            check_budget()
                         if only_questions and case["form"] == "original":
                             continue
                         if isinstance(source, QuestionSource):
@@ -120,18 +124,22 @@ def evaluate_full(model, sources, directory: Path, *, generate_answers=True,
         model.train(previous_mode)
 
 
-def paired_full_comparison(before, after, *, before_directory: Path, after_directory: Path):
+def paired_full_comparison(before, after, *, before_directory: Path, after_directory: Path, check_budget=None):
     """Compare matching streamed cases without retaining the rows in memory."""
     if before.keys() != after.keys():
         raise ValueError("paired evaluation requires the same complete sources")
     result = {}
     for name, previous in before.items():
+        if check_budget:
+            check_budget()
         following = after[name]
         if not previous["complete"] or not following["complete"] or previous["case_sha256"] != following["case_sha256"]:
             raise ValueError("paired full evaluation requires matching complete cases")
         totals = MetricTotals()
         with (before_directory / previous["rows_file"]).open() as old_file, (after_directory / following["rows_file"]).open() as new_file:
             for old_line, new_line in zip_longest(old_file, new_file):
+                if check_budget:
+                    check_budget()
                 if old_line is None or new_line is None:
                     raise ValueError("paired full evaluation has different row counts")
                 old, new = json.loads(old_line), json.loads(new_line)

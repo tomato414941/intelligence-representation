@@ -1,4 +1,4 @@
-"""Finite, interleaved supervised learning with a fixed experience replay budget."""
+"""Interleave source streams and retained experience within a training budget."""
 from __future__ import annotations
 
 import copy
@@ -6,7 +6,7 @@ import random
 
 import torch
 
-from intrep.problems.shared_prediction.population import completed_epochs, limit_epochs
+from intrep.problems.shared_prediction.population import limit_epochs
 from intrep.problems.shared_prediction.questions import QuestionSource
 from intrep.problems.shared_prediction.sources import NativeSource
 from intrep.problems.shogi_policy_value.examples import (
@@ -68,30 +68,26 @@ class ExperienceReplay:
 
     Replay chooses a source uniformly, then a batch from its reservoir uniformly.
     A batch enters the reservoir only after its successful optimizer update.
+    Fresh batches come from cycling source streams; passes do not end training.
     """
 
-    def __init__(self, sources, *, epochs=1, every=1, capacity=128, seed=47):
-        if (not sources or type(epochs) is not int or epochs < 1
-                or type(every) is not int or every < 0
+    def __init__(self, sources, *, every=1, capacity=128, seed=47):
+        if (not sources or type(every) is not int or every < 0
                 or type(capacity) is not int or capacity < 1):
-            raise ValueError("replay requires sources, positive epochs/capacity and a nonnegative interval")
+            raise ValueError("replay requires sources, positive capacity and a nonnegative interval")
         self.sources = sources
-        self.epochs, self.every, self.capacity = epochs, every, capacity
+        self.every, self.capacity = every, capacity
         self.generator = random.Random(seed)
         self.cursor = self.since_replay = 0
         self.memory = {name: [] for name in sources}
         self.fresh_updates = dict.fromkeys(sources, 0)
         self.replay_updates = dict.fromkeys(sources, 0)
         for source in sources.values():
-            limit_epochs(source, epochs)
+            limit_epochs(source, None)
 
     @property
     def replay_due(self):
         return bool(self.every and self.since_replay == self.every and any(self.memory.values()))
-
-    @property
-    def complete(self):
-        return not self.replay_due and all(completed_epochs(source) >= self.epochs for source in self.sources.values())
 
     def next(self):
         if self.replay_due:
@@ -99,22 +95,15 @@ class ExperienceReplay:
             batch = self.generator.choice(self.memory[name])
             return name, unpack_batch(self.sources[name], batch), True
         names = list(self.sources)
-        for _ in names:
-            name = names[self.cursor % len(names)]
-            self.cursor += 1
-            source = self.sources[name]
-            if completed_epochs(source) >= self.epochs:
-                continue
-            try:
-                if isinstance(source, QuestionSource):
-                    batch = source.next_batch()
-                else:
-                    record = source.next_transition() if isinstance(source, NativeSource) else source.next_record()
-                    batch = {"records": [record]}
-            except StopIteration:
-                continue
-            return name, batch, False
-        raise StopIteration
+        name = names[self.cursor % len(names)]
+        self.cursor += 1
+        source = self.sources[name]
+        if isinstance(source, QuestionSource):
+            batch = source.next_batch()
+        else:
+            record = source.next_transition() if isinstance(source, NativeSource) else source.next_record()
+            batch = {"records": [record]}
+        return name, batch, False
 
     def record_update(self, name, batch, replay):
         if replay:
@@ -135,27 +124,28 @@ class ExperienceReplay:
                     rows[index] = packed
 
     def progress(self):
-        return {"fresh_epochs": self.epochs, "fresh_updates_per_replay": self.every,
+        return {"fresh_updates_per_replay": self.every,
                 "capacity_per_source_batches": self.capacity,
-                "fresh_selection": "round robin over unfinished sources",
+                "fresh_selection": "round robin over cycling source streams",
                 "replay_selection": "uniform source, then uniform reservoir batch",
                 "fresh_updates": dict(self.fresh_updates), "replay_updates": dict(self.replay_updates),
                 "retained_batches": {name: len(rows) for name, rows in self.memory.items()}}
 
     def state_dict(self):
-        return {"epochs": self.epochs, "every": self.every, "capacity": self.capacity, "names": list(self.sources),
+        return {"schema_version": "intrep.experience_replay.v2",
+                "every": self.every, "capacity": self.capacity, "names": list(self.sources),
                 "cursor": self.cursor, "since_replay": self.since_replay,
                 "fresh_updates": dict(self.fresh_updates), "replay_updates": dict(self.replay_updates),
                 "memory": self.memory, "generator": self.generator.getstate()}
 
     def load_state_dict(self, state, *, extend=False):
+        if state.get("schema_version") != "intrep.experience_replay.v2":
+            raise ValueError("replay continuation requires a checkpoint with cycling source streams")
         names = list(self.sources)
         previous = state["names"]
         if (state["every"] != self.every or state["capacity"] != self.capacity
                 or (names[:len(previous)] != previous if extend else names != previous)):
             raise ValueError("exact replay resume requires the same schedule and previous sources")
-        if self.epochs < state["epochs"]:
-            raise ValueError("replay continuation cannot reduce the requested fresh epochs")
         if (type(state["cursor"]) is not int or state["cursor"] < 0
                 or type(state["since_replay"]) is not int or not 0 <= state["since_replay"] <= self.every):
             raise ValueError("invalid replay schedule cursor")

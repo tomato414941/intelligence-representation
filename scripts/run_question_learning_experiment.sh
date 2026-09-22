@@ -27,10 +27,10 @@ for mode in ("fixed", "varied"):
     "gpu": torch.cuda.get_device_name(0), "cuda": torch.version.cuda,
     "model": "LFM2.5-350M", "base": "models/lfm2.5-350m",
     "precision": "float32", "optimizer": "AdamW", "learning_rate": 1e-5,
-    "training_seconds_per_condition": float(sys.argv[2]), "maximum_steps": 12000,
+    "time_budget_seconds_per_condition": float(sys.argv[2]), "maximum_steps": 12000,
     "all_sources_per_update": False, "all_parameters_trainable": True,
     "fresh_updates_per_replay": 1, "replay_capacity_per_source_batches": 128,
-    "comparison": "same initial weights, populations and primary/partner sampling; matched measured training wall time on the same GPU, not exact FLOPs",
+    "comparison": "same initial weights, populations and primary/partner sampling; matched elapsed-time budgets including setup, evaluation and checkpoints on the same GPU, not exact FLOPs",
 }, indent=2) + "\n")
 PY
 
@@ -39,7 +39,7 @@ for question_mode in fixed varied; do
     --base models/lfm2.5-350m --recipe "$question_output/$question_mode-recipe.json" \
     --extension intrep.problems.shared_prediction.record_sources \
     --data-root . --output "$question_output/$question_mode" \
-    --steps 12000 --training-seconds "$question_seconds" --device cuda --threads 4 \
+    --steps 12000 --time-budget-seconds "$question_seconds" --device cuda --threads 4 \
     --optimizer adamw --learning-rate 0.00001 --max-grad-norm 1 \
     --checkpoint-interval 500 --evaluation-examples 128 --evaluation-interval 1000 \
     --native-controls --prompts configs/question-learning-prompts.json
@@ -55,6 +55,9 @@ assert results[0]["initial_parameters_sha256"] == results[1]["initial_parameters
 assert (root / "fixed/evaluation-panel.json").read_bytes() == (root / "varied/evaluation-panel.json").read_bytes()
 assert all(len(result["source_progress"]) == 12 for result in results)
 assert all(result["parameters"] == result["trainable_parameters"] for result in results)
-print(json.dumps({"stage": "comparison_complete", "steps": [result["completed_steps"] for result in results],
+print(json.dumps({"stage": "runs_complete", "steps": [result["completed_steps"] for result in results],
+                  "elapsed_seconds": [result["elapsed_seconds"] for result in results],
+                  "evaluation_complete": [result["evaluation_complete"] for result in results],
+                  "comparison_complete": [result["comparison_complete"] for result in results],
                   "training_seconds": [result["training_seconds"] for result in results]}), flush=True)
 PY

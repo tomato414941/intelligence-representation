@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import torch
 
@@ -39,7 +40,7 @@ class ExperienceReplayTests(unittest.TestCase):
     def setUpClass(cls):
         torch.set_num_threads(1)
 
-    def test_complete_first_pass_and_fixed_replay_budget_survive_reservoir_eviction(self):
+    def test_source_streams_and_replay_alternate_across_population_boundaries(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             recipe = make_recipe(root)
@@ -49,7 +50,7 @@ class ExperienceReplayTests(unittest.TestCase):
             replay = ExperienceReplay(sources, capacity=1)
             trainer = JointTrainer(model, {name: 1 for name in sources}, learning_rate=.001)
             pictures, tokens, kinds = [], [], []
-            while not replay.complete:
+            for _ in range(32):
                 name, batch, is_replay = replay.next()
                 before = copy.deepcopy(sources[name].state_dict())
                 trainer.step({name: lambda: batch_loss(sources[name], batch)})
@@ -61,31 +62,30 @@ class ExperienceReplayTests(unittest.TestCase):
                     tokens.extend(batch["records"][0][0, 1:].tolist())
                 replay.record_update(name, batch, is_replay)
                 kinds.append(is_replay)
-            self.assertEqual(sorted(pictures), list(range(4)))
-            self.assertEqual(tokens, sources["text_data"].text_ids((root / "train.txt").read_text())[1:])
-            self.assertEqual(kinds, [False, True] * 12)
-            self.assertEqual(replay.fresh_updates, {"text_data": 8, "pictures": 4})
-            self.assertEqual(sum(replay.replay_updates.values()), 12)
+            self.assertEqual(sorted(pictures), sorted(list(range(4)) * 2))
+            expected = sources["text_data"].text_ids((root / "train.txt").read_text())[1:]
+            self.assertEqual(tokens[:len(expected)], expected)
+            self.assertEqual(kinds, [False, True] * 16)
+            self.assertEqual(replay.fresh_updates, {"text_data": 8, "pictures": 8})
+            self.assertEqual(sum(replay.replay_updates.values()), 16)
             self.assertEqual(replay.progress()["retained_batches"], {"text_data": 1, "pictures": 1})
             self.assertEqual({name: completed_epochs(source) for name, source in sources.items()},
-                             {"text_data": 1, "pictures": 1})
-            self.assertEqual(sources["pictures"].sampler.samples, 4)
-            self.assertEqual(sources["text_data"].tokens, 31)
-            with self.assertRaises(StopIteration):
-                replay.next()
+                             {"text_data": 1, "pictures": 2})
+            self.assertEqual(sources["pictures"].sampler.samples, 8)
+            self.assertEqual(sources["text_data"].tokens, 32)
 
-    def test_zero_replay_budget_processes_each_requested_pass(self):
+    def test_zero_replay_interval_continues_reading_source_streams(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             sources = build_sources(make_model(), make_tokenizer(), make_recipe(root), root)
-            replay = ExperienceReplay(sources, every=0, epochs=2)
-            while not replay.complete:
+            replay = ExperienceReplay(sources, every=0)
+            for _ in range(16):
                 name, batch, is_replay = replay.next()
                 self.assertFalse(is_replay)
                 batch_loss(sources[name], batch).backward()
                 replay.record_update(name, batch, is_replay)
             self.assertEqual(sources["pictures"].sampler.samples, 8)
-            self.assertEqual([completed_epochs(source) for source in sources.values()], [2, 2])
+            self.assertTrue(all(completed_epochs(source) >= 2 for source in sources.values()))
             self.assertEqual(sum(replay.replay_updates.values()), 0)
             self.assertTrue(all(not rows for rows in replay.memory.values()))
 
@@ -124,7 +124,7 @@ class ExperienceReplayTests(unittest.TestCase):
             source = build_sources(make_model(), tokenizer, recipe, root)["conversations"]
             replay = ExperienceReplay({"conversations": source}, every=1)
             targets = []
-            while not replay.complete:
+            while completed_epochs(source) < 1 or replay.replay_due:
                 name, batch, is_replay = replay.next()
                 record = batch["records"][0]
                 cursor = source.position
@@ -158,8 +158,9 @@ class ExperienceReplayTests(unittest.TestCase):
                             replay_every=2, replay_capacity=1, **options)
             _, _, partial_state = load_checkpoint(partial)
             self.assertEqual(partial_state["experience_replay"]["since_replay"], 2)
-            resumed = train(base=None, resume=partial, output=root / "resumed", **options)
-            straight = train(base=root / "base", output=root / "straight", replay_every=2, replay_capacity=1, **options)
+            resumed = train(base=None, resume=partial, output=root / "resumed", steps=30, **options)
+            straight = train(base=root / "base", output=root / "straight", steps=30,
+                             replay_every=2, replay_capacity=1, **options)
             a, _, state_a = load_checkpoint(resumed)
             b, _, state_b = load_checkpoint(straight)
             for actual, expected in zip(a.parameters(), b.parameters()):
@@ -169,13 +170,15 @@ class ExperienceReplayTests(unittest.TestCase):
             rows = [json.loads(line) for line in (root / "resumed/steps.jsonl").read_text().splitlines()]
             self.assertEqual(rows[0]["experience"], "replay")
             report = json.loads((root / "resumed/result.json").read_text())
-            self.assertTrue(report["population_complete"])
+            self.assertTrue(report["first_pass_complete"])
+            self.assertEqual(report["completed_steps"], 30)
+            self.assertEqual(report["stop_reason"], "step_budget")
             self.assertEqual(report["experience_replay"]["fresh_updates_per_replay"], 2)
-            self.assertEqual(sum(report["experience_replay"]["replay_updates"].values()), 6)
+            self.assertEqual(sum(report["experience_replay"]["replay_updates"].values()), 10)
             with self.assertRaisesRegex(ValueError, "same schedule"):
-                train(base=None, resume=partial, output=root / "changed", replay_every=3, **options)
+                train(base=None, resume=partial, output=root / "changed", steps=30, replay_every=3, **options)
 
-    def test_resume_retains_the_requested_number_of_fresh_passes(self):
+    def test_update_time_budget_continues_past_a_pass_and_resumes_exactly(self):
         from transformers import Lfm2ForCausalLM
         from intrep.problems.shared_prediction.training import load_checkpoint, train
 
@@ -185,13 +188,30 @@ class ExperienceReplayTests(unittest.TestCase):
             Lfm2ForCausalLM(make_model().core.body.config).save_pretrained(root / "base")
             make_tokenizer().save_pretrained(root / "base")
             options = {"recipe": recipe, "root": root, "prompts": [], "evaluation_examples": 1}
-            partial = train(base=root / "base", output=root / "partial", epochs=2, training_seconds=1e-9, **options)
-            resumed = train(base=None, resume=partial, output=root / "resumed", **options)
-            _, _, state = load_checkpoint(resumed)
-            self.assertEqual(state["experience_replay"]["epochs"], 2)
-            self.assertEqual(state["sources"]["pictures"]["samples"], 8)
+            clock = [0.0]
+            original_step = JointTrainer.step
+
+            def timed_step(trainer, losses):
+                result = original_step(trainer, losses)
+                clock[0] += 1
+                return result
+
+            with patch("intrep.problems.shared_prediction.training.time.perf_counter", side_effect=lambda: clock[0]), \
+                    patch.object(JointTrainer, "step", timed_step):
+                partial = train(base=root / "base", output=root / "partial", training_seconds=1, **options)
+                resumed = train(base=None, resume=partial, output=root / "resumed", training_seconds=19, **options)
+                straight = train(base=root / "base", output=root / "straight", training_seconds=20, **options)
+            a, _, state_a = load_checkpoint(resumed)
+            b, _, state_b = load_checkpoint(straight)
+            for actual, expected in zip(a.parameters(), b.parameters()):
+                torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+            for key in ("trainer", "sources", "experience_replay", "torch_rng"):
+                assert_state_equal(self, state_a[key], state_b[key])
             report = json.loads((root / "resumed/result.json").read_text())
-            self.assertEqual(report["completed_epochs"], {"text_data": 2, "pictures": 2})
+            self.assertEqual(report["completed_steps"], 20)
+            self.assertEqual(report["training_seconds"], 19)
+            self.assertEqual(report["stop_reason"], "training_time_budget")
+            self.assertTrue(all(value >= 1 for value in report["completed_epochs"].values()))
 
 
 if __name__ == "__main__":

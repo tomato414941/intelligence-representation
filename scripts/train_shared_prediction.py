@@ -1,4 +1,4 @@
-"""Train every declared data source against one LFM body with exchangeable heads."""
+"""Train interleaved source streams and replay within an explicit time or update budget."""
 from __future__ import annotations
 
 import argparse
@@ -19,12 +19,13 @@ def main():
     parser.add_argument("--recipe", type=Path, required=True)
     parser.add_argument("--data-root", type=Path, default=Path("."))
     parser.add_argument("--output", type=Path, required=True)
-    budget = parser.add_mutually_exclusive_group()
-    budget.add_argument("--epochs", type=int, help="complete fresh passes through every source, defaults to one; completed sources participate only in replay")
-    budget.add_argument("--steps", type=int, help="diagnostic limit on total fresh/replay updates within one pass, including restored updates")
+    parser.add_argument("--steps", type=int, help="total fresh/replay update limit, including restored updates")
     parser.add_argument("--replay-every", type=int, help="one replay update after this many fresh updates; 0 disables replay; defaults to 1, inherited on resume")
     parser.add_argument("--replay-capacity", type=int, help="maximum retained batches per source; defaults to 128, inherited on resume")
-    parser.add_argument("--training-seconds", type=float, help="stop after this many measured training seconds; excludes evaluation and checkpoint I/O")
+    parser.add_argument("--time-budget-seconds", type=float,
+                        help="elapsed-time budget for this invocation, including setup, evaluation and checkpoints; checked between operations, with a final checkpoint always saved")
+    parser.add_argument("--training-seconds", type=float,
+                        help="optional update-time budget for this invocation; excludes setup, evaluation and checkpoint I/O")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--optimizer", choices=("sgd", "adamw"), default="sgd")
@@ -42,6 +43,8 @@ def main():
     parser.add_argument("--holdout-prompts", type=Path, help="separate prompts evaluated only at the initial and final checkpoints")
     parser.add_argument("--extension", action="append", default=[], help="explicit Python module registering additional source factories")
     args = parser.parse_args()
+    if args.steps is None and args.time_budget_seconds is None and args.training_seconds is None:
+        parser.error("specify --steps, --time-budget-seconds or --training-seconds; the first reached limit stops training")
     if args.threads < 1:
         parser.error("threads must be positive")
     torch.set_num_threads(args.threads)
@@ -49,7 +52,7 @@ def main():
         importlib.import_module(module)
     recipe = json.loads(args.recipe.read_text())
     train(base=args.base, resume=args.resume, recipe=recipe, root=args.data_root.resolve(),
-          output=args.output, steps=args.steps, epochs=args.epochs, device=args.device, optimizer=args.optimizer,
+          output=args.output, steps=args.steps, device=args.device, optimizer=args.optimizer,
           learning_rate=args.learning_rate, max_grad_norm=args.max_grad_norm, extend=args.extend,
           audit_gradients=args.audit_gradients, extensions=args.extension, checkpoint_interval=args.checkpoint_interval,
           evaluation_examples=args.evaluation_examples, evaluation_interval=args.evaluation_interval,
@@ -57,7 +60,8 @@ def main():
           training_seconds=args.training_seconds, generation_interval=args.generation_interval,
           holdout_prompts=json.loads(args.holdout_prompts.read_text()) if args.holdout_prompts else None,
           gradient_probe_interval=args.gradient_probe_interval,
-          replay_every=args.replay_every, replay_capacity=args.replay_capacity)
+          replay_every=args.replay_every, replay_capacity=args.replay_capacity,
+          time_budget_seconds=args.time_budget_seconds)
 
 
 if __name__ == "__main__":
