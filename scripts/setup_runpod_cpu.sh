@@ -10,7 +10,7 @@ else
 fi
 
 "$PYTHON" -m venv --system-site-packages .venv
-.venv/bin/python -m pip install --upgrade "pip>=26.2.2" "certifi>=2026.10.19"
+.venv/bin/python -m pip install --upgrade "pip>=26.2.2" "certifi>=2026.10.19" "anyio>=4.14.2"
 .venv/bin/python -m pip install -e . --no-deps
 .venv/bin/python -m pip install "numpy<2" "python-shogi>=1.1.1" "tokenizers>=0.23.1" "torch>=2.2" "zstandard>=0.23"
 .venv/bin/python - <<'PY'

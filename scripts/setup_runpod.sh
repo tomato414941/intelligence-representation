@@ -23,6 +23,6 @@ print("device", torch.cuda.get_device_name(0))
 PY
 
 "$PYTHON" -m venv --system-site-packages .venv
-.venv/bin/python -m pip install --upgrade "pip>=26.2.2" "certifi>=2026.10.19"
+.venv/bin/python -m pip install --upgrade "pip>=26.2.2" "certifi>=2026.10.19" "anyio>=4.14.2"
 .venv/bin/python -m pip install -e . --no-deps
 .venv/bin/python -m pip install "numpy<2" "python-shogi>=1.1.1" "tokenizers>=0.23.1" "zstandard>=0.23"
